@@ -97,9 +97,11 @@ The loop's state is the values still to choose, the status of a failed call, a d
 bytes, and an output buffer of 10,752 bytes, which hold the lines of 512 values of at most 20
 digits.  Each pass draws 512 words into the whole draw buffer with `randomGet`, writes the lines of
 the picks of their accepted words, at most the values that remain, into the output buffer with
-`putPicks`, and writes those lines with `writeAll` of [the shared write
-loop](../../LeanExe/Wasi/WriteAll.lean), which follows a short write with a write of the bytes that
-remain and exits with the errno of a write that fails.  The status is the errno of `args`, 2 for a
+`putPicks`, and writes the window of the output buffer that those lines fill with `writeAll` of
+[the shared write loop](../../LeanExe/Wasi/WriteAll.lean), which follows a short write with a
+write of the bytes that remain and exits with the errno of a write that fails.  The loop carries
+both buffers through its state by moves: `random_get` fills the draw buffer, `putPicks` writes the
+output buffer in place, and `writeAll` reads it in place, so a pass allocates nothing.  The status is the errno of `args`, 2 for a
 refused N or K, the errno of a failed `random_get` or write, 78 when the writes of a pass took fewer
 bytes than offered until `writeAll`'s passes ran out, 77 when the loop's passes ran out with values
 still to choose, and 0 when the passes chose and wrote K values.  Every errno lies from 0 to 76, so
@@ -111,7 +113,17 @@ still to choose, and 0 when the passes chose and wrote K values.  Every errno li
 | `meets_output` | A run whose events meet `Meets` with status 0 wrote `outputOf N chosen` for the K-tuple `chosen` of the first K accepted words that its passes drew ([the output](Output.lean)). |
 | `start_ends` | For every host, every host environment that satisfies the host's contracts for the module's imports, and every world, every run of `_start` with enough fuel ends with the accepted exit after events that meet `Meets`, with a trap of the host or a rejected exit, or with a trap of the guest at `unreachable` after a prefix of `main` ([the command's theorem](CommandStart.lean)). |
 | `total_meets` | Under the premises of the generated `command.total`, a budget that fits the free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every run ends with the accepted exit after events that meet `Meets`. |
+| `body_bounded` | Every run and every prefix of `main`'s body charges at most `budget`, 6,306,448 bytes, for every N and K, under every host whose successful `args_sizes_get` replies ask for at most `argsLimit` bytes ([the budget](Budget.lean)). |
+| `total_meets_every` | For every N and K, under every such host that traps nowhere along `main` and its exit, every run of `_start` from the command's initial store ends with the accepted exit after events that meet `Meets`, from `total_meets` with `body_bounded` and `initial_within`. |
 | `cap_count` | At most a `2^-512` part of the sequences of the `512 · passes K` words of the cap's passes hold fewer than K accepted words, from `short_count`, since `512 · (K / 128 + 3) ≥ 4 K + 1024`. |
+
+The resource model charges a copy of an owned value at each use after which the value stays live,
+and it credits no release.  `budget` holds the block of `args` at the random histogram's limit
+`argsLimit`, 6,291,504 bytes, and the loop's initial draw buffer and output buffer, 4,144 and
+10,800 bytes with their headers.  A pass charges nothing: the call of `random_get` takes the draw
+buffer's variable, which dies there, without a copy, `putPicks` takes the output buffer as owned
+and has a generated bound of 0, and `writeAll` borrows the output buffer and charges nothing in
+each of its passes.  The budget therefore does not depend on N or K.
 
 `Meets host world events code` states the events of `args`, the status 2 for a refused N or K with
 no other event, and otherwise the passes of `Rounds`: each pass calls `random_get` for 4,096 bytes

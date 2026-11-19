@@ -181,6 +181,7 @@ import Demos.Rcv.TabulateProgram
 import Demos.Rcv.TabulateProof
 import Demos.Rcv.Variants
 import Demos.Rcv.Winner
+import Demos.RandomChoice.Budget
 import Demos.RandomChoice.CommandStart
 import Demos.RandomChoice.Compiled
 import Demos.RandomChoice.Output

@@ -53,7 +53,7 @@ sha256sum --quiet -c Demos/RandomChoice/picks.sha256 ||
   fail spec "PicksSpec.lean or PicksSamples.lean differs from the reviewed version"
 
 tools/leanrun --timeout 60m --log "$out/build.log" lake build Demos.RandomChoice.Compiled \
-  Demos.RandomChoice.Unbiased Demos.RandomChoice.CommandStart
+  Demos.RandomChoice.Unbiased Demos.RandomChoice.Budget Demos.RandomChoice.Output
 tools/leanrun --timeout 10m lake env lean tests/random-choice/Axioms.lean
 tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Demos.RandomChoice.Command \
   Demos.RandomChoice.command.module "$module"

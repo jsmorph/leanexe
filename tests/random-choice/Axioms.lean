@@ -1,5 +1,5 @@
 import Demos.RandomChoice.Compiled
-import Demos.RandomChoice.CommandStart
+import Demos.RandomChoice.Budget
 import Demos.RandomChoice.Output
 
 /-! The theorem statements and the axiom audit of the unbiased random choice.  The call theorems
@@ -91,6 +91,8 @@ elab "check_random_choice_axioms" : command => do
     ``Demos.RandomChoice.meets_output,
     ``Demos.RandomChoice.exec_main,
     ``Demos.RandomChoice.total_meets,
+    ``Demos.RandomChoice.body_bounded,
+    ``Demos.RandomChoice.total_meets_every,
     ``Demos.RandomChoice.command.start,
     ``Demos.RandomChoice.command.validity,
     ``Demos.RandomChoice.command.bytes,
