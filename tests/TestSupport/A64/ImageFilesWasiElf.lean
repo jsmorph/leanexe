@@ -31,14 +31,14 @@ output regions lie in linear memory, and its images and its runs under `linuxHos
 choice of open flags and launch (`Images.streams`, `Exec.streams`, `Prefix.streams`).
 
 `readall_elf_message` is readAll's message corollary for the file, for every reply sequence of the
-class `Steady` with `M` at 4,096 of `Verified/Examples/WasiReadAllSteady.lean`, which answers each
-read with a result of at most its capacity and each write of `n` bytes with a result of at most
-`n`, at least 1, and at least `min 4096 n`.  The process reaches `exit_group` with X0 at `statusOf`
-of the bytes that its reads of descriptor 0 returned, and its layer events meet `Copies`.
-`wasiElf_footprint_with` gives the run from `linux_footprint_steady`, the footprint at the
-executable's cap of 4,096 pages without a guest trap, and `linux_exec_succeeded` gives the status
-and `Copies` from the `Exec` run that the footprint names, whose WASI events succeed under the
-class (`succeeded_of_steady`).
+class `Steady` of `Verified/Examples/WasiReadAllSteady.lean`, which answers each read with a result
+of at most its capacity and each write of `n` bytes with a result of at most `n` and at least 1.
+The process reaches `exit_group` with X0 at `statusOf` of the bytes that its reads of descriptor 0
+returned, and its layer events meet `Copies`.  `wasiElf_footprint_with` gives the run from
+`linux_footprint_budget`, the footprint at the executable's cap of 4,096 pages without a guest trap
+under every reply sequence, and `linux_exec_succeeded` gives the status and `Copies` from the
+`Exec` run that the footprint names, whose WASI events succeed under the class
+(`succeeded_of_steady`).
 -/
 
 namespace TestSupport.A64.ImageFilesWasiElf
@@ -133,24 +133,22 @@ theorem readall_elf (F : OpenFlags) (I : Launch) (R : Linux.Replies) (p : Proc)
   · exact .inr (.inr (.inr ⟨⟨residual, Prefix.streams rfl rfl h hT⟩, hx⟩))
 
 /-- readAll's message corollary for `readall.elf`.  For every choice of open flags `F`, launch `I`,
-and reply sequence `R` of the class `Steady F readAllShimLayout I 4096 R`, which answers each read
-with a result of at most its capacity and each write of `n` bytes with a result of at most `n`, at
-least 1, and at least `min 4096 n`, a process started as for `readall_elf` reaches `SVC #0` with X8
-at 94, `exit_group`, and the UART's state as it was.  Its trace holds the layer events `ls`, each
-of which holds its reply of `R`, X0 holds `statusOf (Linux.readData 0 ls)`, 0 when the reads of
+and reply sequence `R` of the class `Steady F readAllShimLayout I R`, which answers each read with
+a result of at most its capacity and each write of `n` bytes with a result of at most `n` and at
+least 1, a process started as for `readall_elf` reaches `SVC #0` with X8 at 94, `exit_group`, and
+the UART's state as it was.  Its trace holds the layer events `ls`, each of which holds its reply
+of `R`, X0 holds `statusOf (Linux.readData 0 ls)`, 0 when the reads of
 descriptor 0 returned at most `limit`, 1,000,000, bytes and 1 otherwise, and `ls` meets `Copies`:
 reads of 4,096 bytes from descriptor 0, each but the last returning bytes, at most `limit` bytes
 before the last read and `limit + 4096` in all, the last read returning none unless the bytes
 exceed `limit`, followed by writes of descriptor 1 that took the bytes that the reads returned.
 The class holds Linux's replies when standard input is a regular file or a pipe and standard
-output a regular file or a pipe in blocking mode and no call fails or is interrupted, since such a
-write takes all of its bytes.  It excludes every reply that reports an error, every result outside
-the request's range, and every write that takes fewer than `min 4096 n` bytes: a write to a
-descriptor in nonblocking mode, a write to a regular file at a full disk or at `RLIMIT_FSIZE`, and
-a write that a signal interrupts after some bytes. -/
+output a regular file or a pipe and no call fails, since such a write takes at least one byte.  It
+excludes every reply that reports an error, every result outside the request's range, and every
+write that returns 0. -/
 theorem readall_elf_message (F : OpenFlags) (I : Launch) (R : Linux.Replies) (p : Proc)
     {args environ : List (List UInt8)} {top : UInt64}
-    (steady : Steady F readAllShimLayout I 4096 R)
+    (steady : Steady F readAllShimLayout I R)
     (hl : ElfLoaded (byteAt readAllElfBytes) p.core.mem)
     (hstack : InitialStack args environ p.core.sp top p.core.mem)
     (hpc : p.core.pc = wasiEntry) (htr : p.trace = []) :
@@ -160,7 +158,7 @@ theorem readall_elf_message (F : OpenFlags) (I : Launch) (R : Linux.Replies) (p 
       q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
       ∃ ls, q.trace = ls.map A64.Event.sys ∧ Carried R 0 ls ∧
         q.core.x 0 = statusOf (Linux.readData 0 ls) ∧ Copies ls := by
-  have native : Steady arm64Flags readAllShimLayout ⟨args, environ, false⟩ 4096 R :=
+  have native : Steady arm64Flags readAllShimLayout ⟨args, environ, false⟩ R :=
     steady.streams
   have himp : command.module.imports = ABI.importsWith [] := by
     rw [command.module, compile_imports]
@@ -178,14 +176,14 @@ theorem readall_elf_message (F : OpenFlags) (I : Launch) (R : Linux.Replies) (p 
         rw [hsu] at h
         cases h
         rw [hR]
-        exact linux_footprint_steady arm64Flags _ ⟨args, environ, false⟩ R (by decide)
-          (by decide) native)
+        exact linux_footprint_budget arm64Flags _ ⟨args, environ, false⟩ R (by decide)
+          (by decide))
       hl hstack hpc htr
   rw [hsu] at hq
   obtain ⟨T, ls, w, trq, himg, hcar, -, hend⟩ := hq
   rw [List.nil_append] at trq
   rw [hR] at hend
-  have safe : SteadyAlong _ _ _ _ := native.along
+  have safe : SteadyAlong _ _ _ := native.along
   refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, ?_⟩
   rcases hend with ⟨c, h, hx⟩ | ⟨h, -⟩ | ⟨h, -⟩ | ⟨impossible, -⟩
   · obtain ⟨exited, copies⟩ := linux_exec_succeeded h himg (succeeded_of_steady h safe)

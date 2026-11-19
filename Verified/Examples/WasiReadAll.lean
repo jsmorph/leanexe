@@ -18,9 +18,9 @@ def main : Action UInt64 := do
   if input.errno != 0 then
     pure input.errno
   else
-    let _ ← writeAll input.bytes
+    let _ ← writeAll input.bytes 0 input.bytes.size
     if limit < input.bytes.size then pure 1 else pure 0
 
-verified_compile_wasi command (main := main) := [suffix, writeAll, main]
+verified_compile_wasi command (main := main) := [writeAll, main]
 
 end Verified.Examples.WasiReadAll

@@ -13,10 +13,10 @@ cap, so they hold at every cap up to 65,535, and `linux_footprint_native` states
 no flat call, so the trace of no run of it holds one.
 
 `linux_footprint_native_bounded` states the footprint without a guest trap for a budget that fits
-the cap and bounds every typed resource prefix of `main`, and `linux_footprint_steady` instantiates
-it with `budget` of `Verified/Examples/WasiReadAllSteady.lean` for the reply sequences of the class
-`Steady` with `M` at 4,096, at every cap from 3,785 to 65,535 pages.  `Steady.streams` states that
-the class does not depend on the open flags or the launch.
+the cap and bounds every typed resource prefix of `main`, and `linux_footprint_budget` instantiates
+it with `budget` of `Verified/Examples/WasiReadAllSteady.lean`, which bounds the prefixes under
+every reply sequence, at every cap from 16 to 65,535 pages.  `Steady.streams` states that the class
+`Steady` does not depend on the open flags or the launch.
 -/
 
 namespace Verified.Examples.WasiReadAll
@@ -58,8 +58,8 @@ theorem main_streams : StreamAction (main.bind fun status => Action.exit (α := 
 
 /-- The class of reply sequences does not depend on the open flags or the launch, since `main` makes
 no flat call. -/
-theorem Steady.streams {F F' : OpenFlags} {L : ShimLayout} {I I' : Launch} {M : Nat}
-    {R : Linux.Replies} (steady : Steady F L I M R) : Steady F' L I' M R :=
+theorem Steady.streams {F F' : OpenFlags} {L : ShimLayout} {I I' : Launch}
+    {R : Linux.Replies} (steady : Steady F L I R) : Steady F' L I' R :=
   fun progress =>
     steady (Prefix.streams rfl rfl progress (Prefix.streamTrace progress main_streams))
 
@@ -88,19 +88,18 @@ theorem linux_footprint_native_bounded (F : OpenFlags) (L : ShimLayout) (I : Lau
     (fun _ => ⟨by change 4096 + budget ≤ 65536 * cap; exact room, bounded⟩)
   exact ⟨bound, fun fuel enough => footprint_of_result F L I replies (results fuel enough)⟩
 
-/-- For a reply sequence of the class with `M` at 4,096, every run of `_start` from `nativeStore`
-at a cap from 3,785 to 65,535 pages has the footprint of `linux_footprint_native` without a guest
-trap. -/
-theorem linux_footprint_steady (F : OpenFlags) (L : ShimLayout) (I : Launch) (R : Linux.Replies)
-    {cap : Nat} (hcap : cap ≤ 65535) (large : 3785 ≤ cap) (steady : Steady F L I 4096 R) :
+/-- For every reply sequence, every run of `_start` from `nativeStore` at a cap from 16 to 65,535
+pages has the footprint of `linux_footprint_native` without a guest trap. -/
+theorem linux_footprint_budget (F : OpenFlags) (L : ShimLayout) (I : Launch) (R : Linux.Replies)
+    {cap : Nat} (hcap : cap ≤ 65535) (large : 16 ≤ cap) :
     ∃ bound, ∀ fuel ≥ bound,
       Footprint F L I R (main.bind fun status => Action.exit status) nativeWorld false
         (run fuel command.module (Wrappers.effectIndex command.pure.module 2)
           (nativeStore command.module cap nativeWorld) [] (linuxEnv F L I R [])) :=
-  linux_footprint_native_bounded F L I R hcap (by unfold budget; omega) (steady_bounded steady rfl)
+  linux_footprint_native_bounded F L I R hcap (by unfold budget; omega) budget_bounded
 
 end Verified.Examples.WasiReadAll
 
 #print axioms Verified.Examples.WasiReadAll.linux_footprint_native
 #print axioms Verified.Examples.WasiReadAll.main_streams
-#print axioms Verified.Examples.WasiReadAll.linux_footprint_steady
+#print axioms Verified.Examples.WasiReadAll.linux_footprint_budget

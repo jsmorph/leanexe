@@ -453,15 +453,16 @@ theorem render_size (counts : Array UInt64) : (render counts).data.size ≤ 210 
 with a status from 1 to 76, with its events before the exit. -/
 theorem write_tail {World : Type} {host : Host World} {out : Bytes} (small : out.data.size ≤ 210)
     {world final : World} {trace : List Event} {outcome : Outcome UInt64}
-    (run : Exec host (Action.bind (writeAll out) fun written =>
+    (run : Exec host (Action.bind (writeAll out 0 out.size) fun written =>
       Action.pure (if written < out.size then 77 else 0)) world trace outcome final) :
     (∀ status, outcome = .returned status →
       (status = 0 ∨ status = 77) ∧ Written out.data.data.toList trace status) ∧
     (∀ code, outcome = .exited code → code ≠ 0 ∧ code.toNat ≤ 76 ∧
       ∃ writes, trace = writes ++ [.exit code] ∧ Written out.data.data.toList writes code) := by
-  obtain ⟨after, writes, middle, tail, writeRun, cont, rfl⟩ := Exec.unbind (writeAll out) run
+  obtain ⟨after, writes, middle, tail, writeRun, cont, rfl⟩ :=
+    Exec.unbind (writeAll out 0 out.size) run
   have length : out.data.data.toList.length = out.data.size := by simp
-  have facts := (writeAll_run (by omega) writeRun).taken (by rw [length]; omega) (by simp)
+  have facts := (writeAll_run_whole (by omega) writeRun).taken (by rw [length]; omega) (by simp)
   have wide : out.size.toNat = out.data.size := by
     simp only [Bytes.size, UInt64.toNat_ofNat']
     exact Nat.mod_eq_of_lt (by omega)
@@ -624,7 +625,7 @@ theorem main_runs {World : Type} {host : Host World} {world final : World} {trac
                 List.size_toArray, wlen]
             have rendered : render s.1 = renderSpec (histogramSpec (words bytes).toArray) := by
               rw [counted, ← histogram_list, histogram_eq, render_eq]
-            change Exec host (Action.bind (writeAll (render s.1)) fun written =>
+            change Exec host (Action.bind (writeAll (render s.1) 0 (render s.1).size) fun written =>
                 Action.pure (if written < (render s.1).size then 77 else 0))
               loopAfter post outcome final at cont2
             have tail := write_tail (render_size s.1) cont2
