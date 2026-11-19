@@ -2301,10 +2301,11 @@ theorem meets_of {World : Type} {host : Host World} {world after : World} {a : A
         Checks ((lines manifest).map (·.2)) true post code)) :
     Meets host world (pre ++ (opening ++ post)) code := by
   have preEvents := args_events argsRun
-  have hpost : post = [] ∨ Checks ((lines manifest).map (·.2)) true post code := by
+  have hpost : post = [] ∨ (∀ l ∈ lines manifest, WellFormed l.2) ∧
+      Checks ((lines manifest).map (·.2)) true post code := by
     by_cases hs : status = 0
     · by_cases acc : lines manifest ≠ [] ∧ ∀ l ∈ lines manifest, WellFormed l.2
-      · exact .inr (rest.2.2 hs acc.1 acc.2)
+      · exact .inr ⟨acc.2, rest.2.2 hs acc.1 acc.2⟩
       · have hr : lines manifest = [] ∨ ∃ l ∈ lines manifest, ¬ WellFormed l.2 := by
           by_cases e : lines manifest = []
           · exact .inl e
@@ -2322,13 +2323,13 @@ theorem meets_of {World : Type} {host : Host World} {world after : World} {a : A
     · exact absurd he (no_open_of_args preEvents args reply)
     rcases List.mem_append.mp he with he | he
     · exact ⟨name, .inl ⟨mrun.opens args reply he, hone⟩⟩
-    · rcases hpost with rfl | chk
+    · rcases hpost with rfl | ⟨formed, chk⟩
       · nomatch he
       · obtain ⟨l, hl, e⟩ := chk.opens args reply he
         obtain ⟨l', hl', rfl⟩ := List.mem_map.mp hl
-        exact ⟨l'.2.drop 66, .inr ⟨e, l', hl', rfl⟩⟩
+        exact ⟨l'.2.drop 66, .inr ⟨e, l', hl', formed l' hl', rfl⟩⟩
   · refine (handled_of_args preEvents).append (mrun.handled.append ?_)
-    rcases hpost with rfl | chk
+    rcases hpost with rfl | ⟨-, chk⟩
     · exact .nil
     · exact chk.handled
 

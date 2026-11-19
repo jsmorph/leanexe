@@ -1,8 +1,8 @@
 import Demos.ManifestCheck.CommandProof
 import Verified.Wasi.Stops
 
-/-! The events of every run of the command's `main` followed by its exit that stops before the
-exit meet `SoFar` (`stops_soFar`): a prefix of a run, which a trap of the guest cuts short
+/-! The events of every run of the command's `main` followed by its exit that stops without an
+accepted exit meet `SoFar` (`stops_soFar`): a prefix of a run, which a trap of the guest cuts short
 (`prefix_soFar`), and a run that traps in the host or at an exit that the host rejects
 (`trapped_soFar`).
 
@@ -15,7 +15,8 @@ calls of `args` (`args_every`), the calls on the descriptor of a bracket's body
 exit at their end (`writeAll_stops`).  `withOpen_stops` gives the events of a bracket that stops,
 `step_stops` those of a pass of the checks, `checks_stops` those of their loop, and
 `checkLines_stops` those of `checkLines`.  `main_stops` follows `main`, and `confined_of` assembles
-`ConfinedSoFar` from the run of `args`, the `ManifestRun`, and the opens that follow. -/
+`ConfinedSoFar` from the run of `args`, the `ManifestRun`, and the opens that follow, which name
+lines of a manifest that the pure core accepts. -/
 
 namespace Demos.ManifestCheck
 
@@ -80,7 +81,8 @@ theorem args_every :
   dsimp only
   split <;> trivial
 
-/-- Every event of a run of `readManifest` on the descriptor `fd` that stops is a call on `fd`. -/
+/-- `Every (OnDescriptor fd)` holds of `readManifest` on the descriptor `fd`: every event that it
+makes, for every reply, is a call on `fd`. -/
 theorem readManifest_every (fd : UInt64) (buffer : Bytes) :
     Every (OnDescriptor fd) (readManifest ⟨fd⟩ buffer) := by
   unfold readManifest readBytes
@@ -101,7 +103,8 @@ theorem readManifest_every (fd : UInt64) (buffer : Bytes) :
     · trivial
     split <;> trivial
 
-/-- Every event of a run of `hashFile` on the descriptor `fd` that stops is a call on `fd`. -/
+/-- `Every (OnDescriptor fd)` holds of `hashFile` on the descriptor `fd`: every event that it
+makes, for every reply, is a call on `fd`. -/
 theorem hashFile_every (fd : UInt64) (buffer : Bytes) :
     Every (OnDescriptor fd) (hashFile ⟨fd⟩ buffer) := by
   unfold hashFile
@@ -116,9 +119,9 @@ theorem hashFile_every (fd : UInt64) (buffer : Bytes) :
 /-! ## Brackets -/
 
 /-- A run of `withOpen` that stops, under descriptor 3 with the flag `symlink_follow` and the
-rights `rights`, around an error continuation that returns `fallback errno` and a body whose every
-event in a run that stops is a call on its descriptor, makes the events of `HandledSoFar`, and
-every open among them names `name` with the rights `rights`. -/
+rights `rights`, around an error continuation that returns `fallback errno` and a body of which
+`Every (OnDescriptor fd)` holds on every descriptor `fd`, makes the events of `HandledSoFar`, and
+every open among them has the arguments `openArgs rights` of `name`. -/
 theorem withOpen_stops {World α : Type} {host : Host World} {name : Bytes} {rights : UInt64}
     {fallback : UInt64 → α} {body : Handle → Action α}
     (calls : ∀ fd, Every (OnDescriptor fd) (body ⟨fd⟩)) {world : World} {trace : List Event}
@@ -163,7 +166,8 @@ theorem withOpen_stops {World α : Type} {host : Host World} {name : Bytes} {rig
 /-! ## The checks -/
 
 /-- The events of a run that stopped of the checks of the lines of the manifest's bytes `m`: those
-of `HandledSoFar`, and every open names the name of a line of `m`. -/
+of `HandledSoFar`, and every open has the arguments `openArgs fileRights` of the name of a line of
+`m`. -/
 def LinesSoFar (m : List UInt8) (events : List Event) : Prop :=
   HandledSoFar events ∧ ∀ arguments reply, Event.sys .pathOpen arguments reply ∈ events →
     ∃ l ∈ lines m, arguments = openArgs fileRights (l.2.drop 66)
@@ -180,8 +184,8 @@ theorem LinesSoFar.after {m : List UInt8} {first events : List Event} (handled :
     · exact opens arguments reply member
     · exact rest.2 arguments reply member⟩
 
-/-- A run of `writeAll` that stops makes the events of `LinesSoFar`: writes to standard output and
-at most one rejected exit. -/
+/-- A run of `writeAll` that stops makes the events of `LinesSoFar` for the bytes `m` of every
+manifest, since its events open nothing. -/
 theorem writes_soFar {World : Type} {host : Host World} {buffer : Bytes} {start count : UInt64}
     {world : World} {events : List Event} (m : List UInt8)
     (h : Stops host (writeAll buffer start count) world events) : LinesSoFar m events := by
@@ -198,8 +202,9 @@ theorem writes_soFar {World : Type} {host : Host World} {buffer : Bytes} {start 
     · exact absurd member (none arguments reply)
     · cases List.mem_singleton.mp member
 
-/-- A run that stops of the pass of `checkLines` on line `j` of a manifest that the pure core
-accepts makes the events of `LinesSoFar`. -/
+/-- A run that stops of the pass of `checkLines` on line `j` of a manifest of fewer than `2^32`
+bytes that the pure core accepts, from a state with a read buffer of 65,536 bytes and writes that
+have not stalled, makes the events of `LinesSoFar`. -/
 theorem step_stops {World : Type} {host : Host World} (m : Bytes) (hm : m.data.size < 2 ^ 32)
     (accepted : lines m.data.data.toList ≠ [] ∧ ∀ l ∈ lines m.data.data.toList, WellFormed l.2)
     (j : Nat) (hj : j < (lines m.data.data.toList).length) {buffer : Bytes}
@@ -244,7 +249,8 @@ theorem step_stops {World : Type} {host : Host World} (m : Bytes) (hm : m.data.s
     · rw [ended.pure, List.append_nil]
       exact writes_soFar _ (.inl ⟨_, _, Exec.returned_prefix _ writeRun⟩)
 
-/-- A run of the loop of `checkLines` from a state whose writes stalled makes no event. -/
+/-- A run that stops of a loop whose test is that of `checkLines`, `s.2.2 == 0`, from a state whose
+writes stalled, `s.2.2 = 1`, makes no event, whatever its step. -/
 theorem stalled_stops {World : Type} {host : Host World} {test : UInt64 → CheckState → Bool}
     {step : UInt64 → CheckState → Action CheckState} (tested : ∀ i s, test i s = (s.2.2 == 0))
     {remaining index : Nat} {buffer : Bytes} {failed : UInt64} {world : World}
@@ -262,8 +268,10 @@ theorem stalled_stops {World : Type} {host : Host World} {test : UInt64 → Chec
       exact absurd passes (by decide)
     · exact h.pure
 
-/-- A run that stops of the loop of `checkLines` on a manifest that the pure core accepts, from
-line `j` with the passes for the lines that remain, makes the events of `LinesSoFar`. -/
+/-- A run that stops of the loop of `checkLines`, with its test and its step, on a manifest of
+fewer than `2^32` bytes that the pure core accepts, from line `j` with the passes for the lines that
+remain and a state with a read buffer of 65,536 bytes and writes that have not stalled, makes the
+events of `LinesSoFar`. -/
 theorem checks_stops {World : Type} {host : Host World} (m : Bytes) (hm : m.data.size < 2 ^ 32)
     (accepted : lines m.data.data.toList ≠ [] ∧ ∀ l ∈ lines m.data.data.toList, WellFormed l.2)
     {test : UInt64 → CheckState → Bool} {step : UInt64 → CheckState → Action CheckState}
@@ -302,8 +310,8 @@ theorem checks_stops {World : Type} {host : Host World} (m : Bytes) (hm : m.data
         · rw [stalled_stops tested more]
           exact LinesSoFar.nil
 
-/-- A run that stops of `checkLines` on a manifest that the pure core accepts makes the events of
-`LinesSoFar`. -/
+/-- A run that stops of `checkLines` on a manifest of fewer than `2^32` bytes that the pure core
+accepts, with a read buffer of 65,536 bytes, makes the events of `LinesSoFar`. -/
 theorem checkLines_stops {World : Type} {host : Host World} (m : Bytes)
     (hm : m.data.size < 2 ^ 32)
     (accepted : lines m.data.data.toList ≠ [] ∧ ∀ l ∈ lines m.data.data.toList, WellFormed l.2)
@@ -342,32 +350,43 @@ theorem soFar_args {World : Type} {host : Host World} {world : World} {trace : L
 
 /-- `ConfinedSoFar` of the events of a run of `args` whose buffer holds one argument, `name`,
 those of a `ManifestRun` of `name` with the status `status` and the bytes `manifest`, and events
-whose every open names a line of `manifest` after a status of 0. -/
+whose every open names a line of `manifest` after a status of 0 and a manifest that the pure core
+accepts. -/
 theorem confined_of {World : Type} {host : Host World} {world after : World} {a : ArgsResult}
     {pre opening post : List Event} {name manifest : List UInt8} {status : UInt64}
     (argsRun : Exec host args world pre (.returned a) after)
     (hone : OneArgument a.bytes.data.data.toList name)
     (mrun : ManifestRun name opening status manifest)
     (opens : ∀ arguments reply, Event.sys .pathOpen arguments reply ∈ post →
-      status = 0 ∧ ∃ l ∈ lines manifest, arguments = openArgs fileRights (l.2.drop 66)) :
+      status = 0 ∧ (lines manifest ≠ [] ∧ ∀ l ∈ lines manifest, WellFormed l.2) ∧
+        ∃ l ∈ lines manifest, arguments = openArgs fileRights (l.2.drop 66)) :
     ConfinedSoFar host world (pre ++ (opening ++ post)) := by
   have preEvents := args_events argsRun
-  refine .inr ⟨a, pre, opening ++ post, after, if status = 0 then manifest else [], rfl, argsRun,
-    ?_, fun arguments reply member => ?_⟩
-  · by_cases zero : status = 0
-    · rw [ite_eq_left zero]
-      subst zero
-      exact .inr ⟨name, opening, post, rfl, mrun⟩
-    · rw [ite_eq_right zero]
-      exact .inl rfl
-  · rcases List.mem_append.mp member with member | member
-    · exact absurd member (no_open_of_args preEvents arguments reply)
+  have early : ∀ (bytes : List UInt8) arguments reply,
+      Event.sys .pathOpen arguments reply ∈ pre ++ opening →
+      ∃ n, (arguments = openArgs manifestRights n ∧ OneArgument a.bytes.data.data.toList n) ∨
+        (arguments = openArgs fileRights n ∧ ∃ l ∈ lines bytes, WellFormed l.2 ∧
+          n = l.2.drop 66) := by
+    intro bytes arguments reply member
     rcases List.mem_append.mp member with member | member
+    · exact absurd member (no_open_of_args preEvents arguments reply)
     · exact ⟨name, .inl ⟨mrun.opens arguments reply member, hone⟩⟩
-    · obtain ⟨zero, l, hl, same⟩ := opens arguments reply member
-      refine ⟨l.2.drop 66, .inr ⟨same, l, ?_, rfl⟩⟩
-      rw [ite_eq_left zero]
-      exact hl
+  by_cases good : status = 0 ∧ lines manifest ≠ [] ∧ ∀ l ∈ lines manifest, WellFormed l.2
+  · obtain ⟨rfl, nonempty, formed⟩ := good
+    refine .inr ⟨a, pre, opening ++ post, after, manifest, rfl, argsRun,
+      .inr ⟨name, opening, post, rfl, mrun, nonempty, formed⟩, fun arguments reply member => ?_⟩
+    rw [← List.append_assoc] at member
+    rcases List.mem_append.mp member with member | member
+    · exact early manifest arguments reply member
+    · obtain ⟨-, -, l, hl, same⟩ := opens arguments reply member
+      exact ⟨l.2.drop 66, .inr ⟨same, l, hl, formed l hl, rfl⟩⟩
+  · refine .inr ⟨a, pre, opening ++ post, after, [], rfl, argsRun, .inl rfl,
+      fun arguments reply member => ?_⟩
+    rw [← List.append_assoc] at member
+    rcases List.mem_append.mp member with member | member
+    · exact early [] arguments reply member
+    · obtain ⟨zero, accepted, -⟩ := opens arguments reply member
+      exact absurd ⟨zero, accepted⟩ good
 
 /-- `SoFar` of the events of `confined_of` whose last part meets `HandledSoFar`. -/
 theorem soFar_of {World : Type} {host : Host World} {world after : World} {a : ArgsResult}
@@ -376,7 +395,8 @@ theorem soFar_of {World : Type} {host : Host World} {world after : World} {a : A
     (hone : OneArgument a.bytes.data.data.toList name)
     (mrun : ManifestRun name opening status manifest) (handled : HandledSoFar post)
     (opens : ∀ arguments reply, Event.sys .pathOpen arguments reply ∈ post →
-      status = 0 ∧ ∃ l ∈ lines manifest, arguments = openArgs fileRights (l.2.drop 66)) :
+      status = 0 ∧ (lines manifest ≠ [] ∧ ∀ l ∈ lines manifest, WellFormed l.2) ∧
+        ∃ l ∈ lines manifest, arguments = openArgs fileRights (l.2.drop 66)) :
     SoFar host world (pre ++ (opening ++ post)) :=
   ⟨confined_of argsRun hone mrun opens,
     (handled_of_args (args_events argsRun)).soFar (mrun.handled.soFar handled)⟩
@@ -484,7 +504,7 @@ theorem main_stops {World : Type} {host : Host World} {world : World} {trace : L
       exact absurd (eq_of_beq hsz) (parse_size_ne m hm acc)
     · obtain ⟨handled, opens⟩ := checkLines_stops m hm acc rbuf cont2
       exact soFar_of argsRun hone mrun handled fun arguments reply member =>
-        ⟨rfl, opens arguments reply member⟩
+        ⟨rfl, acc, opens arguments reply member⟩
   · split at cont2
     · rw [cont2.pure]
       exact soFar_of argsRun hone mrun (HandledSoFar.closed .nil) fun _ _ member => nomatch member
@@ -521,7 +541,7 @@ theorem confined_of_meets {World : Type} {host : Host World} {world : World}
         · by_cases acc : lines manifest ≠ [] ∧ ∀ l ∈ lines manifest, WellFormed l.2
           · obtain ⟨l, hl, same⟩ := (checked zero acc.1 acc.2).opens arguments reply member
             obtain ⟨l', hl', rfl⟩ := List.mem_map.mp hl
-            exact ⟨zero, l', hl', same⟩
+            exact ⟨zero, acc, l', hl', same⟩
           · have bad : lines manifest = [] ∨ ∃ l ∈ lines manifest, ¬ WellFormed l.2 := by
               by_cases e : lines manifest = []
               · exact .inl e
@@ -536,8 +556,8 @@ theorem confined_of_meets {World : Type} {host : Host World} {world : World}
     · exact plain (refused hz fun name hone => named ⟨name, hone⟩).2
   · exact plain (failed hz).2
 
-/-- The events of every run of `main` followed by its exit that stops before the exit, a prefix of
-a run or a run that traps, meet `SoFar`. -/
+/-- The events of every run of `main` followed by its exit that stops without an accepted exit, a
+prefix of a run or a run that traps, meet `SoFar`. -/
 theorem stops_soFar {World : Type} {host : Host World} {world : World} {trace : List Event}
     (h : Stops host (main.bind fun status => Action.exit (α := Unit) status) world trace) :
     SoFar host world trace := by

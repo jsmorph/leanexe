@@ -22,7 +22,7 @@ before its exit are `events` and whose status is `code`.  It holds three propert
   states the check of each line in order: `FileCheck`, the open of its name, the reads of the file,
   its close, and its verdict, and then `LineWrites`, the writes of its output line.
 - `Confined`: every `path_open` is relative to descriptor 3, with read-only rights, and names the
-  argument or the name of a line of the manifest.
+  argument or the name of a line of the manifest in `sha256sum`'s format.
 - `Handled`: the run's events are calls of `args_sizes_get` and `args_get`, opens that fail,
   brackets of an open that returns errno 0, calls on its descriptor, and its close, and writes to
   standard output.
@@ -35,12 +35,13 @@ every verdict is OK, 1 when a verdict is FAILED and every output line was writte
 writes of an output line, one more than its bytes, that each returned errno 0 and left bytes, and
 the errno of a write that failed.
 
-`SoFar host world events` states what the request asks of the events of a run that stopped before
-its exit, at a trap of the host, at an exit that the host rejected, or at a trap of the guest.
-`ConfinedSoFar` states `Confined` of them for the buffer that `args` returned and the bytes that
-the reads of the manifest returned, and `HandledSoFar` states that they are those of `Handled`
-followed by those of `Unfinished`: none, an open that returned errno 0 with calls on its descriptor
-and no close, an open that trapped, or an exit that the host rejected. -/
+`SoFar host world events` states confinement and the use of descriptors of the events of a run
+that stopped without an accepted exit: at a trap of the host, at an exit that the host rejected, or
+at a trap of the guest.  `ConfinedSoFar` states `Confined` of them for the buffer that `args`
+returned and the bytes of a `ManifestRun` with status 0 that follows the events of `args` and
+whose manifest the pure core accepts, or for no bytes.  `HandledSoFar` states that they are those
+of `Handled` followed by those of `Unfinished`: none, an open that returned errno 0 with calls on
+its descriptor and no close, an open that trapped, or an exit that the host rejected. -/
 
 namespace Demos.ManifestCheck
 
@@ -299,12 +300,13 @@ def Run {World : Type} (host : Host World) (world : World) (a : ArgsResult)
 /-- Confinement: every open of `events` is relative to descriptor 3, with the flag
 `symlink_follow`, no open flags, the read-only rights `manifestRights` or `fileRights`, no inherited
 rights, and no descriptor flags, and names the one argument of the argument buffer `buffer` with
-the rights `manifestRights` or the name of a line of the manifest's bytes `manifest`, the bytes
-after its first 66, with the rights `fileRights`. -/
+the rights `manifestRights` or the name of a line of the manifest's bytes `manifest` in the
+format, the bytes after its first 66, with the rights `fileRights`. -/
 def Confined (buffer manifest : List UInt8) (events : List Event) : Prop :=
   ∀ args reply, Event.sys .pathOpen args reply ∈ events →
     ∃ name, (args = openArgs manifestRights name ∧ OneArgument buffer name) ∨
-      (args = openArgs fileRights name ∧ ∃ l ∈ lines manifest, name = l.2.drop 66)
+      (args = openArgs fileRights name ∧
+        ∃ l ∈ lines manifest, WellFormed l.2 ∧ name = l.2.drop 66)
 
 /-- The event `e` is a call on descriptor `fd`: a read or `fd_filestat_get`. -/
 def OnDescriptor (fd : UInt64) (e : Event) : Prop :=
@@ -313,8 +315,8 @@ def OnDescriptor (fd : UInt64) (e : Event) : Prop :=
 
 /-- The use of descriptors: the events are calls of `args_sizes_get` and `args_get`, opens that
 return an errno, opens that return errno 0 followed by calls on the opened descriptor and then its
-close, and writes to standard output.  Each descriptor is closed before the next open and before the end of the events,
-and no event writes to another descriptor. -/
+close, and writes to standard output.  Each descriptor is closed before the next open and before
+the end of the events, and no event writes to another descriptor. -/
 inductive Handled : List Event → Prop
   | nil : Handled []
   | write {offered : Bytes} {reply : Transfer UInt64} {rest : List Event} (tail : Handled rest) :
@@ -340,9 +342,9 @@ def Meets {World : Type} (host : Host World) (world : World) (events : List Even
   ∃ (a : ArgsResult) (manifest : List UInt8), Run host world a manifest events code ∧
     Confined a.bytes.data.data.toList manifest events ∧ Handled events
 
-/-- The events at the end of a run that stopped before its exit: none, an open that returned errno
-0 followed by calls on the descriptor that it opened and no close, an open that trapped, or an
-exit that the host rejected. -/
+/-- The events at the end of a run that stopped without an accepted exit: none, an open that
+returned errno 0 followed by calls on the descriptor that it opened and no close, an open that
+trapped, or an exit that the host rejected. -/
 inductive Unfinished : List Event → Prop
   | empty : Unfinished []
   | opened {args : List Arg} {outputs : List Bytes} {inner : List Event}
@@ -352,28 +354,29 @@ inductive Unfinished : List Event → Prop
       Unfinished [.sys .pathOpen args (.trapped message committed)]
   | exitRejected {code : UInt64} {message : String} : Unfinished [.exitTrap code message]
 
-/-- The use of descriptors of a run that stopped before its exit: the events of `Handled`, whose
-brackets are closed, followed by those of `Unfinished`. -/
+/-- The use of descriptors of a run that stopped without an accepted exit: the events of `Handled`,
+whose brackets are closed, followed by those of `Unfinished`. -/
 def HandledSoFar (events : List Event) : Prop :=
   ∃ closed rest, events = closed ++ rest ∧ Handled closed ∧ Unfinished rest
 
-/-- Confinement of the events `events` of a run from `world` that stopped before its exit: no
-event is an open, or the events start with those of a run of `args` that returned `a`, and
-`Confined` holds of them for `a`'s buffer and the bytes `manifest`.  These are the bytes of a
-`ManifestRun` with status 0 that follows the events of `args`, the bytes that the reads of the
-manifest returned, or no bytes. -/
+/-- Confinement of the events `events` of a run from `world` that stopped without an accepted
+exit: no event is an open, or the events start with those of a run of `args` that returned `a`,
+and `Confined` holds of them for `a`'s buffer and the bytes `manifest`.  These are no bytes, or
+the bytes of a `ManifestRun` with status 0 that follows the events of `args` and whose manifest
+has at least one line and every line in the format, the manifest that the pure core accepts. -/
 def ConfinedSoFar {World : Type} (host : Host World) (world : World) (events : List Event) :
     Prop :=
   (∀ arguments reply, Event.sys .pathOpen arguments reply ∉ events) ∨
     ∃ (a : ArgsResult) (pre rest : List Event) (middle : World) (manifest : List UInt8),
       events = pre ++ rest ∧ Exec host args world pre (.returned a) middle ∧
       (manifest = [] ∨ ∃ name opening post, rest = opening ++ post ∧
-        ManifestRun name opening 0 manifest) ∧
+        ManifestRun name opening 0 manifest ∧ lines manifest ≠ [] ∧
+        ∀ l ∈ lines manifest, WellFormed l.2) ∧
       Confined a.bytes.data.data.toList manifest events
 
-/-- What the request asks of the events `events` of a run from `world` that stopped before its
-exit, at a trap of the host, at an exit that the host rejected, or at a trap of the guest:
-confinement, `ConfinedSoFar`, and the use of descriptors, `HandledSoFar`. -/
+/-- Confinement, `ConfinedSoFar`, and the use of descriptors, `HandledSoFar`, of the events
+`events` of a run from `world` that stopped without an accepted exit: at a trap of the host, at an
+exit that the host rejected, or at a trap of the guest. -/
 def SoFar {World : Type} (host : Host World) (world : World) (events : List Event) : Prop :=
   ConfinedSoFar host world events ∧ HandledSoFar events
 
