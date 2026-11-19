@@ -119,8 +119,8 @@ accepted words, at most the values that remain, into the output buffer with `put
 the window of the output buffer that those lines fill with `writeAll` of [the shared write
 loop](../../LeanExe/Wasi/WriteAll.lean), which follows a short write with a write of the bytes that
 remain and exits with the errno of a write that fails.  The loop keeps both buffers in its state
-and moves them from pass to pass: `random_get` fills the draw buffer, `putPicks` writes the output buffer in place,
-and `writeAll` reads it in place, so a pass allocates nothing.
+and moves them from pass to pass: `random_get` fills the draw buffer, `putPicks` writes the
+output buffer in place, and `writeAll` reads it in place, so a pass allocates nothing.
 
 The status is the errno of `args`, 2 for a refused N or K, the errno of a failed `random_get` or
 write, 78 when the writes of a pass took fewer bytes than offered until `writeAll`'s passes ran out,

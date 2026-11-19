@@ -63,9 +63,9 @@ newline (`appendLine_toList`).
 loop of at most `N / 512 + 1` passes, whose state holds the counts, a buffer of 4,096 bytes, the
 words still to draw, and the errno of a failed call.  Each pass calls `randomGet` on the window of
 the buffer's first `8 · min r 512` bytes, with `r` the words still to draw, and adds the residues
-of the window's little-endian words to the counts with `tally`.  The loop keeps the buffer
-in its state and moves it from pass to pass: `random_get` fills the buffer in place, and `tally` reads it and
-updates the counts in place, so a pass allocates nothing.  `main` then writes `render` of the
+of the window's little-endian words to the counts with `tally`.  The loop keeps the buffer in its
+state and moves it from pass to pass: `random_get` fills the buffer in place, and `tally` reads it
+and updates the counts in place, so a pass allocates nothing.  `main` then writes `render` of the
 counts to stdout with `writeAll` of [the shared write loop](../../LeanExe/Wasi/WriteAll.lean) over
 the window of the whole output: a loop of at most `B + 1` passes for the B bytes of the output,
 each of which writes in place the window of the output that the writes before it did not take.
