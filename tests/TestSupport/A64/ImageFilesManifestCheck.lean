@@ -237,13 +237,13 @@ theorem manifest_elf_meets (R : Linux.Replies) (p : Proc) {args environ : List (
       obtain ⟨i, hi, rfl⟩ := List.getElem_of_mem m
       exact (hstack.argv i hi).2.2.1
     rcases hend with ⟨c, h, hx⟩ | h | h
-    · obtain ⟨c', exited, meets⟩ := linux_exec_meets noZero small h himg range hcar.sized
+    · obtain ⟨c', exited, meets⟩ := linux_exec_meets noZero small h himg range (Carried.sized hcar)
       cases exited
       rw [hx]
       exact meets
-    · obtain ⟨_, exited, -⟩ := linux_exec_meets noZero small h himg range hcar.sized
+    · obtain ⟨_, exited, -⟩ := linux_exec_meets noZero small h himg range (Carried.sized hcar)
       cases exited
-    · obtain ⟨_, exited, -⟩ := linux_exec_meets noZero small h himg range hcar.sized
+    · obtain ⟨_, exited, -⟩ := linux_exec_meets noZero small h himg range (Carried.sized hcar)
       cases exited
 
 /-! ## The premises hold together -/
@@ -277,8 +277,8 @@ theorem witness_bounded : StatBounded manifestLimit witnessReplies := by
   have later : witnessReplies j = ⟨0 - 2, fun _ => 0⟩ := by
     unfold witnessReplies
     rw [ite_eq_right h0, ite_eq_right h1]
-  have error : filestatReply (witnessReplies j).ret ((List.range 256).map (witnessReplies j).bytes) =
-      .returned 44 [zeros 64] := by
+  have error : filestatReply (witnessReplies j).ret
+      ((List.range 256).map (witnessReplies j).bytes) = .returned 44 [zeros 64] := by
     rw [later]
     rfl
   exact absurd (Transfer.returned.inj (error.symm.trans reply)).1 (by decide)
@@ -322,12 +322,14 @@ theorem manifest_elf_witness :
   have small : stringsSize witnessArgs + 8 * witnessArgs.length ≤ argsLimit := by decide
   have loaded : ElfLoaded (byteAt manifestElfBytes)
       (loadedMem (byteAt manifestElfBytes) 61680 8712 witnessStack) :=
-    loadedMem_loaded manifest_elf_segments (by decide) (by decide) (by decide)
+    loadedMem_loaded manifest_elf_segments (by decide) (by decide)
   have stack := loadedMem_stack (byteAt manifestElfBytes) 61680 8712
   refine ⟨witnessReplies, witnessProc (loadedMem (byteAt manifestElfBytes) 61680 8712 witnessStack),
     witnessArgs, [], witnessTop, small, witness_bounded, loaded, stack, rfl, rfl, ?_⟩
   obtain ⟨q, rq, cq, x8q, ioq, hq⟩ :=
-    manifest_elf_meets witnessReplies _ small witness_bounded loaded stack rfl rfl
+    manifest_elf_meets witnessReplies
+      (witnessProc (loadedMem (byteAt manifestElfBytes) 61680 8712 witnessStack)) small
+      witness_bounded loaded stack rfl rfl
   refine ⟨q, rq, cq, x8q, ioq, ?_⟩
   rw [witness_startup] at hq
   obtain ⟨ls, trq, hcar, meets⟩ := hq

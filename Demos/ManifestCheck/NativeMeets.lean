@@ -40,12 +40,12 @@ theorem openReply_ranged {ret : UInt64} (range : Linux.isError ret = true ∨ re
         openReply ret = .returned (errnoOf (0 - ret)) [zeros 4]) := by
   unfold openReply
   by_cases low : ret.toNat < descriptorLimit
-  · exact .inl ⟨low, by rw [if_pos low]⟩
+  · exact .inl ⟨low, by rw [ite_eq_left low]⟩
   · have error : Linux.isError ret = true := by
       rcases range with h | h
       · exact h
       · exact absurd h low
-    exact .inr ⟨error, low, by rw [if_neg low, if_pos error]⟩
+    exact .inr ⟨error, low, by rw [ite_eq_right low, ite_eq_left error]⟩
 
 theorem openedDescriptor_leBytes {ret : UInt64} (low : ret.toNat < 1024) :
     openedDescriptor [leBytes 4 ret.toNat] = ret := by
@@ -108,11 +108,11 @@ theorem open_native {F : OpenFlags} {L : ShimLayout} {opened : List UInt64} {rig
   have path : (bytesOf name).data.data.toList = name := by simp [bytesOf]
   rw [path, openHow_readOnly F hr] at image
   by_cases checked : openCheck opened 3 0 (bytesOf name) 0 = 0
-  · rw [if_pos checked] at image
+  · rw [ite_eq_left checked] at image
     obtain ⟨errno, outputs, same, retries, last, split, count, all, eagain, ending⟩ :=
       openCalls_native (by omega) image range
     exact ⟨errno, outputs, same, .inr ⟨retries, last, split, by omega, all, eagain, ending⟩⟩
-  · rw [if_neg checked] at image
+  · rw [ite_eq_right checked] at image
     obtain ⟨empty, same⟩ := image
     exact ⟨_, _, same, .inl ⟨empty, checked⟩⟩
 
@@ -176,7 +176,7 @@ theorem filestatReply_over {output : List UInt8}
     (valid : ∀ o ∈ stampOffsets output, stampValid output o = true)
     (beyond : Overflows output) : filestatReply 0 output = .returned 61 [zeros 64] := by
   unfold filestatReply
-  rw [if_pos rfl]
+  rw [ite_eq_left rfl]
   cases found : (stampOffsets output).find?
       fun o => !stampValid output o || decide (2 ^ 64 ≤ stampTime output o) with
   | some o =>
@@ -189,7 +189,7 @@ theorem filestatReply_fits {output : List UInt8}
     (fits : ¬ Overflows output) :
     filestatReply 0 output = .returned 0 [filestatBytes output] := by
   unfold filestatReply
-  rw [if_pos rfl, (filestatReply_found valid).mpr fits]
+  rw [ite_eq_left rfl, (filestatReply_found valid).mpr fits]
 
 /-- The image of the command's `fd_filestat_get` of a descriptor that the shim holds, with a result
 in Linux's range: one `statx` of `StatOf`, whose reply is an errno for an error number, 61 for a
@@ -242,18 +242,18 @@ theorem read_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : List
       intro low
       simp only [Linux.isError, decide_eq_true_eq] at error
       omega
-    exact ⟨_, by rw [handleReadReply, if_neg big, if_pos error]⟩
+    exact ⟨_, by rw [handleReadReply, ite_eq_right big, ite_eq_left error]⟩
   · change ret.toNat ≤ length.toNat at within
     have notError : Linux.isError ret = false := by
       simp only [Linux.isError, decide_eq_false_iff_not, not_lt]
       omega
-    refine .inr ⟨notError, within, _, by rw [handleReadReply, if_pos within], ?_⟩
+    refine .inr ⟨notError, within, _, by rw [handleReadReply, ite_eq_left within], ?_⟩
     have word : (⟨0, [bytesOfList output, leBytes 4 ret.toNat]⟩ : Reply).word 1 = ret := by
       simp only [Reply.word, List.getElem?_cons_succ, List.getElem?_cons_zero, Option.map_some,
         Option.getD_some]
       rw [littleEndian_leBytes (by decide) (by omega), UInt64.ofNat_toNat]
     have least : Min.min ret length = ret := by
-      rw [UInt64.min_def, if_pos (UInt64.le_iff_toNat_le.mpr within)]
+      rw [UInt64.min_def, ite_eq_left (UInt64.le_iff_toNat_le.mpr within)]
     rw [returned_eq, word, least]
     simp [Linux.Event.readBytes, Linux.arg, within, bytesOfList]
 
@@ -312,13 +312,13 @@ theorem write_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : Lis
         intro low
         simp only [Linux.isError, decide_eq_true_eq] at error
         omega
-      exact .inl ⟨error, by rw [writeReply, if_neg big, if_pos error]⟩
+      exact .inl ⟨error, by rw [writeReply, ite_eq_right big, ite_eq_left error]⟩
     · rw [count, wide] at within
       have notError : Linux.isError e.ret = false := by
         simp only [Linux.isError, decide_eq_false_iff_not, not_lt]
         omega
       rw [← wide] at within
-      exact .inr ⟨notError, _, by rw [writeReply, if_pos within]⟩
+      exact .inr ⟨notError, _, by rw [writeReply, ite_eq_left within]⟩
 
 
 
@@ -583,7 +583,7 @@ theorem manifestBody_native {F : OpenFlags} {L : ShimLayout} {I : Launch} {fd : 
     · rw [show [e] ++ (readsLs ++ [p]) = e :: readsLs ++ [p] by simp]
       convert shown using 1
       rcases probeEnding with ⟨nonzero, error, rfl⟩ | ⟨rfl, notError, bytes, zeroP⟩
-      · rw [if_pos nonzero, if_pos error]
+      · rw [ite_eq_left nonzero, ite_eq_left error]
       · rw [bytes]
         by_cases zr : p.ret = 0
         · have empty : p.readBytes fd = [] := zeroP.mpr zr
@@ -1073,7 +1073,7 @@ theorem confined_accepted {World : Type} {host : Host World} {world : World} {a 
       · exact .inl emptyLines
       · refine .inr ?_
         by_contra none
-        push_neg at none
+        push Not at none
         exact ok ⟨emptyLines, none⟩
 
 theorem isError_eagain : Linux.isError (0 - 11) = true := by decide
@@ -1344,7 +1344,8 @@ theorem withOpen_traps {α : Type} {dir : Handle} {dirflags : UInt64} {path : By
     {oflags rights inheriting fdflags : UInt64} {onError : UInt64 → Action α}
     {body : Handle → Action α} (he : ∀ errno, TrapsInCall host (onError errno))
     (hb : ∀ h, TrapsInCall host (body h)) :
-    TrapsInCall host (withOpen dir dirflags path oflags rights inheriting fdflags onError body) := by
+    TrapsInCall host
+      (withOpen dir dirflags path oflags rights inheriting fdflags onError body) := by
   unfold withOpen
   refine TrapsInCall.sys fun opened => ?_
   split
@@ -1359,7 +1360,8 @@ theorem readManifest_traps (file : Handle) (buffer : Bytes) :
   · exact TrapsInCall.pure _
   split
   · exact TrapsInCall.pure _
-  refine TrapsInCall.bind (TrapsInCall.loop (fun index state => ?_) fun _ => TrapsInCall.pure _) fun s => ?_
+  refine TrapsInCall.bind
+    (TrapsInCall.loop (fun index state => ?_) fun _ => TrapsInCall.pure _) fun s => ?_
   · refine TrapsInCall.bind (TrapsInCall.sys fun _ => TrapsInCall.pure _) fun got => ?_
     split
     · exact TrapsInCall.pure _
@@ -1374,7 +1376,9 @@ theorem readManifest_traps (file : Handle) (buffer : Bytes) :
 theorem hashFile_traps (file : Handle) (buffer : Bytes) :
     TrapsInCall host (hashFile file buffer) := by
   unfold hashFile
-  refine TrapsInCall.bind (TrapsInCall.loop (fun index state => ?_) fun _ => TrapsInCall.pure _) fun _ => TrapsInCall.pure _
+  refine TrapsInCall.bind
+    (TrapsInCall.loop (fun index state => ?_) fun _ => TrapsInCall.pure _)
+    fun _ => TrapsInCall.pure _
   refine TrapsInCall.bind (TrapsInCall.sys fun _ => TrapsInCall.pure _) fun got => ?_
   split
   · exact TrapsInCall.pure _
@@ -1401,7 +1405,9 @@ theorem checkLines_traps
   unfold checkLines
   refine TrapsInCall.bind (TrapsInCall.loop (fun j s => ?_) fun _ => TrapsInCall.pure _) fun s => ?_
   · dsimp only
-    exact TrapsInCall.bind (withOpen_traps (fun _ => TrapsInCall.pure _) fun file => hashFile_traps file _) fun checked =>
+    exact TrapsInCall.bind
+      (withOpen_traps (fun _ => TrapsInCall.pure _) fun file => hashFile_traps file _)
+      fun checked =>
       TrapsInCall.bind (writeAll_traps accepts _ _ _) fun _ => TrapsInCall.pure _
   · split <;> exact TrapsInCall.pure _
 
@@ -1415,7 +1421,8 @@ theorem main_traps
   dsimp only
   split
   · exact TrapsInCall.pure _
-  refine TrapsInCall.bind (withOpen_traps (fun _ => TrapsInCall.pure _) fun file => readManifest_traps file _)
+  refine TrapsInCall.bind
+    (withOpen_traps (fun _ => TrapsInCall.pure _) fun file => readManifest_traps file _)
     fun got => ?_
   split
   · exact TrapsInCall.pure _
@@ -1545,7 +1552,7 @@ theorem image_untrapped {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
       · rw [sysImage_args] at sys
         obtain ⟨-, -, same⟩ := sys
         unfold stringsReply at same
-        rw [if_pos fit] at same
+        rw [ite_eq_left fit] at same
         cases same
       · rw [sysImage_open] at sys
         unfold OpenImage at sys
@@ -1562,13 +1569,13 @@ theorem image_untrapped {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
             unfold closeReply at same
             rcases (range _ (List.mem_singleton_self _)).2.2.1 rfl with zero | error
             · dsimp only at zero
-              rw [if_pos zero] at same
+              rw [ite_eq_left zero] at same
               cases same
             · dsimp only at error
               have nonzero : ret ≠ 0 := by
                 rintro rfl
                 simp [Linux.isError] at error
-              rw [if_neg nonzero, if_pos error] at same
+              rw [ite_eq_right nonzero, ite_eq_left error] at same
               cases same
           · cases sys.2
         · exact sys
@@ -1587,7 +1594,7 @@ theorem image_untrapped {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
               split <;> exact fun same => by cases same
             · change ret.toNat ≤ capacity.toNat at within
               unfold handleReadReply at same
-              rw [if_pos within] at same
+              rw [ite_eq_left within] at same
               cases same
           · cases sys.2
         · exact sys
@@ -1603,7 +1610,7 @@ theorem image_untrapped {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
                 rintro rfl
                 simp [Linux.isError] at error
               unfold filestatReply at same
-              rw [if_neg nonzero, if_pos error] at same
+              rw [ite_eq_right nonzero, ite_eq_left error] at same
               cases same
             · dsimp only at zero valid
               subst zero

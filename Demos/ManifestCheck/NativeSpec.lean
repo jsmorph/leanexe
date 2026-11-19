@@ -112,7 +112,8 @@ inductive NManifestReads (fd : UInt64) (size : Nat) :
       (read : ReadOf fd (UInt64.ofNat (size - held.length)) e) (zero : e.ret = 0) :
       NManifestReads fd size held [e] held 1
   | failed {held : List UInt8} {e : Linux.Event} (left : held.length < size)
-      (read : ReadOf fd (UInt64.ofNat (size - held.length)) e) (error : Linux.isError e.ret = true) :
+      (read : ReadOf fd (UInt64.ofNat (size - held.length)) e)
+      (error : Linux.isError e.ret = true) :
       NManifestReads fd size held [e] held (errnoOf (0 - e.ret))
   | more {held : List UInt8} {e : Linux.Event} {events : List Linux.Event} {bytes : List UInt8}
       {status : UInt64} (left : held.length < size)
@@ -131,7 +132,8 @@ and 0 when it returned 0. -/
 inductive NManifestBody (fd : UInt64) : List Linux.Event → UInt64 → List UInt8 → Prop
   | statFailed {e : Linux.Event} (stat : StatOf fd e) (error : Linux.isError e.ret = true) :
       NManifestBody fd [e] (errnoOf (0 - e.ret)) []
-  | overflow {e : Linux.Event} (stat : StatOf fd e) (zero : e.ret = 0) (beyond : Overflows e.output) :
+  | overflow {e : Linux.Event} (stat : StatOf fd e) (zero : e.ret = 0)
+      (beyond : Overflows e.output) :
       NManifestBody fd [e] 61 []
   | tooLarge {e : Linux.Event} (stat : StatOf fd e) (zero : e.ret = 0)
       (fits : ¬ Overflows e.output) (large : 2 ^ 32 ≤ statxSize e.output) :
@@ -139,7 +141,8 @@ inductive NManifestBody (fd : UInt64) : List Linux.Event → UInt64 → List UIn
   | stopped {e : Linux.Event} {events : List Linux.Event} {held : List UInt8} {status : UInt64}
       (stat : StatOf fd e) (zero : e.ret = 0) (fits : ¬ Overflows e.output)
       (small : statxSize e.output < 2 ^ 32)
-      (reads : NManifestReads fd (statxSize e.output) [] events held status) (nonzero : status ≠ 0) :
+      (reads : NManifestReads fd (statxSize e.output) [] events held status)
+      (nonzero : status ≠ 0) :
       NManifestBody fd (e :: events) status []
   | probed {e last : Linux.Event} {events : List Linux.Event} {bytes : List UInt8}
       (stat : StatOf fd e) (zero : e.ret = 0) (fits : ¬ Overflows e.output)

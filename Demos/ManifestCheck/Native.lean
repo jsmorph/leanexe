@@ -201,9 +201,8 @@ def manifestLimit : Nat := 1048576
 theorem budget_fits :
     (Verified.initialStaticHeap command.literalPool).top.toNat + budget manifestLimit ≤
       65536 * 4096 := by
-  have bound := budget_le manifestLimit
+  have bound : budget manifestLimit ≤ 181 * 1048576 + 12649115 := budget_le manifestLimit
   have top : (Verified.initialStaticHeap command.literalPool).top.toNat ≤ 65536 := by decide
-  unfold manifestLimit at bound
   omega
 
 #print axioms calls_supported
