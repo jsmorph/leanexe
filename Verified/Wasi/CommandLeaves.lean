@@ -59,11 +59,11 @@ theorem command_write_spec_with {calls : List LeanExe.Wasi.Call}
     CommandCodeSpecWith calls source target pure effects pool
       (.write output buffer start count) := by
   intro World host targetHost depth env slots live h base heap initial locals
-    valid _ _ positions vars at_ _ scratch _ low room ready _ _
+    valid _ _ _ vars at_ _ scratch _ _ _ ready _ _
   have fragment := ready.1 _ (List.mem_singleton_self _)
   obtain ⟨typeIndex, lookup⟩ := facts.write_function output
   exact wp_command_write_with (sourceHost := sourceHost) facts.runtime facts.layout facts.profile
-    facts.imports lookup valid at_ positions low room vars scratch fragment.1 fragment.2
+    facts.imports lookup valid at_ vars scratch fragment.1 fragment.2
 
 theorem command_write_spec {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}

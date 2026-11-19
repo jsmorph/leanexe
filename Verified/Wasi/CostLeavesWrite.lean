@@ -16,14 +16,14 @@ theorem cost_command_write_spec_with {calls : List LeanExe.Wasi.Call}
     CostCommandCodeSpecWith calls source target pure program pool
       (.write output buffer start count) := by
   intro World host targetHost depth env slots live h base heap initial locals budget aborts
-    valid _ _ positions vars at_ _ scratch _ low room ready _ _ _
+    valid _ _ _ vars at_ _ scratch _ _ _ ready _ _ _
   have fragment := ready.1 _ (List.mem_singleton_self _)
   obtain ⟨typeIndex, lookup⟩ := facts.write_function output
   exact wp_write_command_with (sourceHost := sourceHost) facts.runtime facts.layout facts.profile
-    facts.imports lookup valid at_ positions low room vars scratch fragment.1 fragment.2
-    (fun result finalHeap final finalLocals trace execution after topEq =>
+    facts.imports lookup valid at_ vars scratch fragment.1 fragment.2
+    (fun result finalHeap final trace execution after topEq =>
       CostCommandResult.returned (result := .value (.elem (.prod .word .word)))
-        (result.errno, result.count) finalHeap final finalLocals
+        (result.errno, result.count) finalHeap final locals
         [.i64 result.errno, .i64 result.count] trace 0 true (.write execution) after
         (fun _ => by rw [topEq]; exact Nat.le_add_right _ _))
     (fun final message trace execution =>

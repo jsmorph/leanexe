@@ -50,7 +50,7 @@ run out with bytes unwritten, which takes a write that took no byte, the status 
 than the largest WASI errno, so it differs from 2 and from every errno that the run can return.
 Otherwise the status is 0.  The loop's state holds the counts and the buffer, which the compiled
 code updates in place: the host writes each call's bytes into the buffer, and a pass allocates
-nothing, as `body_bounded` below states.  `verified_compile_wasi` writes a module of 6,272 bytes
+nothing, as `body_bounded` below states.  `verified_compile_wasi` writes a module of 6,228 bytes
 that imports `fd_read`, `fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
 
 ## The command writes the counts of N random words

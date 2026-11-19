@@ -9,7 +9,7 @@ def readType : FuncType :=
   { params := [.i64, .i64], results := [.i64, .i64] }
 
 def writeType : FuncType :=
-  { params := [.i64, .i64], results := [.i64, .i64] }
+  { params := [.i64, .i64, .i64, .i64], results := [.i64, .i64] }
 
 def extensionWith (calls : List Call) (source : Wasm.Module) (next : Module.Extension) :
     Module.Extension :=
