@@ -1,0 +1,27 @@
+{
+  "id": "free-reply-bytes",
+  "goals": [
+    "Exec host (.read capacity next) world trace outcome final with the bytes after the count",
+    "a trusted rule whose reply holds bytes that the host's specification leaves open",
+    "a compiled result that depends on memory the host may change"
+  ],
+  "modules": [
+    "LeanExe.Wasi.Semantics",
+    "Verified.Wasi.ReadCommand",
+    "Verified.Examples.WasiRetain"
+  ],
+  "declarations": [
+    "LeanExe.Wasi.Exec.read_return",
+    "LeanExe.Wasi.readReply",
+    "LeanExe.Wasi.readRange",
+    "LeanExe.Wasi.Exec.read_returned",
+    "LeanExe.Wasi.readStdin_placed",
+    "Verified.Wasi.memoryRange",
+    "Verified.Wasi.memoryRange_prefix",
+    "Verified.Wasi.wp_read_fill_with"
+  ],
+  "examples": [
+    "Verified.Examples.WasiRetain.retain",
+    "LeanExe.Wasi.readAllStep_reply"
+  ]
+}

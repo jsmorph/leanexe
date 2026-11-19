@@ -84,7 +84,8 @@
     "LeanExe.Wasi.writeStdout",
     "LeanExe.Wasi.writeAll",
     "Verified.Examples.WasiReadAll.writeAll_bounded",
-    "Verified.Examples.WasiReadAll.body_bounded"
+    "Verified.Examples.WasiReadAll.body_bounded",
+    "Verified.Wasi.Resource.Returns.bind_ret"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",
