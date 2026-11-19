@@ -15,22 +15,25 @@ before its exit are `events` and whose status is `code`.  It holds three propert
   `args` is the status, and an argument buffer without exactly one argument after the program name
   (`OneArgument`) gives status 1, each with no other event.  `ManifestRun` states the open of the
   manifest that the argument names, the call of `fd_filestat_get` on its descriptor, the reads of
-  its bytes, and its close, and the status that they give: the errno of a call that fails, or 1 when
-  the bytes number fewer or more than the size that `fd_filestat_get` reported.  A manifest
+  its bytes, and its close, and the status that they give: the errno of a call that fails, 61
+  (`overflow`) for a reported size of `2^32` bytes or more, or 1 when the bytes number fewer or more
+  than the size that `fd_filestat_get` reported.  A manifest
   without a line, or with a line outside `sha256sum`'s format, gives status 1.  Otherwise `Checks`
   states the check of each line in order: `FileCheck`, the open of its name, the reads of the file,
   its close, and its verdict, and then `LineWrites`, the writes of its output line.
 - `Confined`: every `path_open` is relative to descriptor 3, with read-only rights, and names the
   argument or the name of a line of the manifest.
-- `Handled`: the run's events are those of `args`, opens that fail, brackets of an open that
-  returns errno 0, calls on its descriptor, and its close, and writes to standard output.
+- `Handled`: the run's events are calls of `args_sizes_get` and `args_get`, opens that fail,
+  brackets of an open that returns errno 0, calls on its descriptor, and its close, and writes to
+  standard output.
 
 A line's verdict is OK exactly when the open of its name returned errno 0, a read returned no bytes
 before any read returned an errno, the close returned errno 0, and the line's digits give the
-digest of FIPS 180-4 of the bytes that the reads returned (`DigestOf`).  The status is 0 exactly
-when every line's output line was written whole and every verdict is OK, 1 when one verdict is
-FAILED and every output line was written whole, 77 when the writes of an output line ended with
-bytes left, and the errno of a write that failed. -/
+digest of FIPS 180-4 of the bytes that the reads returned (`DigestOf`).  After a manifest that the
+pure core accepts, the status is 0 exactly when every line's output line was written whole and
+every verdict is OK, 1 when a verdict is FAILED and every output line was written whole, 77 after
+writes of an output line, one more than its bytes, that each returned errno 0 and left bytes, and
+the errno of a write that failed. -/
 
 namespace Demos.ManifestCheck
 
@@ -66,7 +69,7 @@ def readEvent (fd length errno : UInt64) (outputs : List Bytes) : Event :=
 `length`. -/
 def returned (length : UInt64) (outputs : List Bytes) : List UInt8 :=
   ((⟨0, outputs⟩ : Reply).bytes 0).data.data.toList.take
-    (min ((⟨0, outputs⟩ : Reply).word 1) length).toNat
+    (Min.min ((⟨0, outputs⟩ : Reply).word 1) length).toNat
 
 /-- The event of `fd_filestat_get` of descriptor `fd` that returned `errno` and `outputs`. -/
 def statEvent (fd errno : UInt64) (outputs : List Bytes) : Event :=
@@ -80,8 +83,8 @@ def statSize (outputs : List Bytes) : UInt64 := (⟨0, outputs⟩ : Reply).field
 into a buffer of `size` bytes after the bytes `held`, each into the window of the bytes that
 follow those already read, and `bytes` are `held` followed by the bytes that they returned.  Each
 read but the last returned errno 0 and at least one byte.  The reads end with status 0 when the
-bytes fill the buffer, 1 when a read returned no bytes before, and the errno of a read that failed.
--/
+bytes fill the buffer, 1 when a read returned no bytes before the bytes filled the buffer, and the
+errno of a read that failed. -/
 inductive ManifestReads (fd : UInt64) (size : Nat) :
     List UInt8 → List Event → List UInt8 → UInt64 → Prop
   | full {held : List UInt8} (filled : held.length = size) :
@@ -103,19 +106,25 @@ inductive ManifestReads (fd : UInt64) (size : Nat) :
 
 /-- `ManifestBody fd events status bytes`: `events` are those of the reading of the manifest open at
 descriptor `fd`, `status` is its status, and, when the status is 0, `bytes` are the manifest's
-bytes.  The call of `fd_filestat_get` comes first, and its errno ends the reading.  Otherwise the
-reads of `ManifestReads` follow for a buffer of the size that it reported, and a status other than
-0 ends the reading.  When the bytes fill the buffer, a last read of 65,536 bytes follows, and the
-status is its errno, 1 when it returned bytes, and 0 when it returned none. -/
+bytes.  The call of `fd_filestat_get` comes first, and its errno ends the reading.  A reported size
+of `2^32` bytes or more, more than the 32-bit length of a read allows, ends it with status 61
+(`overflow`).  Otherwise the reads of `ManifestReads` follow for a buffer of the size that it
+reported, and a status other than 0 ends the reading.  When the bytes fill the buffer, a last read
+of 65,536 bytes follows, and the status is its errno, 1 when it returned bytes, and 0 when it
+returned none. -/
 inductive ManifestBody (fd : UInt64) : List Event → UInt64 → List UInt8 → Prop
   | statFailed {errno : UInt64} {outputs : List Bytes} (nonzero : errno ≠ 0) :
       ManifestBody fd [statEvent fd errno outputs] errno []
+  | tooLarge {outputs : List Bytes} (large : 2 ^ 32 ≤ (statSize outputs).toNat) :
+      ManifestBody fd [statEvent fd 0 outputs] 61 []
   | stopped {outputs : List Bytes} {events : List Event} {held : List UInt8} {status : UInt64}
+      (small : (statSize outputs).toNat < 2 ^ 32)
       (reads : ManifestReads fd (statSize outputs).toNat [] events held status)
       (nonzero : status ≠ 0) :
       ManifestBody fd (statEvent fd 0 outputs :: events) status []
   | probed {outputs : List Bytes} {events : List Event} {bytes : List UInt8} {errno : UInt64}
-      {last : List Bytes} (reads : ManifestReads fd (statSize outputs).toNat [] events bytes 0) :
+      {last : List Bytes} (small : (statSize outputs).toNat < 2 ^ 32)
+      (reads : ManifestReads fd (statSize outputs).toNat [] events bytes 0) :
       ManifestBody fd (statEvent fd 0 outputs :: events ++ [readEvent fd 65536 errno last])
         (if errno ≠ 0 then errno else if returned 65536 last ≠ [] then 1 else 0) bytes
 
@@ -204,24 +213,30 @@ inductive WriteEnd where
   | failed (errno : UInt64)
   deriving DecidableEq
 
-/-- `LineWrites text writes ending`: `writes` are writes to standard output, each of which offered
-the bytes of `text` after those that the writes before it took (`Offered`).  With `all`, each
-returned errno 0 and they took every byte of `text`.  With `stalled`, each returned errno 0, they
-number one more than the bytes of `text`, and the bytes that they took are a prefix of `text` that
-leaves bytes.  With `failed errno`, the last returned the errno `errno`, from 1 to 76, each before
-it returned errno 0, and the bytes that they took are a prefix of `text` that leaves bytes. -/
-def LineWrites (text : List UInt8) (writes : List Event) : WriteEnd → Prop
-  | .all => Offered text 0 writes ∧
-      (∀ e ∈ writes, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
-      stdoutTaken writes = text
-  | .stalled => Offered text 0 writes ∧
-      (∀ e ∈ writes, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
-      writes.length = text.length + 1 ∧ stdoutTaken writes <+: text ∧
-      (stdoutTaken writes).length < text.length
-  | .failed errno => Offered text 0 writes ∧ errno ≠ 0 ∧ errno.toNat ≤ 76 ∧
-      (∃ before offered count, writes = before ++ [.write .stdout offered (.returned errno count)] ∧
-        ∀ e ∈ before, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
-      stdoutTaken writes <+: text ∧ (stdoutTaken writes).length < text.length
+/-- The event `e` is a write to standard output that offered at least one byte. -/
+def WroteSome (e : Event) : Prop :=
+  ∃ offered reply, e = .write .stdout offered reply ∧ offered.data.size ≠ 0
+
+/-- `LineWrites text writes ending`: `writes` are at most one more than the bytes of `text` writes
+to standard output, each of which offered at least one byte, the bytes of `text` after those that
+the writes before it took (`Offered`).  With `all`, each returned errno 0 and they took every byte
+of `text`.  With `stalled`, each returned errno 0, they number one more than the bytes of `text`,
+and the bytes that they took are a prefix of `text` that leaves bytes.  With `failed errno`, the
+last returned the errno `errno`, from 1 to 76, each before it returned errno 0, and the bytes that
+they took are a prefix of `text` that leaves bytes. -/
+def LineWrites (text : List UInt8) (writes : List Event) (ending : WriteEnd) : Prop :=
+  Offered text 0 writes ∧ writes.length ≤ text.length + 1 ∧ (∀ e ∈ writes, WroteSome e) ∧
+    match ending with
+    | .all => (∀ e ∈ writes, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
+        stdoutTaken writes = text
+    | .stalled => (∀ e ∈ writes, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
+        writes.length = text.length + 1 ∧ stdoutTaken writes <+: text ∧
+        (stdoutTaken writes).length < text.length
+    | .failed errno => errno ≠ 0 ∧ errno.toNat ≤ 76 ∧
+        (∃ before offered count,
+          writes = before ++ [.write .stdout offered (.returned errno count)] ∧
+          ∀ e ∈ before, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
+        stdoutTaken writes <+: text ∧ (stdoutTaken writes).length < text.length
 
 /-- The bytes of the output line of `name` with the verdict `ok`. -/
 def lineText (name : List UInt8) (ok : Bool) : List UInt8 :=
@@ -289,9 +304,9 @@ def OnDescriptor (fd : UInt64) (e : Event) : Prop :=
   (∃ length reply, e = .sys .fdRead [.word fd, .space length] reply) ∨
     ∃ reply, e = .sys .fdFilestatGet [.word fd] reply
 
-/-- The use of descriptors: the events are the calls of `args`, opens that return an errno, opens
-that return errno 0 followed by calls on the opened descriptor and then its close, and writes to
-standard output.  Each descriptor is closed before the next open and before the end of the events,
+/-- The use of descriptors: the events are calls of `args_sizes_get` and `args_get`, opens that
+return an errno, opens that return errno 0 followed by calls on the opened descriptor and then its
+close, and writes to standard output.  Each descriptor is closed before the next open and before the end of the events,
 and no event writes to another descriptor. -/
 inductive Handled : List Event → Prop
   | nil : Handled []

@@ -110,6 +110,7 @@ import Demos.Gpt32.Compose
 import Demos.Gpt32.Driver
 import Demos.Gpt32.Exec
 import Demos.Gpt32.HostProgram
+import Demos.ManifestCheck.CommandStart
 import Demos.ManifestCheck.Compiled
 import Demos.Orbit.Flat
 import Demos.Orbit.Gibbs

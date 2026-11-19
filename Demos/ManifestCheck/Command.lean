@@ -5,13 +5,13 @@ import Verified.Wasi
 import LeanExe.Wasi.WriteAll
 
 /-! The WASI command of the manifest checker.  `main` reads its one argument with `args` and
-`argScan` and opens the manifest of that name under the preopened directory with `withOpen`.
-`readManifest` asks the size of the open manifest with `fdFilestatGet`, builds a buffer of that
-size, and reads the manifest into it with `fdRead`, each read into the window after the bytes
-already read, until the buffer is full, a read returns no bytes, or a read returns an errno.  A
-last read into the read buffer of 65,536 bytes, which `readManifest` builds, tests that the
-manifest has no byte after them.  The bracket then closes the manifest, and `main` parses it with
-`parse`.
+`argScan`, builds the read buffer of 65,536 bytes, and opens the manifest of that name under the
+preopened directory with `withOpen`.  `readManifest` asks the size of the open manifest with
+`fdFilestatGet`, and `readBytes` builds a buffer of that size when it is below `2^32` bytes and
+reads the manifest into it with `fdRead`, each read into the window after the bytes already read,
+until the buffer is full, a read returns no bytes, or a read returns an errno.  A last read into
+the read buffer tests that the manifest has no byte after them.  The bracket then closes the
+manifest, and `main` parses it with `parse`.
 
 `checkLines` checks the lines in order, with the read buffer in its loop's state.  For each line it
 opens the line's name under the preopened directory, hashes the file with `hashFile`, closes it,
@@ -34,8 +34,9 @@ errno 0, and the line's digits give the digest of the bytes read.
 
 The status is the errno of `args`, 1 for an argument buffer without exactly one argument after the
 program name, the errno of the manifest's open, of `fdFilestatGet`, of one of its reads, or of its
-close, 1 for a manifest whose bytes number fewer or more than its size, and 1 for a manifest that
-`parse` refuses.  Otherwise it is 77 when the writes of an output line end with bytes left, which
+close, 61 (`overflow`) for a reported size of `2^32` bytes or more, for which a read's length
+does not fit its 32 bits, 1 for a manifest whose bytes number fewer or more than its size, and 1
+for a manifest that `parse` refuses.  Otherwise it is 77 when the writes of an output line end with bytes left, which
 ends the checks, and else 0 when every line says OK and 1 when one says FAILED. -/
 
 namespace Demos.ManifestCheck
@@ -64,35 +65,43 @@ of `a`. -/
 def argScan (a : Bytes) : UInt64 × UInt64 × UInt64 :=
   LeanExe.loop a.size ((0 : UInt64), (0 : UInt64), (0 : UInt64)) fun i st => argStep st (a.get i)
 
-/-- The status, the bytes, and the read buffer of the manifest `file`.  The status is the errno of
-`fdFilestatGet` or of a read, 1 when a read returns no bytes before the manifest's size or the last
-read returns bytes, and otherwise 0, with the bytes of the manifest. -/
-def readManifest (file : Handle) : Action (UInt64 × Bytes × Bytes) := do
-  let buffer := Bytes.build chunk fun _ => 0
+/-- The status, the bytes, and the read buffer of the manifest `file` of `size` bytes, read into a
+buffer of that size, with the read buffer `buffer` for the last read.  The status is the errno of a
+read, 1 when a read returns no bytes before the buffer is full or the last read returns bytes, and
+otherwise 0, with the bytes of the manifest. -/
+def readBytes (file : Handle) (size : UInt64) (buffer : Bytes) :
+    Action (UInt64 × Bytes × Bytes) := do
+  let s ← Wasi.loop size (Bytes.build size fun _ => 0, (0 : UInt64), (0 : UInt64))
+    (fun _ s => s.2.2 == 0 && s.2.1 < size) fun _ s => do
+      let got ← fdRead file s.1 s.2.1 (size - s.2.1)
+      if got.errno != 0 then
+        pure (got.buffer, s.2.1, got.errno)
+      else if got.count == 0 then
+        pure (got.buffer, s.2.1, 1)
+      else
+        pure (got.buffer, s.2.1 + got.count, 0)
+  if s.2.2 != 0 then
+    pure (s.2.2, s.1, buffer)
+  else
+    let probe ← fdRead file buffer 0 chunk
+    if probe.errno != 0 then
+      pure (probe.errno, s.1, probe.buffer)
+    else if probe.count != 0 then
+      pure (1, s.1, probe.buffer)
+    else
+      pure (0, s.1, probe.buffer)
+
+/-- The status, the bytes, and the read buffer of the manifest `file`, with the read buffer
+`buffer`.  The status is the errno of `fdFilestatGet`, 61 (`overflow`) for a size of `2^32` bytes
+or more, and otherwise that of `readBytes`. -/
+def readManifest (file : Handle) (buffer : Bytes) : Action (UInt64 × Bytes × Bytes) := do
   let stat ← fdFilestatGet file
   if stat.errno != 0 then
     pure (stat.errno, Bytes.build 0 fun _ => 0, buffer)
+  else if 4294967296 ≤ stat.size then
+    pure (61, Bytes.build 0 fun _ => 0, buffer)
   else
-    let size := stat.size
-    let s ← Wasi.loop size (Bytes.build size fun _ => 0, (0 : UInt64), (0 : UInt64))
-      (fun _ s => s.2.2 == 0 && s.2.1 < size) fun _ s => do
-        let got ← fdRead file s.1 s.2.1 (size - s.2.1)
-        if got.errno != 0 then
-          pure (got.buffer, s.2.1, got.errno)
-        else if got.count == 0 then
-          pure (got.buffer, s.2.1, 1)
-        else
-          pure (got.buffer, s.2.1 + got.count, 0)
-    if s.2.2 != 0 then
-      pure (s.2.2, s.1, buffer)
-    else
-      let probe ← fdRead file buffer 0 chunk
-      if probe.errno != 0 then
-        pure (probe.errno, s.1, probe.buffer)
-      else if probe.count != 0 then
-        pure (1, s.1, probe.buffer)
-      else
-        pure (0, s.1, probe.buffer)
+    readBytes file stat.size buffer
 
 /-- The SHA-256 digest of the bytes of the file `file` that its reads into `buffer` returned, how
 the reads ended, 1 when a read returned no bytes, 2 when a read returned an errno, and 0 when the
@@ -139,9 +148,10 @@ def main : Action UInt64 := do
       pure 1
     else
       let name := slice arguments.bytes (scan.2.1 + 1) (arguments.bytes.size - scan.2.1 - 2)
+      let buffer := Bytes.build chunk fun _ => 0
       let got ← withOpen .preopened 1 name 0 2097154 0 0
         (fun errno => pure (errno, Bytes.build 0 fun _ => 0, Bytes.build 0 fun _ => 0))
-        fun file => readManifest file
+        fun file => readManifest file buffer
       if got.1.1 != 0 then
         pure got.1.1
       else if got.2 != 0 then
@@ -156,7 +166,7 @@ def main : Action UInt64 := do
 verified_compile_wasi command (main := main) :=
   [isHex, hexDigit, lineOk, parseStep, parse, digestByte, hexMatches, suffixByte, render, bswap,
     paddedWord, loadBlock, roundStep, advance, compress, hashFrom, byteWord, byteBlock, updateWith,
-    packWord, pack, finishWith, update, finish, slice, argStep, argScan, readManifest, hashFile,
-    suffix, writeAll, checkLines, main]
+    packWord, pack, finishWith, update, finish, slice, argStep, argScan, readBytes, readManifest,
+    hashFile, suffix, writeAll, checkLines, main]
 
 end Demos.ManifestCheck
