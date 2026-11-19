@@ -77,7 +77,10 @@
 # histogram.elf holds the bytes that genWasiElf gives for the command's module and proves the
 # executable's theorems, among them a process and replies for which the premises of the
 # executable's corollary hold.  tests/random-histogram/run.sh writes the executable from the same module
-# with the same commands and runs it.  The products lie in OUT, build/linux/a64-wasi unless set.
+# with the same commands and runs it.  In the same way it writes choice.wasm, the command of
+# Demos/RandomChoice/Command.lean, and choice.elf, and Lean elaborates
+# tests/TestSupport/A64/ImageFilesRandomChoice.lean beside them; tests/random-choice/run.sh
+# writes and runs the same executable.  The products lie in OUT, build/linux/a64-wasi unless set.
 # Usage: tests/linux/a64-wasi.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -98,7 +101,8 @@ mkdir -p "$out"
 tools/leanrun --timeout 60m --memory-high "${MEM:-8G}" lake --log-level error build a64-wasi \
   TestSupport.A64.WasiElf Verified.Examples.WasiReadAllNative \
   Verified.Examples.WasiSysEnvironNative Verified.Examples.WasiClockRandomNative \
-  Verified.Examples.WasiSysNative Demos.RandomHistogram.NativeCounts LeanExe.A64.File
+  Verified.Examples.WasiSysNative Demos.RandomHistogram.NativeCounts \
+  Demos.RandomChoice.NativeChoices LeanExe.A64.File
 status=0
 tools/leanrun --timeout 30m lake env .lake/build/bin/a64-wasi emit "$out" || status=1
 chmod +x "$out/readall.elf" "$out/environ.elf" "$out/args.elf" "$out/clockrandom.elf" \
@@ -118,6 +122,11 @@ tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Demos.RandomHisto
 tools/leanrun --timeout 10m lake env .lake/build/bin/a64-wasi wasm "$out/histogram.wasm" \
   "$out/histogram.elf" || status=1
 chmod +x "$out/histogram.elf"
+tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Demos.RandomChoice.Command \
+  Demos.RandomChoice.command.module "$out/choice.wasm"
+tools/leanrun --timeout 10m lake env .lake/build/bin/a64-wasi wasm "$out/choice.wasm" \
+  "$out/choice.elf" || status=1
+chmod +x "$out/choice.elf"
 # Elaborates the module $1 of tests/TestSupport/A64 in the directory of the files and requires $2
 # reports of axioms, each a subset of the standard three.  Lean breaks a report longer than its
 # format's width of 120 columns into lines, which the check joins.
@@ -141,6 +150,7 @@ kernel_check ImageFilesWasiEnviron 6
 kernel_check ImageFilesWasiClockElf 6
 kernel_check ImageFilesWasiSys 6
 kernel_check ImageFilesRandomHistogram 9
+kernel_check ImageFilesRandomChoice 9
 # Runs the command given as arguments in a scope of one core and 2G of memory.
 scoped() {
   systemd-run --user --scope -q -p CPUQuota=100% -p MemoryMax=2G timeout "${TIMEOUT:-120}" "$@"
