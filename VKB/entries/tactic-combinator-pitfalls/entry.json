@@ -215,8 +215,6 @@
     "Verified.ShimA64.wasiElf_run",
     "LeanExe.A64.run_sizesStub",
     "Verified.Examples.WasiReadAll.SteadyAlong",
-    "Verified.Examples.WasiReadAll.SteadyAlong.loop_command",
-    "Verified.Examples.WasiReadAll.budget_bounded",
     "Verified.ShimA64.closeStub_sim",
     "Verified.ShimA64.run_handleChecked"
   ],

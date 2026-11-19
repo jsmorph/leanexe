@@ -66,9 +66,10 @@ def runWords (s : State) (input : Bytes) (count : UInt64) (eof : Bool) : Process
   ⟨true, 0, ⟨r.1.oid, r.1.acct, r.1.qty, r.1.lvl, r.1.nxt, r.1.head, r.1.tail, r.1.nextId,
     r.1.count, tailBytes s.carry input (8 * count), eventBytes r.2, 0, eof⟩⟩
 
-/-- The bytes of the output that remain to be written. -/
+/-- The bytes of the output that remain to be written: the window of the output from `written`
+to its end, which `writeStep` writes in place. -/
 def remainingOutput (s : State) : Bytes :=
-  Bytes.build (s.output.size - s.written) fun i => s.output.get (s.written + i)
+  s.output.range s.written (s.output.size - s.written)
 
 /-- The step after a write that returned `reply`: an errno stops the process with it, a write that
 completes the output clears it, and a shorter write advances `written`. -/
@@ -87,7 +88,7 @@ def afterRead (s : State) (reply : ReadResult) : ProcessStep State :=
   else runWords s reply.bytes (7 * ((s.carry.size + reply.bytes.size) / 56)) false
 
 def writeStep (s : State) : Action (ProcessStep State) := do
-  let reply ← writeStdoutSome (remainingOutput s)
+  let reply ← writeStdout s.output s.written (s.output.size - s.written)
   pure (afterWrite s reply)
 
 def readStep (s : State) : Action (ProcessStep State) := do

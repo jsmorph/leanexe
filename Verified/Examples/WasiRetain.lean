@@ -7,7 +7,7 @@ open LeanExe LeanExe.Wasi Verified.Wasi
 def retain : Action Bytes :=
   loop 2 bytes![] (fun _ _ => true) fun _ previous => do
     let next ← readSome 1
-    let _ ← writeStdoutSome previous
+    let _ ← writeStdout previous 0 previous.size
     pure next.bytes
 
 verified_compile_wasi compiled := [retain]
@@ -15,7 +15,11 @@ verified_compile_wasi compiled := [retain]
 def step : Command [] [] [.bytes, .word] (.value .bytes) :=
   .bind (.read (.word 1))
     (.letPair .here
-      (.bind (.write .stdout (.there (.there (.there .here))))
+      (.bind
+        (.bind (.ret (.word 0))
+          (.bind (.ret (.bytesSize (.there (.there (.there (.there .here))))))
+            (.write .stdout (.there (.there (.there (.there (.there .here))))) (.there .here)
+              .here)))
         (.ret (.var (.there .here)))))
 
 def body : Command [] [] [] (.value .bytes) :=

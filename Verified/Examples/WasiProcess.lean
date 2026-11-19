@@ -14,7 +14,7 @@ def begin : Action (ProcessStep UInt64) := pure ⟨true, 0, 0⟩
 def step (state : UInt64) : Action (ProcessStep UInt64) := do
   if state == 3 then pure ⟨false, 0, state⟩
   else
-    let result ← writeStdoutSome (Bytes.build 1 fun _ => state + 65)
+    let result ← writeStdout (Bytes.build 1 fun _ => state + 65) 0 1
     if result.errno != 0 then pure ⟨false, result.errno, state⟩
     else pure ⟨true, 0, state + 1⟩
 

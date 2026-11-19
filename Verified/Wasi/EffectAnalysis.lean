@@ -46,7 +46,8 @@ def Command.uses : {context : List Ty} → {result : ResultTy} →
   | _, _, .call _ args, index => argsAny fun i => (args i).uses index
   | _, _, .read capacity, index => capacity.uses index
   | _, _, .readAll limit, index => limit.uses index
-  | _, _, .write _ bytes, index => index == bytes.index
+  | _, _, .write _ buffer start count, index =>
+    index == buffer.index || (index == start.index || index == count.index)
   | _, _, .exit code, index => code.uses index
   | _, _, .loop count initial test step, index =>
     count.uses index || initial.uses index || test.uses (index + 2) || step.uses (index + 2)
@@ -63,7 +64,7 @@ def sysTakeLive (live : Nat → Bool) (args : List (Var context .word))
 
 def Command.literals : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → List Bytes.Literal
-  | _, _, .unit | _, _, .write _ _ | _, _, .sys _ _ _ _ _ => []
+  | _, _, .unit | _, _, .write _ _ _ _ | _, _, .sys _ _ _ _ _ => []
   | _, _, .ret value => value.literals
   | _, _, .bind first next => first.literals ++ next.literals
   | _, _, .ite condition yes no => condition.literals ++ yes.literals ++ no.literals
@@ -80,7 +81,7 @@ def Command.Covered (command : Command pureSigs effectSigs context result)
 
 def Command.placeArgs : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → Bool
-  | _, _, .unit | _, _, .write _ _ | _, _, .sys _ _ _ _ _ => true
+  | _, _, .unit | _, _, .write _ _ _ _ | _, _, .sys _ _ _ _ _ => true
   | _, _, .ret value => value.placeArgs
   | _, _, .bind first next => first.placeArgs && next.placeArgs
   | _, _, .ite condition yes no => condition.placeArgs && yes.placeArgs && no.placeArgs
@@ -106,7 +107,7 @@ def Command.callsReady (calls : List LeanExe.Wasi.Call) : {context : List Ty} �
       inputs.length == operation.inputCount && buffers.length == operation.bufferCount &&
       operation.uses.all calls.contains
   | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ | _, _, .readAll _
-  | _, _, .write _ _ | _, _, .exit _ => true
+  | _, _, .write _ _ _ _ | _, _, .exit _ => true
 
 /-- The calls that the `sys` commands of a command use, in order, with repetitions. -/
 def Command.callsUsed : {context : List Ty} → {result : ResultTy} →
@@ -117,7 +118,7 @@ def Command.callsUsed : {context : List Ty} → {result : ResultTy} →
   | _, _, .letPair _ body => body.callsUsed
   | _, _, .sys operation _ _ _ _ => operation.uses
   | _, _, .unit | _, _, .ret _ | _, _, .call _ _ | _, _, .read _ | _, _, .readAll _
-  | _, _, .write _ _ | _, _, .exit _ => []
+  | _, _, .write _ _ _ _ | _, _, .exit _ => []
 
 /-- The calls that the `sys` commands of a program use, each once, in order of first use. -/
 def EffectProg.callsUsed : {effectSigs : List EffectSig} →

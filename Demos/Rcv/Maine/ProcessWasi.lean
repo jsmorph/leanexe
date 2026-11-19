@@ -12,7 +12,7 @@ namespace Demos.Rcv.Maine.Process
 
 open LeanExe LeanExe.Wasi LeanExe.Pipeline Demos.Rcv.ReadProgram
 open Demos.Rcv.Maine.TabulateProgram
-open Demos.Rcv.Process (initial remainingOutput afterWrite writeStep step)
+open Demos.Rcv.Process (initial afterWrite writeStep step)
 open Library.Numerics.Decimal.Int64Text (digitCount digitByte)
 
 set_option Elab.async false
@@ -35,7 +35,7 @@ verified_compile_wasi io := [Demos.Rcv.Program.bitIndex, Demos.Rcv.Program.class
   Demos.Rcv.PrintProgram.pushElimination, Demos.Rcv.PrintProgram.pushRoundLines,
   Demos.Rcv.Maine.PrintProgram.pushFirst, Demos.Rcv.PrintProgram.toBytes,
   Demos.Rcv.Maine.PrintProgram.printReport, Demos.Rcv.PrintProgram.pushRole,
-  Demos.Rcv.Maine.PrintProgram.printError, tabulate, initial, remainingOutput, afterWrite,
+  Demos.Rcv.Maine.PrintProgram.printError, tabulate, initial, afterWrite,
   started, writeStep, step, begin]
 
 end Demos.Rcv.Maine.Process

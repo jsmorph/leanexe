@@ -21,10 +21,6 @@ open LeanExe LeanExe.Wasi
 def wordBytes (word : UInt64) : Bytes :=
   Bytes.build 8 fun index => word >>> (8 * index)
 
-/-- The first `count` bytes of `buffer`: the bytes that a fill placed from the window's start. -/
-def filled (buffer : Bytes) (count : UInt64) : Bytes :=
-  Bytes.build count fun index => buffer.get index
-
 def main : Action UInt64 := do
   let done ← withOpen .preopened 0 bytes![110] 9 1073741823 1073741823 0
     (fun errno => pure errno) fun file => do
@@ -44,18 +40,18 @@ def main : Action UInt64 := do
             if rest.errno != 0 then
               pure rest.errno
             else
-              let _ ← writeStdoutSome (filled whole.buffer whole.count)
-              let _ ← writeStdoutSome (filled rest.buffer rest.count)
+              let _ ← writeStdout whole.buffer 0 whole.count
+              let _ ← writeStdout rest.buffer 0 rest.count
               let clock ← pollClock 1 0 0 0
               if clock.errno != 0 then
                 pure clock.errno
               else
-                let _ ← writeStdoutSome (wordBytes clock.count)
-                let _ ← writeStdoutSome (wordBytes clock.userdata)
-                let _ ← writeStdoutSome (wordBytes clock.error)
-                let _ ← writeStdoutSome (wordBytes clock.type)
-                let _ ← writeStdoutSome (wordBytes clock.nbytes)
-                let _ ← writeStdoutSome (wordBytes clock.flags)
+                let _ ← writeStdout (wordBytes clock.count) 0 8
+                let _ ← writeStdout (wordBytes clock.userdata) 0 8
+                let _ ← writeStdout (wordBytes clock.error) 0 8
+                let _ ← writeStdout (wordBytes clock.type) 0 8
+                let _ ← writeStdout (wordBytes clock.nbytes) 0 8
+                let _ ← writeStdout (wordBytes clock.flags) 0 8
                 let sought ← fdSeek file 0 0
                 if sought.errno != 0 then
                   pure sought.errno
@@ -64,12 +60,12 @@ def main : Action UInt64 := do
                   if ready.errno != 0 then
                     pure ready.errno
                   else
-                    let _ ← writeStdoutSome (wordBytes ready.count)
-                    let _ ← writeStdoutSome (wordBytes ready.userdata)
-                    let _ ← writeStdoutSome (wordBytes ready.error)
-                    let _ ← writeStdoutSome (wordBytes ready.type)
-                    let _ ← writeStdoutSome (wordBytes ready.nbytes)
-                    let _ ← writeStdoutSome (wordBytes ready.flags)
+                    let _ ← writeStdout (wordBytes ready.count) 0 8
+                    let _ ← writeStdout (wordBytes ready.userdata) 0 8
+                    let _ ← writeStdout (wordBytes ready.error) 0 8
+                    let _ ← writeStdout (wordBytes ready.type) 0 8
+                    let _ ← writeStdout (wordBytes ready.nbytes) 0 8
+                    let _ ← writeStdout (wordBytes ready.flags) 0 8
                     pure 0
   if done.1 != 0 then
     pure done.1
@@ -78,6 +74,6 @@ def main : Action UInt64 := do
   else
     pathUnlinkFile .preopened bytes![110]
 
-verified_compile_wasi command (main := main) := [wordBytes, filled, main]
+verified_compile_wasi command (main := main) := [wordBytes, main]
 
 end Verified.Examples.WasiSysNested

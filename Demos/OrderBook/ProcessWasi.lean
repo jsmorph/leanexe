@@ -24,7 +24,7 @@ set_option maxHeartbeats 1000000 in
 verified_compile_wasi io :=
   [Program.emit, Program.findSlot, Program.freeSlot, Program.predecessor, Program.bestPrice,
     Program.crosses, Program.fillArrays, Program.submitArrays, Program.stepArrays, Program.run,
-    initial, wordsOf, eventBytes, tailBytes, runWords, remainingOutput, afterWrite, afterRead,
+    initial, wordsOf, eventBytes, tailBytes, runWords, afterWrite, afterRead,
     writeStep, readStep, step, begin]
 
 end Demos.OrderBook.Process

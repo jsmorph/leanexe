@@ -30,7 +30,8 @@ theorem Command.code_spec_with {calls : List LeanExe.Wasi.Call}
   | call callee args => exact command_call_spec_with facts sourceHost callee args
   | read capacity => exact command_read_spec_with facts sourceHost capacity
   | readAll limit => exact command_readAll_spec_with facts sourceHost limit
-  | write output bytes => exact command_write_spec_with facts sourceHost output bytes
+  | write output buffer start count =>
+    exact command_write_spec_with facts sourceHost output buffer start count
   | exit status => exact command_exit_spec_with facts sourceHost status
   | loop count initial test step stepSpec =>
       exact command_loop_spec_with facts sourceHost stepSpec

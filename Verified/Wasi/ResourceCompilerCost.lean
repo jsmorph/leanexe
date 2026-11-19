@@ -122,10 +122,12 @@ theorem PrefixBound.exit {World : Type} {host : Host World} {pure : PureContext 
 
 theorem PrefixBound.write {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode} {live : Nat → Bool}
-    {output : Output} {bytes : Var context .bytes} {env : Env context} {world : World} {budget : Nat}
-    (bounded : PrefixBound host pure program depth modes live (.write output bytes) env world budget) :
+    {output : Output} {buffer : Var context .bytes} {start count : Var context .word}
+    {env : Env context} {world : World} {budget : Nat}
+    (bounded : PrefixBound host pure program depth modes live (.write output buffer start count) env
+      world budget) :
     0 ≤ budget ∧ (true : Bool) = true :=
-  bounded _ _ _ _ _ (.refl program depth modes live (.write output bytes) env world)
+  bounded _ _ _ _ _ (.refl program depth modes live (.write output buffer start count) env world)
 
 theorem PrefixBound.ret_resources {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth : UInt64} {slots : List Slot} {live : Nat → Bool}
@@ -189,9 +191,11 @@ theorem PrefixBound.exit_resources {World : Type} {host : Host World} {pure : Pu
 
 theorem PrefixBound.write_resources {World : Type} {host : Host World} {pure : PureContext pureSigs}
     {program : EffectProg pureSigs effectSigs} {depth : UInt64} {slots : List Slot} {live : Nat → Bool}
-    {output : Output} {bytes : Var context .bytes} {env : Env context} {world : World} {budget : Nat}
+    {output : Output} {buffer : Var context .bytes} {start count : Var context .word}
+    {env : Env context} {world : World} {budget : Nat}
     {heap : Heap} {store : Store Unit} {source : Wasm.Module}
-    (bounded : PrefixBound host pure program depth (slots.map Slot.mode) live (.write output bytes) env world budget)
+    (bounded : PrefixBound host pure program depth (slots.map Slot.mode) live
+      (.write output buffer start count) env world budget)
     (within : heap.Within store source budget) :
     heap.Within store source 0 ∧ (true : Bool) = true :=
   ⟨within.mono bounded.write.1, bounded.write.2⟩

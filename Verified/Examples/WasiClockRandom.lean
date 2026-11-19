@@ -16,19 +16,19 @@ def wordBytes (word : UInt64) : Bytes :=
 
 def main : Action UInt64 := do
   let wall ← clockTimeGet 0 0
-  let _ ← writeStdoutSome (wordBytes wall.errno)
-  let _ ← writeStdoutSome (wordBytes wall.time)
+  let _ ← writeStdout (wordBytes wall.errno) 0 8
+  let _ ← writeStdout (wordBytes wall.time) 0 8
   let time ← clockTimeGet 1 0
-  let _ ← writeStdoutSome (wordBytes time.errno)
-  let _ ← writeStdoutSome (wordBytes time.time)
+  let _ ← writeStdout (wordBytes time.errno) 0 8
+  let _ ← writeStdout (wordBytes time.time) 0 8
   let cpu ← clockTimeGet 2 0
-  let _ ← writeStdoutSome (wordBytes cpu.errno)
+  let _ ← writeStdout (wordBytes cpu.errno) 0 8
   let small ← randomGet (Bytes.build 16 fun _ => 0) 0 16
-  let _ ← writeStdoutSome (wordBytes small.errno)
-  let _ ← writeStdoutSome small.buffer
+  let _ ← writeStdout (wordBytes small.errno) 0 8
+  let _ ← writeStdout small.buffer 0 small.buffer.size
   let large ← randomGet (Bytes.build 5000 fun _ => 0) 0 5000
-  let _ ← writeStdoutSome (wordBytes large.errno)
-  let _ ← writeStdoutSome large.buffer
+  let _ ← writeStdout (wordBytes large.errno) 0 8
+  let _ ← writeStdout large.buffer 0 large.buffer.size
   pure 0
 
 verified_compile_wasi command (main := main) := [wordBytes, main]

@@ -17,10 +17,12 @@ def letPairReleaseCode (first second : Ty) (mode : Mode) (base : Nat)
 
 /-- Command code uses final module indices.  Pure fragments, copies, and releases undergo the
 relocation past the module's imports once.  Normal returns leave owned result words on the stack.  Local
-zero holds the incoming depth, and `live` identifies context values retained afterward.  A `sys`
-command with a buffer takes the buffer as a `ret` of its variable takes it, which moves an owned
-buffer that dies there and copies it otherwise, stores its root and size at `base`, and runs the
-call with the buffer as variable 0, which the call consumes. -/
+zero holds the incoming depth, and `live` identifies context values retained afterward.  A write
+computes the window of its buffer in the locals at `base` and passes its address and length to
+the wrapper, which reads the buffer in place.  A `sys` command with a buffer takes the buffer as
+a `ret` of its variable takes it, which moves an owned buffer that dies there and copies it
+otherwise, stores its root and size at `base`, and runs the call with the buffer as variable 0,
+which the call consumes. -/
 def Command.codeWith (calls : List Call) (source : Wasm.Module) (h : Nat) (slots : List Slot) (base : Nat)
     (live : Nat → Bool) (pool : Bytes.LiteralPool) :
     {context : List Ty} → {result : ResultTy} →
@@ -68,12 +70,15 @@ def Command.codeWith (calls : List Call) (source : Wasm.Module) (h : Nat) (slots
       [.call (Wrappers.readIndexWith calls source)]
   | _, _, .readAll limit =>
     Relocation.programWith calls (limit.code (pool := pool) h slots base live) ++ readAllCodeWith calls base
-  | context, _, .write output bytes =>
-    loadCode h (slots.getD bytes.index default).loc Ty.bytes.types ++
-      [.call (match output with
+  | context, _, .write output buffer start count =>
+    windowCode (slots.getD buffer.index default).loc (slots.getD start.index default).loc
+        (slots.getD count.index default).loc base ++
+      [.localGet base, .localGet (base + 1),
+       .call (match output with
         | .stdout => Wrappers.stdoutIndexWith calls source
         | .stderr => Wrappers.stderrIndexWith calls source)] ++
-      Relocation.programWith calls (releaseWhere context slots (fun i => i == bytes.index && !live i))
+      Relocation.programWith calls (releaseWhere context slots (fun i =>
+        (i == buffer.index || (i == start.index || i == count.index)) && !live i))
   | _, _, .exit code =>
     Relocation.programWith calls (code.code (pool := pool) h slots base live) ++
       [.localSet base] ++ exitCode base

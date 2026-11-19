@@ -32,7 +32,6 @@ elab "check_effect_axioms" : command => do
     ``Verified.Wasi.Reflect.bind_eq,
     ``Verified.Wasi.Reflect.read_eq,
     ``Verified.Wasi.Reflect.write_eq,
-    ``Verified.Wasi.Reflect.write_value_eq,
     ``Verified.Wasi.Reflect.exit_eq,
     ``Verified.Wasi.Reflect.ite_eq,
     ``Verified.Wasi.Reflect.bind_rel,

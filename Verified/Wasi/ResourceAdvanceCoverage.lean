@@ -37,7 +37,7 @@ theorem command_advance_coverage {World : Type} {host : Host World} {pure : Pure
   | readAll limit =>
     intro depth modes live env world trace residual after advance
     exact ⟨_, _, .readAll advance.toPrefix⟩
-  | write output bytes =>
+  | write output buffer start count =>
     intro depth modes live env world trace residual after advance
     cases output <;> cases advance with
     | write_return reply => exact ⟨_, _, .returned (.write (.write_return reply (.pure _ _)))⟩

@@ -43,39 +43,13 @@ theorem Safe.no_output {s : State} (safe : Safe s) (finished : ¬ s.written < s.
 /-! ## Partial writes -/
 
 theorem remainingOutput_size {s : State} (safe : Safe s) :
-    (remainingOutput s).data.size = s.output.data.size - s.written.toNat := by
-  unfold remainingOutput
-  rw [Bytes.data_size_build, UInt64.toNat_sub_of_le]
-  · rw [safe.output_toNat]
-  · exact UInt64.le_iff_toNat_le.mpr (by rw [safe.output_toNat]; exact safe.written_le)
+    (remainingOutput s).data.size = s.output.data.size - s.written.toNat :=
+  s.output.range_from_size safe.outputSize safe.written_le
 
 theorem remainingOutput_words {s : State} (safe : Safe s) :
     byteWords (remainingOutput s) = (byteWords s.output).drop s.written.toNat := by
-  have written := safe.written_le
-  have le : s.written ≤ s.output.size :=
-    UInt64.le_iff_toNat_le.mpr (by rw [safe.output_toNat]; exact written)
-  have countNat : (s.output.size - s.written).toNat = s.output.data.size - s.written.toNat := by
-    rw [UInt64.toNat_sub_of_le _ _ le, safe.output_toNat]
-  unfold remainingOutput
-  apply List.ext_getElem
-  · simp only [byteWords_length, Bytes.data_size_build, List.length_drop, countNat]
-  · intro index left right
-    have indexBound : index < s.output.data.size - s.written.toNat := by
-      simpa only [byteWords_length, Bytes.data_size_build, countNat] using left
-    have indexNat : (UInt64.ofNat index).toNat = index := UInt64.toNat_ofNat_of_lt' (by
-      have := safe.outputSize
-      omega)
-    have sumNat : (s.written + UInt64.ofNat index).toNat = s.written.toNat + index := by
-      rw [UInt64.toNat_add, indexNat]
-      exact Nat.mod_eq_of_lt (show s.written.toNat + index < UInt64.size by
-        have := safe.outputSize
-        omega)
-    rw [byteWords_build_get (s.output.size - s.written)
-      (fun i => s.output.get (s.written + i)) index (by rw [countNat]; exact indexBound),
-      bytes_get_narrow]
-    rw [List.getElem_drop]
-    simpa only [sumNat] using
-      (byteWords_get s.output (s.written + UInt64.ofNat index) (by omega)).symm
+  unfold remainingOutput byteWords
+  rw [s.output.range_from_toList safe.outputSize safe.written_le, List.map_drop]
 
 theorem remainingOutput_nonempty {s : State} (safe : Safe s) (pending : s.written < s.output.size) :
     0 < (remainingOutput s).data.size := by

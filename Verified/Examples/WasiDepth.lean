@@ -21,7 +21,7 @@ def pureHelper (values : Array UInt64) (count : UInt64) : UInt64 := guarded valu
 def fromTable (count : UInt64) : UInt64 := pureHelper table count
 
 def effectHelper (count : UInt64) : Action UInt64 := do
-  let _ ← writeStdoutSome bytes![68, 10]
+  let _ ← writeStdout bytes![68, 10] 0 2
   pure (fromTable count)
 
 def effectCaller (count : UInt64) : Action UInt64 := effectHelper count

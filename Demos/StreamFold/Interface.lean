@@ -58,8 +58,10 @@ def consumeInput (kernel : Kernel Acc) (state : BufferState Acc) : ProcessStep (
   LeanExe.repeatWhile (state.input.size - state.cursor) ⟨true, 0, state⟩
     consumeTest (consumeStep kernel)
 
+/-- The bytes of the output that remain to be written: the window of the output from `written`
+to its end, which `writeStep` writes in place. -/
 def remainingOutput (state : BufferState Acc) : Bytes :=
-  Bytes.build (state.output.size - state.written) fun i => state.output.get (state.written + i)
+  state.output.range state.written (state.output.size - state.written)
 
 def afterWrite (state : BufferState Acc) (reply : WriteResult) : ProcessStep (BufferState Acc) :=
   if reply.errno != 0 then ⟨false, reply.errno, state⟩
@@ -74,7 +76,7 @@ def afterRead (state : BufferState Acc) (reply : ReadResult) : ProcessStep (Buff
   else ⟨true, 0, { state with input := reply.bytes, cursor := 0, eof := reply.bytes.size == 0 }⟩
 
 def writeStep (state : BufferState Acc) : Action (ProcessStep (BufferState Acc)) := do
-  let reply ← writeStdoutSome (remainingOutput state)
+  let reply ← writeStdout state.output state.written (state.output.size - state.written)
   pure (afterWrite state reply)
 
 def readStep (state : BufferState Acc) : Action (ProcessStep (BufferState Acc)) := do

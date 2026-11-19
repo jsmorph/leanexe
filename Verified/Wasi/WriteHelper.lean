@@ -1,4 +1,5 @@
 import Verified.Wasi.CallWrappers
+import Verified.Wasi.SysWindow
 
 namespace Verified.Wasi
 
@@ -109,60 +110,74 @@ theorem writeFunction_run {World : Type} {m : Module} {host : Host World}
         (run fuel m (3 + index) initial [.i64 length, .i64 root] env) := by
   layout_instance writeFunction_run_with
 
-theorem write_buffer_abi {World : Type} {initial : Store World} {heap : Heap}
-    {root length : UInt64} {bytes : LeanExe.Bytes}
+/-- The window of a represented buffer meets the premises of the write wrapper: its bytes lie in
+memory at its address, below `2^32`, as many as its length, and at or above the scratch bytes
+unless it is empty at address 0. -/
+theorem write_window_abi {World : Type} {initial : Store World} {heap : Heap}
+    {root size : UInt64} {buffer : LeanExe.Bytes} {start count address length : UInt64}
     (hHeap : heap.At (PureTransport.erase initial))
-    (hRep : Bytes.Rep heap (PureTransport.erase initial) root length bytes) :
-    Bytes.At initial.mem root bytes ∧ root.toNat < 4294967296 ∧
-      (root.toNat + bytes.data.size ≤ 0 ∨ 16 ≤ root.toNat) ∧
+    (hRep : Bytes.Rep heap (PureTransport.erase initial) root size buffer)
+    (hWindow : WindowAt heap (PureTransport.erase initial) root size buffer start count
+      address length) :
+    Bytes.At initial.mem address (buffer.range start count) ∧ address.toNat < 4294967296 ∧
+      length.toNat = (buffer.range start count).data.size ∧
+      (buffer.range start count).data.size < 4294967296 ∧
+      (address.toNat + (buffer.range start count).data.size ≤ 0 ∨ 16 ≤ address.toNat) ∧
       16 ≤ initial.mem.pages * 65536 := by
-  refine ⟨hRep.toAt hHeap, ?_, ?_, ?_⟩
-  · rcases hRep.buffer with ⟨rfl, _⟩ | hBuffer
-    · decide
-    · have := hBuffer.object.address
-      omega
-  · rcases hRep.buffer with ⟨rfl, hEmpty⟩ | hBuffer
-    · exact Or.inl (by simp [hEmpty])
-    · have := hBuffer.object.base
-      exact Or.inr (by omega)
+  have hSize : (buffer.range start count).data.size = length.toNat := by
+    rw [LeanExe.Bytes.range_size, hWindow.length_toNat]
+  have hFits := hWindow.fits
+  refine ⟨bytes_at_window (hRep.toAt hHeap) hWindow.address_toNat, by omega, hSize.symm,
+    by omega, ?_, ?_⟩
+  · rcases hWindow.separate with high | ⟨zero, address⟩
+    · exact Or.inr high
+    · left
+      rw [hSize, zero, address]
+      rfl
   · have := hHeap.base
     have := hHeap.top
     change 16 ≤ (PureTransport.erase initial).mem.pages * 65536
     omega
 
+/-- A call of the write wrapper with the address and length of a window of a represented buffer
+writes the window's bytes and keeps the heap and the buffer. -/
 theorem wp_write_helper_at_with {calls : List LeanExe.Wasi.Call}
     {World : Type} {target : Module} {host : Host World}
     {env : HostEnv (Observed World)} {initial : Store (Observed World)} {heap : Heap}
-    {root length : UInt64} {bytes : LeanExe.Bytes} {output : Output} {index typeIdx : Nat}
+    {root size : UInt64} {buffer : LeanExe.Bytes} {start count address length : UInt64}
+    {output : Output} {index typeIdx : Nat}
     {s : Locals} {values : List Value} {rest : Program} {Q : Assertion (Observed World)}
     (hImports : target.imports = ABI.importsWith calls)
     (hFunction : target.funcs[index]? = some (writeFunction output typeIdx))
     (hHost : env.Satisfies target (hostSpecWith host calls))
     (hHeap : heap.At (PureTransport.erase initial))
-    (hRep : Bytes.Rep heap (PureTransport.erase initial) root length bytes)
+    (hRep : Bytes.Rep heap (PureTransport.erase initial) root size buffer)
+    (hWindow : WindowAt heap (PureTransport.erase initial) root size buffer start count
+      address length)
     (hNext : ∀ (final : Store (Observed World)) (result : LeanExe.Wasi.WriteResult)
       (trace : List Event),
-      Exec (observedHost host) (.write output bytes .pure)
+      Exec (observedHost host) (.write output (buffer.range start count) .pure)
         initial.host trace (.returned result) final.host →
       GuestFrame initial final [ABI.scratch] →
       Step heap (PureTransport.erase initial)
         (fun region => regionsDisjoint region ABI.scratch)
         heap (PureTransport.erase final) [] →
-      Bytes.Rep heap (PureTransport.erase final) root length bytes →
+      Bytes.Rep heap (PureTransport.erase final) root size buffer →
       wp target rest Q final { s with values := .i64 result.count :: .i64 result.errno :: values } env)
     (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
-      Exec (observedHost host) (.write output bytes .pure)
+      Exec (observedHost host) (.write output (buffer.range start count) .pure)
         initial.host trace (.trapped message) final.host →
       GuestFrame initial final [ABI.scratch] →
       Step heap (PureTransport.erase initial)
         (fun region => regionsDisjoint region ABI.scratch)
         heap (PureTransport.erase final) [] →
-      Bytes.Rep heap (PureTransport.erase final) root length bytes → Q (.Trap final message)) :
+      Bytes.Rep heap (PureTransport.erase final) root size buffer → Q (.Trap final message)) :
     wp target (.call (3 + calls.length + index) :: rest) Q initial
-      { s with values := .i64 length :: .i64 root :: values } env := by
-  obtain ⟨hBytes, hRoot, hApart, hMemory⟩ := write_buffer_abi hHeap hRep
-  obtain ⟨bound, hBound⟩ := writeFunction_run_with (calls := calls) (index := index) hImports hFunction hHost hBytes hRoot
-    hRep.length_eq hRep.size_lt hApart hMemory
+      { s with values := .i64 length :: .i64 address :: values } env := by
+  obtain ⟨hBytes, hAddress, hLength, hSize, hApart, hMemory⟩ :=
+    write_window_abi hHeap hRep hWindow
+  obtain ⟨bound, hBound⟩ := writeFunction_run_with (calls := calls) (index := index) hImports
+    hFunction hHost hBytes hAddress hLength hSize hApart hMemory
   have hImport : target.imports[3 + calls.length + index]? = none :=
     List.getElem?_eq_none (by rw [hImports, ABI.importsWith_length]; omega)
   have hLookup : target.funcs[3 + calls.length + index - target.imports.length]? =
@@ -170,7 +185,7 @@ theorem wp_write_helper_at_with {calls : List LeanExe.Wasi.Call}
     simpa only [hImports, ABI.importsWith_length, Nat.add_sub_cancel_left] using hFunction
   have hAt := hBound bound le_rfl
   generalize hRun : run bound target (3 + calls.length + index) initial
-    [.i64 length, .i64 root] env = outcome at hAt
+    [.i64 length, .i64 address] env = outcome at hAt
   cases hAt with
   | returned final result trace hExec hFrame =>
       have hCall := run_append_of_success hImport hLookup (by rfl) hRun values
@@ -185,110 +200,36 @@ theorem wp_write_helper_at_with {calls : List LeanExe.Wasi.Call}
 
 theorem wp_write_helper_at {World : Type} {target : Module} {host : Host World}
     {env : HostEnv (Observed World)} {initial : Store (Observed World)} {heap : Heap}
-    {root length : UInt64} {bytes : LeanExe.Bytes} {output : Output} {index typeIdx : Nat}
+    {root size : UInt64} {buffer : LeanExe.Bytes} {start count address length : UInt64}
+    {output : Output} {index typeIdx : Nat}
     {s : Locals} {values : List Value} {rest : Program} {Q : Assertion (Observed World)}
     (hImports : target.imports = ABI.imports)
     (hFunction : target.funcs[index]? = some (writeFunction output typeIdx))
     (hHost : env.Satisfies target (hostSpec host))
     (hHeap : heap.At (PureTransport.erase initial))
-    (hRep : Bytes.Rep heap (PureTransport.erase initial) root length bytes)
+    (hRep : Bytes.Rep heap (PureTransport.erase initial) root size buffer)
+    (hWindow : WindowAt heap (PureTransport.erase initial) root size buffer start count
+      address length)
     (hNext : ∀ (final : Store (Observed World)) (result : LeanExe.Wasi.WriteResult)
       (trace : List Event),
-      Exec (observedHost host) (.write output bytes .pure)
+      Exec (observedHost host) (.write output (buffer.range start count) .pure)
         initial.host trace (.returned result) final.host →
       GuestFrame initial final [ABI.scratch] →
       Step heap (PureTransport.erase initial)
         (fun region => regionsDisjoint region ABI.scratch)
         heap (PureTransport.erase final) [] →
-      Bytes.Rep heap (PureTransport.erase final) root length bytes →
+      Bytes.Rep heap (PureTransport.erase final) root size buffer →
       wp target rest Q final { s with values := .i64 result.count :: .i64 result.errno :: values } env)
     (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
-      Exec (observedHost host) (.write output bytes .pure)
+      Exec (observedHost host) (.write output (buffer.range start count) .pure)
         initial.host trace (.trapped message) final.host →
       GuestFrame initial final [ABI.scratch] →
       Step heap (PureTransport.erase initial)
         (fun region => regionsDisjoint region ABI.scratch)
         heap (PureTransport.erase final) [] →
-      Bytes.Rep heap (PureTransport.erase final) root length bytes → Q (.Trap final message)) :
+      Bytes.Rep heap (PureTransport.erase final) root size buffer → Q (.Trap final message)) :
     wp target (.call (3 + index) :: rest) Q initial
-      { s with values := .i64 length :: .i64 root :: values } env := by
+      { s with values := .i64 length :: .i64 address :: values } env := by
   layout_instance wp_write_helper_at_with
-
-theorem wp_write_helper_with {calls : List LeanExe.Wasi.Call}
-    {World : Type} {source target : Module} {host : Host World}
-    {env : HostEnv (Observed World)} {initial : Store (Observed World)} {heap : Heap}
-    {root length : UInt64} {bytes : LeanExe.Bytes} {output : Output} {typeIdx : Nat}
-    {s : Locals} {values : List Value} {rest : Program} {Q : Assertion (Observed World)}
-    (hImports : target.imports = ABI.importsWith calls)
-    (hFunction : target.funcs[Wrappers.outputPosition source output]? = some (writeFunction output typeIdx))
-    (hHost : env.Satisfies target (hostSpecWith host calls))
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hRep : Bytes.Rep heap (PureTransport.erase initial) root length bytes)
-    (hNext : ∀ (final : Store (Observed World)) (result : LeanExe.Wasi.WriteResult)
-      (trace : List Event),
-      Exec (observedHost host) (.write output bytes .pure)
-        initial.host trace (.returned result) final.host →
-      GuestFrame initial final [ABI.scratch] →
-      Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
-        heap (PureTransport.erase final) [] →
-      Bytes.Rep heap (PureTransport.erase final) root length bytes →
-      wp target rest Q final { s with values := .i64 result.count :: .i64 result.errno :: values } env)
-    (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
-      Exec (observedHost host) (.write output bytes .pure)
-        initial.host trace (.trapped message) final.host →
-      GuestFrame initial final [ABI.scratch] →
-      Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
-        heap (PureTransport.erase final) [] →
-      Bytes.Rep heap (PureTransport.erase final) root length bytes → Q (.Trap final message)) :
-    wp target (.call (Wrappers.outputIndexWith calls source output) :: rest) Q initial
-      { s with values := .i64 length :: .i64 root :: values } env := by
-  let index := Wrappers.outputPosition source output
-  have hIndex : 3 + calls.length + index = (Wrappers.outputIndexWith calls source output) := by
-    cases output <;>
-      simp only [index, Wrappers.outputPosition, Wrappers.outputIndexWith, Wrappers.stdoutIndexWith, Wrappers.stderrIndexWith, Module.extraIndexWith] <;>
-      omega
-  rw [← hIndex]
-  exact wp_write_helper_at_with hImports hFunction hHost hHeap hRep hNext hTrap
-
-theorem wp_write_helper {World : Type} {source target : Module} {host : Host World}
-    {env : HostEnv (Observed World)} {initial : Store (Observed World)} {heap : Heap}
-    {root length : UInt64} {bytes : LeanExe.Bytes} {output : Output} {typeIdx : Nat}
-    {s : Locals} {values : List Value} {rest : Program} {Q : Assertion (Observed World)}
-    (hImports : target.imports = ABI.imports)
-    (hFunction : target.funcs[match output with
-      | .stdout => source.funcs.length + 1
-      | .stderr => source.funcs.length + 2]? = some (writeFunction output typeIdx))
-    (hHost : env.Satisfies target (hostSpec host))
-    (hHeap : heap.At (PureTransport.erase initial))
-    (hRep : Bytes.Rep heap (PureTransport.erase initial) root length bytes)
-    (hNext : ∀ (final : Store (Observed World)) (result : LeanExe.Wasi.WriteResult)
-      (trace : List Event),
-      Exec (observedHost host) (.write output bytes .pure)
-        initial.host trace (.returned result) final.host →
-      GuestFrame initial final [ABI.scratch] →
-      Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
-        heap (PureTransport.erase final) [] →
-      Bytes.Rep heap (PureTransport.erase final) root length bytes →
-      wp target rest Q final { s with values := .i64 result.count :: .i64 result.errno :: values } env)
-    (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
-      Exec (observedHost host) (.write output bytes .pure)
-        initial.host trace (.trapped message) final.host →
-      GuestFrame initial final [ABI.scratch] →
-      Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
-        heap (PureTransport.erase final) [] →
-      Bytes.Rep heap (PureTransport.erase final) root length bytes → Q (.Trap final message)) :
-    wp target (.call (match output with
-      | .stdout => Wrappers.stdoutIndex source
-      | .stderr => Wrappers.stderrIndex source) :: rest) Q initial
-      { s with values := .i64 length :: .i64 root :: values } env := by
-  cases output
-  · exact wp_write_helper_with (calls := []) (source := source) (output := .stdout) hImports
-      hFunction hHost hHeap hRep hNext hTrap
-  · exact wp_write_helper_with (calls := []) (source := source) (output := .stderr) hImports
-      hFunction hHost hHeap hRep hNext hTrap
 
 end Verified.Wasi

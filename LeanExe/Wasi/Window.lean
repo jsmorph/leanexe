@@ -143,6 +143,136 @@ theorem splice_get_after {buffer bytes : Bytes} {first i : Nat}
   congr 1
   omega
 
+private theorem min_toNat (a b : UInt64) : (min a b).toNat = min a.toNat b.toNat := by
+  show (if a ≤ b then a else b).toNat = _
+  split
+  · rename_i h
+    rw [UInt64.le_iff_toNat_le] at h
+    omega
+  · rename_i h
+    rw [UInt64.le_iff_toNat_le] at h
+    omega
+
+/-- The window that a start of 0 and a count of the buffer's size name holds the whole buffer. -/
+theorem range_zero_size (buffer : Bytes) (small : buffer.data.size < 2 ^ 64) :
+    buffer.range 0 buffer.size = buffer := by
+  have hSize := buffer.size_toNat small
+  have hFirst : (buffer.window 0 buffer.size).1 = 0 := by
+    rw [window_fst]
+    simp
+  have hLength : (buffer.window 0 buffer.size).2 = buffer.data.size := by
+    rw [window_snd, hSize]
+    simp
+  simp only [range, hFirst, hLength, Nat.zero_add, ByteArray.extract_zero_size]
+
+/-- The window's first position and length as words: the start, or the size when that is smaller,
+and the count, or the bytes from that position on when they are fewer. -/
+theorem window_of_words (buffer : Bytes) (small : buffer.data.size < 2 ^ 64)
+    (start count : UInt64) :
+    (min start buffer.size).toNat = (buffer.window start count).1 ∧
+      (min count (buffer.size - min start buffer.size)).toNat = (buffer.window start count).2 := by
+  have hSize := buffer.size_toNat small
+  have hFirst : (min start buffer.size).toNat = (buffer.window start count).1 := by
+    rw [min_toNat, hSize, window_fst]
+  refine ⟨hFirst, ?_⟩
+  have hLe : min start buffer.size ≤ buffer.size := by
+    rw [UInt64.le_iff_toNat_le, hFirst, hSize]
+    exact buffer.window_fst_le start count
+  rw [min_toNat, UInt64.toNat_sub_of_le _ _ hLe, hSize, hFirst, window_snd, window_fst]
+
+/-- The window from `written` bytes past the first position of the window that `start` and `count`
+name, with the bytes of that window that remain, holds those bytes: the window's bytes after the
+first `written`. -/
+theorem range_after (buffer : Bytes) (small : buffer.data.size < 2 ^ 64)
+    {start count written : UInt64} (le : written.toNat ≤ (buffer.window start count).2) :
+    (buffer.range (min start buffer.size + written)
+        (min count (buffer.size - min start buffer.size) - written)).data.data.toList =
+      (buffer.range start count).data.data.toList.drop written.toNat := by
+  obtain ⟨hFirst, hLength⟩ := buffer.window_of_words small start count
+  have hWindow := buffer.window_le start count
+  have hAt : (min start buffer.size + written).toNat =
+      (buffer.window start count).1 + written.toNat := by
+    rw [UInt64.toNat_add, hFirst]
+    exact Nat.mod_eq_of_lt (by omega)
+  have hRest : (min count (buffer.size - min start buffer.size) - written).toNat =
+      (buffer.window start count).2 - written.toNat := by
+    rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, hLength]; exact le), hLength]
+  have hNewFirst : (buffer.window (min start buffer.size + written)
+      (min count (buffer.size - min start buffer.size) - written)).1 =
+        (buffer.window start count).1 + written.toNat := by
+    rw [window_fst, hAt]
+    omega
+  have hNewLength : (buffer.window (min start buffer.size + written)
+      (min count (buffer.size - min start buffer.size) - written)).2 =
+        (buffer.window start count).2 - written.toNat := by
+    rw [window_snd, hAt, hRest]
+    omega
+  apply List.ext_getElem
+  · simp only [Array.length_toList, List.length_drop, ByteArray.size_data, range_size, hNewLength]
+  · intro i hNew hOld
+    simp only [Array.getElem_toList, List.getElem_drop]
+    have hNewSize : i < (buffer.range (min start buffer.size + written)
+        (min count (buffer.size - min start buffer.size) - written)).data.size := by
+      simpa only [Array.length_toList, ByteArray.size_data] using hNew
+    have hOldSize : written.toNat + i < (buffer.range start count).data.size := by
+      simp only [Array.length_toList, List.length_drop, ByteArray.size_data, range_size] at hOld
+      rw [range_size]
+      omega
+    have hA := buffer.range_get _ _ i hNewSize
+    have hB := buffer.range_get start count (written.toNat + i) hOldSize
+    refine hA.trans (Eq.trans ?_ hB.symm)
+    congr 1
+    rw [hNewFirst]
+    omega
+
+/-- The bytes of a window as a list: the buffer's bytes from the window's first position, as many as
+its length. -/
+theorem range_toList (buffer : Bytes) (start count : UInt64) :
+    (buffer.range start count).data.data.toList =
+      (buffer.data.data.toList.drop (buffer.window start count).1).take
+        (buffer.window start count).2 := by
+  have hLe := buffer.window_le start count
+  apply List.ext_getElem
+  · simp only [Array.length_toList, ByteArray.size_data, range_size, List.length_take,
+      List.length_drop]
+    omega
+  · intro i hRange _
+    simp only [Array.getElem_toList, List.getElem_take, List.getElem_drop]
+    have hi : i < (buffer.range start count).data.size := by
+      simpa only [Array.length_toList, ByteArray.size_data] using hRange
+    exact buffer.range_get start count i hi
+
+/-- The window from `start`, at most the buffer's size, whose count is the bytes from `start` to
+the end. -/
+theorem window_from (buffer : Bytes) (small : buffer.data.size < 2 ^ 64) {start : UInt64}
+    (le : start.toNat ≤ buffer.data.size) :
+    (buffer.window start (buffer.size - start)).1 = start.toNat ∧
+      (buffer.window start (buffer.size - start)).2 = buffer.data.size - start.toNat := by
+  have hSize := buffer.size_toNat small
+  have hCount : (buffer.size - start).toNat = buffer.data.size - start.toNat := by
+    rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, hSize]; exact le), hSize]
+  refine ⟨?_, ?_⟩
+  · rw [window_fst]
+    omega
+  · rw [window_snd, hCount]
+    omega
+
+/-- The window from `start` to the end holds the bytes from `start` on. -/
+theorem range_from_toList (buffer : Bytes) (small : buffer.data.size < 2 ^ 64) {start : UInt64}
+    (le : start.toNat ≤ buffer.data.size) :
+    (buffer.range start (buffer.size - start)).data.data.toList =
+      buffer.data.data.toList.drop start.toNat := by
+  obtain ⟨hFirst, hLength⟩ := buffer.window_from small le
+  rw [range_toList, hFirst, hLength]
+  apply List.take_of_length_le
+  simp
+
+/-- The window from `start` to the end holds as many bytes as follow `start`. -/
+theorem range_from_size (buffer : Bytes) (small : buffer.data.size < 2 ^ 64) {start : UInt64}
+    (le : start.toNat ≤ buffer.data.size) :
+    (buffer.range start (buffer.size - start)).data.size = buffer.data.size - start.toNat := by
+  rw [range_size, (buffer.window_from small le).2]
+
 theorem clear_size (buffer : Bytes) (start count : UInt64) :
     (buffer.clear start count).data.size = buffer.data.size :=
   splice_size (by rw [zeros_size]; exact buffer.window_le start count)

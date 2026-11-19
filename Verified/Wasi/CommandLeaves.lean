@@ -56,21 +56,22 @@ theorem command_write_spec_with {calls : List LeanExe.Wasi.Call}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty}
     (facts : CompilerFactsWith calls source target pure effects pool) (sourceHost : HostEnv Unit)
-    (output : Output) (bytes : Var context .bytes) :
-    CommandCodeSpecWith calls source target pure effects pool (.write output bytes) := by
+    (output : Output) (buffer : Var context .bytes) (start count : Var context .word) :
+    CommandCodeSpecWith calls source target pure effects pool
+      (.write output buffer start count) := by
   intro World host targetHost depth env slots live h base heap initial locals
-    valid _ _ positions vars at_ _ scratch _ _ _ ready _ _
+    valid _ _ positions vars at_ _ scratch _ low room ready _ _
   have fragment := ready.1 _ (List.mem_singleton_self _)
   obtain ⟨typeIndex, lookup⟩ := facts.write_function output
   exact wp_command_write_with (sourceHost := sourceHost) facts.runtime facts.layout facts.profile
-    facts.imports lookup valid at_ positions vars scratch fragment.1 fragment.2
+    facts.imports lookup valid at_ positions low room vars scratch fragment.1 fragment.2
 
 theorem command_write_spec {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}
     {pool : Bytes.LiteralPool} {context : List Ty}
     (facts : CompilerFacts source target pure effects pool) (sourceHost : HostEnv Unit)
-    (output : Output) (bytes : Var context .bytes) :
-    CommandCodeSpec source target pure effects pool (.write output bytes) := by
+    (output : Output) (buffer : Var context .bytes) (start count : Var context .word) :
+    CommandCodeSpec source target pure effects pool (.write output buffer start count) := by
   layout_instance command_write_spec_with
 
 theorem command_read_spec_with {calls : List LeanExe.Wasi.Call}

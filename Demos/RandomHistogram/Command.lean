@@ -44,11 +44,11 @@ def main : Action UInt64 := do
         pure drawn.2.2.2
       else
         let output := render drawn.1
-        let written ← writeAll output
+        let written ← writeAll output 0 output.size
         pure (if written < output.size then 77 else 0)
 
 verified_compile_wasi command (main := main) :=
-  [parseStep, parseN, countWord, wordAt, tally, digitCount, digitByte, appendLine, render, suffix,
+  [parseStep, parseN, countWord, wordAt, tally, digitCount, digitByte, appendLine, render,
     writeAll, main]
 
 end Demos.RandomHistogram
