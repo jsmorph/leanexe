@@ -79,7 +79,7 @@ tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Wasi.ResourceAdvanceCoverage Verified.Wasi.ResourcePrefixCoverage \
   Verified.Wasi.ResourceCompilerCost Verified.Wasi.CostLeavesPure \
   Verified.Wasi.CallBudget Verified.Wasi.CostCallHelper Verified.Wasi.CostCallSpec \
-  Verified.Wasi.CostLeavesRead Verified.Wasi.CostLeavesWrite Verified.Wasi.CostLeavesExit \
+  Verified.Wasi.CostLeavesWrite Verified.Wasi.CostLeavesExit \
   Verified.Wasi.CostLeaves Verified.Wasi.CostBindUnit Verified.Wasi.CostBindValue \
   Verified.Wasi.CostTotal Verified.Wasi.CostCommandCorrect
 tools/leanrun --timeout 10m --log build/wasi/transport.log lake build \

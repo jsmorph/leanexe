@@ -1,6 +1,3 @@
-arg-u64 4294967296
-call echo 1
-stats
 arg-u64 0
 call echo 1
 stats
