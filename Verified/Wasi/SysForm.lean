@@ -244,9 +244,9 @@ def subscriptionsFit (records : List (List Field)) : Bool :=
     records.all (fun fields => fields.all fun field =>
       field.width == 1 || field.width == 2 || field.width == 4 || field.width == 8)
 
-/-- Whether the record or the subscriptions and events of `call` fit the call area at its start,
-aligned: a record of at most 160 bytes whose alignment divides 16, and subscriptions and events of
-80 bytes for each record, which the area's start aligns to 8. -/
+/-- Whether the record or the subscriptions and events of `call` fit the call area from its start:
+a record of at most 160 bytes whose alignment divides the area's start, 16, and subscriptions and
+events, 80 bytes for each record, of at most 160 bytes. -/
 def callFits (call : Call) : Bool :=
   (match Verified.Wasi.recordOf call.params with
     | some (size, align, _) =>

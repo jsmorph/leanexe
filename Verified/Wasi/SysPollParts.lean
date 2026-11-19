@@ -1,9 +1,9 @@
 import Verified.Wasi.SysIovecCall
 
 /-! The parts of the code of a `poll` call.  Its parameters are the subscriptions of `records` and
-the result word.  The code writes the subscriptions into a block: it zeroes their `48 n` bytes and
-stores each field, in order, with stores of its width.  `BlockAt` describes the memory that these
-stores leave, and the subscriptions that they leave are `subscriptionBytes records args`. -/
+the result word.  The code writes the subscriptions into the call area: it zeroes their `48 n`
+bytes and stores each field, in order, with stores of its width.  `BlockAt` describes the memory
+that these stores leave in a region, and the subscriptions that they leave are `subscriptionBytes records args`. -/
 
 namespace Verified.Wasi
 
