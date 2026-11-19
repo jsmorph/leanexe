@@ -110,8 +110,8 @@ bytes.  The call of `fd_filestat_get` comes first, and its errno ends the readin
 of `2^32` bytes or more, more than the 32-bit length of a read allows, ends it with status 61
 (`overflow`).  Otherwise the reads of `ManifestReads` follow for a buffer of the size that it
 reported, and a status other than 0 ends the reading.  When the bytes fill the buffer, a last read
-of 65,536 bytes follows, and the status is its errno, 1 when it returned bytes, and 0 when it
-returned none. -/
+of 65,536 bytes follows, and the status is its errno when it is not 0, and otherwise 1 when it
+returned bytes and 0 when it returned none. -/
 inductive ManifestBody (fd : UInt64) : List Event → UInt64 → List UInt8 → Prop
   | statFailed {errno : UInt64} {outputs : List Bytes} (nonzero : errno ≠ 0) :
       ManifestBody fd [statEvent fd errno outputs] errno []

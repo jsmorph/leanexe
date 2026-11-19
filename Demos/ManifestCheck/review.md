@@ -100,9 +100,37 @@ its traces and a program that writes an empty window after each line, which the 
 `LineWrites` excludes, and a read attempted at a size of `2^32` or more, whose events equal the
 command's.
 
-Classes that no statement over events excludes: a program that buffers each whole file and hashes
-it at the end, whose events equal those of the streaming program, so only a bound on the heap that
-does not grow with the files excludes it; a guest trap at `unreachable` outside the budget premise
-of `total_meets`; the host's resolution of names, which confines them to the preopened directory
-outside the theorems; and the relation between the bytes that the host returns and the files on
-disk.
+Classes that no statement over events excludes, at the time of this review: a program that
+buffers each whole file and hashes it at the end, whose events equal those of the streaming
+program, and which the later budget excludes; a guest trap at `unreachable` outside the budget
+premise of `total_meets`; the host's resolution of names, which confines them to the preopened
+directory outside the theorems; and the relation between the bytes that the host returns and the
+files on disk.
+
+## Review of the final statements
+
+A second fresh agent reviewed `Meets`, `exec_main`, `Ends`, `start_ends`, `total_meets`, and the
+statements of [the budget](Budget.lean), `budget`, `budget_le`, `body_bounded`, `prefix_bound`, and
+`total_meets_budget`, by the same method and without the program, its proofs, or the guide.  It
+updated the first reviewer's transcription to the revised `LineWrites`, ran it on 1,589 traces of
+its model, none rejected, and on 81,039 traces of 51 wrong programs.  `Meets` rejected 49 of them
+on every trace that differs from the command's, among them nine new programs with more or fewer
+write passes, empty windows before or after a line, and a write errno taken as 1.  The other two
+make the command's events: a read attempted at a size of `2^32` or more, which `Call.reject`
+refuses without an event, and a program that buffers each whole file, which `body_bounded`
+excludes.  It found every response marked "Adopted" above in the Lean text, recomputed `budget`
+and `budget_le`, and found no defect of the statements as Lean text.
+
+| Finding | Response |
+|---|---|
+| `Confined` and `Handled` hold only of runs that end with the accepted exit: `Ends` gives a run that traps only `Exec` or `Prefix` of `main`, so a program that opens an unlisted name and then exhausts the memory meets every statement for hosts outside the premises of `total_meets_budget` | Open: the request states the three properties of every run.  Stating `Confined` and a prefix form of `Handled` of every `Prefix` of `main` and adding them to the trap cases of `Ends` remains to do |
+| The premise on `fd_filestat_get` covers every reply, while the command asks it only of the manifest, so a host whose checked files report large sizes is excluded | Recorded in the docstrings of `body_bounded` and `total_meets_budget` |
+| No theorem showed that the premises of `total_meets_budget` hold together | Adopted: `initial_within` gives the bound on the heap for every `M` of at most 23,000,000 |
+| The docstrings of `checkBudget`, `budget`, `body_bounded`, `total_meets`, `total_meets_budget`, and `ManifestBody` claimed more or less than their Lean text | Adopted |
+| A manifest whose reported size differs from its bytes, such as a FIFO, a file of `/proc` that reports size 0, or a file being appended to, gives status 1 | Recorded: the command reads a manifest of the size that the host reports, and the guide states it |
+
+Classes that no statement excludes: the opens and writes of a run that traps, for the first
+finding's reason; an engine that refuses `memory.grow` below the cap, since the exclusion of the
+guest trap holds under Talos's semantics of memory growth; a read attempted at a size of `2^32` or
+more, whose events equal the command's; and, as before, the host's resolution of names and the
+relation between the bytes that it returns and the files on disk.

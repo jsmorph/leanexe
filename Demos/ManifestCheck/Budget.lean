@@ -5,7 +5,8 @@ import Verified.Examples.WasiSysTotal
 /-! The resource model's charge of the manifest checker's `main`, the budget that the generated
 `command.total` takes as a bound on every prefix of `main`.
 
-`body_bounded` bounds every run and every prefix of `main`'s body by `budget M` for every host
+`body_bounded` bounds every run and every prefix of `main`'s body by `budget M`, with enough
+frames, for every host
 whose successful `args_sizes_get` replies ask for at most `argsLimit` bytes and whose successful
 `fd_filestat_get` replies report a size of at most `M` bytes.  The model charges a copy of an owned
 value at each use after which the value stays live, and it credits no release.  The charge of
@@ -50,12 +51,13 @@ for which the budget holds: 6 MiB, the most that Linux lets the strings and poin
 `envp` take together. -/
 def argsLimit : Nat := 6291456
 
-/-- The charge of `checkLines` on a manifest of `n` bytes. -/
+/-- A bound on the charge of `checkLines` on a manifest of `n` bytes. -/
 def checkBudget (n : Nat) : Nat := 4 * (n + 1)
 
-/-- A bound on the charge of `main` for a manifest of at most `M` bytes: the block of `args`, the
-copy of the argument, the read buffer, the record block of `fd_filestat_get` and the manifest's
-buffer, the charge of `parse`, and that of `checkLines`. -/
+/-- A bound on the charge of `main` for an argument block of at most `argsLimit` bytes and a
+manifest of at most `M` bytes: the block of `args`, the copy of the argument, the read buffer, the
+record block of `fd_filestat_get` and the manifest's buffer, the charge of `parse`, and that of
+`checkLines`. -/
 def budget (M : Nat) : Nat :=
   2 * Bytes.allocationCost argsLimit + 65584 + (120 + Bytes.allocationCost M) + (176 * M + 464) +
     checkBudget M
@@ -1052,9 +1054,10 @@ theorem checkLines_bounded {World : Type} {host : Host World} (table : Array UIn
   intro _ _
   free_bound
 
-/-- Every run and every prefix of `main`'s body charges at most `budget M` for every host whose
-successful `args_sizes_get` replies ask for at most `argsLimit` bytes and whose successful
-`fd_filestat_get` replies report a size of at most `M` bytes. -/
+/-- Every run and every prefix of `main`'s body charges at most `budget M` and has enough frames,
+for every host whose successful `args_sizes_get` replies ask for at most `argsLimit` bytes and whose
+successful `fd_filestat_get` replies report a size of at most `M` bytes.  The second premise covers
+every reply of `fd_filestat_get`, while the command asks it only of the manifest. -/
 theorem body_bounded {World : Type} {host : Host World} {M : Nat}
     (argsBound : ∀ world outputs after,
       host.sys world Call.argsGet.reporterCall [] (.returned 0 outputs) after →
@@ -1228,10 +1231,22 @@ theorem prefix_bound {World : Type} {host : Host World} {M : Nat}
   exact Resource.call_prefix_rule (budget M) progress rfl
     ((body_bounded argsBound statBound).2 world)
 
+/-- `budget M` fits between the initial heap's top and the cap of 65,535 pages for every `M` of at
+most 23,000,000. -/
+theorem initial_within {World : Type} (world : Observed World) {M : Nat} (small : M ≤ 23000000) :
+    (Verified.initialStaticHeap command.literalPool).Within
+      (PureTransport.erase (initialStore world)) command.pure.module (budget M) := by
+  have bound := budget_le M
+  have top : (Verified.initialStaticHeap command.literalPool).top.toNat ≤ 65536 := by decide
+  change (Verified.initialStaticHeap command.literalPool).top.toNat + budget M ≤ 65536 * 65535
+  omega
+
 /-- `total_meets` with its budget premise given by the host's replies: every successful
 `args_sizes_get` reply asks for at most `argsLimit` bytes, and every successful `fd_filestat_get`
-reply reports a size of at most `M` bytes, for a budget `budget M` that fits the free memory of the
-command's initial store. -/
+reply reports a size of at most `M` bytes, for a budget `budget M` that fits between the initial
+heap's top and the memory's cap.  The second premise covers every reply of `fd_filestat_get`, while
+the command asks it only of the manifest, and `initial_within` gives the first premise for every
+`M` of at most 23,000,000. -/
 theorem total_meets_budget {World : Type} {host : Host World} (world : Observed World)
     (targetHost : HostEnv (Observed World))
     (valid : targetHost.Satisfies command.module (hostSpecWith host command.sysCalls))

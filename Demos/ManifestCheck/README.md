@@ -75,7 +75,8 @@ more, for which a read's length does not fit its 32 bits, with status 61 (`overf
 builds a buffer of the reported size and reads the manifest into it with `fdRead`, each read into
 the window after the bytes already read, until the buffer is full, a read returns no bytes, or a
 read returns an errno.  A last read into the read buffer tests that the manifest has no byte after
-them, so a manifest whose bytes number fewer or more than its size gives status 1.  The bracket
+them, so a manifest whose bytes number fewer or more than its size gives status 1, as do a FIFO,
+a file of `/proc` that reports size 0, and a file being appended to.  The bracket
 closes the manifest, and `parse` gives the positions of its lines, or none for a manifest that the
 pure core refuses, which gives status 1.
 
@@ -117,7 +118,7 @@ read of the ABI and as the flat call, `fd_write`, `proc_exit`, `fd_filestat_get`
 | `exec_main` | Under every host, every run of `main` followed by its exit that ends with the status `code` has the events `events ++ [.exit code]`, where `events` meet `Meets`, and `code` is at most 77 ([the command's proof](CommandProof.lean)). |
 | `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states: the accepted exit after events that meet `Meets`, a trap of the host or a rejected exit after a run of `main`, or a guest trap at `unreachable` after a prefix of `main` ([the compiled command](CommandStart.lean)). |
 | `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits the initial store's free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit after events that meet `Meets`. |
-| `body_bounded`, `prefix_bound`, `total_meets_budget` | Every run and every prefix of `main`'s body charges at most `budget M` under a host whose replies give an argument block of at most `argsLimit` bytes and a manifest size of at most `M` bytes, and `total_meets` holds with these two premises in place of the bound on the heap ([the budget](Budget.lean)). |
+| `body_bounded`, `prefix_bound`, `total_meets_budget`, `initial_within` | Every run and every prefix of `main`'s body charges at most `budget M` under a host whose replies give an argument block of at most `argsLimit` bytes and sizes of at most `M` bytes from `fd_filestat_get`, `total_meets` holds with these two premises in place of the bound on the heap, and the budget fits the module's cap for every `M` of at most 23,000,000 ([the budget](Budget.lean)).  The theorems state `Meets` of the runs that end with the accepted exit, and of a run that traps they state only that it is a run or a prefix of `main`. |
 
 The theorems of the table use only `propext`, `Classical.choice`, and `Quot.sound`.  `Meets` of
 [the command's specification](CommandSpec.lean) holds three properties of a run's events, which
@@ -176,7 +177,8 @@ of `fd_filestat_get`, the manifest's buffer of at most `M` bytes, the charge of 
 `checkLines` follows the lines: a pass charges at most four bytes for each byte of its line and the
 newline after it (`loop_bounded_sum`), and the lines with their newlines hold at most one byte more
 than the manifest (`lines_total`).  A pass of the reads of a file, of the reads of the manifest,
-and of `writeAll` charges nothing, and `budget_le` states `budget M ≤ 181 M + 12,649,235`.
+and of `writeAll` charges nothing, and `budget_le` states `budget M ≤ 181 M + 12,649,235`, and `initial_within` states
+that the budget fits the 65,535 pages of the module's cap for every `M` of at most 23,000,000.
 
 ## Confinement
 

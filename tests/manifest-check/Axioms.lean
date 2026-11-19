@@ -52,6 +52,7 @@ elab "check_manifest_check_axioms" : command => do
     ``Demos.ManifestCheck.body_bounded,
     ``Demos.ManifestCheck.prefix_bound,
     ``Demos.ManifestCheck.total_meets_budget,
+    ``Demos.ManifestCheck.initial_within,
     ``Demos.ManifestCheck.command.start,
     ``Demos.ManifestCheck.command.validity,
     ``Demos.ManifestCheck.command.bytes,

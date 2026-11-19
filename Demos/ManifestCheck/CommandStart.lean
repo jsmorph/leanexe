@@ -135,8 +135,8 @@ theorem start_ends {World : Type} {host : Host World} (world : Observed World)
   exact ⟨bound, fun fuel enough => ends_of_result (results fuel enough)⟩
 
 /-- The accepted exit of every run, under the premises of the generated `command.total`: a budget
-that fits the free memory of the command's initial store and bounds the heap that every prefix of
-`main` allocates, and a host that traps nowhere along `main` and its exit.  Every run of `_start`
+that fits between the initial heap's top and the memory's cap and bounds the heap that every prefix
+of `main` allocates, and a host that traps nowhere along `main` and its exit.  Every run of `_start`
 with enough fuel then ends with the accepted exit with a status of at most 77, after events that
 meet `Meets`. -/
 theorem total_meets {World : Type} {host : Host World} (world : Observed World)
