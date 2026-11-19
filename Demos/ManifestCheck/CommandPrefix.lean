@@ -261,9 +261,9 @@ theorem LinesSoFar.line {m : List UInt8} {p : Nat × List UInt8} {ls : List (Lis
     · exact absurd member' (wrote.no_open arguments reply)
   · exact opens arguments reply member'
 
-/-- The check of a line `p` of `m` followed by writes that offer the bytes of its output line after
-those that the writes before them took, and by no event or an exit that the host rejected, meets
-`LinesSoFar` for `p.2 :: ls`. -/
+/-- The check of a line `p` of `m` followed by writes that offer at least one byte each, the bytes
+of its output line after those that the writes before them took, and by no event or an exit that
+the host rejected, meets `LinesSoFar` for `p.2 :: ls`. -/
 theorem LinesSoFar.writing {m : List UInt8} {p : Nat × List UInt8} {ls : List (List UInt8)}
     {ok : Bool} {fileEvents writes tail : List Event} (member : p ∈ lines m)
     (check : FileCheck (p.2.drop 66) p.2 fileEvents ok)
@@ -506,9 +506,10 @@ theorem confined_of {World : Type} {host : Host World} {world after : World} {a 
     · obtain ⟨zero, accepted, -⟩ := opens arguments reply member
       exact absurd ⟨zero, accepted⟩ good
 
-/-- `SoFar` of the events of `confined_of` whose last part meets `HandledSoFar` and writes nothing
-to standard output, or follows a status of 0 and a manifest that the pure core accepts with the
-events of `ChecksSoFar` for its lines and events that write nothing to standard output. -/
+/-- `SoFar` of the events of `confined_of` whose last part meets `HandledSoFar` and either writes
+nothing to standard output or, after a status of 0 and a manifest that the pure core accepts, holds
+the events of `ChecksSoFar` for the manifest's lines followed by events that write nothing to
+standard output. -/
 theorem soFar_of {World : Type} {host : Host World} {world after : World} {a : ArgsResult}
     {pre opening post : List Event} {name manifest : List UInt8} {status : UInt64}
     (argsRun : Exec host args world pre (.returned a) after)
