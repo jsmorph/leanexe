@@ -645,8 +645,11 @@ give `command_letPair_spec_with` and `cost_command_letPair_spec_with`, with the 
 `Resource.letPairCost`, the copy of an owned pair that stays live.
 
 The [host specification](Wasi/HostSpec.lean) reserves the command's scratch bytes `[0, 16)`.  Input read regions and
-retained caller regions must lie apart from them.  Returned bytes have owned allocation roots,
-and their logical lengths may be smaller than the retained capacity after a short read.
+retained caller regions must lie apart from them.  The bytes of `readAll` have an owned
+allocation root, and their logical length may be smaller than the retained capacity.  A read of
+stdin fills the window of the buffer that it takes, and [the read command](Wasi/ReadCommand.lean)
+composes the take of the buffer, `wp_take_with`, which the `sys` commands share, with the read
+into the window, `wp_read_fill_with`.
 `hostSpecWith host calls` adds to the stream functions' `hostSpec host` the host's specification
 `sysContract host call` of each flat call, whose premise `SysRequest` admits a request that fits
 the call's parameters and that `Call.reject` accepts, whose inputs lie in memory, and whose
