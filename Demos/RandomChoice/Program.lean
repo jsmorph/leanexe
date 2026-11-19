@@ -15,15 +15,21 @@ digit `d` that would bring the value `v` to `10 v + d ≥ 2^64` counts as a bad 
 zero bytes does not wrap.
 
 `pick` accepts `w` when `n ≠ 0` and `w ≥ (0 - n) % n`, the word `2^64 mod n`, since
-`0 - n = 2^64 - n` in word arithmetic, and returns `w % n + 1`, at most `n`.  `choose`, a helper for
-the WASI command, pushes the nonzero picks of the little-endian words of a buffer, which the random
-histogram's `wordAt` reads, until it holds a given number of them.
+`0 - n = 2^64 - n` in word arithmetic, and returns `w % n + 1`, at most `n`.
 
 `render` computes the size of the text, `textSize`, builds an array of that many words, and folds
 `putLine` over the values, which writes the decimal digits of each value and a newline into the
 array, one byte to a word, from the position after the previous line.  It then builds the output
 buffer from the array.  The array is one block, written in place, so the generated bound charges
-its block once, where an array that grew by a push for each byte would be charged for each push. -/
+its block once, where an array that grew by a push for each byte would be charged for each push.
+
+`putPicks`, a function of the WASI command, writes the lines of the picks of the accepted
+little-endian words of a buffer, which the random histogram's `wordAt` reads, at most a given number
+of them, into a buffer that it takes as owned, from position 0, with `putLineBytes`, which writes
+each line with `Bytes.set`.  It returns
+the buffer, the number of bytes of the lines, and the number of picks.  Each `Bytes.set` updates
+the buffer that the loop's state carries, the last use of it, so the generated bound charges
+nothing. -/
 
 namespace Demos.RandomChoice
 
@@ -51,13 +57,6 @@ def parseArg (args : Bytes) (index : UInt64) : UInt64 :=
 def pick (n w : UInt64) : UInt64 :=
   if n != 0 && (0 - n) % n ≤ w then w % n + 1 else 0
 
-/-- The picks of the accepted little-endian words of `bytes` for the range [1, n], in order, at most
-`limit` of them.  The random histogram's `wordAt` reads each word. -/
-def choose (n : UInt64) (bytes : Bytes) (limit : UInt64) : Array UInt64 :=
-  LeanExe.loop (bytes.size / 8) (#[] : Array UInt64) fun j picks =>
-    let v := pick n (RandomHistogram.wordAt bytes (8 * j))
-    if v != 0 && picks.size.toUInt64 < limit then picks.push v else picks
-
 /-- The number of bytes of the lines of `values`: the digits of each value and a newline. -/
 def textSize (values : Array UInt64) : UInt64 :=
   values.foldl (fun total v => total + digitCount v + 1) 0
@@ -74,5 +73,22 @@ def render (values : Array UInt64) : Bytes :=
   let filled := values.foldl (fun s v => (putLine s.1 s.2 v, s.2 + digitCount v + 1))
     (LeanExe.build total fun _ => (0 : UInt64), (0 : UInt64))
   Bytes.build total fun i => filled.1[i.toNat]!
+
+/-- `text` with the line of `v`, its decimal digits and a newline, written from position `pos` with
+`Bytes.set`, which leaves `text` unchanged past its end. -/
+def putLineBytes (text : Bytes) (pos v : UInt64) : Bytes :=
+  let len := digitCount v
+  (LeanExe.loop len text fun k t => t.set (pos + k) (digitByte v (len - 1 - k))).set (pos + len) 10
+
+/-- `out` with the lines of the picks of the accepted little-endian words of `draw` for the range
+[1, n], at most `limit` of them, written from position 0, the number of bytes of those lines, and
+the number of picks. -/
+def putPicks (out : Bytes) (n : UInt64) (draw : Bytes) (limit : UInt64) :
+    Bytes × UInt64 × UInt64 :=
+  LeanExe.loop (draw.size / 8) (out, (0 : UInt64), (0 : UInt64)) fun j s =>
+    let v := pick n (RandomHistogram.wordAt draw (8 * j))
+    if v != 0 && s.2.2 < limit then
+      (putLineBytes s.1 s.2.1 v, s.2.1 + digitCount v + 1, s.2.2 + 1)
+    else (s.1, s.2.1, s.2.2)
 
 end Demos.RandomChoice

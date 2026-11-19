@@ -114,7 +114,7 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
   | _, _, .build count elem, live, _, k | _, _, .bytesBuild count elem, live, _, k =>
     let all := fun i => live i || elem.uses (i + 1)
     count.demands all false k || elem.demands (shift 1 all) false (k + 1)
-  | _, _, .set x i v, live, _, k =>
+  | _, _, .set x i v, live, _, k | _, _, .bytesSet x i v, live, _, k =>
     (k == x.index && !live k) || i.demands (fun j => live j || v.uses j || j == x.index) false k ||
       v.demands (fun j => live j || j == x.index) false k
   | _, _, .push x v, live, _, k =>

@@ -91,6 +91,8 @@ import Demos.ManifestCheck.Spec
 import Demos.ManifestCheck.Samples
 import Demos.RandomChoice.Spec
 import Demos.RandomChoice.Samples
+import Demos.RandomChoice.PicksSpec
+import Demos.RandomChoice.PicksSamples
 import Examples.Axpy.Cases
 import Examples.Bools.Cases
 import Examples.Bucket.Cases
@@ -623,6 +625,11 @@ def portCases : IO Unit := do
     IO.println s!"randomChoice|render|bytes|{arrayArg values}|\
       {HeapSums.hex (_root_.Demos.RandomChoice.renderSpec values)}|\
       {if values.isEmpty then 1 else 2}"
+  -- The moved buffer becomes the result's block, and the draw's block stays the host's.
+  for (out, n, draw, limit) in _root_.Demos.RandomChoice.putPicksSamples do
+    let r := _root_.Demos.RandomChoice.putPicksSpec (out, n, draw, limit)
+    IO.println s!"randomChoice|putPicks|list:bytes,i64,i64|bytes:{HeapSums.hex out} i64:{n} \
+      bytes:{HeapSums.hex draw} i64:{limit}|{HeapSums.hex r.1} {r.2.1} {r.2.2}|2"
   for (a, x, y) in _root_.Examples.Axpy.samples do
     IO.println s!"axpy|axpy|f64|{floatArg a} {floatArg x} {floatArg y}|\
       {(_root_.Examples.Axpy.axpy a x y).toBits}|0|0"

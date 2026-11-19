@@ -1,6 +1,7 @@
 import Demos.RandomHistogram.CommandStart
 import Demos.RandomHistogram.Compiled
 import Verified.Examples.WasiSysTotal
+import Verified.Wasi.BudgetTactics
 
 /-! The resource model's charge of the random-residue histogram's `main`, the budget that the
 generated `command.start` without guest traps and `command.total` take as a bound on every prefix
@@ -17,7 +18,9 @@ and updates the counts in place.  The charge of `main` holds the block of `args`
 initial counts and buffer, and the charge of `render`.  `writeAll` charges nothing
 (`writeAll_bounded`): it computes the window of the output in words, and each of its passes writes
 a window of the output, which it borrows, in place.  `loop_bounded` of
-`Verified/Wasi/ResourceRules.lean` bounds the draw loop and the loop of `writeAll`.
+`Verified/Wasi/ResourceRules.lean` bounds the draw loop and the loop of `writeAll`, and the tactics
+of `Verified/Wasi/BudgetTactics.lean` apply the rules of the other commands, with the charges of
+`parseN`, `tally`, and `render` as the local simp set `charge_eqs`.
 
 `budget_fits` states that the budget fits the 4,096 pages of the native executable above the
 heap's start at byte 4,096.  Linux 4.13 and later limit the strings and pointers of `argv` and
@@ -43,28 +46,6 @@ def budget : Nat := Bytes.allocationCost argsLimit + 21416
 theorem budget_fits : 4096 + budget ≤ 65536 * 4096 := by decide
 
 /-! ## Facts about the reflected program -/
-
-open Lean Meta in
-/-- The value at `index` of an environment given as a chain of `Env.cons`. -/
-private partial def envValueAt (env : Lean.Expr) (index : Nat) : MetaM (Option Lean.Expr) := do
-  match (← whnfD env).getAppFnArgs with
-  | (``Env.cons, #[_, _, value, rest]) =>
-    if index == 0 then return some value else envValueAt rest (index - 1)
-  | _ => return none
-
-open Lean Meta Simp in
-/-- Reads `Env.get env (Var.ofIndex Γ i h)` as the `i`-th value of `env` when `env` is a chain of
-`Env.cons`, a definitional step. -/
-dsimproc_decl envGet (Env.get _ (Var.ofIndex _ _ _)) := fun e => do
-  let (``Env.get, #[_, _, env, reference]) := e.getAppFnArgs | return .continue
-  let (``Var.ofIndex, #[_, _, index, _]) := reference.getAppFnArgs | return .continue
-  let some index := index.rawNatLit? <|> index.nat? | return .continue
-  let some value ← envValueAt env index | return .continue
-  return .done value
-
-private theorem ite_cost {c : Prop} {decision : Decidable c} {cost branch total : Nat}
-    (bound : cost + branch ≤ total) : cost + @ite Nat c decision branch branch ≤ total := by
-  cases decision <;> exact bound
 
 /-- `parseN` allocates nothing. -/
 theorem parseN_charge (env : Env [Ty.bytes]) :
@@ -108,6 +89,8 @@ theorem render_charge (counts : Array UInt64) :
     ((PureContext.ofProg command.pure.program command.pure.funs).callBounds 0).get FVar.here
       (Env.cons counts Env.nil) = command.pureSources.render.bound counts :=
   rfl
+
+attribute [local charge_eqs] parseN_charge tally_charge render_charge
 
 /-- The command's `render` charges at most 17,136 bytes, as the pure core's does. -/
 theorem render_bound_command (counts : Array UInt64) :
@@ -238,73 +221,6 @@ theorem returns_fact {World : Type} {pureSigs : List Sig} {effectSigs : List Eff
 
 /-! ## The budget of `main` -/
 
-/-- Proves a bound on the charge of an expression: evaluates its liveness tests, reads its
-variables, and leaves the copies to `omega`. -/
-local macro "charge" : tactic => `(tactic|
-  (simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.loopInitCost,
-      PureContext.loopCountCost, PureContext.loopTestCost, PureContext.argumentCost, Expr.allocs,
-      Var.cost, Var.ownedCost, Expr.ownedCost, Expr.mode, coerceCost, Ty.copyCost, envGet,
-      Expr.denote, Args.get_cons_zero', Args.get_cons_zero, Args.get_cons_succ, Env.ofFn, argsSum,
-      callCredits, ResultTy.bindEnv, loopEnv, loopModes, letPairEnv, letPairModes, modeAt,
-      sysTakeLive, List.get_cons_zero, List.get_cons_succ', parseN_charge, tally_charge,
-      render_charge, allocCost, Elem.width, sumBelow, UInt64.reduceToNat, Nat.add_zero,
-      Nat.zero_add, ↓reduceIte, ite_self] <;>
-   omega))
-
-/-- Proves a bound on the charge of the loop's initial state, whose buffer of 4,096 bytes `charge`
-would unfold byte by byte: sums the constant charge of its bytes with `sumBelow_const`. -/
-local macro "init_charge" : tactic => `(tactic|
-  (simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.loopInitCost,
-      PureContext.loopCountCost, PureContext.argumentCost, Expr.allocs, Var.cost, Var.ownedCost,
-      Expr.ownedCost, Expr.mode, coerceCost, Ty.copyCost, envGet, Expr.denote, Args.get_cons_zero',
-      Args.get_cons_zero, Args.get_cons_succ, Env.ofFn, argsSum, callCredits, ResultTy.bindEnv,
-      letPairEnv, letPairModes, modeAt, parseN_charge, allocCost, Elem.width, sumBelow_const,
-      UInt64.reduceToNat, Nat.add_zero, Nat.zero_add, Nat.mul_zero, ↓reduceIte, ite_self] <;>
-   omega))
-
-/-- Proves the frames of an expression that calls no function that takes the call depth. -/
-local macro "fits" : tactic => `(tactic| exact Expr.fits_of_depthCalls _ _ _ (by decide) _)
-
-/-- Proves `Bounded` of a `ret`. -/
-local macro "ret_bound" : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   exact rule (by charge) (by fits)))
-
-/-- Proves `Bounded` of a `write`, which charges nothing. -/
-local macro "write_bound" : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   exact rule))
-
-/-- Reduces `Bounded` of a `bind` to its parts with the budgets `first` and `next`. -/
-local macro "bind_bound " first:term:max next:term:max : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   refine rule $first $next (by omega) ?_ ?_))
-
-/-- Proves `Bounded` of a `sys` command whose call charges nothing and whose take moves its
-buffer or has none. -/
-local macro "sys_bound" : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   exact rule (fun _ _ _ _ _ => by simp only [sysCost, PureContext.sysTakeCost]; charge)
-     (fun _ _ _ _ _ => by simp only [sysCost, PureContext.sysTakeCost]; charge)))
-
-/-- Proves `Bounded` of a command of `bind`s, `ret`s, and `sys` commands that charge nothing. -/
-local macro "free_bound" : tactic => `(tactic|
-  (repeat (first
-    | (apply bounded_of_rule; intro _ _ rule; refine rule 0 0 (by omega) ?_ ?_)
-    | (intro _ _)
-    | ret_bound
-    | sys_bound)))
-
-/-- Reduces `Bounded` of an `ite` to its branches with the budget `branch` for each. -/
-local macro "ite_bound " branch:term:max : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   refine rule $branch $branch (ite_cost (by charge)) (by fits) (fun _ => ?_) (fun _ => ?_)))
-
 /-- `writeAll` charges nothing: it computes the window of its buffer in words, and each of its
 passes binds the window of the bytes that remain and writes it from the borrowed buffer. -/
 theorem writeAll_bounded {World : Type} {host : Host World} {depth : UInt64}
@@ -312,37 +228,37 @@ theorem writeAll_bounded {World : Type} {host : Host World} {depth : UInt64}
     Bounded host (.ofProg command.pure.program command.pure.funs) .nil depth
       (entryModes command.writeAll.func.params command.writeAll.func.modes) (fun _ => false)
       command.writeAll.func.body env 0 := by
-  bind_bound 0 0
-  · ret_bound
+  rule_bind 0 0
+  · rule_ret
   intro _ _
-  bind_bound 0 0
-  · ret_bound
+  rule_bind 0 0
+  · rule_ret
   intro _ _
   apply bounded_of_rule
   intro _ _ rule
-  refine rule 0 (by charge) ?_ ?_
+  refine rule 0 (by rule_charge) ?_ ?_
   · simp only [PureContext.loopInitFits, Bool.and_eq_true]
     exact ⟨Expr.fits_of_depthCalls _ _ _ (by decide) _,
       Expr.fits_of_depthCalls _ _ _ (by decide) _⟩
   refine LoopBounded.mono (loop_bounded (type := .word) (t := 0) (s := 0)
     (fun _ : UInt64 => True) ?_ ?_ ?_ ?_ _ _ _ trivial) ?_
   · intro index written _
-    charge
+    rule_charge
   · intro index written _
     exact Expr.fits_of_depthCalls _ _ _ (by decide) _
   · intro index written _
-    bind_bound 0 0
-    · bind_bound 0 0
-      · ret_bound
+    rule_bind 0 0
+    · rule_bind 0 0
+      · rule_ret
       · intro _ _
-        bind_bound 0 0
-        · ret_bound
+        rule_bind 0 0
+        · rule_ret
         · intro _ _
-          write_bound
+          rule_write
     · intro _ _
-      ite_bound 0
-      · ret_bound
-      · ret_bound
+      rule_ite 0
+      · rule_ret
+      · rule_ret
   · intro _ _ _ _ _
     trivial
   · simp
@@ -361,7 +277,7 @@ theorem body_bounded {World : Type} {host : Host World}
     bound (Nat.le_refl (Bytes.allocationCost argsLimit))
   unfold budget
   generalize Bytes.allocationCost argsLimit = A at reported ⊢
-  bind_bound A 21416
+  rule_bind A 21416
   · apply bounded_of_rule
     intro _ _ rule
     exact rule reported.1 reported.2
@@ -370,36 +286,36 @@ theorem body_bounded {World : Type} {host : Host World}
   letPair_free
   apply bounded_of_rule
   intro _ _ rule
-  refine rule 21416 21416 (ite_cost (by charge)) (by fits) (fun _ => ?_)
+  refine rule 21416 21416 (ite_cost (by rule_charge)) (by rule_fits) (fun _ => ?_)
     (fun _ => ?_)
-  · ret_bound
-  bind_bound 0 21416
-  · ret_bound
+  · rule_ret
+  rule_bind 0 21416
+  · rule_ret
   intro n returnedN
-  ite_bound 21416
-  · ret_bound
-  bind_bound 4280 17136
+  rule_ite 21416
+  · rule_ret
+  rule_bind 4280 17136
   · apply bounded_of_rule
     intro _ _ rule
-    refine rule 0 (by init_charge) ?_ ?_
+    refine rule 0 (by rule_init_charge) ?_ ?_
     · simp only [PureContext.loopInitFits, Bool.and_eq_true]
       exact ⟨Expr.fits_of_depthCalls _ _ _ (by decide) _,
         Expr.fits_of_depthCalls _ _ _ (by decide) _⟩
     refine LoopBounded.mono (loop_bounded (type := stateTy) (t := 0) (s := 0)
       (fun _ => True) ?_ ?_ ?_ ?_ _ _ _ trivial) ?_
     · intro index state _
-      charge
+      rule_charge
     · intro index state _
       exact Expr.fits_of_depthCalls _ _ _ (by decide) _
     · intro index state _
       obtain ⟨counts, buffer, left, errno⟩ := state
       letPair_free
-      free_bound
+      rule_free
       obtain ⟨randomErrno, randomCount, randomBuffer⟩ := ‹UInt64 × UInt64 × LeanExe.Bytes›
       letPair_free
-      ite_bound 0
-      · ret_bound
-      · ret_bound
+      rule_ite 0
+      · rule_ret
+      · rule_ret
     · intro _ _ _ _ _
       trivial
     · simp
@@ -407,18 +323,18 @@ theorem body_bounded {World : Type} {host : Host World}
   obtain ⟨counts, buffer, left, errno⟩ := drawn
   have renderBound := render_bound_command counts
   letPair_free
-  ite_bound 17136
-  · ret_bound
-  bind_bound 17136 0
-  · ret_bound
+  rule_ite 17136
+  · rule_ret
+  rule_bind 17136 0
+  · rule_ret
   intro output returnedOutput
-  bind_bound 0 0
+  rule_bind 0 0
   · apply bounded_of_rule
     intro _ _ rule
-    exact rule 0 (by charge) rfl (callBounded_here (by decide) (writeAll_bounded _))
+    exact rule 0 (by rule_charge) rfl (callBounded_here (by decide) (writeAll_bounded _))
   · intro _ _
     apply bounded_of_rule
     intro _ _ rule
-    exact rule (by charge) (by fits)
+    exact rule (by rule_charge) (by rule_fits)
 
 end Demos.RandomHistogram

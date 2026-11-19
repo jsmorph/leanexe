@@ -103,7 +103,8 @@ tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/ExitModel.lean
 if "$foundations_only"; then exit 0; fi
 tools/leanrun --timeout 30m --log build/wasi/byte-values.log lake build \
-  Verified.Examples.Bytes Verified.Examples.Literals Verified.ProgramLiterals
+  Verified.Examples.Bytes Verified.Examples.BytesSet Verified.Examples.Literals \
+  Verified.ProgramLiterals
 tools/leanrun --timeout 5m lake env lean tests/wasi/Bytes.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Literals.lean
 tools/leanrun --timeout 5m lake env lean tests/decoder/TableProfile.lean
@@ -113,6 +114,9 @@ out="$root/build/wasi"
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean Verified.Examples.Bytes \
   Verified.Examples.Bytes.compiled.module "$out/bytes.wasm"
 wasm-tools validate "$out/bytes.wasm"
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean Verified.Examples.BytesSet \
+  Verified.Examples.BytesSet.compiled.module "$out/bytes-set.wasm"
+wasm-tools validate "$out/bytes-set.wasm"
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean Verified.Examples.Literals \
   Verified.Examples.Literals.compiled.module "$out/literals.wasm"
 wasm-tools validate "$out/literals.wasm"
@@ -138,6 +142,7 @@ check_cases() {
 }
 
 check_cases "$out/bytes.wasm" "$root/tests/wasi/bytes.tsv" Byte
+check_cases "$out/bytes-set.wasm" "$root/tests/wasi/bytes-set.tsv" "Byte update"
 check_cases "$out/literals.wasm" "$root/tests/wasi/literals.tsv" Literal
 
 count=0

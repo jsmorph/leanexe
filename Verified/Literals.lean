@@ -29,7 +29,8 @@ def Expr.literals : {Γ : List Ty} → {t : Ty} → Expr S Γ t → List Bytes.L
     (List.ofFn fun i => (args i).literals).flatten ++ body.literals
   | _, _, .get _ index | _, _, .bytesGet _ index | _, _, .eraseAt _ index => index.literals
   | _, _, .build count elem | _, _, .bytesBuild count elem => count.literals ++ elem.literals
-  | _, _, .set _ index value | _, _, .insertAt _ index value => index.literals ++ value.literals
+  | _, _, .set _ index value | _, _, .insertAt _ index value | _, _, .bytesSet _ index value =>
+    index.literals ++ value.literals
   | _, _, .push _ value => value.literals
   | _, _, .treeNode _ _ words arrays buffers children =>
     (List.ofFn fun i => (words i).literals).flatten ++

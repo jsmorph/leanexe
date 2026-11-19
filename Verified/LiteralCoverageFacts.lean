@@ -104,6 +104,10 @@ theorem Expr.covered_set {e : Elem} {x : Var Γ (.array e)} {index : Expr S Γ .
     {value : Expr S Γ (.elem e)} (h : (Expr.set x index value).Covered pool) :
     index.Covered pool ∧ value.Covered pool := List.append_subset.mp h
 
+theorem Expr.covered_bytesSet {x : Var Γ .bytes} {index value : Expr S Γ .word}
+    (h : (Expr.bytesSet x index value).Covered pool) :
+    index.Covered pool ∧ value.Covered pool := List.append_subset.mp h
+
 theorem Expr.covered_insertAt {e : Elem} {x : Var Γ (.array e)} {index : Expr S Γ .word}
     {value : Expr S Γ (.elem e)} (h : (Expr.insertAt x index value).Covered pool) :
     index.Covered pool ∧ value.Covered pool := List.append_subset.mp h

@@ -454,7 +454,7 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
       · exact Or.inr h1
   | build _ _ _ _ | bytesBuild _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ | insertAt _ _ _ _ _
   | eraseAt _ _ _ | treeNil _ _ | treeNode _ _ _ _ _ _ | treeCase _ _ _ | bytesEmpty
-  | bytesLiteral _ =>
+  | bytesLiteral _ | bytesSet _ _ _ _ _ =>
     intro _ _; simp [Expr.aborts]
   | _ => intro modes h; simp [Expr.mode] at h
 

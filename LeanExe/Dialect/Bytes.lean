@@ -18,9 +18,25 @@ def get (bytes : Bytes) (index : UInt64) : UInt64 :=
 def build (count : UInt64) (element : UInt64 → UInt64) : Bytes :=
   ⟨⟨Array.ofFn (n := count.toNat) fun i => (element (UInt64.ofNat i)).toUInt8⟩⟩
 
+/-- `buffer` with byte `index` replaced by the low eight bits of `byte`, or `buffer` unchanged when
+`index` is not below its size, as `Array.set!` leaves an array.  The verified compiler writes the
+byte in the buffer's block when the buffer is owned and dies at the update, and in a copy of the
+buffer otherwise, as it does for `set!` of an array. -/
+def set (buffer : Bytes) (index byte : UInt64) : Bytes :=
+  if h : index.toNat < buffer.data.size then ⟨buffer.data.set index.toNat byte.toUInt8 h⟩
+  else buffer
+
 @[simp] theorem data_size_build (count : UInt64) (element : UInt64 → UInt64) :
     (build count element).data.size = count.toNat := by
   simp [build, ByteArray.size]
+
+@[simp] theorem data_size_set (buffer : Bytes) (index byte : UInt64) :
+    (set buffer index byte).data.size = buffer.data.size := by
+  unfold set
+  split
+  · rename_i h
+    exact Array.size_set (h := h)
+  · rfl
 
 @[simp] theorem size_empty : size empty = 0 := rfl
 

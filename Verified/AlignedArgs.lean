@@ -72,7 +72,7 @@ theorem place_specX {strict : Bool} {Γ : List Ty} {env : Env Γ} {slots : List 
   | _, .bytesEmpty, hp, _, _, _, _, _ | _, .bytesLiteral _, hp, _, _, _, _, _
   | _, .bytesSize _, hp, _, _, _, _, _
   | _, .bytesGet _ _, hp, _, _, _, _, _
-  | _, .bytesBuild _ _, hp, _, _, _, _, _
+  | _, .bytesBuild _ _, hp, _, _, _, _, _ | _, .bytesSet _ _ _, hp, _, _, _, _, _
   | _, .leSize _ _, hp, _, _, _, _, _
   | _, .build _ _, hp, _, _, _, _, _ | _, .set _ _ _, hp, _, _, _, _, _
   | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _

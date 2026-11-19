@@ -263,6 +263,23 @@ theorem spec_set (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
       (fun env slots paid live => CodeSpecX.false_iff.mpr (vSpec env slots paid live)) env slots
       paid live)
 
+/-- `x.set i v` of a buffer: the position in local `base`, the value in local `base + 1`, the
+buffer as owned, with its root in local `base + 2` and its length in local `base + 3`, which is
+`x`'s own block when `x` is owned and dies, and, when the position is below the length, the write
+of the value's low byte at the root plus the position. -/
+theorem spec_bytesSet (hm : Runtime m) {Γ' : List Ty} (x : Var Γ' .bytes) {i v : Expr S Γ' .word}
+    (iSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv i env
+      slots paid live)
+    (vSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv v env
+      slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv
+      (Expr.bytesSet x i v) env slots paid live :=
+  fun env slots paid live =>
+    CodeSpecX.false_iff.mp (specX_bytesSet (strict := false) (copyCodeX hm) x
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (iSpec env slots paid live))
+      (fun env slots paid live => CodeSpecX.false_iff.mpr (vSpec env slots paid live)) env slots
+      paid live)
+
 theorem spec_leSize (hm : Runtime m) {Γ' : List Ty} {e : Elem}
     (x : Var Γ' (.array e)) (i : Var Γ' .word) :
     ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv

@@ -395,8 +395,9 @@ elements of the array variable `x` as a word.  `fold x init body` folds over eve
 The compiled fold uses the represented array's word-sized length.  `get x i` is element `i`
 of `x`, or the element type's default value when `i` is not below the size, as Lean's
 `x[i.toNat]!` gives.  `leSize x i` compares word variable `i` with the full logical length of `x`.
-`build count elem` is `LeanExe.build`: the array of `count` elements whose element `i` is the
-value of `elem` with `i` as variable 0.  `set x i v` is `x.set! i.toNat v`: the array of `x` with
+`bytesSet x i v` is `Bytes.set`: the bytes of `x` with byte `i` replaced by the low eight bits
+of `v`, or `x` when `i` is not below the size.  `build count elem` is `LeanExe.build`: the array
+of `count` elements whose element `i` is the value of `elem` with `i` as variable 0.  `set x i v` is `x.set! i.toNat v`: the array of `x` with
 element `i` replaced by `v`, or `x` when `i` is not below the size.  `push x v` is `x.push v`,
 `append x y` is `x ++ y`, `insertAt x i v` is `LeanExe.insertAt`, the array of `x` with `v`
 inserted at position `i`, or `x` when `i` is past the size, and `eraseAt x i` is
@@ -444,6 +445,7 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | bytesSize (x : Var Γ .bytes) : Expr S Γ .word
   | bytesGet (x : Var Γ .bytes) (index : Expr S Γ .word) : Expr S Γ .word
   | bytesBuild (count : Expr S Γ .word) (elem : Expr S (.word :: Γ) .word) : Expr S Γ .bytes
+  | bytesSet (x : Var Γ .bytes) (index value : Expr S Γ .word) : Expr S Γ .bytes
   | leSize (x : Var Γ (.array e)) (i : Var Γ .word) : Expr S Γ .bool
   | get (x : Var Γ (.array e)) (i : Expr S Γ .word) : Expr S Γ (.elem e)
   | build (count : Expr S Γ .word) (elem : Expr S (.word :: Γ) (.elem e)) : Expr S Γ (.array e)
@@ -581,6 +583,8 @@ def Expr.denote (funs : Funs S) :
   | _, _, .bytesGet x index, env => (env.get x).get (index.denote funs env)
   | _, _, .bytesBuild count elem, env =>
     LeanExe.Bytes.build (count.denote funs env) fun i => elem.denote funs (.cons i env)
+  | _, _, .bytesSet x index value, env =>
+    (env.get x).set (index.denote funs env) (value.denote funs env)
   | _, _, .leSize x i, env => decide ((env.get i).toNat ≤ (env.get x).size)
   | _, _, .get x i, env => (env.get x)[(i.denote funs env).toNat]!
   | _, _, .build count elem, env =>
@@ -615,9 +619,9 @@ def ListFold.bodyLive (e : Elem) (captures : List Ty) (i : Nat) : Bool :=
   argsAny fun j => (i + 1) == (ListFold.nextVar e captures j).index
 
 /-- Whether the code of an expression may trap: whether it builds, updates, or extends an array,
-which may allocate, or calls a function that may trap, whose code takes the call depth, which traps
-at the depth limit, that returns arrays, or that owns a parameter, whose argument the call may
-copy, since only these allocate. -/
+or builds or updates a buffer, which may allocate, or calls a function that may trap, whose code
+takes the call depth, which traps at the depth limit, that returns arrays, or that owns a
+parameter, whose argument the call may copy, since only these allocate. -/
 def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .float _ | _, _, .float32 _ => false
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
@@ -644,7 +648,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .bytesEmpty | _, _, .bytesLiteral _ => true
   | _, _, .bytesSize _ => false
   | _, _, .bytesGet _ index => index.aborts
-  | _, _, .bytesBuild _ _ => true
+  | _, _, .bytesBuild _ _ | _, _, .bytesSet _ _ _ => true
   | _, _, .get _ i => i.aborts
   | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _
   | _, _, .insertAt _ _ _ | _, _, .eraseAt _ _ => true
@@ -676,6 +680,7 @@ def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .bytesEmpty | _, _, .bytesLiteral _ | _, _, .bytesSize _ => false
   | _, _, .bytesGet _ index => index.depthCalls
   | _, _, .bytesBuild count elem => count.depthCalls || elem.depthCalls
+  | _, _, .bytesSet _ index value => index.depthCalls || value.depthCalls
   | _, _, .get _ i => i.depthCalls
   | _, _, .build count elem => count.depthCalls || elem.depthCalls
   | _, _, .set _ i v | _, _, .insertAt _ i v => i.depthCalls || v.depthCalls
@@ -729,6 +734,7 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .bytesSize x, i => i == x.index
   | _, _, .bytesGet x index, i => i == x.index || index.uses i
   | _, _, .bytesBuild count elem, i => count.uses i || elem.uses (i + 1)
+  | _, _, .bytesSet x index value, i => i == x.index || index.uses i || value.uses i
   | _, _, .leSize x k, i => i == k.index || i == x.index
   | _, _, .get x k, i => i == x.index || k.uses i
   | _, _, .build count elem, i => count.uses i || elem.uses (i + 1)
@@ -783,6 +789,7 @@ def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .bytesSize x => 1 <<< x.index
   | _, _, .bytesGet x index => 1 <<< x.index ||| index.useMask
   | _, _, .bytesBuild count elem => count.useMask ||| elem.useMask >>> 1
+  | _, _, .bytesSet x index value => 1 <<< x.index ||| index.useMask ||| value.useMask
   | _, _, .leSize x i => (1 <<< i.index) ||| (1 <<< x.index)
   | _, _, .get x k => 1 <<< x.index ||| k.useMask
   | _, _, .build count elem => count.useMask ||| elem.useMask >>> 1
@@ -894,6 +901,7 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .bytesEmpty | _, _, .bytesLiteral _ | _, _, .bytesSize _ => true
   | _, _, .bytesGet _ index => index.placeArgs
   | _, _, .bytesBuild count elem => count.placeArgs && elem.placeArgs
+  | _, _, .bytesSet _ index value => index.placeArgs && value.placeArgs
   | _, _, .build count elem => count.placeArgs && elem.placeArgs
   | _, _, .set _ i v | _, _, .insertAt _ i v => i.placeArgs && v.placeArgs
   | _, _, .eraseAt _ i => i.placeArgs
@@ -995,7 +1003,7 @@ theorem recordsJoin_at : ∀ {n : Nat} (modes : Fin n → Mode) (init : Mode) (i
 
 /-- The mode of an expression's value, given the modes of the variables: owned when it holds
 arrays that its holder must consume, which a call's result, a built, updated, or extended array, a
-moved or copied variable, and a join of an owned value do. -/
+built or updated buffer, a moved or copied variable, and a join of an owned value do. -/
 def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Mode
   | _, _, .var x => modes.getD x.index .borrowed
   | _, _, .ite _ thenE elseE => (thenE.mode modes).join (elseE.mode modes)
@@ -1010,7 +1018,8 @@ def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t 
   | _, _, .fold _ init body =>
     (init.mode modes).join (body.mode (.borrowed :: .borrowed :: .borrowed :: modes))
   | _, _, .treeNil _ _ | _, _, .treeNode _ _ _ _ _ _ => .owned
-  | _, _, .bytesEmpty | _, _, .bytesLiteral _ | _, _, .bytesBuild _ _ => .owned
+  | _, _, .bytesEmpty | _, _, .bytesLiteral _ | _, _, .bytesBuild _ _
+  | _, _, .bytesSet _ _ _ => .owned
   | _, _, .treeCase (shape := shape) x empty nodes =>
     recordsJoin (fun r => (nodes r).mode (shape.modes r (modes.getD x.index .borrowed) modes))
       (if h : shape.hasNull = true then (empty h).mode modes else .borrowed)

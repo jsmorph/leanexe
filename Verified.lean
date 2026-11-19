@@ -82,6 +82,7 @@ import Verified.Examples.Loops
 import Verified.Examples.Arrays
 import Verified.Examples.Owned
 import Verified.Examples.Bytes
+import Verified.Examples.BytesSet
 import Verified.Examples.Updates
 import Verified.Examples.Grow
 import Verified.Examples.Modes
@@ -109,6 +110,7 @@ import Examples.Verified
 import Verified.Examples.Forms
 import Verified.Examples.Patterns
 import Verified.Wasi
+import Verified.Wasi.BudgetTactics
 import Verified.Examples.Literals
 import Verified.ProgramLiterals
 import Verified.Examples.WasiDepth

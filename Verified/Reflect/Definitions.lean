@@ -3287,6 +3287,28 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       boundOf (← app.finish)
     let fits := formFits c ``bytesGet_fits [(`x, x), (`i, ri.src)] [(`hi, ri)]
     return ⟨src, ← mkAppM ``bytesGet_eq #[x, ri.proof], .word, e, bound, fits, none⟩
+  | ``LeanExe.Bytes.set, #[bytes, index, value] =>
+    let bytes ← projReduce bytes
+    unless bytes.isFVar do
+      return ← reflectAs (← withLetDecl `bytes (← inferType bytes) bytes fun buffer =>
+        mkLetFVars #[buffer] (mkApp3 e.getAppFn buffer index value)) e
+    let (x, .bytes) ← varOf c bytes
+      | throwError "verified_compile: {bytes} is not a byte variable"
+    let ri ← reflect c index
+    let rv ← reflect c value
+    let src ← mkAppOptM ``Expr.bytesSet
+      #[some c.sigs, some c.ctx, some x, some ri.src, some rv.src]
+    let bound : BoundBuilder := fun modes paid live => do
+      let bounds := c.tables.table false
+      let app ← LemmaApp.start ``bytesSet_bound (boundArgs c bounds modes paid live ++
+        [(`x, x), (`i, ri.src), (`v, rv.src)])
+      let _ ← app.child `hi ri.bound
+      let _ ← app.child `hv rv.bound
+      app.assign `hx (← varOwnedEq c modes live x .bytes bytes)
+      boundOf (← app.finish)
+    let fits := formFits c ``bytesSet_fits [(`x, x), (`i, ri.src), (`v, rv.src)]
+      [(`hi, ri), (`hv, rv)]
+    return ⟨src, ← mkAppM ``bytesSet_eq #[x, ri.proof, rv.proof], .bytes, e, bound, fits, none⟩
   | ``Nat.toUInt64, #[n] =>
     let (``Array.size, sizeArgs@#[_, xs]) := n.consumeMData.getAppFnArgs
       | throwError "verified_compile: unsupported term {e}"

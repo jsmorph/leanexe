@@ -385,7 +385,8 @@ and `letPair` value and of each `ite` result, two for each division or remainder
 index, and the state of each loop, the position of each read, the count, the address, and the
 index of each `build`, with the element's words and the position of its first word, the
 position, the value's words, the address, and the position of the first word of each `set`, the
-value's words and the scratch of each `push` and `append`, and the locals of each copy, on a path
+position, the value, the root, and the length of each `bytesSet`, the value's words and the
+scratch of each `push` and `append`, and the locals of each copy, on a path
 of the expression.  A call's arguments, a pair's components, and a tuple's components leave their
 words on the stack, so they share their locals. -/
 def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
@@ -424,6 +425,8 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .get _ i => max i.width 2
   | _, _, .build (e := e) count elem => max count.width (3 + max elem.width (e.width + 1))
   | _, _, .bytesBuild count elem => max count.width (3 + elem.width)
+  | _, _, .bytesSet _ index value =>
+    max index.width (max (1 + value.width) (2 + copyWidth .bytes))
   | _, _, .set (e := e) _ i v =>
     max i.width (max (1 + v.width) (1 + e.width + copyWidth (.array e)))
   | _, _, .push (e := e) _ v => max v.width (e.width + 7)
@@ -608,7 +611,11 @@ and writes each word; the outer variables that only the element reads stay live 
 and are released after it.  `set` keeps the position in local `base` and the value's words from
 local `base + 1` on, then takes the array as owned, in local `base + 1 + k`, and writes the
 element's words when the position is below the size: an owned array that dies there is updated in
-its own block, and any other is copied first.  `push` keeps the value's words from local `base` on
+its own block, and any other is copied first.  `bytesSet` keeps the position in local `base` and
+the value in local `base + 1`, takes the buffer as owned, with its root in local `base + 2` and its
+length in local `base + 3`, and writes the value's low byte at the root plus the position when the
+position is below the length: an owned buffer that dies there is updated in its own block, and any
+other is copied first.  `push` keeps the value's words from local `base` on
 and their count in local `base + k`, and `append` keeps the length of `y` in local `base`; both
 take the array `x` with `Var.roomCode`, which gives a block with room for the result, write the new
 words, and push the block's address.  `append` releases `y` after the copy when `y` is owned and
@@ -651,6 +658,15 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
       Bytes.buildCode base (base + 1) (base + 2)
         (elem.code (pool := pool) h (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (shift 1 all)) ++
       releaseWhere Γ slots (fun i => elem.usesFast (i + 1) && !live i)
+  | _, _, .bytesSet x index value =>
+    index.code (pool := pool) h slots base
+        (fun j => live j || j == x.index || value.usesFast j) ++ [.localSet base] ++
+      value.code (pool := pool) h slots (base + 1) (fun j => live j || j == x.index) ++
+      [.localSet (base + 1)] ++ x.ownedCode h slots (base + 2) live ++
+      [.localSet (base + 3), .localSet (base + 2), .localGet base, .localGet (base + 3), .ltUI64,
+        .iff 0 0 [.localGet (base + 2), .localGet base, .addI64, .wrapI64, .localGet (base + 1),
+          .wrapI64, .store8 0] [] [] [],
+        .localGet (base + 2), .localGet (base + 3)]
   | _, _, .treeNil _ _ => [.constI64 0]
   | _, _, .treeNode (shape := shape) r reuse words arrays buffers children =>
     let modes := slots.map Slot.mode

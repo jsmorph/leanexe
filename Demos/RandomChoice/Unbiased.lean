@@ -16,12 +16,14 @@ and sequences of words and assume no probability.
   `⌊2^64 / n⌋^K` sequences of `K` accepted words give `o`.
 - `accepted_count`, `accepted_half`: `n ≥ 1` accepts `2^64 - (2^64 mod n)` words, a multiple of
   `n`, and at least `2^63`.
-- `short_count`: for `M ≥ 4 K + 1024`, at most a `2^-512` part of the sequences of `M` words hold
-  fewer than `K` accepted words.
+- `short_count`: for `n ≥ 1` and `M ≥ 4 K + 1024`, at most a `2^-512` part of the sequences of `M`
+  words hold fewer than `K` accepted words.
 
-When the words are independent and uniform on [0, 2^64), the first two give the probability of
-each value and of each sequence of values, and the last bounds the probability that `M` words hold
-fewer than `K` accepted ones.  `short_count` follows the exponential moment bound: the sum of
+When the words are independent and uniform on [0, 2^64), the first two with `accepted_count` give
+the probability of each value and of each sequence of values given that the words are accepted,
+and the last bounds the probability that `M` words hold fewer than `K` accepted ones.  The
+probability of the command's output also needs the fact that the first `K` accepted words of such
+a stream are uniform on the accepted `K`-tuples, which no theorem here states.  `short_count` follows the exponential moment bound: the sum of
 `3^r` over the sequences, with `r` the number of rejected words of a sequence, is the `M`-th power
 of the sum over one word, at most `2^65`. -/
 
