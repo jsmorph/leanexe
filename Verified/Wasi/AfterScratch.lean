@@ -26,16 +26,16 @@ theorem After.ofValues {World : Type} {context : List Ty} {env : Env context}
       finalHeap finalStore finalLocals words :=
   ⟨after.step, after.frame.values, after.holds, after.rep, after.apart⟩
 
-theorem After.scratch {World : Type} {context : List Ty} {env : Env context}
+theorem After.low {World : Type} {context : List Ty} {env : Env context}
     {slots : List Slot} {liveIn live : Nat → Bool} {base : Nat}
     {heap finalHeap : Heap} {store finalStore : Store World} {locals finalLocals : Locals}
     {result : ResultTy} {value : result.denote} {words : List Value}
     (after : After env slots liveIn live base heap store locals result value
       finalHeap finalStore finalLocals words)
     (vars : Holds env slots liveIn base heap (PureTransport.erase store) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true) :
-    Holds.ApartFrom env slots live (PureTransport.erase finalStore) finalLocals ABI.scratch := by
+    Holds.ApartFrom env slots live (PureTransport.erase finalStore) finalLocals ABI.low := by
   refine Holds.ApartFrom.transfer vars (apart.mono selected) after.step after.frame selected ?_
   intro type x hLive values held width region member
   exact ⟨vars.keepDying selected hLive held width region member,
@@ -48,7 +48,7 @@ theorem After.keepDying {World : Type} {context : List Ty} {env : Env context}
     (after : After env slots liveIn live base heap store locals result value
       finalHeap finalStore finalLocals words)
     (vars : Holds env slots liveIn base heap (PureTransport.erase store) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (used : ∀ i, selectedIn i = true → selectedOut i = false → live i = true)
     (kept : Holds.KeepDying env slots selectedIn selectedOut
@@ -70,16 +70,16 @@ theorem After.pool_safe {World : Type} {context : List Ty} {env : Env context}
       finalHeap finalStore finalLocals words)
     (safe : pool.Safe env slots liveIn heap (PureTransport.erase store) locals)
     (vars : Holds env slots liveIn base heap (PureTransport.erase store) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch) :
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low) :
     pool.Safe env slots live finalHeap (PureTransport.erase finalStore) finalLocals ∧
       ∀ region ∈ pool.regions,
         ∀ block ∈ result.fresh (PureTransport.erase finalStore) words value,
           regionsDisjoint region block := by
   have kept : ∀ region ∈ pool.regions,
       Holds.KeepDying env slots liveIn live (PureTransport.erase store) locals region ∧
-        regionsDisjoint region ABI.scratch :=
+        regionsDisjoint region ABI.low :=
     fun region member =>
       ⟨(safe.apart region member).mono (fun i hIn _ => ⟨hIn, rfl⟩), poolApart region member⟩
   obtain ⟨static, fresh⟩ := safe.static.step after.step kept
@@ -94,7 +94,7 @@ theorem After.thenUnit {World : Type} {context : List Ty} {env : Env context}
     {locals middleLocals finalLocals : Locals} {result : ResultTy}
     {value : result.denote} {words : List Value}
     (vars : Holds env slots liveIn base heap (PureTransport.erase store) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.low)
     (first : After env slots liveIn liveMid base heap store locals .unit ()
       middleHeap middleStore middleLocals [])
     (second : After env slots liveMid live base middleHeap middleStore middleLocals
@@ -122,7 +122,7 @@ theorem After.thenWord {World : Type} {context : List Ty} {env : Env context}
     {locals middleLocals finalLocals : Locals} {result : ResultTy}
     {word : UInt64} {value : result.denote} {firstWords words : List Value}
     (vars : Holds env slots liveIn base heap (PureTransport.erase store) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.low)
     (first : After env slots liveIn liveMid base heap store locals (.value .word) word
       middleHeap middleStore middleLocals firstWords)
     (second : After env slots liveMid live base middleHeap middleStore middleLocals
@@ -142,7 +142,7 @@ theorem After.bind_value {World : Type} {context : List Ty} {env : Env context}
     {locals middleLocals boundLocals finalLocals : Locals} {type : Ty} {intermediate : type.denote}
     {result : ResultTy} {value : result.denote} {firstWords words : List Value}
     (vars : Holds env slots liveIn base heap (PureTransport.erase store) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase store) locals ABI.low)
     (first : After env slots liveIn liveMid base heap store locals (.value type) intermediate
       middleHeap middleStore middleLocals firstWords)
     (frame : Frame base middleLocals boundLocals)

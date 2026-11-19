@@ -10,7 +10,7 @@ theorem After.release {World : Type} {context : List Ty} {env : Env context}
     {heap heap1 heap2 : Heap} {initial intermediate final : Store World}
     {locals locals1 : Locals} {result : ResultTy} {value : result.denote} {words : List Value}
     (vars : Holds env slots all base heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.low)
     (after : After env slots all middle base heap initial locals result value
       heap1 intermediate locals1 words)
     (middleSelected : ∀ i, middle i = true → all i = true)
@@ -20,7 +20,7 @@ theorem After.release {World : Type} {context : List Ty} {env : Env context}
     After env slots all live base heap initial locals result value heap2 final locals1 words := by
   have step := after.step.transBoth release.step
     (keep := fun region => Holds.KeepDying env slots all live (PureTransport.erase initial)
-      locals region ∧ regionsDisjoint region ABI.scratch) (fun region kept => by
+      locals region ∧ regionsDisjoint region ABI.low) (fun region kept => by
       refine ⟨⟨kept.1.mono (fun i hi dead => ⟨hi, ?_⟩), kept.2⟩, fun _ => ?_⟩
       · cases selected : live i with
         | false => rfl

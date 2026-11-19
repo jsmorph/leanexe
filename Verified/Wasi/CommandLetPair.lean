@@ -81,8 +81,8 @@ theorem wp_releaseVars_with {calls : List LeanExe.Wasi.Call}
 
 /-- The code of the pair's variable, relocated past the module's imports: a copy of an owned pair
 that stays live, and the pair's own words otherwise.  The continuation receives the facts that
-`Expr.code` of the variable gives, that the regions of the words lie apart from the command's
-scratch bytes, and that the host's world stays the same. -/
+`Expr.code` of the variable gives, that the regions of the words lie apart from the low memory,
+and that the host's world stays the same. -/
 theorem wp_letPair_head_with {calls : List LeanExe.Wasi.Call} {World : Type}
     {S : List Sig} {context : List Ty} {first second : Ty}
     {source target : Wasm.Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
@@ -104,7 +104,7 @@ theorem wp_letPair_head_with {calls : List LeanExe.Wasi.Call} {World : Type}
     (safe : pool.Safe env slots (fun i => live i || (Expr.var (S := S) pair).uses i) heap
       (PureTransport.erase initial) locals)
     (scratch : Holds.ApartFrom env slots (fun i => live i || (Expr.var (S := S) pair).uses i)
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
     (room : base + (Ty.pair first second).copyScratch ≤ h)
@@ -119,7 +119,7 @@ theorem wp_letPair_head_with {calls : List LeanExe.Wasi.Call} {World : Type}
       (∀ region ∈ (Ty.pair first second).regions
           ((Expr.var (S := S) pair).mode (slots.map Slot.mode))
           (PureTransport.erase finalStore) words (env.get pair),
-        regionsDisjoint ABI.scratch region) →
+        regionsDisjoint ABI.low region) →
       finalStore.host = initial.host →
       finalHeap.top.toNat ≤ heap.top.toNat + pair.cost (slots.map Slot.mode) live (env.get pair) →
       wp target rest Q finalStore { finalLocals with values := words.reverse ++ locals.values }
@@ -192,7 +192,7 @@ theorem wp_letPair_head_with {calls : List LeanExe.Wasi.Call} {World : Type}
             refine next finalHeap _ finalLocals words after' ?_ rfl top
             have rep := after'.rep
             rw [mode, owned] at rep ⊢
-            exact owned_scratch rep
+            exact owned_low rep
         | Trap finalStore message =>
             obtain ⟨failure, rfl⟩ := post
             exact resource failure _ rfl
@@ -271,7 +271,7 @@ theorem After.letPair {World : Type} {context : List Ty} {env : Env context} {sl
       (fun region => Holds.KeepDying (.cons value.2 (.cons value.1 env))
           (⟨base + first.width, mode⟩ :: ⟨base, mode⟩ :: slots) bodyLive (shift 2 live)
           (PureTransport.erase middleStore) bodyLocals region ∧
-        regionsDisjoint region ABI.scratch)
+        regionsDisjoint region ABI.low)
       finalHeap (PureTransport.erase finalStore)
       (result.fresh (PureTransport.erase finalStore) finalWords resultValue) := by
     refine release.step.trans body.step fun region kept =>
@@ -336,7 +336,7 @@ theorem wp_letPair_tail_with {calls : List LeanExe.Wasi.Call} {World : Type}
     (vars : Holds env slots (fun i => (live i || body.uses (i + 2)) ||
       (Expr.var (S := S) pair).uses i) base heap (PureTransport.erase initial) locals)
     (scratch : Holds.ApartFrom env slots (fun i => (live i || body.uses (i + 2)) ||
-      (Expr.var (S := S) pair).uses i) (PureTransport.erase initial) locals ABI.scratch)
+      (Expr.var (S := S) pair).uses i) (PureTransport.erase initial) locals ABI.low)
     (safe : pool.Safe env slots (fun i => (live i || body.uses (i + 2)) ||
       (Expr.var (S := S) pair).uses i) heap (PureTransport.erase initial) locals)
     (positions : locals.positions = h) (low : locals.params.length ≤ base)
@@ -349,7 +349,7 @@ theorem wp_letPair_tail_with {calls : List LeanExe.Wasi.Call} {World : Type}
     (fresh : ∀ region ∈ (Ty.pair first second).regions
         ((Expr.var (S := S) pair).mode (slots.map Slot.mode))
         (PureTransport.erase middle) words (env.get pair),
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (next : ∀ bodyHeap bodyStore bodyLocals,
       Holds (.cons (env.get pair).2 (.cons (env.get pair).1 env))
         (⟨base + first.width, (Expr.var (S := S) pair).mode (slots.map Slot.mode)⟩ ::
@@ -366,7 +366,7 @@ theorem wp_letPair_tail_with {calls : List LeanExe.Wasi.Call} {World : Type}
         (⟨base + first.width, (Expr.var (S := S) pair).mode (slots.map Slot.mode)⟩ ::
           ⟨base, (Expr.var (S := S) pair).mode (slots.map Slot.mode)⟩ :: slots)
         (fun i => shift 2 live i || body.uses i) (PureTransport.erase bodyStore) bodyLocals
-        ABI.scratch →
+        ABI.low →
       bodyStore.host = middle.host → bodyHeap.top = middleHeap.top →
       (PureTransport.erase bodyStore).memoryCap source 0 =
         (PureTransport.erase initial).memoryCap source 0 →
@@ -439,13 +439,13 @@ theorem wp_letPair_tail_with {calls : List LeanExe.Wasi.Call} {World : Type}
     safe.bind2 vars head' midSelected (fun i h => by simpa [bodyLive, mid] using h) frame
       firstRep secondRep firstHeld' secondHeld'
   have midScratch : Holds.ApartFrom env slots mid (PureTransport.erase middle) bodyLocals
-      ABI.scratch :=
+      ABI.low :=
     Holds.ApartFrom.transfer vars (scratch.mono midSelected) head'.step
       (head'.frame.trans frame) midSelected
       fun _ _ hLive _ held width _ member => vars.keepDying midSelected hLive held width _ member
   have splitScratch : Holds.ApartFrom (.cons (env.get pair).2 (.cons (env.get pair).1 env))
       (⟨base + first.width, mode⟩ :: ⟨base, mode⟩ :: slots) bodyLive
-      (PureTransport.erase middle) bodyLocals ABI.scratch := by
+      (PureTransport.erase middle) bodyLocals ABI.low := by
     refine Holds.ApartFrom.push (Holds.ApartFrom.push
       (midScratch.mono fun i h => by simpa [bodyLive, mid, shift] using h) firstHeld' firstWidth
       fun _ block member => fresh block ?_) secondHeld' secondWidth

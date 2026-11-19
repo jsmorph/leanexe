@@ -42,16 +42,16 @@ theorem wordsBytes_blocks (store : Store Unit) (root length : UInt64) (bytes : L
   | 0, _ :: _, h | _ + 1, [], h => by simp at h
 
 /-- The state after a `sys` command whose code leaves the words of `value`, from the step of its
-code, which keeps every region apart from the scratch area, and the representation of the result:
+code, which keeps every region apart from the low memory, and the representation of the result:
 argument variables that die are words, which own no blocks. -/
 theorem sys_after {World : Type} {context : List Ty} {env : Env context}
     {slots : List Slot} {liveIn live : Nat → Bool} {base : Nat} {heap finalHeap : Heap}
     {initial final : Store World} {locals finalLocals : Locals} {type : Ty} {value : type.denote}
     {words : List Value} {fresh : List (Nat × Nat)}
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
-    (step : Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+    (step : Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
       finalHeap (PureTransport.erase final) fresh)
     (frame : Frame base locals finalLocals)
     (rep : type.Rep .owned finalHeap (PureTransport.erase final) words value)
@@ -60,7 +60,7 @@ theorem sys_after {World : Type} {context : List Ty} {env : Env context}
       finalLocals words := by
   have vars' := vars.live_mono selected
   have apart' := apart.mono selected
-  refine ⟨?_, frame, vars'.step_scratch apart' step frame, rep, ?_⟩
+  refine ⟨?_, frame, vars'.step_low apart' step frame, rep, ?_⟩
   · change Step heap _ _ finalHeap _ (type.blocks (PureTransport.erase final) words value)
     rw [blocks]
     exact step.mono (fun _ kept => kept.2) (fun _ member => member)
@@ -77,20 +77,20 @@ theorem sys_after {World : Type} {context : List Ty} {env : Env context}
 
 /-- The state after a fill, whose code consumes the owned buffer variable `buffer`, which dies at
 the command, and leaves the buffer's block as the result's: the step keeps the regions apart from
-the scratch area and from the buffer's block, which it names fresh. -/
+the low memory and from the buffer's block, which it names fresh. -/
 theorem fill_sys_after {World : Type} {context : List Ty} {env : Env context}
     {slots : List Slot} {liveIn live : Nat → Bool} {base : Nat} {heap : Heap}
     {initial final : Store World} {locals finalLocals : Locals} {type : Ty} {value : type.denote}
     {words : List Value} {buffer : Var context .bytes} {root size : UInt64}
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (hIn : liveIn buffer.index = true) (hOut : live buffer.index = false)
     (hOwned : (slots.getD buffer.index default).mode = .owned)
     (hHeld : LocalsHold locals (slots.getD buffer.index default).loc Ty.bytes.types
       [.i64 root, .i64 size])
     (step : Step heap (PureTransport.erase initial)
-      (fun r => regionsDisjoint r ABI.scratch ∧
+      (fun r => regionsDisjoint r ABI.low ∧
         ∀ b ∈ Bytes.regions (PureTransport.erase initial) root, regionsDisjoint r b)
       heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root))
     (frame : Frame base locals finalLocals)
@@ -109,13 +109,13 @@ theorem fill_sys_after {World : Type} {context : List Ty} {env : Env context}
       (by rw [hBlocks]; exact member)
   have step' : Step heap (PureTransport.erase initial)
       (fun region => Holds.KeepDying env slots liveIn live (PureTransport.erase initial) locals
-        region ∧ regionsDisjoint region ABI.scratch)
+        region ∧ regionsDisjoint region ABI.low)
       heap (PureTransport.erase final) (type.blocks (PureTransport.erase final) words value) := by
     rw [blocks]
     exact step.mono (fun r kept => ⟨kept.2, hKeep r kept.1⟩) (fun _ member => member)
   have vars' := vars.live_mono selected
   have apart' := apart.mono selected
-  refine ⟨step', frame, vars.step_scratch_dying apart' selected step' frame, rep, ?_⟩
+  refine ⟨step', frame, vars.step_low_dying apart' selected step' frame, rep, ?_⟩
   intro other x hLive _ otherWords held width resultRegion hResult region member
   have heldBefore := (vars'.hold_agree frame hLive width).mp held
   obtain ⟨same, freshApart⟩ := vars'.regions_after step' hLive heldBefore width

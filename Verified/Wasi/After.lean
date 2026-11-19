@@ -33,7 +33,7 @@ structure After {World : Type} {context : List Ty}
     (finalLocals : Locals) (words : List Value) : Prop where
   step : Step heap (PureTransport.erase store)
     (fun region => Holds.KeepDying env slots liveIn live (PureTransport.erase store) locals region ∧
-      regionsDisjoint region ABI.scratch)
+      regionsDisjoint region ABI.low)
     finalHeap (PureTransport.erase finalStore)
     (result.fresh (PureTransport.erase finalStore) words value)
   frame : Frame base locals finalLocals

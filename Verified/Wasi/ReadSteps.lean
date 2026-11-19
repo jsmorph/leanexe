@@ -8,16 +8,16 @@ open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 theorem read_fresh_step {World : Type} {initial before after : Store World}
     {heap0 heap : Heap} {root : UInt64} {capacity : Nat} {previous : LeanExe.Bytes}
     (hAllocate : Step heap0 (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.scratch)
+      (fun region => regionsDisjoint region ABI.low)
       heap (PureTransport.erase before) [block (PureTransport.erase before) root])
     (hBuffer : Heap.Buffer heap (PureTransport.erase before) root previous)
     (hCapacity : capacity ≤ capacityAt (PureTransport.erase before) root)
     (hFrame : GuestFrame before after [ABI.scratch, (root.toNat, capacity)]) :
-    Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+    Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
       heap (PureTransport.erase after) (Bytes.regions (PureTransport.erase after) root) := by
   have hRead := hFrame.readStep hAllocate.at_ (read_payload_region hBuffer hCapacity)
   have hBoth := hAllocate.transBoth hRead
-    (keep := fun region => regionsDisjoint region ABI.scratch) (by
+    (keep := fun region => regionsDisjoint region ABI.low) (by
       intro region hScratch
       refine ⟨hScratch, fun hApart => ⟨hScratch, ?_⟩⟩
       have hBlock := hApart _ (List.mem_singleton_self _)
@@ -31,12 +31,12 @@ theorem read_fresh_step {World : Type} {initial before after : Store World}
 theorem read_discard_step {World : Type} {initial before after : Store World}
     {heap0 heap : Heap} {root length : UInt64} {bytes : LeanExe.Bytes}
     (hBefore : Step heap0 (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.scratch)
+      (fun region => regionsDisjoint region ABI.low)
       heap (PureTransport.erase before) (Bytes.regions (PureTransport.erase before) root))
     (hBytes : Bytes.Rep heap (PureTransport.erase before) root length bytes)
     (hAfter : PureTransport.erase after =
       Bytes.releasedStore heap (PureTransport.erase before) root) :
-    Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+    Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
       (Bytes.releasedHeap heap (PureTransport.erase before) root)
       (PureTransport.erase after) [] := by
   rw [hAfter]

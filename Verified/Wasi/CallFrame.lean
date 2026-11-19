@@ -39,14 +39,14 @@ theorem pool_input {pool : Bytes.LiteralPool} {signature : EffectSig}
     simp only [Bool.and_eq_true] at selected
     exact ⟨uses i k selected.1.2, rfl⟩)
 
-theorem scratch
+theorem low
     (after : ArgumentsAfter funs flags bounds fits modes args env slots all kept base
       heap initial locals argumentHeap arguments argumentLocals words fresh)
     (uses : ∀ i k, (args i).uses k = true → all k = true)
-    (apart : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.scratch) :
+    (apart : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.low) :
     ∀ region ∈ Env.reads (PureTransport.erase arguments) modes words
-      (Env.ofFn fun i => (args i).denote funs env), regionsDisjoint ABI.scratch region := by
-  apply after.borrowedApart ABI.scratch
+      (Env.ofFn fun i => (args i).denote funs env), regionsDisjoint ABI.low region := by
+  apply after.borrowedApart ABI.low
   exact apart.mono (fun k borrowed => by
     obtain ⟨i, selected⟩ := argsAny_true.mp borrowed
     simp only [Bool.and_eq_true] at selected
@@ -60,12 +60,12 @@ theorem call {signature : EffectSig} {finalHeap : Heap} {final : Store World}
     (uses : ∀ i k, (args i).uses k = true → all k = true)
     (keptSelected : ∀ i, kept i = true → all i = true)
     (vars : Holds env slots all base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.low)
     (callStep : Step argumentHeap (PureTransport.erase arguments)
       (fun region => Apart (PureTransport.erase arguments)
           (Env.moves (PureTransport.erase arguments) signature.mode words
             (Env.ofFn fun i => (args i).denote funs env)) region ∧
-        regionsDisjoint region ABI.scratch)
+        regionsDisjoint region ABI.low)
       finalHeap (PureTransport.erase final)
       (signature.result.fresh (PureTransport.erase final) resultWords value))
     (rep : signature.result.Rep finalHeap (PureTransport.erase final) resultWords value) :

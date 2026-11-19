@@ -32,7 +32,7 @@ theorem After.thenEmpty {World : Type} {context : List Ty} {env : Env context}
     {locals middleLocals finalLocals : Locals} {firstResult result : ResultTy}
     {firstValue : firstResult.denote} {value : result.denote} {firstWords words : List Value}
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (first : After env slots liveIn liveMid base heap initial locals firstResult firstValue
       middleHeap middle middleLocals firstWords)
     (empty : firstResult.fresh (PureTransport.erase middle) firstWords firstValue = [])
@@ -59,7 +59,7 @@ theorem wp_sequence_value {World : Type} {host : Host World}
     {aborts : Bool} {target : Wasm.Module} {targetHost : HostEnv (Observed World)}
     {firstCode nextCode : Program}
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (positions : locals.positions = h) (low : locals.params.length ≤ base)
     (room : base + type.width ≤ h)
     (bodySelected : ∀ i, bodyIn (i + 1) = true → liveMid i = true)

@@ -418,7 +418,7 @@ theorem shim_footprint (F : OpenFlags) (L : ShimLayout) (I : Launch) (replies : 
       (Env.represent main.signature.params main.signature.modes) pool heap
       (PureTransport.erase initial) (main.tables.map Value.i64) args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) main.signature.mode
-      (main.tables.map Value.i64) args, LeanExe.Runtime.regionsDisjoint ABI.scratch region)
+      (main.tables.map Value.i64) args, LeanExe.Runtime.regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap
       (compileCalls calls source program entries (some main) pool) 0 ≤ 65535)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧

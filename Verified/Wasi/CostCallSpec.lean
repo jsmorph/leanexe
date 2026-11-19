@@ -95,7 +95,7 @@ theorem cost_command_call_spec_with {calls : List LeanExe.Wasi.Call}
       arguments { argumentLocals with values := (.i64 (depth + 1) :: params).reverse ++ locals.values }
       targetHost := by
     refine wp_cost_effect_helper_with (effectCalls callee) noImport lookup arity valid prepared.step.at_
-      prepared.rep prepared.separate (prepared.pool_input uses safe) (prepared.scratch uses scratch)
+      prepared.rep prepared.separate (prepared.pool_input uses safe) (prepared.low uses scratch)
       (by rw [prepared.step.cap target]; exact targetCap) calleeBudget ?_ ?_
     · intro value finalHeap final words trace spent calleeFits execution step rep top
       have callAfter := prepared.call uses keptAll vars scratch step rep

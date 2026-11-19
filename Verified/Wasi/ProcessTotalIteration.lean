@@ -54,7 +54,7 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
       some function)
     (arity : function.numParams = 1 + widthSum [entry.state])
     (valid : targetHost.Satisfies target (hostSpecWith host calls))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (stored : ProcessStored target entry.state pool base current initial locals)
     (held : represented ghost current initial.host)
     (limitCap : limit ≤ 65536 * (PureTransport.erase initial).memoryCap source 0)
@@ -120,9 +120,9 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
         rw [moves]
         exact Apart.nil
       have scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode stateWords args,
-          regionsDisjoint ABI.scratch region := by
+          regionsDisjoint ABI.low region := by
         rw [reads]
-        exact memory.rep.reads_apart ABI.scratch (owned_scratch memory.rep)
+        exact memory.rep.reads_apart ABI.low (owned_low memory.rep)
       obtain ⟨affordable, bounded⟩ := resources running
       have within : heap.Within (PureTransport.erase initial) source (charge ghost current) := by
         unfold Heap.Within
@@ -140,7 +140,7 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
             have := rise callFitsTrue
             omega
           have called : Step heap (PureTransport.erase initial)
-              (fun region => regionsDisjoint region ABI.scratch)
+              (fun region => regionsDisjoint region ABI.low)
               finalHeap (PureTransport.erase final)
               ((processResultTy entry.state).blocks (PureTransport.erase final) words value) := by
             exact callStep.mono (fun region kept => by
@@ -162,8 +162,8 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
               (PureTransport.erase final) words
               (processValue entry.state (processNative entry.state value)) := by
             rw [processValue_native entry.state value]
-            exact memory.called poolScratch called representation
-          have grown := called.top_le memory.at_ free (scratch_apart_above _)
+            exact memory.called poolLow called representation
+          have grown := called.top_le memory.at_ free (low_apart_above _)
           have sameCap : (PureTransport.erase final).memoryCap source 0 =
               (PureTransport.erase initial).memoryCap source 0 := by
             simp only [Store.memoryCap, called.caps]
@@ -231,7 +231,7 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
       some function)
     (arity : function.numParams = 1 + widthSum [entry.state])
     (valid : targetHost.Satisfies target (hostSpec host))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (stored : ProcessStored target entry.state pool base current initial locals)
     (held : represented ghost current initial.host)
     (limitCap : limit ≤ 65536 * (PureTransport.erase initial).memoryCap source 0)

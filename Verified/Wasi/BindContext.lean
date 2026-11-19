@@ -61,23 +61,23 @@ theorem bind_context_holds {World : Type} {context : List Ty} {env : Env context
   exact (adjusted.holds.live_mono selected).push held adjusted.rep
     (adjusted.apart.live_mono selected)
 
-theorem bind_context_scratch {World : Type} {context : List Ty} {env : Env context}
+theorem bind_context_low {World : Type} {context : List Ty} {env : Env context}
     {slots : List Slot} {liveIn live bodyIn : Nat → Bool} {base : Nat}
     {heap finalHeap : Heap} {initial final : Store World} {locals finalLocals boundLocals : Locals}
     {type : Ty} {value : type.denote} {words : List Value}
     (after : After env slots liveIn live base heap initial locals (.value type) value
       finalHeap final finalLocals words)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (frame : Frame base finalLocals boundLocals)
     (held : LocalsHold boundLocals base type.types words)
     (liveSelected : ∀ i, live i = true → liveIn i = true)
     (selected : ∀ i, bodyIn (i + 1) = true → live i = true) :
     Holds.ApartFrom (.cons value env) (⟨base, .owned⟩ :: slots) bodyIn
-      (PureTransport.erase final) boundLocals ABI.scratch := by
+      (PureTransport.erase final) boundLocals ABI.low := by
   have adjusted := after.reframe frame
-  exact ((adjusted.scratch vars scratch liveSelected).mono selected).push held adjusted.rep.length
-    (fun _ => owned_scratch adjusted.rep)
+  exact ((adjusted.low vars scratch liveSelected).mono selected).push held adjusted.rep.length
+    (fun _ => owned_low adjusted.rep)
 
 theorem bind_context_safe {World : Type} {context : List Ty} {env : Env context}
     {slots : List Slot} {liveIn live bodyIn : Nat → Bool} {base : Nat}
@@ -86,9 +86,9 @@ theorem bind_context_safe {World : Type} {context : List Ty} {env : Env context}
     (after : After env slots liveIn live base heap initial locals (.value type) value
       finalHeap final finalLocals words)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (safe : pool.Safe env slots liveIn heap (PureTransport.erase initial) locals)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (frame : Frame base finalLocals boundLocals)
     (held : LocalsHold boundLocals base type.types words)
     (liveSelected : ∀ i, live i = true → liveIn i = true)

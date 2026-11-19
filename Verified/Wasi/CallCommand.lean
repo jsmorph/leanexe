@@ -28,7 +28,7 @@ theorem wp_call_after_arguments_with {calls : List LeanExe.Wasi.Call}
     (hostValid : targetHost.Satisfies target (hostSpecWith host calls))
     (vars : Holds env slots all base heap (PureTransport.erase initial) locals)
     (safe : pool.Safe env slots all heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.low)
     (uses : ∀ i k, (args i).uses k = true → all k = true)
     (keptSelected : ∀ i, kept i = true → all i = true)
     (liveSelected : ∀ i, live i = true → kept i = true)
@@ -46,7 +46,7 @@ theorem wp_call_after_arguments_with {calls : List LeanExe.Wasi.Call}
       arguments { argumentLocals with
         values := (.i64 depth :: params).reverse ++ locals.values } targetHost := by
   refine wp_effect_helper_with spec noImport lookup arity hostValid after.step.at_ after.rep
-    after.separate (after.pool_input uses safe) (after.scratch uses scratch)
+    after.separate (after.pool_input uses safe) (after.low uses scratch)
     (by rw [after.step.cap target]; exact cap) ?_ ?_ ?_
   · intro value finalHeap final words trace execution step rep
     have callAfter := after.call uses keptSelected vars scratch step rep
@@ -101,7 +101,7 @@ theorem wp_call_after_arguments {World : Type} {S : List Sig} {context : List Ty
     (hostValid : targetHost.Satisfies target (hostSpec host))
     (vars : Holds env slots all base heap (PureTransport.erase initial) locals)
     (safe : pool.Safe env slots all heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.low)
     (uses : ∀ i k, (args i).uses k = true → all k = true)
     (keptSelected : ∀ i, kept i = true → all i = true)
     (liveSelected : ∀ i, live i = true → kept i = true)

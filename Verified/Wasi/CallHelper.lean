@@ -25,14 +25,14 @@ theorem wp_effect_helper_with {calls : List LeanExe.Wasi.Call}
       (Env.represent signature.params signature.modes) pool heap (PureTransport.erase initial)
       params args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode params args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (returned : ∀ value finalHeap final words trace,
       Exec (observedHost host) (meaning args) initial.host trace (.returned value) final.host →
       Step heap (PureTransport.erase initial)
         (fun region => Apart (PureTransport.erase initial)
             (Env.moves (PureTransport.erase initial) signature.mode params args) region ∧
-          regionsDisjoint region ABI.scratch)
+          regionsDisjoint region ABI.low)
         finalHeap (PureTransport.erase final)
         (signature.result.fresh (PureTransport.erase final) words value) →
       signature.result.Rep finalHeap (PureTransport.erase final) words value →
@@ -85,14 +85,14 @@ theorem wp_effect_helper {World : Type} {target : Wasm.Module} {host : Host Worl
       (Env.represent signature.params signature.modes) pool heap (PureTransport.erase initial)
       params args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode params args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (returned : ∀ value finalHeap final words trace,
       Exec (observedHost host) (meaning args) initial.host trace (.returned value) final.host →
       Step heap (PureTransport.erase initial)
         (fun region => Apart (PureTransport.erase initial)
             (Env.moves (PureTransport.erase initial) signature.mode params args) region ∧
-          regionsDisjoint region ABI.scratch)
+          regionsDisjoint region ABI.low)
         finalHeap (PureTransport.erase final)
         (signature.result.fresh (PureTransport.erase final) words value) →
       signature.result.Rep finalHeap (PureTransport.erase final) words value →

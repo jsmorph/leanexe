@@ -36,7 +36,7 @@ theorem compile_prefix_facts_with {calls : List LeanExe.Wasi.Call}
     (main : Option (EffectMain fullSigs)) (pool : Bytes.LiteralPool)
     (runtime : Runtime source) (profile : Relocation.Profile source)
     (pureCalls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (program : EffectProg pureSigs effectSigs)
     (present : program.FunctionsInWith calls source (compileCalls calls source full entries main pool) pool)
     (effectCalls : EffectCallsWith calls source (compileCalls calls source full entries main pool)
@@ -66,7 +66,7 @@ theorem compile_prefix_facts {source : Wasm.Module} {pure : Resource.PureContext
     (main : Option (EffectMain fullSigs)) (pool : Bytes.LiteralPool)
     (runtime : Runtime source) (profile : Relocation.Profile source)
     (calls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (program : EffectProg pureSigs effectSigs)
     (present : program.FunctionsIn source (compile source full entries main pool) pool)
     (effectCalls : EffectCalls source (compile source full entries main pool)
@@ -80,7 +80,7 @@ theorem EffectProg.cost_calls_with {calls : List LeanExe.Wasi.Call}
     (main : Option (EffectMain fullSigs)) (pool : Bytes.LiteralPool)
     (runtime : Runtime source) (profile : Relocation.Profile source)
     (effectCalls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (sourceHost : HostEnv Unit)
     (commandRule : ∀ {signatures : List EffectSig} (program : EffectProg pureSigs signatures),
       CompilerFactsWith calls source (compileCalls calls source full entries main pool) pure (program.funs pure.funs) pool →
@@ -126,7 +126,7 @@ theorem EffectProg.cost_calls {source : Wasm.Module} {pure : Resource.PureContex
     (main : Option (EffectMain fullSigs)) (pool : Bytes.LiteralPool)
     (runtime : Runtime source) (profile : Relocation.Profile source)
     (calls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (sourceHost : HostEnv Unit)
     (commandRule : ∀ {signatures : List EffectSig} (program : EffectProg pureSigs signatures),
       CompilerFacts source (compile source full entries main pool) pure (program.funs pure.funs) pool →
@@ -148,7 +148,7 @@ theorem EffectProg.correctCost_with {calls : List LeanExe.Wasi.Call}
     (main : Option (EffectMain effectSigs)) (pool : Bytes.LiteralPool)
     (runtime : Runtime source) (profile : Relocation.Profile source)
     (effectCalls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (sourceHost : HostEnv Unit)
     (commandRule : ∀ {signatures : List EffectSig} (part : EffectProg pureSigs signatures),
       CompilerFactsWith calls source (compileCalls calls source program entries main pool) pure (part.funs pure.funs) pool →
@@ -165,7 +165,7 @@ theorem EffectProg.correctCost {source : Wasm.Module} {pure : Resource.PureConte
     (main : Option (EffectMain effectSigs)) (pool : Bytes.LiteralPool)
     (runtime : Runtime source) (profile : Relocation.Profile source)
     (calls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (sourceHost : HostEnv Unit)
     (commandRule : ∀ {signatures : List EffectSig} (part : EffectProg pureSigs signatures),
       CompilerFacts source (compile source program entries main pool) pure (part.funs pure.funs) pool →
@@ -186,7 +186,7 @@ theorem EffectProg.correctCostWith_with {calls : List LeanExe.Wasi.Call}
     (main : Option (EffectMain effectSigs))
     (profile : Relocation.Profile (Verified.compileWith pure tables wrappers pool))
     (pureCovered : pure.Covered pool) (covered : program.Covered pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (ready : program.ReadyWith calls (Verified.compileWith pure tables wrappers pool) pool)
     (sourceHost : HostEnv Unit)
     (commandRule : ∀ {signatures : List EffectSig} (part : EffectProg pureSigs signatures),
@@ -214,7 +214,7 @@ theorem EffectProg.correctCostWith {pureSigs : List Sig} (pure : Prog pureSigs)
     (main : Option (EffectMain effectSigs))
     (profile : Relocation.Profile (Verified.compileWith pure tables wrappers pool))
     (pureCovered : pure.Covered pool) (covered : program.Covered pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (ready : program.Ready (Verified.compileWith pure tables wrappers pool) pool)
     (sourceHost : HostEnv Unit)
     (commandRule : ∀ {signatures : List EffectSig} (part : EffectProg pureSigs signatures),

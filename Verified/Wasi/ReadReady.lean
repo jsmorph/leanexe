@@ -42,10 +42,10 @@ theorem ReadReady.frame_step {World : Type} {initial before after : Store World}
     {heap0 heap : Heap} {root capacity : UInt64}
     (h : ReadReady heap (PureTransport.erase before) root capacity)
     (hBefore : Step heap0 (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.scratch)
+      (fun region => regionsDisjoint region ABI.low)
       heap (PureTransport.erase before) (Bytes.regions (PureTransport.erase before) root))
     (hFrame : GuestFrame before after [ABI.scratch, (root.toNat, capacity.toNat)]) :
-    Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+    Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
       heap (PureTransport.erase after) (Bytes.regions (PureTransport.erase after) root) := by
   rcases h with ⟨rfl, rfl⟩ | ⟨previous, hBuffer, hCapacity⟩
   · have hScratch := read_zero_frame hFrame

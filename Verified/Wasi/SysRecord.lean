@@ -148,7 +148,7 @@ theorem wp_sys_record_accept_with {calls : List LeanExe.Wasi.Call} {World : Type
     (hInputLocs : ∀ place ∈ inputLocs, place + 2 ≤ base ∨ base + fields.length + 3 ≤ place)
     (hInputReps : ∀ input ∈ inputs, ∃ length,
       Bytes.Rep heap (PureTransport.erase initial) input.1 length input.2 ∧
-        ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.scratch)
+        ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.low)
     (hHeap : heap.At (PureTransport.erase initial))
     (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (hLow : s0.params.length ≤ base) (hHigh : base + fields.length + 3 ≤ s0.positions)
@@ -163,7 +163,7 @@ theorem wp_sys_record_accept_with {calls : List LeanExe.Wasi.Call} {World : Type
       (observedHost host).sys initial.host call
         (flatArgsWith call.params values (inputs.map Prod.snd)) (.returned errno outputs)
         final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) [] →
       heap'.top.toNat ≤ heap.top.toNat + Bytes.allocationCost (size + align - 1) →
       LocalsOutside s0 sF base (fields.length + 3) → sF.values = s.values →
@@ -211,13 +211,13 @@ theorem wp_sys_record_accept_with {calls : List LeanExe.Wasi.Call} {World : Type
   let root := FixedArrayAllocate.root heap.top (allocSize (UInt64.ofNat (size + align - 1)))
     heap.free
   have hBefore : Step heap (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.scratch)
+      (fun region => regionsDisjoint region ABI.low)
       (heap.allocate (allocSize (UInt64.ofNat (size + align - 1))))
       (PureTransport.erase allocated) (Bytes.regions (PureTransport.erase allocated) root) := by
     have hRoot : root ≠ 0 := hBuffer.nonzero
     rw [Bytes.regions, ite_eq_right hRoot]
     exact hAllocate.mono
-      (keep' := fun region => regionsDisjoint region ABI.scratch)
+      (keep' := fun region => regionsDisjoint region ABI.low)
       (fresh' := [block (PureTransport.erase allocated) root])
       (fun _ _ => True.intro) (fun _ h => h)
   have hReady : ReadReady (heap.allocate (allocSize (UInt64.ofNat (size + align - 1))))
@@ -403,7 +403,7 @@ theorem wp_sys_record_with {calls : List LeanExe.Wasi.Call} {World : Type}
     (hInputLocs : ∀ place ∈ inputLocs, place + 2 ≤ base ∨ base + fields.length + 3 ≤ place)
     (hInputReps : ∀ input ∈ inputs, ∃ length,
       Bytes.Rep heap (PureTransport.erase initial) input.1 length input.2 ∧
-        ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.scratch)
+        ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.low)
     (hHeap : heap.At (PureTransport.erase initial))
     (hCap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (hLow : s.params.length ≤ base) (hHigh : base + fields.length + 3 ≤ s.positions)
@@ -416,7 +416,7 @@ theorem wp_sys_record_with {calls : List LeanExe.Wasi.Call} {World : Type}
       Exec (observedHost host)
         (.sys call (flatArgsWith call.params values (inputs.map Prod.snd)) Action.pure)
         initial.host trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) [] →
       heap'.top.toNat ≤ heap.top.toNat + Bytes.allocationCost (size + align - 1) →
       LocalsOutside s finalLocals base (fields.length + 3) →
@@ -478,7 +478,7 @@ theorem wp_sys_record_with {calls : List LeanExe.Wasi.Call} {World : Type}
       Exec (observedHost host)
         (.sys call (flatArgsWith call.params values (inputs.map Prod.snd)) Action.pure)
         initial.host trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) [] →
       heap'.top.toNat ≤ heap.top.toNat + Bytes.allocationCost (size + align - 1) →
       LocalsOutside s sF base (fields.length + 3) →

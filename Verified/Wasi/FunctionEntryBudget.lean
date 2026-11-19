@@ -18,14 +18,14 @@ theorem wp_parameter_cleanup_framed_with {calls : List LeanExe.Wasi.Call}
     (at_ : heap.At (PureTransport.erase initial))
     (vars : Holds args slots (fun _ => true) base heap (PureTransport.erase initial) locals)
     (safe : pool.Safe args slots (fun _ => true) heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom args slots (fun _ => true) (PureTransport.erase initial) locals ABI.scratch)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (apart : Holds.ApartFrom args slots (fun _ => true) (PureTransport.erase initial) locals ABI.low)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (next : ∀ finalHeap final,
       Evolves args slots (fun _ => true) used base heap (PureTransport.erase initial) locals
         finalHeap (PureTransport.erase final) locals →
       finalHeap.top = heap.top → final.host = initial.host →
       pool.Safe args slots used finalHeap (PureTransport.erase final) locals →
-      Holds.ApartFrom args slots used (PureTransport.erase final) locals ABI.scratch →
+      Holds.ApartFrom args slots used (PureTransport.erase final) locals ABI.low →
       wp target rest Q final locals targetHost) :
     wp target (Relocation.programWith calls (releaseWhere context slots (fun i => !used i)) ++ rest)
       Q initial locals targetHost := by
@@ -42,7 +42,7 @@ theorem wp_parameter_cleanup_framed_with {calls : List LeanExe.Wasi.Call}
   have selected : ∀ i, used i = true → true = true := fun _ _ => rfl
   exact next finalHeap final normalized top sameWorld
     (after.pool_safe safe vars apart selected poolApart).1
-    (after.scratch vars apart selected)
+    (after.low vars apart selected)
 
 theorem wp_parameter_cleanup_framed {World : Type}
     {context : List Ty} {args : Env context} {slots : List Slot} {used : Nat → Bool} {base : Nat}
@@ -57,14 +57,14 @@ theorem wp_parameter_cleanup_framed {World : Type}
     (at_ : heap.At (PureTransport.erase initial))
     (vars : Holds args slots (fun _ => true) base heap (PureTransport.erase initial) locals)
     (safe : pool.Safe args slots (fun _ => true) heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom args slots (fun _ => true) (PureTransport.erase initial) locals ABI.scratch)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (apart : Holds.ApartFrom args slots (fun _ => true) (PureTransport.erase initial) locals ABI.low)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (next : ∀ finalHeap final,
       Evolves args slots (fun _ => true) used base heap (PureTransport.erase initial) locals
         finalHeap (PureTransport.erase final) locals →
       finalHeap.top = heap.top → final.host = initial.host →
       pool.Safe args slots used finalHeap (PureTransport.erase final) locals →
-      Holds.ApartFrom args slots used (PureTransport.erase final) locals ABI.scratch →
+      Holds.ApartFrom args slots used (PureTransport.erase final) locals ABI.low →
       wp target rest Q final locals targetHost) :
     wp target (Relocation.program (releaseWhere context slots (fun i => !used i)) ++ rest)
       Q initial locals targetHost := by
@@ -92,8 +92,8 @@ theorem wp_function_entry_framed_with {calls : List LeanExe.Wasi.Call}
     (input : @Bytes.LiteralPool.Input (Env function.params)
       (Env.represent function.params function.modes) pool heap (PureTransport.erase initial) words args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial)
-      (paramMode function.params function.modes) words args, regionsDisjoint ABI.scratch region)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+      (paramMode function.params function.modes) words args, regionsDisjoint ABI.low region)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (resource : depthLimit ≤ depth → Q (.Trap initial "unreachable"))
     (next : ∀ (copied : Locals) (finalHeap : Heap) (final : Store World),
       depth < depthLimit → copied.params = .i64 depth :: words →
@@ -107,7 +107,7 @@ theorem wp_function_entry_framed_with {calls : List LeanExe.Wasi.Call}
       pool.Safe args (paramSlots function.params function.modes 1) function.body.uses
         finalHeap (PureTransport.erase final) copied →
       Holds.ApartFrom args (paramSlots function.params function.modes 1) function.body.uses
-        (PureTransport.erase final) copied ABI.scratch →
+        (PureTransport.erase final) copied ABI.low →
       wp target rest Q final copied targetHost) :
     wp target (guardCode ++
       paramCopyCode function.positions 1 (function.params.flatMap Ty.types) ++
@@ -145,8 +145,8 @@ theorem wp_function_entry_framed {World : Type} {source target : Module}
     (input : @Bytes.LiteralPool.Input (Env function.params)
       (Env.represent function.params function.modes) pool heap (PureTransport.erase initial) words args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial)
-      (paramMode function.params function.modes) words args, regionsDisjoint ABI.scratch region)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+      (paramMode function.params function.modes) words args, regionsDisjoint ABI.low region)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (resource : depthLimit ≤ depth → Q (.Trap initial "unreachable"))
     (next : ∀ (copied : Locals) (finalHeap : Heap) (final : Store World),
       depth < depthLimit → copied.params = .i64 depth :: words →
@@ -160,7 +160,7 @@ theorem wp_function_entry_framed {World : Type} {source target : Module}
       pool.Safe args (paramSlots function.params function.modes 1) function.body.uses
         finalHeap (PureTransport.erase final) copied →
       Holds.ApartFrom args (paramSlots function.params function.modes 1) function.body.uses
-        (PureTransport.erase final) copied ABI.scratch →
+        (PureTransport.erase final) copied ABI.low →
       wp target rest Q final copied targetHost) :
     wp target (guardCode ++
       paramCopyCode function.positions 1 (function.params.flatMap Ty.types) ++

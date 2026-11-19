@@ -81,7 +81,7 @@ theorem write_after_release {World : Type} {context : List Ty} {env : Env contex
     {initial middle final : Store World} {locals finalLocals : Locals} {errno count : UInt64}
     (at_ : heap.At (PureTransport.erase initial))
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (frame : GuestFrame initial middle [ABI.scratch])
     (localFrame : Frame base locals finalLocals)
     (evolution : Evolves env slots liveIn live base heap (PureTransport.erase middle) finalLocals
@@ -160,7 +160,7 @@ theorem wp_write_command_with {calls : List LeanExe.Wasi.Call}
       (PureTransport.erase initial) locals)
     (apart : Holds.ApartFrom env slots (fun i => live i ||
         (i == buffer.index || (i == start.index || i == count.index)))
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (cleanupForm : Encoding.ProgramForm (releaseWhere context slots (fun i =>
       (i == buffer.index || (i == start.index || i == count.index)) && !live i)))
     (cleanupClosed : Relocation.programClosed source.funcs.length (releaseWhere context slots
@@ -292,7 +292,7 @@ theorem wp_command_write_with {calls : List LeanExe.Wasi.Call}
       (PureTransport.erase initial) locals)
     (apart : Holds.ApartFrom env slots (fun i => live i ||
         (i == buffer.index || (i == start.index || i == count.index)))
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (cleanupForm : Encoding.ProgramForm (releaseWhere context slots (fun i =>
       (i == buffer.index || (i == start.index || i == count.index)) && !live i)))
     (cleanupClosed : Relocation.programClosed source.funcs.length (releaseWhere context slots
@@ -336,7 +336,7 @@ theorem wp_command_write {World : Type} {source target : Module} {host : Host Wo
       (PureTransport.erase initial) locals)
     (apart : Holds.ApartFrom env slots (fun i => live i ||
         (i == buffer.index || (i == start.index || i == count.index)))
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (cleanupForm : Encoding.ProgramForm (releaseWhere context slots (fun i =>
       (i == buffer.index || (i == start.index || i == count.index)) && !live i)))
     (cleanupClosed : Relocation.programClosed source.funcs.length (releaseWhere context slots

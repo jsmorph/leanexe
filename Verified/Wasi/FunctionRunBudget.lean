@@ -27,8 +27,8 @@ theorem function_body_wp_with_aborts_with {calls : List LeanExe.Wasi.Call}
     (input : @Bytes.LiteralPool.Input (Env function.params)
       (Env.represent function.params function.modes) pool heap (PureTransport.erase initial) params args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) function.sig.mode params args,
-      regionsDisjoint ABI.scratch region)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+      regionsDisjoint ABI.low region)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (guardFailure : depthLimit ≤ depth → aborts = true)
     (body : ∀ (middleHeap : Heap) (middle : Store (Observed World)) (middleLocals : Locals),
@@ -41,7 +41,7 @@ theorem function_body_wp_with_aborts_with {calls : List LeanExe.Wasi.Call}
       pool.Safe args (paramSlots function.params function.modes 1) function.body.uses
         middleHeap (PureTransport.erase middle) middleLocals →
       Holds.ApartFrom args (paramSlots function.params function.modes 1) function.body.uses
-        (PureTransport.erase middle) middleLocals ABI.scratch →
+        (PureTransport.erase middle) middleLocals ABI.low →
       (PureTransport.erase middle).memoryCap source 0 ≤ 65535 →
       wp target (function.body.codeWith calls (pool := pool) source function.positions
           (paramSlots function.params function.modes 1) (1 + widthSum function.params) (fun _ => false))
@@ -91,8 +91,8 @@ theorem function_body_wp_with_aborts {World : Type} {host : Host World} {source 
     (input : @Bytes.LiteralPool.Input (Env function.params)
       (Env.represent function.params function.modes) pool heap (PureTransport.erase initial) params args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) function.sig.mode params args,
-      regionsDisjoint ABI.scratch region)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+      regionsDisjoint ABI.low region)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (guardFailure : depthLimit ≤ depth → aborts = true)
     (body : ∀ (middleHeap : Heap) (middle : Store (Observed World)) (middleLocals : Locals),
@@ -105,7 +105,7 @@ theorem function_body_wp_with_aborts {World : Type} {host : Host World} {source 
       pool.Safe args (paramSlots function.params function.modes 1) function.body.uses
         middleHeap (PureTransport.erase middle) middleLocals →
       Holds.ApartFrom args (paramSlots function.params function.modes 1) function.body.uses
-        (PureTransport.erase middle) middleLocals ABI.scratch →
+        (PureTransport.erase middle) middleLocals ABI.low →
       (PureTransport.erase middle).memoryCap source 0 ≤ 65535 →
       wp target (function.body.code (pool := pool) source function.positions
           (paramSlots function.params function.modes 1) (1 + widthSum function.params) (fun _ => false))

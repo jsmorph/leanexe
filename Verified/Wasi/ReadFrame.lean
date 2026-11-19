@@ -11,10 +11,16 @@ theorem GuestFrame.readStep {before after : Store World} {heap : Heap}
     (hHeap : heap.At (PureTransport.erase before))
     (hPayload : heap.Region (root.toNat, capacity)) :
     Step heap (PureTransport.erase before)
-      (fun kept => regionsDisjoint kept ABI.scratch ∧
+      (fun kept => regionsDisjoint kept ABI.low ∧
         regionsDisjoint kept (root.toNat, capacity))
       heap (PureTransport.erase after) [] := by
-  apply (h.step hHeap ?_).mono (by simp) (by simp)
+  apply (h.step hHeap ?_).mono
+    (fun _ apart region member => by
+      rcases List.mem_cons.mp member with rfl | member
+      · exact regionsDisjoint_low_scratch apart.1
+      · obtain rfl := List.mem_singleton.mp member
+        exact apart.2)
+    (by simp)
   intro node hNode region hRegion
   rcases List.mem_cons.mp hRegion with rfl | hRegion
   · have hBase := hHeap.above node hNode

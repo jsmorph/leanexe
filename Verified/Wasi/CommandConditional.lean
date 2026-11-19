@@ -37,12 +37,12 @@ theorem wp_command_ite_with {calls : List LeanExe.Wasi.Call}
       (PureTransport.erase initial) locals)
     (apart : Holds.ApartFrom env slots
       (fun i => (live i || yes.uses i || no.uses i) || condition.uses i)
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (at_ : heap.At (PureTransport.erase initial))
     (safe : pool.Safe env slots
       (fun i => (live i || yes.uses i || no.uses i) || condition.uses i) heap
       (PureTransport.erase initial) locals)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
     (conditionRoom : base + max condition.width (copyWidth .bool) ≤ h)
@@ -75,7 +75,7 @@ theorem wp_command_ite_with {calls : List LeanExe.Wasi.Call}
       pool.Safe env slots (fun i => live i || picked.uses i) middleHeap
         (PureTransport.erase middle) { prefixLocals with values := locals.values } →
       Holds.ApartFrom env slots (fun i => live i || picked.uses i)
-        (PureTransport.erase middle) { prefixLocals with values := locals.values } ABI.scratch →
+        (PureTransport.erase middle) { prefixLocals with values := locals.values } ABI.low →
       (PureTransport.erase middle).memoryCap source 0 ≤ 65535 →
       wp target (picked.codeWith calls (pool := pool) source h slots (base + result.width) live)
         (CommandResult host env slots (fun i => live i || picked.uses i) live
@@ -134,7 +134,7 @@ theorem wp_command_ite_with {calls : List LeanExe.Wasi.Call}
         Frame.ofValues
       have first' := first.reframe reset
       have prefixSafe := (first'.pool_safe safe vars apart midSelected poolApart).1
-      have prefixApart := first'.scratch vars apart midSelected
+      have prefixApart := first'.low vars apart midSelected
       have selectedBranch : wp target
           (if condition.denote funs env then yesCode else noCode)
           (ItePost targetHost target (loadCode h base result.types) Q locals.values)
@@ -219,12 +219,12 @@ theorem wp_command_ite {World : Type} {source target : Wasm.Module} {host : Host
       (PureTransport.erase initial) locals)
     (apart : Holds.ApartFrom env slots
       (fun i => (live i || yes.uses i || no.uses i) || condition.uses i)
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (at_ : heap.At (PureTransport.erase initial))
     (safe : pool.Safe env slots
       (fun i => (live i || yes.uses i || no.uses i) || condition.uses i) heap
       (PureTransport.erase initial) locals)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
     (conditionRoom : base + max condition.width (copyWidth .bool) ≤ h)
@@ -257,7 +257,7 @@ theorem wp_command_ite {World : Type} {source target : Wasm.Module} {host : Host
       pool.Safe env slots (fun i => live i || picked.uses i) middleHeap
         (PureTransport.erase middle) { prefixLocals with values := locals.values } →
       Holds.ApartFrom env slots (fun i => live i || picked.uses i)
-        (PureTransport.erase middle) { prefixLocals with values := locals.values } ABI.scratch →
+        (PureTransport.erase middle) { prefixLocals with values := locals.values } ABI.low →
       (PureTransport.erase middle).memoryCap source 0 ≤ 65535 →
       wp target (picked.code (pool := pool) source h slots (base + result.width) live)
         (CommandResult host env slots (fun i => live i || picked.uses i) live

@@ -44,23 +44,23 @@ theorem loop_context_holds {context : List Ty} {env : Env context} {slots : List
     (fun _ _ _ _ member => nomatch member)
   exact indexed.push held rep stateApart
 
-theorem loop_context_scratch {context : List Ty} {env : Env context} {slots : List Slot}
+theorem loop_context_low {context : List Ty} {env : Env context} {slots : List Slot}
     {type : Ty} {state : type.denote} {index : UInt64} {live : Nat → Bool} {base : Nat}
     {heap : Heap} {store : Store Unit} {locals : Locals} {words : List Value}
     (vars : Holds env slots (fun i => live (i + 2)) base heap store locals)
-    (scratch : Holds.ApartFrom env slots (fun i => live (i + 2)) store locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots (fun i => live (i + 2)) store locals ABI.low)
     (held : LocalsHold locals (base + 2) type.types words)
     (rep : type.Rep .owned heap store words state)
     (counter : locals.get (base + 1) = some (.i64 index)) :
     Holds.ApartFrom (.cons state (.cons (t := .word) index env))
       (⟨base + 2, .owned⟩ :: ⟨base + 1, .borrowed⟩ :: loopCaptured slots)
-      live store locals ABI.scratch := by
+      live store locals ABI.low := by
   have indexed : Holds.ApartFrom (.cons (t := .word) index env)
       (⟨base + 1, .borrowed⟩ :: loopCaptured slots) (fun i => live (i + 1))
-      store locals ABI.scratch :=
+      store locals ABI.low :=
     (Holds.ApartFrom.loopBorrow vars scratch).push
       (loop_index_hold counter) rfl (fun _ _ member => nomatch member)
-  exact indexed.push held rep.length (fun _ => owned_scratch rep)
+  exact indexed.push held rep.length (fun _ => owned_low rep)
 
 theorem loop_context_safe {pool : Bytes.LiteralPool} {context : List Ty} {env : Env context}
     {slots : List Slot} {type : Ty} {state : type.denote} {index : UInt64}
@@ -95,21 +95,21 @@ theorem loop_test_holds {context : List Ty} {env : Env context} {slots : List Sl
   simpa only [loopCaptured_cons, loopCaptured_idempotent] using
     (loop_context_holds vars held rep apart counter).loopBorrow
 
-theorem loop_test_scratch {context : List Ty} {env : Env context} {slots : List Slot}
+theorem loop_test_low {context : List Ty} {env : Env context} {slots : List Slot}
     {type : Ty} {state : type.denote} {index : UInt64} {live : Nat → Bool} {base : Nat}
     {heap : Heap} {store : Store Unit} {locals : Locals} {words : List Value}
     (vars : Holds env slots (fun i => live (i + 2)) base heap store locals)
-    (scratch : Holds.ApartFrom env slots (fun i => live (i + 2)) store locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots (fun i => live (i + 2)) store locals ABI.low)
     (held : LocalsHold locals (base + 2) type.types words)
     (rep : type.Rep .owned heap store words state)
     (apart : Holds.Apart env slots (fun i => live (i + 2)) store locals type .owned words state)
     (counter : locals.get (base + 1) = some (.i64 index)) :
     Holds.ApartFrom (.cons state (.cons (t := .word) index env))
       (⟨base + 2, .borrowed⟩ :: ⟨base + 1, .borrowed⟩ :: loopCaptured slots)
-      live store locals ABI.scratch := by
+      live store locals ABI.low := by
   simpa only [loopCaptured_cons, loopCaptured_idempotent] using
     Holds.ApartFrom.loopBorrow (loop_context_holds vars held rep apart counter)
-      (loop_context_scratch vars scratch held rep counter)
+      (loop_context_low vars scratch held rep counter)
 
 theorem loop_test_safe {pool : Bytes.LiteralPool} {context : List Ty} {env : Env context}
     {slots : List Slot} {type : Ty} {state : type.denote} {index : UInt64}
@@ -128,7 +128,7 @@ theorem loop_test_step {World : Type} {context : List Ty} {env : Env context} {s
       (⟨base + 2, .borrowed⟩ :: ⟨base + 1, .borrowed⟩ :: loopCaptured slots)
       liveIn live scratch heap initial locals (.value .bool) decision
       finalHeap final finalLocals words) :
-    Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+    Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
       finalHeap (PureTransport.erase final) [] := by
   refine after.step.mono (fun region kept => ⟨?_, kept⟩) (fun _ member => nomatch member)
   intro other x selected discarded owned

@@ -126,7 +126,7 @@ theorem compileProcess_base_with {calls : List LeanExe.Wasi.Call}
     (program : EffectProg pureSigs effectSigs) (entry : ProcessEntry effectSigs)
     (pool : Bytes.LiteralPool) (runtime : Runtime source) (profile : Relocation.Profile source)
     (pureCalls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
-    (poolApart : ∀ region ∈ pool.regions, LeanExe.Runtime.regionsDisjoint region ABI.scratch) :
+    (poolApart : ∀ region ∈ pool.regions, LeanExe.Runtime.regionsDisjoint region ABI.low) :
     CompilerBaseWith calls source (compileProcessWith calls source program entry pool) pure pool :=
   { runtime
     layout := compileProcess_layout_with program entry pool runtime.imports
@@ -142,7 +142,7 @@ theorem compileProcess_base {source : Wasm.Module} {pure : Resource.PureContext 
     (program : EffectProg pureSigs effectSigs) (entry : ProcessEntry effectSigs)
     (pool : Bytes.LiteralPool) (runtime : Runtime source) (profile : Relocation.Profile source)
     (calls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
-    (poolApart : ∀ region ∈ pool.regions, LeanExe.Runtime.regionsDisjoint region ABI.scratch) :
+    (poolApart : ∀ region ∈ pool.regions, LeanExe.Runtime.regionsDisjoint region ABI.low) :
     CompilerBase source (compileProcess source program entry pool) pure pool := by
   layout_instance compileProcess_base_with
 

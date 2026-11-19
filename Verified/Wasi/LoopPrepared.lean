@@ -53,9 +53,9 @@ theorem wp_loopPrepared_with {calls : List LeanExe.Wasi.Call}
     (below : depth < depthLimit) (head : locals.params.head? = some (.i64 depth))
     (positions : locals.positions = h)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (safe : pool.Safe env slots liveIn heap (PureTransport.erase initial) locals)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (selected : ∀ i, (live i || (test.uses (i + 2) || step.uses (i + 2))) = true → liveIn i = true)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
@@ -133,7 +133,7 @@ theorem wp_loopPrepared_with {calls : List LeanExe.Wasi.Call}
     · intro index current currentLocals inv bound
       obtain ⟨frame⟩ := inv
       obtain ⟨currentSafe, _⟩ := frame.after.pool_safe safe vars scratch selected poolApart
-      have currentScratch := frame.after.scratch vars scratch selected
+      have currentScratch := frame.after.low vars scratch selected
       have testRun := wp_loopTest_with (calls := calls) (targetHost := targetHost) runtime layout profile
         (testSpec index frame.state) testForm testClosed
         (frame.after.frame.positions.trans positions) frame.after.frame.params frame.after currentScratch
@@ -157,7 +157,7 @@ theorem wp_loopPrepared_with {calls : List LeanExe.Wasi.Call}
     · intro index current currentLocals decision bound
       obtain ⟨frame, _, runs⟩ := decision
       obtain ⟨currentSafe, fresh⟩ := frame.after.pool_safe safe vars scratch selected poolApart
-      have currentScratch := frame.after.scratch vars scratch selected
+      have currentScratch := frame.after.low vars scratch selected
       refine wp_loopBody_with (sourceHost := sourceHost) runtime layout profile bodySpec hostValid below
         (by rw [frame.after.frame.params]; exact head)
         (frame.after.frame.positions.trans positions) frame.after currentScratch currentSafe.static fresh
@@ -224,9 +224,9 @@ theorem wp_loopPrepared {World : Type} {source target : Wasm.Module} {host : Hos
     (below : depth < depthLimit) (head : locals.params.head? = some (.i64 depth))
     (positions : locals.positions = h)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (safe : pool.Safe env slots liveIn heap (PureTransport.erase initial) locals)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (selected : ∀ i, (live i || (test.uses (i + 2) || step.uses (i + 2))) = true → liveIn i = true)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)

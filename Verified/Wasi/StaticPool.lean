@@ -4,8 +4,8 @@ namespace Verified.Wasi
 
 open LeanExe.Runtime
 
-theorem pool_regions_apart_scratch (pool : Bytes.LiteralPool) (base : 16 ≤ pool.base) :
-    ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch := by
+theorem pool_regions_apart_low (pool : Bytes.LiteralPool) (base : 4096 ≤ pool.base) :
+    ∀ region ∈ pool.regions, regionsDisjoint region ABI.low := by
   intro region member
   by_cases empty : pool.payload = []
   · simp [Bytes.LiteralPool.regions, empty] at member

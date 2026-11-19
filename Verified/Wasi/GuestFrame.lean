@@ -8,6 +8,16 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
+/-- A region apart from the low memory lies apart from every region within it. -/
+theorem regionsDisjoint_low {region inner : Nat × Nat} (h : regionsDisjoint region ABI.low)
+    (within : inner.1 + inner.2 ≤ 4096) : regionsDisjoint region inner := by
+  dsimp only [regionsDisjoint, ABI.low] at h ⊢
+  omega
+
+theorem regionsDisjoint_low_scratch {region : Nat × Nat} (h : regionsDisjoint region ABI.low) :
+    regionsDisjoint region ABI.scratch :=
+  regionsDisjoint_low h (by decide)
+
 theorem GuestFrame.weaken {before after : Store World}
     {first second : List (Nat × Nat)} (h : GuestFrame before after first)
     (hSubset : ∀ region ∈ first, region ∈ second) : GuestFrame before after second :=
@@ -95,7 +105,7 @@ theorem GuestFrame.scratchHeap {before after : Store World} {heap : Heap}
 
 theorem GuestFrame.scratchStep {before after : Store World} {heap : Heap}
     (h : GuestFrame before after [ABI.scratch]) (hHeap : heap.At (PureTransport.erase before)) :
-    Step heap (PureTransport.erase before) (fun region => regionsDisjoint region ABI.scratch)
+    Step heap (PureTransport.erase before) (fun region => regionsDisjoint region ABI.low)
       heap (PureTransport.erase after) [] :=
   Step.ofWritesRange (h.scratchHeap hHeap) h.scratchWrites (by decide) (by decide)
 
@@ -113,7 +123,7 @@ theorem GuestFrame.scratchRep {before after : Store World} {heap : Heap}
     subst region
     have hBase := hBuffer.object.base
     right
-    dsimp only [ABI.scratch, block]
+    dsimp only [ABI.low, block]
     omega
 
 end Verified.Wasi

@@ -61,7 +61,7 @@ theorem CommandResult.bind_unit {World : Type} {host : Host World}
     {locals middleLocals : Locals} {firstTrace : List Event} {aborts : Bool}
     {continuation : Continuation (Observed World)}
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (firstExecution : Exec (observedHost host) first initial.host firstTrace (.returned ())
       middle.host)
     (firstAfter : After env slots liveIn liveMid base heap initial locals .unit ()
@@ -94,7 +94,7 @@ theorem wp_sequence_unit {World : Type} {host : Host World}
     {aborts : Bool} {target : Wasm.Module} {targetHost : HostEnv (Observed World)}
     {firstCode nextCode : Program}
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (midSelected : ∀ i, liveMid i = true → liveIn i = true)
     (selected : ∀ i, live i = true → liveMid i = true)
     (firstRun : wp target firstCode
@@ -143,7 +143,7 @@ theorem CommandResult.bind_value {World : Type} {host : Host World}
     {firstWords : List Value} {firstTrace : List Event} {aborts : Bool}
     {continuation : Continuation (Observed World)}
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (firstExecution : Exec (observedHost host) first initial.host firstTrace
       (.returned intermediate) middle.host)
     (firstAfter : After env slots liveIn liveMid base heap initial locals (.value type)

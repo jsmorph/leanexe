@@ -38,14 +38,14 @@ theorem params_holds {params : List Ty} {modes : List Mode} {args : Env params}
     obtain rfl := LocalsHold.unique hSecond (held y) (secondWidth.trans (rep.var y).length.symm)
     exact rep.apart x separate y distinct owned
 
-theorem params_scratch {params : List Ty} {modes : List Mode} {args : Env params}
+theorem params_low {params : List Ty} {modes : List Mode} {args : Env params}
     {words : List Value} {heap : Heap} {store : Store Unit} {locals : Locals} {base : Nat}
     (rep : Env.Rep (paramMode params modes) heap store words args)
     (scratch : ∀ region ∈ Env.reads store (paramMode params modes) words args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (held : ∀ {type : Ty} (x : Var params type),
       LocalsHold locals (base + x.offset) type.types ((words.drop x.offset).take type.width)) :
-    Holds.ApartFrom args (paramSlots params modes base) (fun _ => true) store locals ABI.scratch := by
+    Holds.ApartFrom args (paramSlots params modes base) (fun _ => true) store locals ABI.low := by
   intro type x _ values hValues width region member
   rw [paramSlots_getD x] at hValues member
   have xRep := rep.var x
@@ -53,7 +53,7 @@ theorem params_scratch {params : List Ty} {modes : List Mode} {args : Env params
   cases mode : paramMode params modes x.index with
   | owned =>
       rw [mode] at xRep member
-      exact owned_scratch xRep region member
+      exact owned_low xRep region member
   | borrowed =>
       rw [mode] at member
       exact scratch region (Env.reads_var x rep mode region member)
@@ -124,7 +124,7 @@ theorem wp_function_parameters_with {calls : List LeanExe.Wasi.Call}
     (input : @Bytes.LiteralPool.Input (Env function.params)
       (Env.represent function.params function.modes) pool heap (PureTransport.erase initial) words args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial)
-      (paramMode function.params function.modes) words args, regionsDisjoint ABI.scratch region)
+      (paramMode function.params function.modes) words args, regionsDisjoint ABI.low region)
     (resource : depthLimit ≤ depth → Q (.Trap initial "unreachable"))
     (next : ∀ copied : Locals, depth < depthLimit →
       copied.params = .i64 depth :: words → copied.positions = function.positions → copied.values = [] →
@@ -135,7 +135,7 @@ theorem wp_function_parameters_with {calls : List LeanExe.Wasi.Call}
       pool.Safe args (paramSlots function.params function.modes 1) (fun _ => true)
         heap (PureTransport.erase initial) copied →
       Holds.ApartFrom args (paramSlots function.params function.modes 1) (fun _ => true)
-        (PureTransport.erase initial) copied ABI.scratch →
+        (PureTransport.erase initial) copied ABI.low →
       wp target rest Q initial copied targetHost) :
     wp target (guardCode ++
       paramCopyCode function.positions 1 (function.params.flatMap Ty.types) ++ rest) Q initial
@@ -167,7 +167,7 @@ theorem wp_function_parameters_with {calls : List LeanExe.Wasi.Call}
       LocalsHold copied (1 + x.offset) type.types ((words.drop x.offset).take type.width) :=
     fun x => copied_params_hold parameters rep.length copiedPositions copies x
   exact next copied below (frame.params.trans parameters) copiedPositions (stack.trans values)
-    held (params_holds rep separate held) (input.params rep held) (params_scratch rep scratch held)
+    held (params_holds rep separate held) (input.params rep held) (params_low rep scratch held)
 
 theorem wp_function_parameters {World : Type} {source target : Module}
     {pureSigs : List Sig} {effectSigs : List EffectSig}
@@ -183,7 +183,7 @@ theorem wp_function_parameters {World : Type} {source target : Module}
     (input : @Bytes.LiteralPool.Input (Env function.params)
       (Env.represent function.params function.modes) pool heap (PureTransport.erase initial) words args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial)
-      (paramMode function.params function.modes) words args, regionsDisjoint ABI.scratch region)
+      (paramMode function.params function.modes) words args, regionsDisjoint ABI.low region)
     (resource : depthLimit ≤ depth → Q (.Trap initial "unreachable"))
     (next : ∀ copied : Locals, depth < depthLimit →
       copied.params = .i64 depth :: words → copied.positions = function.positions → copied.values = [] →
@@ -194,7 +194,7 @@ theorem wp_function_parameters {World : Type} {source target : Module}
       pool.Safe args (paramSlots function.params function.modes 1) (fun _ => true)
         heap (PureTransport.erase initial) copied →
       Holds.ApartFrom args (paramSlots function.params function.modes 1) (fun _ => true)
-        (PureTransport.erase initial) copied ABI.scratch →
+        (PureTransport.erase initial) copied ABI.low →
       wp target rest Q initial copied targetHost) :
     wp target (guardCode ++
       paramCopyCode function.positions 1 (function.params.flatMap Ty.types) ++ rest) Q initial
@@ -215,13 +215,13 @@ theorem wp_parameter_cleanup_with {calls : List LeanExe.Wasi.Call}
     (at_ : heap.At (PureTransport.erase initial))
     (vars : Holds args slots (fun _ => true) base heap (PureTransport.erase initial) locals)
     (safe : pool.Safe args slots (fun _ => true) heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom args slots (fun _ => true) (PureTransport.erase initial) locals ABI.scratch)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (apart : Holds.ApartFrom args slots (fun _ => true) (PureTransport.erase initial) locals ABI.low)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (next : ∀ finalHeap final finalLocals,
       After args slots (fun _ => true) used base heap initial locals .unit ()
         finalHeap final finalLocals [] →
       pool.Safe args slots used finalHeap (PureTransport.erase final) finalLocals →
-      Holds.ApartFrom args slots used (PureTransport.erase final) finalLocals ABI.scratch →
+      Holds.ApartFrom args slots used (PureTransport.erase final) finalLocals ABI.low →
       finalLocals.values = locals.values → final.host = initial.host →
       wp target rest Q final finalLocals targetHost) :
     wp target (Relocation.programWith calls (releaseWhere context slots (fun i => !used i)) ++ rest)
@@ -249,7 +249,7 @@ theorem wp_parameter_cleanup_with {calls : List LeanExe.Wasi.Call}
         simpa only [liveEq] using unchanged
       have selected : ∀ i, used i = true → true = true := fun _ _ => rfl
       have finalSafe := (normalized.pool_safe safe vars apart selected poolApart).1
-      have finalApart := normalized.scratch vars apart selected
+      have finalApart := normalized.low vars apart selected
       have sameWorld : final.host = initial.host := (exec_pure_shape execution).2.2
       exact next finalHeap final adjusted normalized finalSafe finalApart rfl sameWorld
   | terminal final trace outcome message execution terminal =>
@@ -270,13 +270,13 @@ theorem wp_parameter_cleanup {World : Type} {host : Host World}
     (at_ : heap.At (PureTransport.erase initial))
     (vars : Holds args slots (fun _ => true) base heap (PureTransport.erase initial) locals)
     (safe : pool.Safe args slots (fun _ => true) heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom args slots (fun _ => true) (PureTransport.erase initial) locals ABI.scratch)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (apart : Holds.ApartFrom args slots (fun _ => true) (PureTransport.erase initial) locals ABI.low)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (next : ∀ finalHeap final finalLocals,
       After args slots (fun _ => true) used base heap initial locals .unit ()
         finalHeap final finalLocals [] →
       pool.Safe args slots used finalHeap (PureTransport.erase final) finalLocals →
-      Holds.ApartFrom args slots used (PureTransport.erase final) finalLocals ABI.scratch →
+      Holds.ApartFrom args slots used (PureTransport.erase final) finalLocals ABI.low →
       finalLocals.values = locals.values → final.host = initial.host →
       wp target rest Q final finalLocals targetHost) :
     wp target (Relocation.program (releaseWhere context slots (fun i => !used i)) ++ rest)
@@ -306,8 +306,8 @@ theorem wp_function_entry_with {calls : List LeanExe.Wasi.Call}
     (input : @Bytes.LiteralPool.Input (Env function.params)
       (Env.represent function.params function.modes) pool heap (PureTransport.erase initial) words args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial)
-      (paramMode function.params function.modes) words args, regionsDisjoint ABI.scratch region)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+      (paramMode function.params function.modes) words args, regionsDisjoint ABI.low region)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (resource : depthLimit ≤ depth → Q (.Trap initial "unreachable"))
     (next : ∀ (copied : Locals) (finalHeap : Heap) (final : Store (Observed World))
       (finalLocals : Locals), depth < depthLimit →
@@ -319,7 +319,7 @@ theorem wp_function_entry_with {calls : List LeanExe.Wasi.Call}
       pool.Safe args (paramSlots function.params function.modes 1) function.body.uses
         finalHeap (PureTransport.erase final) finalLocals →
       Holds.ApartFrom args (paramSlots function.params function.modes 1) function.body.uses
-        (PureTransport.erase final) finalLocals ABI.scratch →
+        (PureTransport.erase final) finalLocals ABI.low →
       finalLocals.values = [] → final.host = initial.host →
       wp target rest Q final finalLocals targetHost) :
     wp target (guardCode ++
@@ -359,8 +359,8 @@ theorem wp_function_entry {World : Type} {host : Host World} {source target : Mo
     (input : @Bytes.LiteralPool.Input (Env function.params)
       (Env.represent function.params function.modes) pool heap (PureTransport.erase initial) words args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial)
-      (paramMode function.params function.modes) words args, regionsDisjoint ABI.scratch region)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+      (paramMode function.params function.modes) words args, regionsDisjoint ABI.low region)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (resource : depthLimit ≤ depth → Q (.Trap initial "unreachable"))
     (next : ∀ (copied : Locals) (finalHeap : Heap) (final : Store (Observed World))
       (finalLocals : Locals), depth < depthLimit →
@@ -372,7 +372,7 @@ theorem wp_function_entry {World : Type} {host : Host World} {source target : Mo
       pool.Safe args (paramSlots function.params function.modes 1) function.body.uses
         finalHeap (PureTransport.erase final) finalLocals →
       Holds.ApartFrom args (paramSlots function.params function.modes 1) function.body.uses
-        (PureTransport.erase final) finalLocals ABI.scratch →
+        (PureTransport.erase final) finalLocals ABI.low →
       finalLocals.values = [] → final.host = initial.host →
       wp target rest Q final finalLocals targetHost) :
     wp target (guardCode ++

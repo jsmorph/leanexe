@@ -59,7 +59,7 @@ theorem wp_sys_reported_with {calls : List LeanExe.Wasi.Call} {World : Type}
       (errno count size root length : UInt64) (output : LeanExe.Bytes) (trace : List Event),
       Exec (observedHost host) (SysForm.reported.runWith call values [] []) initial.host trace
         (.returned (wordsBytesValue 3 [errno, count, size] output)) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       Bytes.Rep heap' (PureTransport.erase final) root length output →
       heap'.top.toNat ≤ heap.top.toNat + sysCost .reported call trace →
@@ -158,7 +158,7 @@ theorem wp_sys_reported_with {calls : List LeanExe.Wasi.Call} {World : Type}
         Exec (observedHost host) (SysForm.reported.runWith call values [] []) initial.host trace
           (.returned (wordsBytesValue 3 [e, c, z] output)) final.host →
         Step heap (PureTransport.erase initial)
-          (fun region => regionsDisjoint region ABI.scratch)
+          (fun region => regionsDisjoint region ABI.low)
           heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
         Bytes.Rep heap' (PureTransport.erase final) root length output →
         heap'.top.toNat ≤ heap.top.toNat + sysCost .reported call trace →
@@ -383,7 +383,7 @@ theorem wp_sys_reported_with {calls : List LeanExe.Wasi.Call} {World : Type}
           have hOtherA : ∀ j, j ≠ base + 3 → sA.get j = sB.get j := fun j hj =>
             Locals.get_setLocal_ne (s := { sB with values := s.values }) c3.1 hj
           have hBefore : Step heap (PureTransport.erase initial)
-              (fun region => regionsDisjoint region ABI.scratch)
+              (fun region => regionsDisjoint region ABI.low)
               (heap.allocate (allocSize (size + count * 4 + 3))) (PureTransport.erase final)
               (Bytes.regions (PureTransport.erase final) root) := by
             have hRootNonzero : root ≠ 0 := hBuffer.nonzero

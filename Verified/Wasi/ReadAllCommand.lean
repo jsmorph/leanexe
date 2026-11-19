@@ -37,15 +37,15 @@ theorem readAll_after {World : Type} {context : List Ty} {env : Env context}
     {initial final : Store World} {locals finalLocals : Locals} {root length errno : UInt64}
     {bytes : LeanExe.Bytes}
     (vars : Holds env slots live base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots live (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots live (PureTransport.erase initial) locals ABI.low)
     (step : Step heap (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.scratch)
+      (fun region => regionsDisjoint region ABI.low)
       finalHeap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root))
     (frame : Frame base locals finalLocals)
     (rep : Bytes.Rep finalHeap (PureTransport.erase final) root length bytes) :
     After env slots live live base heap initial locals (.value (.pair .word .bytes))
       (errno, bytes) finalHeap final finalLocals [.i64 errno, .i64 root, .i64 length] := by
-  refine ⟨?_, frame, vars.step_scratch apart step frame, read_result_rep rep, ?_⟩
+  refine ⟨?_, frame, vars.step_low apart step frame, read_result_rep rep, ?_⟩
   · have fresh : (ResultTy.value (.pair .word .bytes)).fresh (PureTransport.erase final)
         [.i64 errno, .i64 root, .i64 length] (errno, bytes) =
         Bytes.regions (PureTransport.erase final) root :=
@@ -209,7 +209,7 @@ theorem wp_readAll_after_limit_with {calls : List LeanExe.Wasi.Call}
     (profile : Relocation.Profile source) (hImports : target.imports = ABI.importsWith calls)
     (hHost : targetHost.Satisfies target (hostSpecWith host calls))
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (first : After env slots liveIn live base heap initial locals (.value .word) limit
       middleHeap middle middleLocals [.i64 limit])
@@ -248,7 +248,7 @@ theorem wp_readAll_after_limit_with {calls : List LeanExe.Wasi.Call}
       readFrame
     rw [wp_nil]
     have primitive := readAll_after (errno := result.errno) first.holds
-      (first.scratch vars apart selected) readStep readFrame rep
+      (first.low vars apart selected) readStep readFrame rep
     have after := After.thenWord vars apart first primitive selected (fun _ hLive => hLive)
     exact hNext finalHeap final finalLocals root length result trace
       (by rw [← sameWorld]; exact readExecution) after top
@@ -266,7 +266,7 @@ theorem wp_readAll_after_limit {World : Type} {source target : Module} {host : H
     (profile : Relocation.Profile source) (hImports : target.imports = ABI.imports)
     (hHost : targetHost.Satisfies target (hostSpec host))
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (first : After env slots liveIn live base heap initial locals (.value .word) limit
       middleHeap middle middleLocals [.i64 limit])

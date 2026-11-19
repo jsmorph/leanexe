@@ -35,7 +35,7 @@ theorem wp_entry_body_with {calls : List LeanExe.Wasi.Call}
       (PureTransport.erase initial) (entry.tables.addresses.map Value.i64 ++ visibleWords) args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) entry.signature.mode
       (entry.tables.addresses.map Value.i64 ++ visibleWords) args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.CallPrefixBound (observedHost host) pure program entry.callee 0 args initial.host budget) :
@@ -101,7 +101,7 @@ theorem wp_entry_body {World : Type} {source target : Wasm.Module} {host : Host 
       (PureTransport.erase initial) (entry.tables.addresses.map Value.i64 ++ visibleWords) args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) entry.signature.mode
       (entry.tables.addresses.map Value.i64 ++ visibleWords) args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.CallPrefixBound (observedHost host) pure program entry.callee 0 args initial.host budget) :
@@ -155,7 +155,7 @@ theorem compiled_entry_run_with {calls : List LeanExe.Wasi.Call}
       (PureTransport.erase initial) (entry.tables.addresses.map Value.i64 ++ visibleWords) args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) entry.signature.mode
       (entry.tables.addresses.map Value.i64 ++ visibleWords) args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap (compileCalls calls source program entries none pool) 0 ≤ 65535)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.CallPrefixBound (observedHost host) pure program entry.callee 0 args initial.host budget) :
@@ -205,7 +205,7 @@ theorem compiled_entry_run {World : Type} {source : Wasm.Module} {host : Host Wo
       (PureTransport.erase initial) (entry.tables.addresses.map Value.i64 ++ visibleWords) args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) entry.signature.mode
       (entry.tables.addresses.map Value.i64 ++ visibleWords) args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap (compile source program entries none pool) 0 ≤ 65535)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.CallPrefixBound (observedHost host) pure program entry.callee 0 args initial.host budget) :

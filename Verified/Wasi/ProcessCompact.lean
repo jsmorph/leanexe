@@ -113,8 +113,8 @@ theorem _root_.Verified.Bytes.LiteralPool.Static.below {pool : Bytes.LiteralPool
     subst member
     exact (h.resolve_left hEmpty).2.below
 
-theorem scratch_apart_above (n : Nat) : regionsDisjoint (4096, n) ABI.scratch := by
-  simp only [regionsDisjoint, ABI.scratch]
+theorem low_apart_above (n : Nat) : regionsDisjoint (4096, n) ABI.low := by
+  simp only [regionsDisjoint, ABI.low]
   omega
 
 /-- The memory facts of a call's result: the result represents its value, the call kept the
@@ -124,12 +124,12 @@ theorem ProcessMemory.called {oldType resultType : Ty} {pool : Bytes.LiteralPool
     {oldWords resultWords : List Value} {oldValue : oldType.denote}
     {resultValue : resultType.denote}
     (current : ProcessMemory oldType pool heap initial oldWords oldValue)
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
-    (called : Step heap initial (fun region => regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
+    (called : Step heap initial (fun region => regionsDisjoint region ABI.low)
       middleHeap middle (resultType.blocks middle resultWords resultValue))
     (resultRep : resultType.Rep .owned middleHeap middle resultWords resultValue) :
     ProcessMemory resultType pool middleHeap middle resultWords resultValue := by
-  obtain ⟨middleStatic, poolFresh⟩ := current.static.step called poolScratch
+  obtain ⟨middleStatic, poolFresh⟩ := current.static.step called poolLow
   exact ⟨called.at_, resultRep, middleStatic, poolFresh⟩
 
 /-- The process memory and the base facts after the compaction: the pool, which lies below the

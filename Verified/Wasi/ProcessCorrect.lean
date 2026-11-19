@@ -21,7 +21,7 @@ theorem compiled_process_body_with {calls : List LeanExe.Wasi.Call}
     (valid : targetHost.Satisfies (compileProcessWith calls source program entry pool) (hostSpecWith host calls))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap (compileProcessWith calls source program entry pool) 0 ≤ 65535) :
     pwp (compileProcessWith calls source program entry pool)
       (entry.functionWith calls source (effectTypeIndex source effectSigs.length)).body
@@ -43,10 +43,10 @@ theorem compiled_process_body_with {calls : List LeanExe.Wasi.Call}
     compactable compactForm compactClosed
     (effectCalls.safety entry.begin) (notImported _) beginLookup
     (by simpa only [widthSum, List.map_nil, List.sum_nil, Nat.add_zero] using beginArity)
-    (compileProcess_imports_with source program entry pool) valid at_ free static poolScratch cap
+    (compileProcess_imports_with source program entry pool) valid at_ free static poolLow cap
   intro current store locals stored
   exact (wp_process_iteration_with runtime layout profile compactable compactForm compactClosed
-    (effectCalls.safety entry.step) (notImported _) stepLookup stepArity valid poolScratch stepMeaning
+    (effectCalls.safety entry.step) (notImported _) stepLookup stepArity valid poolLow stepMeaning
     stored).pwp
 
 theorem compiled_process_body {World : Type} {source : Wasm.Module} {host : Host World}
@@ -64,7 +64,7 @@ theorem compiled_process_body {World : Type} {source : Wasm.Module} {host : Host
     (valid : targetHost.Satisfies (compileProcess source program entry pool) (hostSpec host))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap (compileProcess source program entry pool) 0 ≤ 65535) :
     pwp (compileProcess source program entry pool)
       (entry.function source (effectTypeIndex source effectSigs.length)).body
@@ -89,7 +89,7 @@ theorem compiled_process_run_with {calls : List LeanExe.Wasi.Call}
     (valid : targetHost.Satisfies (compileProcessWith calls source program entry pool) (hostSpecWith host calls))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap (compileProcessWith calls source program entry pool) 0 ≤ 65535)
     (completed : run fuel (compileProcessWith calls source program entry pool)
       (Wrappers.effectIndexWith calls source effectSigs.length) initial [] targetHost ≠ .OutOfFuel) :
@@ -97,7 +97,7 @@ theorem compiled_process_run_with {calls : List LeanExe.Wasi.Call}
       process initial.host (run fuel (compileProcessWith calls source program entry pool)
         (Wrappers.effectIndexWith calls source effectSigs.length) initial [] targetHost) := by
   have body := compiled_process_body_with (calls := calls) program entry pool effectCalls runtime profile compactable
-    compactForm compactClosed stepMeaning valid at_ free static poolScratch cap
+    compactForm compactClosed stepMeaning valid at_ free static poolLow cap
   have indexEq : Wrappers.effectIndexWith calls source effectSigs.length =
       3 + calls.length + (source.funcs.length + (3 + effectSigs.length)) := by
     simp only [Wrappers.effectIndexWith, Module.extraIndexWith]
@@ -121,7 +121,7 @@ theorem compiled_process_run {World : Type} {source : Wasm.Module} {host : Host 
     (valid : targetHost.Satisfies (compileProcess source program entry pool) (hostSpec host))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap (compileProcess source program entry pool) 0 ≤ 65535)
     (completed : run fuel (compileProcess source program entry pool)
       (Wrappers.effectIndex source effectSigs.length) initial [] targetHost ≠ .OutOfFuel) :

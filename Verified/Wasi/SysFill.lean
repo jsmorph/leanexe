@@ -245,7 +245,7 @@ theorem fill_rep {World : Type} {before after : Store World} {heap : Heap}
     Bytes.Rep heap (PureTransport.erase after) root size
         (buffer.splice (buffer.window start count).1 out) ∧
       Step heap (PureTransport.erase before)
-        (fun r => regionsDisjoint r ABI.scratch ∧
+        (fun r => regionsDisjoint r ABI.low ∧
           ∀ b ∈ Bytes.regions (PureTransport.erase before) root, regionsDisjoint r b)
         heap (PureTransport.erase after) (Bytes.regions (PureTransport.erase after) root) := by
   have hWindow := buffer.window_le start count
@@ -298,7 +298,7 @@ theorem fill_after {World : Type} {initial final final' : Store World} {heap : H
     Bytes.Rep heap (PureTransport.erase final') root size
         (FillResult.of buffer start count errno used out).buffer ∧
       Step heap (PureTransport.erase initial)
-        (fun r => regionsDisjoint r ABI.scratch ∧
+        (fun r => regionsDisjoint r ABI.low ∧
           ∀ b ∈ Bytes.regions (PureTransport.erase initial) root, regionsDisjoint r b)
         heap (PureTransport.erase final') (Bytes.regions (PureTransport.erase final') root) := by
   by_cases hZero : errno = 0
@@ -342,7 +342,7 @@ theorem wp_sys_flat_fill_with {calls : List LeanExe.Wasi.Call} {World : Type}
     (hInputLocs : ∀ place ∈ inputLocs, place + 2 ≤ base)
     (hInputReps : ∀ input ∈ inputs, ∃ length,
       Bytes.Rep heap (PureTransport.erase initial) input.1 length input.2 ∧
-        ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.scratch)
+        ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.low)
     (hInputApart : ∀ input ∈ inputs, ∀ b ∈ Bytes.regions (PureTransport.erase initial) root,
       regionsDisjoint (input.1.toNat, input.2.data.size) b)
     (hRoot : s.get rootLocal = some (.i64 root))
@@ -356,7 +356,7 @@ theorem wp_sys_flat_fill_with {calls : List LeanExe.Wasi.Call} {World : Type}
         (.sys call (flatArgsWith call.params (lowerWords call.params values [buffer])
           (inputs.map Prod.snd)) Action.pure) initial.host trace (.returned reply) final.host →
       Step heap (PureTransport.erase initial)
-        (fun r => regionsDisjoint r ABI.scratch ∧
+        (fun r => regionsDisjoint r ABI.low ∧
           ∀ b ∈ Bytes.regions (PureTransport.erase initial) root, regionsDisjoint r b)
         heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       Bytes.Rep heap (PureTransport.erase final) root size

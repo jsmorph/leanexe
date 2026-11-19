@@ -84,13 +84,13 @@ theorem wp_sys_flat_invoke_inputs_with {calls : List LeanExe.Wasi.Call} {World :
     (hInputAt : ∀ input ∈ inputs,
       Bytes.At initial.mem input.1 input.2 ∧ input.1.toNat < 4294967296)
     (hInputApart : ∀ input ∈ inputs,
-      regionsDisjoint (input.1.toNat, input.2.data.size) ABI.scratch)
+      regionsDisjoint (input.1.toNat, input.2.data.size) ABI.low)
     (hNext : ∀ (final : Store (Observed World)) (sF : Locals) (errno : UInt64)
       (outputs : List LeanExe.Bytes),
       (observedHost host).sys initial.host call
         (flatArgsWith call.params values (inputs.map Prod.snd)) (.returned errno outputs)
         final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) [] →
       ReadAllOutside base s0 sF → sF.values = s.values →
       sF.get base = some (.i64 errno) →
@@ -123,7 +123,7 @@ theorem wp_sys_flat_invoke_inputs_with {calls : List LeanExe.Wasi.Call} {World :
       hInputCount' (by decide) (fun value found => by
         simp [hNone] at found) hFrame
     have hStep : Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch) heap (PureTransport.erase after) [] :=
+        (fun region => regionsDisjoint region ABI.low) heap (PureTransport.erase after) [] :=
       (read_zero_frame hFrame').scratchStep hHeap
     have hBound := (observedHost host).sys_bound hSys
     have hErrno : errno.toNat ≤ 76 := hBound.2

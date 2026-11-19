@@ -23,7 +23,7 @@ theorem cost_function_post_body {World : Type} {host : Host World}
       (Env.moves (PureTransport.erase initial) function.sig.mode params args)
       (Env.reads (PureTransport.erase initial) function.sig.mode params args))
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) function.sig.mode params args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (held : ∀ {type : Ty} (x : Var function.params type),
       LocalsHold locals (1 + x.offset) type.types ((params.drop x.offset).take type.width))
     (prologue : After args (paramSlots function.params function.modes 1)
@@ -45,7 +45,7 @@ theorem cost_function_post_body {World : Type} {host : Host World}
         exact List.take_of_length_le (by rw [List.length_reverse, after.rep.length])
       rw [out]
       have combined := After.thenUnit (params_holds rep separate held)
-        (params_scratch rep scratch held) prologue after
+        (params_low rep scratch held) prologue after
         (fun _ _ => rfl) (fun _ impossible => Bool.noConfusion impossible)
       have call : Resource.ResourceCall (observedHost host) pure (.cons function rest) .here depth args
           initial.host trace (.returned value) final.host spent (Resource.entryFits depth && fits) := by

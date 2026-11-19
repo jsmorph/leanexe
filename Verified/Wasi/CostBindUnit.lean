@@ -82,7 +82,7 @@ theorem cost_command_bind_unit_spec_with {calls : List LeanExe.Wasi.Call}
       valid below (by rw [adjusted.frame.params]; exact depthParam)
       (adjusted.frame.positions.trans positions) adjusted.holds adjusted.step.at_
       (adjusted.pool_safe safe vars scratch midSelected facts.poolApart).1
-      (adjusted.scratch vars scratch midSelected)
+      (adjusted.low vars scratch midSelected)
       (by rw [adjusted.step.cap source]; exact cap)
       (by rw [adjusted.frame.params]; exact low) nextRoom nextReady nextCovered placement.2
       (fun noAbort => by

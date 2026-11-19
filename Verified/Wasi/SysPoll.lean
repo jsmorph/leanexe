@@ -271,7 +271,7 @@ theorem wp_sys_poll_accept_with {calls : List LeanExe.Wasi.Call} {World : Type}
       (errno : UInt64) (outputs : List LeanExe.Bytes),
       (observedHost host).sys initial.host call (values.map .word) (.returned errno outputs)
         final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) [] →
       heap'.top.toNat ≤ heap.top.toNat + Bytes.allocationCost (80 * records.length + 7) →
       LocalsOutside s0 sF base 9 → sF.values = s.values →
@@ -308,13 +308,13 @@ theorem wp_sys_poll_accept_with {calls : List LeanExe.Wasi.Call} {World : Type}
   let root := FixedArrayAllocate.root heap.top
     (allocSize (UInt64.ofNat (80 * records.length + 7))) heap.free
   have hBefore : Step heap (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.scratch)
+      (fun region => regionsDisjoint region ABI.low)
       (heap.allocate (allocSize (UInt64.ofNat (80 * records.length + 7))))
       (PureTransport.erase allocated) (Bytes.regions (PureTransport.erase allocated) root) := by
     have hRoot : root ≠ 0 := hBuffer.nonzero
     rw [Bytes.regions, ite_eq_right hRoot]
     exact hAllocate.mono
-      (keep' := fun region => regionsDisjoint region ABI.scratch)
+      (keep' := fun region => regionsDisjoint region ABI.low)
       (fresh' := [block (PureTransport.erase allocated) root])
       (fun _ _ => True.intro) (fun _ h => h)
   have hReady : ReadReady (heap.allocate (allocSize (UInt64.ofNat (80 * records.length + 7))))
@@ -573,7 +573,7 @@ theorem wp_sys_poll_with {calls : List LeanExe.Wasi.Call} {World : Type}
       (trace : List Event) (reply : Reply),
       Exec (observedHost host) (.sys call (flatArgsWith call.params values []) Action.pure)
         initial.host trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) [] →
       heap'.top.toNat ≤ heap.top.toNat + Bytes.allocationCost (80 * records.length + 7) →
       LocalsOutside s finalLocals base 9 →
@@ -620,7 +620,7 @@ theorem wp_sys_poll_with {calls : List LeanExe.Wasi.Call} {World : Type}
       (trace : List Event) (reply : Reply),
       Exec (observedHost host) (.sys call (flatArgsWith call.params values []) Action.pure)
         initial.host trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) [] →
       heap'.top.toNat ≤ heap.top.toNat + Bytes.allocationCost (80 * records.length + 7) →
       LocalsOutside s sF base 9 →

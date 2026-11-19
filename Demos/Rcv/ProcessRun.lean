@@ -72,7 +72,7 @@ structure Compiled (start : Action (ProcessStep State)) where
   profile : Relocation.Profile source
   compactClosed :
     Relocation.programClosed source.funcs.length (processCompaction stateTy) = true
-  poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch
+  poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low
   beginRelated : Action.Rel (ProcessStep.Rel (fun native flat => flat = sourceState native)) start
     ((processEntry beginVar stepVar).beginAction (program.funs pure.funs))
   stepRelated : LeanExe.Wasi.Process.Rel (fun native flat => flat = sourceState native) process
@@ -104,7 +104,7 @@ theorem source_run {World : Type} (host : Host World) (targetHost : HostEnv (Obs
     ProcessEntryRunResult (observedHost host) (c.entry.beginAction (c.program.funs c.pure.funs))
       c.sourceProcess initial.host (run fuel c.module c.startIndex initial [] targetHost) :=
   compiled_process_run c.program c.entry c.pool c.calls c.runtime c.profile compactable
-    compactForm c.compactClosed (fun _ => rfl) valid at_ free static c.poolScratch cap completed
+    compactForm c.compactClosed (fun _ => rfl) valid at_ free static c.poolLow cap completed
 
 /-- Every modeled run of the module from a store with an allocator at `heap`, the literal pool,
 and a memory cap of at most 65,535 pages, under a host that satisfies `hostSpec host`, that
@@ -322,7 +322,7 @@ theorem Compiled.target_terminates {start : Action (ProcessStep State)} (c : Com
     c.runtime c.profile compactable compactForm c.compactClosed (ControlRep code rep Inv)
     (ControlLt zeroWrites)
     (control_wellFounded zeroWrites) (fun ghost _ => charge ghost.1 ghost.2) beginCharge
-    valid at_ free static c.poolScratch cap
+    valid at_ free static c.poolLow cap
     { beginRoom := beginRoom
       beginBounded := beginBounded
       beginReplies := fun _ _ _ execution => by

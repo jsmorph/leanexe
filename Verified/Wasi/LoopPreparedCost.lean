@@ -31,9 +31,9 @@ theorem wp_loopPreparedCost_with {calls : List LeanExe.Wasi.Call}
     (below : depth < depthLimit) (head : locals.params.head? = some (.i64 depth))
     (positions : locals.positions = h)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (safe : pool.Safe env slots liveIn heap (PureTransport.erase initial) locals)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (selected : ∀ i, (live i || (test.uses (i + 2) || step.uses (i + 2))) = true → liveIn i = true)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
@@ -115,7 +115,7 @@ theorem wp_loopPreparedCost_with {calls : List LeanExe.Wasi.Call}
     · intro index current currentLocals inv bound
       obtain ⟨frame⟩ := inv
       obtain ⟨currentSafe, _⟩ := frame.safety.after.pool_safe safe vars scratch selected poolApart
-      have currentScratch := frame.safety.after.scratch vars scratch selected
+      have currentScratch := frame.safety.after.low vars scratch selected
       have testRun := wp_loopTestGuarded_with (calls := calls) (targetHost := targetHost) runtime layout profile
         (testSpec index frame.safety.state) testForm testClosed
         (frame.safety.after.frame.positions.trans positions) frame.safety.after.frame.params
@@ -167,7 +167,7 @@ theorem wp_loopPreparedCost_with {calls : List LeanExe.Wasi.Call}
     · intro index current currentLocals decision bound
       obtain ⟨frame⟩ := decision
       obtain ⟨currentSafe, fresh⟩ := frame.safety.after.pool_safe safe vars scratch selected poolApart
-      have currentScratch := frame.safety.after.scratch vars scratch selected
+      have currentScratch := frame.safety.after.low vars scratch selected
       let bodyBudget := budget - initialCharge - frame.spent -
         pure.loopTestCost depth (slots.map Slot.mode) live test step env index.toNat frame.safety.state
       refine wp_loopBodyCost_with (sourceHost := sourceHost) (budget := bodyBudget) (aborts := aborts)
@@ -260,9 +260,9 @@ theorem wp_loopPreparedCost {World : Type} {source target : Wasm.Module} {host :
     (below : depth < depthLimit) (head : locals.params.head? = some (.i64 depth))
     (positions : locals.positions = h)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (safe : pool.Safe env slots liveIn heap (PureTransport.erase initial) locals)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (selected : ∀ i, (live i || (test.uses (i + 2) || step.uses (i + 2))) = true → liveIn i = true)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)

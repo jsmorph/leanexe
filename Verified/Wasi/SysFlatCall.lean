@@ -322,7 +322,7 @@ theorem wp_sys_flat_call_inputs_with {calls : List LeanExe.Wasi.Call} {World : T
     (hInputAt : ∀ input ∈ inputs,
       Bytes.At store.mem input.1 input.2 ∧ input.1.toNat < 4294967296)
     (hInputApart : ∀ input ∈ inputs,
-      regionsDisjoint (input.1.toNat, input.2.data.size) ABI.scratch ∧
+      regionsDisjoint (input.1.toNat, input.2.data.size) ABI.low ∧
         ∀ capacity, flatCapacityWith call.params values (inputs.map Prod.snd) = some capacity →
           regionsDisjoint (input.1.toNat, input.2.data.size) (root.toNat, capacity.toNat))
     (hNext : ∀ (final : Store (Observed World)) (errno : UInt64) (outputs : List LeanExe.Bytes),
@@ -409,7 +409,7 @@ theorem wp_sys_flat_call_inputs_with {calls : List LeanExe.Wasi.Call} {World : T
       · have hk' : 8 * k + 8 ≤ 16 := by
           have := Nat.mul_le_mul_left 8 (Nat.succ_le_of_lt hk)
           omega
-        simp only [Region.span, pointer, hInput32, regionsDisjoint, ABI.scratch] at scratchApart ⊢
+        simp only [Region.span, pointer, hInput32, regionsDisjoint, ABI.low] at scratchApart ⊢
         rcases size with ⟨size, _⟩ | ⟨size, _⟩ <;> rw [size] <;> omega
   have hLength := lowerArgs_length call.params
     (flatArgsWith call.params values (inputs.map Prod.snd))

@@ -26,11 +26,11 @@ theorem wp_loopBodyCost_with {calls : List LeanExe.Wasi.Call}
     (positions : currentLocals.positions = h)
     (after : After env slots liveIn live base heap initial locals (.value type) state
       currentHeap current currentLocals stateWords)
-    (scratch : Holds.ApartFrom env slots live (PureTransport.erase current) currentLocals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots live (PureTransport.erase current) currentLocals ABI.low)
     (static : pool.Static currentHeap (PureTransport.erase current))
     (fresh : ∀ region ∈ pool.regions, ∀ block ∈ type.blocks (PureTransport.erase current) stateWords state,
       regionsDisjoint region block)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (held : LocalsHold currentLocals (base + 2) type.types stateWords)
     (counter : currentLocals.get (base + 1) = some (.i64 index))
     (usesSelected : ∀ i, step.uses (i + 2) = true → live i = true)
@@ -96,8 +96,8 @@ theorem wp_loopBodyCost_with {calls : List LeanExe.Wasi.Call}
     loop_context_holds (live := releaseIn) (by simpa only [tailLive] using after.holds)
       held after.rep (by simpa only [ResultTy.Apart, tailLive] using after.apart) counter
   have apart : Holds.ApartFrom (.cons state (.cons (t := .word) index env)) bodySlots releaseIn
-      (PureTransport.erase current) currentLocals ABI.scratch :=
-    loop_context_scratch (live := releaseIn) (by simpa only [tailLive] using after.holds)
+      (PureTransport.erase current) currentLocals ABI.low :=
+    loop_context_low (live := releaseIn) (by simpa only [tailLive] using after.holds)
       (by simpa only [tailLive] using scratch) held after.rep counter
   have safe : pool.Safe (.cons state (.cons (t := .word) index env)) bodySlots releaseIn
       currentHeap (PureTransport.erase current) currentLocals :=
@@ -113,7 +113,7 @@ theorem wp_loopBodyCost_with {calls : List LeanExe.Wasi.Call}
         budget aborts
         hostValid below head positions cleanup.holds cleanup.step.at_
         (cleanupAfter.pool_safe safe vars apart selected poolApart).1
-        (cleanupAfter.scratch vars apart selected)
+        (cleanupAfter.low vars apart selected)
         (by rw [cleanup.step.cap source]; exact cap) (by omega) room ready covered place (fun allowed => by
           obtain ⟨within, bounded⟩ := resources allowed
           refine ⟨within.of_le (by rw [top]) (cleanup.step.cap source), ?_⟩
@@ -172,11 +172,11 @@ theorem wp_loopBodyCost {World : Type} {source target : Wasm.Module} {host : Hos
     (positions : currentLocals.positions = h)
     (after : After env slots liveIn live base heap initial locals (.value type) state
       currentHeap current currentLocals stateWords)
-    (scratch : Holds.ApartFrom env slots live (PureTransport.erase current) currentLocals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots live (PureTransport.erase current) currentLocals ABI.low)
     (static : pool.Static currentHeap (PureTransport.erase current))
     (fresh : ∀ region ∈ pool.regions, ∀ block ∈ type.blocks (PureTransport.erase current) stateWords state,
       regionsDisjoint region block)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (held : LocalsHold currentLocals (base + 2) type.types stateWords)
     (counter : currentLocals.get (base + 1) = some (.i64 index))
     (usesSelected : ∀ i, step.uses (i + 2) = true → live i = true)

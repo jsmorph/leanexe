@@ -295,7 +295,7 @@ theorem step_withFresh {heap heap' : Heap} {store store' : Store Unit} {keep : N
     exact ⟨hBytes, hRegion, hApart r hk⟩⟩
 
 /-- A frame that writes the scratch bytes and a window of a buffer is a step that keeps the
-regions apart from the scratch bytes and from the buffer's block, and whose fresh block is the
+regions apart from the low memory and from the buffer's block, and whose fresh block is the
 buffer's. -/
 theorem window_step {World : Type} {before after : Store World} {heap : Heap}
     {root size : UInt64} {buffer : LeanExe.Bytes} {first length : Nat}
@@ -304,7 +304,7 @@ theorem window_step {World : Type} {before after : Store World} {heap : Heap}
     (hWindow : first + length ≤ buffer.data.size)
     (hFrame : GuestFrame before after [ABI.scratch, (root.toNat + first, length)]) :
     Step heap (PureTransport.erase before)
-      (fun r => regionsDisjoint r ABI.scratch ∧
+      (fun r => regionsDisjoint r ABI.low ∧
         ∀ b ∈ Bytes.regions (PureTransport.erase before) root, regionsDisjoint r b)
       heap (PureTransport.erase after) (Bytes.regions (PureTransport.erase after) root) := by
   rcases rep.buffer with ⟨rfl, hEmpty⟩ | hBuffer

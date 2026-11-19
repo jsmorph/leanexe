@@ -48,19 +48,19 @@ theorem inputsHeld_transfer {s s' : Locals} :
     refine .cons ⟨first.1.trans head.1, first.2.trans head.2.1, head.2.2⟩
       (inputsHeld_transfer tail fun place member => same place (List.mem_cons_of_mem _ member))
 
-/-- An input that a step from `initial` to `before` keeps, whose blocks lie apart from the scratch
-area, lies at its root before the call, apart from the scratch area and from the buffer that the
+/-- An input that a step from `initial` to `before` keeps, whose blocks lie apart from the low
+memory, lies at its root before the call, apart from the low memory and from the buffer that the
 step allocated. -/
 theorem input_at_call {World : Type} {initial before : Store World} {heap heapA : Heap}
     {root capacity : UInt64} {input : UInt64 × LeanExe.Bytes}
     (hRep : ∃ length, Bytes.Rep heap (PureTransport.erase initial) input.1 length input.2 ∧
-      ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.scratch)
+      ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.low)
     (hStep : Step heap (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.scratch)
+      (fun region => regionsDisjoint region ABI.low)
       heapA (PureTransport.erase before) (Bytes.regions (PureTransport.erase before) root))
     (hReady : ReadReady heapA (PureTransport.erase before) root capacity) :
     (Bytes.At before.mem input.1 input.2 ∧ input.1.toNat < 4294967296) ∧
-      regionsDisjoint (input.1.toNat, input.2.data.size) ABI.scratch ∧
+      regionsDisjoint (input.1.toNat, input.2.data.size) ABI.low ∧
       regionsDisjoint (input.1.toNat, input.2.data.size) (root.toNat, capacity.toNat) := by
   obtain ⟨length, rep, apart⟩ := hRep
   obtain ⟨rep', _, fresh⟩ := rep.step hStep apart
@@ -68,11 +68,11 @@ theorem input_at_call {World : Type} {initial before : Store World} {heap heapA 
   rcases rep.buffer with ⟨hNull, hEmpty⟩ | hBuffer
   · rw [hNull] at at_ ⊢
     refine ⟨⟨at_, by decide⟩, ?_, ?_⟩ <;>
-      simp [LeanExe.Runtime.regionsDisjoint, ABI.scratch, hEmpty]
+      simp [LeanExe.Runtime.regionsDisjoint, ABI.low, hEmpty]
   · have hBase := hBuffer.object.base
     have hAddress := hBuffer.object.address
     have hCapacity := hBuffer.capacity
-    refine ⟨⟨at_, by omega⟩, by simp only [LeanExe.Runtime.regionsDisjoint, ABI.scratch]; omega,
+    refine ⟨⟨at_, by omega⟩, by simp only [LeanExe.Runtime.regionsDisjoint, ABI.low]; omega,
       ?_⟩
     rcases hReady with ⟨rfl, rfl⟩ | ⟨previous, hBuf, hCap⟩
     · simp [LeanExe.Runtime.regionsDisjoint]
@@ -85,24 +85,24 @@ theorem input_at_call {World : Type} {initial before : Store World} {heap heapA 
       simp only [LeanExe.Runtime.regionsDisjoint]
       omega
 
-/-- An input whose blocks lie apart from the scratch area lies at its root, apart from the
-scratch area. -/
+/-- An input whose blocks lie apart from the low memory lies at its root, apart from the low
+memory. -/
 theorem input_at {World : Type} {initial : Store World} {heap : Heap}
     {input : UInt64 × LeanExe.Bytes} (hHeap : heap.At (PureTransport.erase initial))
     (hRep : ∃ length, Bytes.Rep heap (PureTransport.erase initial) input.1 length input.2 ∧
-      ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.scratch) :
+      ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.low) :
     (Bytes.At initial.mem input.1 input.2 ∧ input.1.toNat < 4294967296) ∧
-      regionsDisjoint (input.1.toNat, input.2.data.size) ABI.scratch := by
+      regionsDisjoint (input.1.toNat, input.2.data.size) ABI.low := by
   obtain ⟨length, rep, apart⟩ := hRep
   have at_ : Bytes.At initial.mem input.1 input.2 := rep.toAt hHeap
   rcases rep.buffer with ⟨hNull, hEmpty⟩ | hBuffer
   · rw [hNull] at at_ ⊢
     refine ⟨⟨at_, by decide⟩, ?_⟩
-    simp [LeanExe.Runtime.regionsDisjoint, ABI.scratch, hEmpty]
+    simp [LeanExe.Runtime.regionsDisjoint, ABI.low, hEmpty]
   · have hBase := hBuffer.object.base
     have hAddress := hBuffer.object.address
     have hCapacity := hBuffer.capacity
-    exact ⟨⟨at_, by omega⟩, by simp only [LeanExe.Runtime.regionsDisjoint, ABI.scratch]; omega⟩
+    exact ⟨⟨at_, by omega⟩, by simp only [LeanExe.Runtime.regionsDisjoint, ABI.low]; omega⟩
 
 /-- The code of a flat call with inputs and without an output, from the argument words and the
 inputs in their locals to the errno and the result words on the stack.  A rejected request returns
@@ -126,7 +126,7 @@ theorem wp_sys_flat_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
     (hInputLocs : ∀ place ∈ inputLocs, place + 2 ≤ base ∨ base + 6 ≤ place)
     (hInputReps : ∀ input ∈ inputs, ∃ length,
       Bytes.Rep heap (PureTransport.erase initial) input.1 length input.2 ∧
-        ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.scratch)
+        ∀ r ∈ Bytes.regions (PureTransport.erase initial) input.1, regionsDisjoint r ABI.low)
     (hHeap : heap.At (PureTransport.erase initial))
     (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
     (hNext : ∀ (final : Store (Observed World)) (finalLocals : Locals) (trace : List Event)
@@ -134,7 +134,7 @@ theorem wp_sys_flat_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
       Exec (observedHost host)
         (.sys call (flatArgsWith call.params values (inputs.map Prod.snd)) Action.pure)
         initial.host trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) [] →
       ReadAllOutside base s finalLocals →
       wp target rest Q final { finalLocals with values :=
@@ -230,7 +230,7 @@ theorem wp_sys_flat_inputs_with {calls : List LeanExe.Wasi.Call} {World : Type}
       Exec (observedHost host)
         (.sys call (flatArgsWith call.params values (inputs.map Prod.snd)) Action.pure)
         initial.host trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) [] →
       ReadAllOutside base s sF →
       sF.get base = some (.i64 reply.errno) →

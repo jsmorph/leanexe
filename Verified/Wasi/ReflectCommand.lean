@@ -78,8 +78,8 @@ private def emitCompilerProofs (target : Name) (base : Name) (calls : Bool) :
     elabCommand (← `(theorem $ready : Verified.Wasi.EffectProg.Ready $source $pool $program :=
       Verified.Wasi.EffectProg.checkReady_sound $program (by decide +kernel)))
   elabCommand (← `(theorem $apart :
-      ∀ region ∈ ($pool).regions, LeanExe.Runtime.regionsDisjoint region Verified.Wasi.ABI.scratch := by
-    exact Verified.Wasi.pool_regions_apart_scratch $pool (by decide +kernel)))
+      ∀ region ∈ ($pool).regions, LeanExe.Runtime.regionsDisjoint region Verified.Wasi.ABI.low := by
+    exact Verified.Wasi.pool_regions_apart_low $pool (by decide +kernel)))
   if calls then
     let correct ← `(Verified.Wasi.EffectProg.correctWith_with (calls := $sysCalls) $pureProgram
       $pureFuns $meaning $tables $wrappers $pool $program $entries $main $profile $pureCovered

@@ -96,7 +96,7 @@ theorem After.reframe {World : Type} {context : List Ty} {env : Env context}
 def LoopStateKeep (type : Ty) (store : Store Unit) (words : List Value)
     (value : type.denote) (region : Nat × Nat) : Prop :=
   (∀ block ∈ type.blocks store words value, regionsDisjoint region block) ∧
-    regionsDisjoint region ABI.scratch
+    regionsDisjoint region ABI.low
 
 theorem After.loopAdvance {World : Type} {context : List Ty} {env : Env context}
     {slots : List Slot} {liveIn live : Nat → Bool} {base : Nat}
@@ -105,7 +105,7 @@ theorem After.loopAdvance {World : Type} {context : List Ty} {env : Env context}
     {stateWords words : List Value}
     (after : After env slots liveIn live base heap initial locals (.value type) state
       middleHeap middle middleLocals stateWords)
-    (scratch : Holds.ApartFrom env slots live (PureTransport.erase middle) middleLocals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots live (PureTransport.erase middle) middleLocals ABI.low)
     (step : Step middleHeap (PureTransport.erase middle)
       (LoopStateKeep type (PureTransport.erase middle) stateWords state)
       finalHeap (PureTransport.erase final) (type.blocks (PureTransport.erase final) words value))
@@ -138,15 +138,15 @@ theorem After.loopTest {World : Type} {context : List Ty} {env : Env context}
     {words : List Value}
     (after : After env slots liveIn live base heap initial locals (.value type) state
       middleHeap middle middleLocals words)
-    (scratch : Holds.ApartFrom env slots live (PureTransport.erase middle) middleLocals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots live (PureTransport.erase middle) middleLocals ABI.low)
     (step : Step middleHeap (PureTransport.erase middle)
-      (fun region => regionsDisjoint region ABI.scratch) finalHeap (PureTransport.erase final) [])
+      (fun region => regionsDisjoint region ABI.low) finalHeap (PureTransport.erase final) [])
     (frame : Frame base middleLocals finalLocals) :
     After env slots liveIn live base heap initial locals (.value type) state
       finalHeap final finalLocals words := by
   have rep : type.Rep .owned middleHeap (PureTransport.erase middle) words state := after.rep
   obtain ⟨rep', same, _⟩ := rep.step step
-    (fun region member => regionsDisjoint_symm (owned_scratch rep region member))
+    (fun region member => regionsDisjoint_symm (owned_low rep region member))
   have sameBlocks : type.blocks (PureTransport.erase final) words state =
       type.blocks (PureTransport.erase middle) words state := same
   have combined := after.step.transBoth step (fun region kept => ⟨kept, fun _ => kept.2⟩)
@@ -154,7 +154,7 @@ theorem After.loopTest {World : Type} {context : List Ty} {env : Env context}
       ∀ values, LocalsHold middleLocals (slots.getD x.index default).loc other.types values →
       values.length = other.width → ∀ region ∈ other.regions
         (slots.getD x.index default).mode (PureTransport.erase middle) values (env.get x),
-        regionsDisjoint region ABI.scratch :=
+        regionsDisjoint region ABI.low :=
     fun other x selected values held width region member =>
       regionsDisjoint_symm (scratch other x selected values held width region member)
   refine ⟨?_, after.frame.trans frame, (after.holds.step step keep).agree frame, rep', ?_⟩

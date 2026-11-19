@@ -160,7 +160,7 @@ theorem wp_write_helper_at_with {calls : List LeanExe.Wasi.Call}
         initial.host trace (.returned result) final.host →
       GuestFrame initial final [ABI.scratch] →
       Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
+        (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) [] →
       Bytes.Rep heap (PureTransport.erase final) root size buffer →
       wp target rest Q final { s with values := .i64 result.count :: .i64 result.errno :: values } env)
@@ -169,7 +169,7 @@ theorem wp_write_helper_at_with {calls : List LeanExe.Wasi.Call}
         initial.host trace (.trapped message) final.host →
       GuestFrame initial final [ABI.scratch] →
       Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
+        (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) [] →
       Bytes.Rep heap (PureTransport.erase final) root size buffer → Q (.Trap final message)) :
     wp target (.call (3 + calls.length + index) :: rest) Q initial
@@ -216,7 +216,7 @@ theorem wp_write_helper_at {World : Type} {target : Module} {host : Host World}
         initial.host trace (.returned result) final.host →
       GuestFrame initial final [ABI.scratch] →
       Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
+        (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) [] →
       Bytes.Rep heap (PureTransport.erase final) root size buffer →
       wp target rest Q final { s with values := .i64 result.count :: .i64 result.errno :: values } env)
@@ -225,7 +225,7 @@ theorem wp_write_helper_at {World : Type} {target : Module} {host : Host World}
         initial.host trace (.trapped message) final.host →
       GuestFrame initial final [ABI.scratch] →
       Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
+        (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) [] →
       Bytes.Rep heap (PureTransport.erase final) root size buffer → Q (.Trap final message)) :
     wp target (.call (3 + index) :: rest) Q initial

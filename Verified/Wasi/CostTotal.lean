@@ -58,7 +58,7 @@ theorem CostEffectSpecWith.return_or_accepted_exit {calls : List LeanExe.Wasi.Ca
     (input : @Bytes.LiteralPool.Input (Env signature.params)
       (Env.represent signature.params signature.modes) pool heap (PureTransport.erase initial) params args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode params args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (within : heap.Within (PureTransport.erase initial) source budget)
     (bounded : Resource.CallPrefixBound (observedHost host) pure program callee depth args initial.host budget)
@@ -89,7 +89,7 @@ theorem CostEffectSpec.return_or_accepted_exit {source target : Wasm.Module}
     (input : @Bytes.LiteralPool.Input (Env signature.params)
       (Env.represent signature.params signature.modes) pool heap (PureTransport.erase initial) params args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode params args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (within : heap.Within (PureTransport.erase initial) source budget)
     (bounded : Resource.CallPrefixBound (observedHost host) pure program callee depth args initial.host budget)

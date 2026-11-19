@@ -22,6 +22,14 @@ def types : List FuncType := [transferType, transferType, exitType]
 
 def scratch : Nat × Nat := (0, 16)
 
+/-- The memory below the static data: the scratch bytes and the call area.  No value of a program
+lies there. -/
+def low : Nat × Nat := (0, 4096)
+
+/-- The bytes that hold the record of a record call, and the subscriptions and events of a
+`poll` call. -/
+def callArea : Nat × Nat := (16, 160)
+
 def functionTable : TableDecl := { min := 0 }
 
 def tableExports : List (String × Nat) := [("__indirect_function_table", 0)]

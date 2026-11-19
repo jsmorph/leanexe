@@ -79,21 +79,21 @@ theorem KeepDying.transfer_kept (h : Holds env slots live base heap store locals
   rw [same] at member
   exact apart type x hIn hOut owned words original width block member
 
-theorem step_scratch (h : Holds env slots live base heap store locals)
-    (apart : ApartFrom env slots live store locals Wasi.ABI.scratch)
-    (step : Step heap store (fun region => regionsDisjoint region Wasi.ABI.scratch)
+theorem step_low (h : Holds env slots live base heap store locals)
+    (apart : ApartFrom env slots live store locals Wasi.ABI.low)
+    (step : Step heap store (fun region => regionsDisjoint region Wasi.ABI.low)
       heap' store' fresh) (frame : Frame base locals locals') :
     Holds env slots live base heap' store' locals' :=
   (h.step step fun type x hLive words held width block member =>
     regionsDisjoint_symm (apart type x hLive words held width block member)).agree frame
 
-theorem step_scratch_dying {liveIn : Nat → Bool}
+theorem step_low_dying {liveIn : Nat → Bool}
     (h : Holds env slots liveIn base heap store locals)
-    (apart : ApartFrom env slots live store locals Wasi.ABI.scratch)
+    (apart : ApartFrom env slots live store locals Wasi.ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (step : Step heap store
       (fun region => KeepDying env slots liveIn live store locals region ∧
-        regionsDisjoint region Wasi.ABI.scratch) heap' store' fresh)
+        regionsDisjoint region Wasi.ABI.low) heap' store' fresh)
     (frame : Frame base locals locals') :
     Holds env slots live base heap' store' locals' :=
   ((h.live_mono selected).step step fun type x hLive words held width block member =>
@@ -110,14 +110,14 @@ theorem GuestFrame.scratchHolds {World : Type} {context : List Ty} {env : Env co
     (frame : GuestFrame before after [ABI.scratch])
     (at_ : heap.At (PureTransport.erase before))
     (vars : Holds env slots live base heap (PureTransport.erase before) locals)
-    (apart : Holds.ApartFrom env slots live (PureTransport.erase before) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots live (PureTransport.erase before) locals ABI.low)
     (localsFrame : Frame base locals locals') :
     Holds env slots live base heap (PureTransport.erase after) locals' :=
-  vars.step_scratch apart (frame.scratchStep at_) localsFrame
+  vars.step_low apart (frame.scratchStep at_) localsFrame
 
-theorem bytes_scratch {heap : Heap} {store : Store Unit} {root length : UInt64}
+theorem bytes_low {heap : Heap} {store : Store Unit} {root length : UInt64}
     {bytes : LeanExe.Bytes} (rep : Bytes.Rep heap store root length bytes) :
-    ∀ region ∈ Bytes.regions store root, regionsDisjoint ABI.scratch region := by
+    ∀ region ∈ Bytes.regions store root, regionsDisjoint ABI.low region := by
   intro region member
   rcases rep.buffer with ⟨rfl, _⟩ | buffer
   · simp [Bytes.regions] at member
@@ -125,7 +125,7 @@ theorem bytes_scratch {heap : Heap} {store : Store Unit} {root length : UInt64}
     subst region
     have := buffer.object.base
     left
-    dsimp only [ABI.scratch, block]
+    dsimp only [ABI.low, block]
     omega
 
 end Wasi

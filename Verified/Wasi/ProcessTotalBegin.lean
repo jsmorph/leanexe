@@ -35,7 +35,7 @@ theorem wp_process_begin_total_with {calls : List LeanExe.Wasi.Call}
     (valid : targetHost.Satisfies target (hostSpecWith host calls))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (params : locals.params = [])
     (positions : locals.positions = processPositions entry.state)
@@ -75,7 +75,7 @@ theorem wp_process_begin_total_with {calls : List LeanExe.Wasi.Call}
         omega
       have resultRep : (processResultTy entry.state).Rep .owned finalHeap
           (PureTransport.erase final) words value := rep
-      have preserved := static.step step (fun region member => ⟨Apart.nil, poolScratch region member⟩)
+      have preserved := static.step step (fun region member => ⟨Apart.nil, poolLow region member⟩)
       let current := processNative entry.state value
       have nativeExecution : LeanExe.Wasi.Exec (observedHost host)
           (entry.beginAction (program.funs pure.funs)) initial.host trace (.returned current)
@@ -92,7 +92,7 @@ theorem wp_process_begin_total_with {calls : List LeanExe.Wasi.Call}
           words (processValue entry.state (processNative entry.state value))
         rw [processValue_native entry.state value]
         exact ⟨step.at_, resultRep, preserved.1, preserved.2⟩
-      have grown := step.top_le at_ free ⟨Apart.nil, scratch_apart_above _⟩
+      have grown := step.top_le at_ free ⟨Apart.nil, low_apart_above _⟩
       have sameCap : (PureTransport.erase final).memoryCap source 0 =
           (PureTransport.erase initial).memoryCap source 0 := by
         simp only [Store.memoryCap, step.caps]
@@ -160,7 +160,7 @@ theorem wp_process_begin_total {World Ghost : Type} {source target : Wasm.Module
     (valid : targetHost.Satisfies target (hostSpec host))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (params : locals.params = [])
     (positions : locals.positions = processPositions entry.state)

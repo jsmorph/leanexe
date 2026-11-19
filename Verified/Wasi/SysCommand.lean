@@ -130,7 +130,7 @@ theorem wp_sys_reported_result_with {calls : List LeanExe.Wasi.Call} {World : Ty
     (hParams : operation.params = [.reported 4 4 false, .reported 1 1 true])
     (hName : operation.reporter = some operation.reporterCall.name)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (at_ : heap.At (PureTransport.erase initial))
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
@@ -168,12 +168,12 @@ theorem wp_sys_reported_result_with {calls : List LeanExe.Wasi.Call} {World : Ty
     exact .trapped final message (.terminal final trace (.trapped message) message execution rfl)
 
 /-- The input variables of a `sys` command hold each input's root and length in their two locals
-below `base`, and represent it with blocks apart from the scratch area and from the regions
+below `base`, and represent it with blocks apart from the low memory and from the regions
 `away`, from which the regions of each input variable lie apart. -/
 theorem sys_inputs_held {context : List Ty} {env : Env context} {slots : List Slot}
     {liveIn : Nat → Bool} {base : Nat} {heap : Heap} {store : Store Unit} {locals : Locals}
     (vars : Holds env slots liveIn base heap store locals)
-    (apart : Holds.ApartFrom env slots liveIn store locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn store locals ABI.low)
     (away : List (Nat × Nat)) :
     ∀ (inputs : List (Var context .bytes)), (∀ input ∈ inputs, liveIn input.index = true) →
     (∀ input ∈ inputs, ∀ words,
@@ -186,7 +186,7 @@ theorem sys_inputs_held {context : List Ty} {env : Env context} {slots : List Sl
         (inputs.map fun input => (slots.getD input.index default).loc) items ∧
       (∀ item ∈ items, ∃ length, Bytes.Rep heap store item.1 length item.2 ∧
         ∀ r ∈ Bytes.regions store item.1,
-          regionsDisjoint r ABI.scratch ∧ ∀ b ∈ away, regionsDisjoint r b) ∧
+          regionsDisjoint r ABI.low ∧ ∀ b ∈ away, regionsDisjoint r b) ∧
       ∀ place ∈ inputs.map (fun input => (slots.getD input.index default).loc), place + 2 ≤ base
   | [], _, _ => ⟨[], rfl, .nil, nofun, nofun⟩
   | input :: inputs, live, hAway => by
@@ -275,7 +275,7 @@ theorem wp_sys_flat_result_inputs_with {calls : List LeanExe.Wasi.Call} {World :
     (hCount : args.length = operation.argWords)
     (hInputCount : inputs.length = operation.inputCount)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (used : ∀ arg ∈ args, liveIn arg.index = true)
     (usedInputs : ∀ input ∈ inputs, liveIn input.index = true)
@@ -364,7 +364,7 @@ theorem wp_sys_flat_fill_result_with {calls : List LeanExe.Wasi.Call} {World : T
     (hCount : args.length = operation.argWords)
     (hInputCount : inputs.length = operation.inputCount)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (used : ∀ arg ∈ args, liveIn arg.index = true)
     (usedInputs : ∀ input ∈ inputs, liveIn input.index = true)
@@ -480,7 +480,7 @@ theorem wp_sys_record_result_with {calls : List LeanExe.Wasi.Call} {World : Type
     (hCount : args.length = operation.argWords)
     (hInputCount : inputs.length = operation.inputCount)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (used : ∀ arg ∈ args, liveIn arg.index = true)
     (usedInputs : ∀ input ∈ inputs, liveIn input.index = true)
@@ -599,7 +599,7 @@ theorem wp_sys_iovec_fill_result_with {calls : List LeanExe.Wasi.Call} {World : 
     (hParams : operation.params = iovecParams false offset)
     (hCount : args.length = operation.argWords)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (used : ∀ arg ∈ args, liveIn arg.index = true)
     (hBufferIn : liveIn buffer.index = true) (hBufferOut : live buffer.index = false)
@@ -663,7 +663,7 @@ theorem wp_sys_iovec_window_result_with {calls : List LeanExe.Wasi.Call} {World 
     (hParams : operation.params = iovecParams true offset)
     (hCount : args.length = operation.argWords)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (used : ∀ arg ∈ args, liveIn arg.index = true)
     (usedInput : liveIn input.index = true)
@@ -727,7 +727,7 @@ theorem wp_sys_poll_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     (hFit : subscriptionsFit records = true)
     (hCount : args.length = operation.argWords)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (used : ∀ arg ∈ args, liveIn arg.index = true)
     (at_ : heap.At (PureTransport.erase initial))
@@ -849,7 +849,7 @@ theorem wp_sys_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     (apart : Holds.ApartFrom env slots (fun i => live i ||
       ((buffers.any fun buffer => i == buffer.index) ||
         ((inputs.any fun input => i == input.index) || args.any fun arg => i == arg.index)))
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (owned : ∀ buffer ∈ buffers, (slots.getD buffer.index default).mode = .owned ∧
       live buffer.index = false ∧ ∀ input ∈ inputs, input.index ≠ buffer.index)
     (at_ : heap.At (PureTransport.erase initial))
@@ -1092,7 +1092,7 @@ theorem wp_sys_released_with {calls : List LeanExe.Wasi.Call} {World : Type}
     (apart : Holds.ApartFrom env slots (fun i => live i ||
       ((buffers.any fun buffer => i == buffer.index) ||
         ((inputs.any fun input => i == input.index) || args.any fun arg => i == arg.index)))
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (owned : ∀ buffer ∈ buffers, (slots.getD buffer.index default).mode = .owned ∧
       live buffer.index = false ∧ ∀ input ∈ inputs, input.index ≠ buffer.index)
     (at_ : heap.At (PureTransport.erase initial))
@@ -1222,7 +1222,7 @@ theorem wp_sys_plain_with {calls : List LeanExe.Wasi.Call}
       (PureTransport.erase initial) locals)
     (scratch : Holds.ApartFrom env slots (fun i => live i || (Command.sys (pureSigs := pureSigs)
       (effectSigs := effectSigs) operation form args inputs []).uses i)
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
     (room : base + (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) operation form
@@ -1286,7 +1286,7 @@ theorem wp_take_with {calls : List LeanExe.Wasi.Call}
       heap (PureTransport.erase initial) locals)
     (scratch : Holds.ApartFrom env slots
       (fun i => takeLive i || (Expr.var (S := pureSigs) buffer).uses i)
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
     (room : base + (Ty.bytes.width + max (max (Expr.var (S := pureSigs) buffer).width
@@ -1309,7 +1309,7 @@ theorem wp_take_with {calls : List LeanExe.Wasi.Call}
       Holds (.cons (env.get buffer) env) (⟨base, .owned⟩ :: slots) bodyIn
         (base + Ty.bytes.width) takeHeap (PureTransport.erase takeStore) boundLocals →
       Holds.ApartFrom (.cons (env.get buffer) env) (⟨base, .owned⟩ :: slots) bodyIn
-        (PureTransport.erase takeStore) boundLocals ABI.scratch →
+        (PureTransport.erase takeStore) boundLocals ABI.low →
       takeHeap.At (PureTransport.erase takeStore) →
       (PureTransport.erase takeStore).memoryCap source 0 ≤ 65535 →
       boundLocals.params.length ≤ base + Ty.bytes.width →
@@ -1378,7 +1378,7 @@ theorem wp_take_with {calls : List LeanExe.Wasi.Call}
     have frame' : Frame base takeLocals { boundLocals with values := locals.values } :=
       ⟨frame.params, frame.length, frame.below, frame.below32⟩
     have boundVars := bind_context_holds (bodyIn := bodyIn) firstAfter frame' held tailSelected
-    have boundScratch := bind_context_scratch (bodyIn := bodyIn) firstAfter vars scratch frame'
+    have boundScratch := bind_context_low (bodyIn := bodyIn) firstAfter vars scratch frame'
       held midSelected tailSelected
     have grows := takeTop rfl
     rw [hTakeCost] at grows
@@ -1442,7 +1442,7 @@ theorem wp_sys_take_with {calls : List LeanExe.Wasi.Call}
       (PureTransport.erase initial) locals)
     (scratch : Holds.ApartFrom env slots (fun i => live i || (Command.sys (pureSigs := pureSigs)
       (effectSigs := effectSigs) operation form args inputs [buffer]).uses i)
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
     (room : base + (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) operation form
@@ -1576,7 +1576,7 @@ theorem wp_sys_command_with {calls : List LeanExe.Wasi.Call}
       (PureTransport.erase initial) locals)
     (scratch : Holds.ApartFrom env slots (fun i => live i || (Command.sys (pureSigs := pureSigs)
       (effectSigs := effectSigs) operation form args inputs buffers).uses i)
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
     (room : base + (Command.sys (pureSigs := pureSigs) (effectSigs := effectSigs) operation form

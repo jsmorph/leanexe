@@ -21,7 +21,7 @@ def CostCommandCodeSpecWith (calls : List LeanExe.Wasi.Call) (source target : Wa
     pool.Safe env slots (fun i => live i || command.uses i) heap
       (PureTransport.erase initial) locals →
     Holds.ApartFrom env slots (fun i => live i || command.uses i)
-      (PureTransport.erase initial) locals ABI.scratch →
+      (PureTransport.erase initial) locals ABI.low →
     (PureTransport.erase initial).memoryCap source 0 ≤ 65535 →
     locals.params.length ≤ base → base + command.width ≤ h →
     command.ReadyWith calls source h slots base live pool →

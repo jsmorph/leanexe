@@ -16,7 +16,7 @@ inductive NativeFunctionResult {World α : Type} (host : Host World) (signature 
       (step : Step heap (PureTransport.erase initial)
         (fun region => Apart (PureTransport.erase initial)
             (Env.moves (PureTransport.erase initial) signature.mode params args) region ∧
-          regionsDisjoint region ABI.scratch)
+          regionsDisjoint region ABI.low)
         finalHeap (PureTransport.erase final)
         (signature.result.fresh (PureTransport.erase final) words (flatten value)))
       (rep : signature.result.Rep finalHeap (PureTransport.erase final) words (flatten value)) :

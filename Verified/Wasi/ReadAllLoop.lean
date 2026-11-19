@@ -117,7 +117,7 @@ structure ReadAllFacts {World : Type} (host : Host World) (base : Nat) (limit ro
   buffer : Heap.Buffer heap (PureTransport.erase st) root held
   small : held.data.size ≤ limit.toNat
   room : limit.toNat + 4096 ≤ capacityAt (PureTransport.erase st) root
-  step : Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+  step : Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
     heap (PureTransport.erase st) [block (PureTransport.erase st) root]
   outside : ReadAllOutside base s0 si
   stack : si.values = s0.values
@@ -144,10 +144,10 @@ theorem readAll_rep_of_buffer {heap : Heap} {store : Store Unit} {root : UInt64}
 theorem readAll_regions {World : Type} {initial final : Store World} {heap0 heap : Heap}
     {root : UInt64} {held : LeanExe.Bytes}
     (hStep : Step heap0 (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.scratch)
+      (fun region => regionsDisjoint region ABI.low)
       heap (PureTransport.erase final) [block (PureTransport.erase final) root])
     (h : Heap.Buffer heap (PureTransport.erase final) root held) :
-    Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+    Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
       heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) := by
   simpa only [Bytes.regions, ite_eq_right h.nonzero] using hStep
 
@@ -161,7 +161,7 @@ theorem wp_readAll_loop_with {calls : List LeanExe.Wasi.Call}
     (hDone : ∀ (final : Store (Observed World)) (si : Locals) (result : LeanExe.Wasi.ReadResult)
       (trace : List Event),
       Exec (observedHost host) (readAll limit) initial.host trace (.returned result) final.host →
-      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       Bytes.Rep heap (PureTransport.erase final) root (UInt64.ofNat result.bytes.data.size)
         result.bytes →
@@ -172,7 +172,7 @@ theorem wp_readAll_loop_with {calls : List LeanExe.Wasi.Call}
       wp m rest Q final si env)
     (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
       Exec (observedHost host) (readAll limit) initial.host trace (.trapped message) final.host →
-      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       Q (.Trap final message))
     {st : Store (Observed World)} {sb : Locals} {held : LeanExe.Bytes} {prior : List Event}
@@ -409,7 +409,7 @@ theorem wp_readAll_loop {World : Type} {m : Module} {host : Host World}
     (hDone : ∀ (final : Store (Observed World)) (si : Locals) (result : LeanExe.Wasi.ReadResult)
       (trace : List Event),
       Exec (observedHost host) (readAll limit) initial.host trace (.returned result) final.host →
-      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       Bytes.Rep heap (PureTransport.erase final) root (UInt64.ofNat result.bytes.data.size)
         result.bytes →
@@ -420,7 +420,7 @@ theorem wp_readAll_loop {World : Type} {m : Module} {host : Host World}
       wp m rest Q final si env)
     (hTrap : ∀ (final : Store (Observed World)) (message : String) (trace : List Event),
       Exec (observedHost host) (readAll limit) initial.host trace (.trapped message) final.host →
-      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       Q (.Trap final message))
     {st : Store (Observed World)} {sb : Locals} {held : LeanExe.Bytes} {prior : List Event}

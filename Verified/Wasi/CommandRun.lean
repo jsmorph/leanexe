@@ -82,7 +82,7 @@ theorem wp_start_body_with {calls : List LeanExe.Wasi.Call}
       (Env.represent main.signature.params main.signature.modes) pool heap (PureTransport.erase initial)
       (main.tables.map Value.i64) args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) main.signature.mode
-      (main.tables.map Value.i64) args, regionsDisjoint ABI.scratch region)
+      (main.tables.map Value.i64) args, regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.CallPrefixBound (observedHost host) pure program main.callee 0 args initial.host budget) :
@@ -148,7 +148,7 @@ theorem wp_start_body {World : Type} {source target : Wasm.Module} {host : Host 
       (Env.represent main.signature.params main.signature.modes) pool heap (PureTransport.erase initial)
       (main.tables.map Value.i64) args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) main.signature.mode
-      (main.tables.map Value.i64) args, regionsDisjoint ABI.scratch region)
+      (main.tables.map Value.i64) args, regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.CallPrefixBound (observedHost host) pure program main.callee 0 args initial.host budget) :
@@ -188,7 +188,7 @@ theorem compiled_start_run_with {calls : List LeanExe.Wasi.Call}
       (Env.represent main.signature.params main.signature.modes) pool heap (PureTransport.erase initial)
       (main.tables.map Value.i64) args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) main.signature.mode
-      (main.tables.map Value.i64) args, regionsDisjoint ABI.scratch region)
+      (main.tables.map Value.i64) args, regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap (compileCalls calls source program entries (some main) pool) 0 ≤ 65535)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.CallPrefixBound (observedHost host) pure program main.callee 0 args initial.host budget) :
@@ -222,7 +222,7 @@ theorem compiled_start_run {World : Type} {source : Wasm.Module} {host : Host Wo
       (Env.represent main.signature.params main.signature.modes) pool heap (PureTransport.erase initial)
       (main.tables.map Value.i64) args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) main.signature.mode
-      (main.tables.map Value.i64) args, regionsDisjoint ABI.scratch region)
+      (main.tables.map Value.i64) args, regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap (compile source program entries (some main) pool) 0 ≤ 65535)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.CallPrefixBound (observedHost host) pure program main.callee 0 args initial.host budget) :

@@ -101,7 +101,7 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
       some function)
     (arity : function.numParams = 1 + widthSum [entry.state])
     (valid : targetHost.Satisfies target (hostSpecWith host calls))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (stepMeaning : ∀ state, process.step state = entry.action functions state)
     (stored : ProcessStored target entry.state pool base current initial locals) :
     wp target (entry.iterationWith calls source)
@@ -154,9 +154,9 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
         rw [moves]
         exact Apart.nil
       have scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode stateWords args,
-          regionsDisjoint ABI.scratch region := by
+          regionsDisjoint ABI.low region := by
         rw [reads]
-        exact memory.rep.reads_apart ABI.scratch (owned_scratch memory.rep)
+        exact memory.rep.reads_apart ABI.low (owned_low memory.rep)
       have callExecution := wp_effect_helper_with (calls := calls) (locals := locals) (values := locals.values)
         (depth := 0) (params := stateWords) (args := args) (Q := Q)
         (rest := storeCode (processPositions entry.state) 0 (processResultTy entry.state).types ++
@@ -164,7 +164,7 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
         spec noImport lookup arity valid memory.at_ argsRep separate input scratch stored.cap
         (fun value finalHeap final words trace execution callStep representation => by
           have called : Step heap (PureTransport.erase initial)
-              (fun region => regionsDisjoint region ABI.scratch)
+              (fun region => regionsDisjoint region ABI.low)
               finalHeap (PureTransport.erase final)
               ((processResultTy entry.state).blocks (PureTransport.erase final) words value) := by
             exact callStep.mono (fun region kept => by
@@ -182,8 +182,8 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
               (PureTransport.erase final) words
               (processValue entry.state (processNative entry.state value)) := by
             rw [processValue_native entry.state value]
-            exact memory.called poolScratch called representation
-          have grown := called.top_le memory.at_ free (scratch_apart_above _)
+            exact memory.called poolLow called representation
+          have grown := called.top_le memory.at_ free (low_apart_above _)
           refine wp_process_store_compact_with runtime layout profile compactable compactForm
             compactClosed resultMemory (by omega) stored.baseLocal stored.low stored.pool stored.params
             stored.positions (by rw [called.cap target]; exact stored.cap) (fun _ ended sameHost => ?_)
@@ -243,7 +243,7 @@ theorem wp_process_iteration {World : Type} {source target : Wasm.Module}
       some function)
     (arity : function.numParams = 1 + widthSum [entry.state])
     (valid : targetHost.Satisfies target (hostSpec host))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (stepMeaning : ∀ state, process.step state = entry.action functions state)
     (stored : ProcessStored target entry.state pool base current initial locals) :
     wp target (entry.iteration source)

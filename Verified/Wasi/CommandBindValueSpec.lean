@@ -90,7 +90,7 @@ theorem command_bind_value_spec_with {calls : List LeanExe.Wasi.Call}
       intro i used
       simpa only [congrFun tail i] using used
     have boundVars := bind_context_holds after frame held tailSelected
-    have boundScratch := bind_context_scratch after vars scratch frame held midSelected tailSelected
+    have boundScratch := bind_context_low after vars scratch frame held midSelected tailSelected
     have boundSafe := bind_context_safe after vars scratch safe facts.poolApart
       frame held midSelected tailSelected
     refine wp_loopRelease_with (sourceHost := sourceHost) (targetHost := targetHost)
@@ -106,7 +106,7 @@ theorem command_bind_value_spec_with {calls : List LeanExe.Wasi.Call}
       valid below (by rw [frame.params, after.frame.params]; exact depthParam)
       (frame.positions.trans (after.frame.positions.trans positions)) cleanup.holds cleanup.step.at_
       (cleanupAfter.pool_safe boundSafe boundVars boundScratch bodySelected facts.poolApart).1
-      (cleanupAfter.scratch boundVars boundScratch bodySelected)
+      (cleanupAfter.low boundVars boundScratch bodySelected)
       (by rw [cleanup.step.cap source, after.step.cap source]; exact cap)
       (by rw [frame.params, after.frame.params]; omega) nextRoom nextReady nextCovered placement.2
     refine wp.conseq (fun continuation classification => ?_) bodyRun

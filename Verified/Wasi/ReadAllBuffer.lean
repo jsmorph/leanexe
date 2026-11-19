@@ -115,12 +115,12 @@ block. -/
 theorem readAll_tail_step {World : Type} {initial before after : Store World}
     {heap0 heap : Heap} {root : UInt64} {held : LeanExe.Bytes}
     (hBefore : Step heap0 (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.scratch)
+      (fun region => regionsDisjoint region ABI.low)
       heap (PureTransport.erase before) [block (PureTransport.erase before) root])
     (h : Heap.Buffer heap (PureTransport.erase before) root held)
     (hRoom : held.data.size + 4096 ≤ capacityAt (PureTransport.erase before) root)
     (hFrame : GuestFrame before after [ABI.scratch, (root.toNat + held.data.size, 4096)]) :
-    Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+    Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
       heap (PureTransport.erase after) [block (PureTransport.erase after) root] := by
   have wide := hFrame.widen (outer := (root.toNat, capacityAt (PureTransport.erase before) root))
     (by dsimp only; omega) (by dsimp only; omega)

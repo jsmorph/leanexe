@@ -64,7 +64,7 @@ theorem command_bind_unit_spec_with {calls : List LeanExe.Wasi.Call}
         valid below (by rw [after.frame.params]; exact depthParam)
         (after.frame.positions.trans positions) after.holds after.step.at_
         (after.pool_safe safe vars scratch midSelected facts.poolApart).1
-        (after.scratch vars scratch midSelected)
+        (after.low vars scratch midSelected)
         (by rw [after.step.cap source]; exact cap)
         (by rw [after.frame.params]; exact low) nextRoom nextReady nextCovered placement.2)
   exact sequence

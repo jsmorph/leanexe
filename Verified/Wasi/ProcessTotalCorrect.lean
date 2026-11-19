@@ -63,7 +63,7 @@ theorem compiled_process_total_body_with {calls : List LeanExe.Wasi.Call}
     (valid : targetHost.Satisfies (compileProcessWith calls source program entry pool) (hostSpecWith host calls))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap (compileProcessWith calls source program entry pool) 0 ≤ 65535)
     (premises : ProcessTotalPremises source host pure program entry represented
       relation charge beginCharge initial heap)
@@ -92,12 +92,12 @@ theorem compiled_process_total_body_with {calls : List LeanExe.Wasi.Call}
     exact wp_process_begin_total_with represented runtime layout profile compactable compactForm
       compactClosed (effectCalls entry.begin) (notImported _) beginLookup
       (by simpa only [widthSum, List.map_nil, List.sum_nil, Nat.add_zero] using beginArity)
-      valid at_ free static poolScratch cap params positions baseLocal le_rfl premises.beginRoom
+      valid at_ free static poolLow cap params positions baseLocal le_rfl premises.beginRoom
       premises.beginBounded premises.beginReplies
   · rintro ghost store locals ⟨current, stored, held, limitCap⟩
     exact wp_process_iteration_total_with represented relation charge ghost runtime layout profile
       compactable compactForm compactClosed (effectCalls entry.step) (notImported _) stepLookup
-      stepArity valid poolScratch stored held limitCap
+      stepArity valid poolLow stored held limitCap
       (fun running => ⟨premises.stepRoom ghost current store.host held running,
         premises.stepBounded ghost current store.host held running⟩)
       (premises.stepReplies ghost current store.host held)
@@ -120,7 +120,7 @@ theorem compiled_process_total_body {World Ghost : Type} {source : Wasm.Module}
     (valid : targetHost.Satisfies (compileProcess source program entry pool) (hostSpec host))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap (compileProcess source program entry pool) 0 ≤ 65535)
     (premises : ProcessTotalPremises source host pure program entry represented
       relation charge beginCharge initial heap)
@@ -151,7 +151,7 @@ theorem compiled_process_total_run_with {calls : List LeanExe.Wasi.Call}
     (valid : targetHost.Satisfies (compileProcessWith calls source program entry pool) (hostSpecWith host calls))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap (compileProcessWith calls source program entry pool) 0 ≤ 65535)
     (premises : ProcessTotalPremises source host pure program entry represented
       relation charge beginCharge initial heap)
@@ -164,7 +164,7 @@ theorem compiled_process_total_run_with {calls : List LeanExe.Wasi.Call}
           (Wrappers.effectIndexWith calls source effectSigs.length) initial [] targetHost) := by
   have body := compiled_process_total_body_with (calls := calls) program entry pool effectCalls runtime profile compactable
     compactForm compactClosed represented relation wellFounded charge beginCharge valid at_ free
-    static poolScratch cap premises accepted
+    static poolLow cap premises accepted
   have indexEq : Wrappers.effectIndexWith calls source effectSigs.length =
       3 + calls.length + (source.funcs.length + (3 + effectSigs.length)) := by
     simp only [Wrappers.effectIndexWith, Module.extraIndexWith]
@@ -190,7 +190,7 @@ theorem compiled_process_total_run {World Ghost : Type} {source : Wasm.Module}
     (valid : targetHost.Satisfies (compileProcess source program entry pool) (hostSpec host))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap (compileProcess source program entry pool) 0 ≤ 65535)
     (premises : ProcessTotalPremises source host pure program entry represented
       relation charge beginCharge initial heap)

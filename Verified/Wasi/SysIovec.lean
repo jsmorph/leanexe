@@ -68,7 +68,7 @@ theorem wp_sys_iovec_fill_with {calls : List LeanExe.Wasi.Call} {World : Type}
         (.sys call (flatArgsWith call.params (lowerWords call.params values [buffer]) [])
           Action.pure) initial.host trace (.returned reply) final.host →
       Step heap (PureTransport.erase initial)
-        (fun r => regionsDisjoint r ABI.scratch ∧
+        (fun r => regionsDisjoint r ABI.low ∧
           ∀ b ∈ Bytes.regions (PureTransport.erase initial) root, regionsDisjoint r b)
         heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       Bytes.Rep heap (PureTransport.erase final) root size
@@ -425,7 +425,7 @@ theorem wp_sys_iovec_write_with {calls : List LeanExe.Wasi.Call} {World : Type}
       Exec (observedHost host)
         (.sys call (flatArgsWith call.params values (inputs.map Prod.snd)) Action.pure)
         initial.host trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) [] →
       LocalsOutside s finalLocals base 2 →
       wp target rest Q final { finalLocals with values :=
@@ -488,7 +488,7 @@ theorem wp_sys_iovec_write_with {calls : List LeanExe.Wasi.Call} {World : Type}
       Exec (observedHost host)
         (.sys call (flatArgsWith call.params (handle :: extra) ([input].map Prod.snd))
           Action.pure) initial.host trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) [] →
       LocalsOutside s sF base 2 → sF.get base = some (.i64 reply.errno) →
       sF.get (base + 1) = some (.i64 (reply.word 0)) →
@@ -501,10 +501,10 @@ theorem wp_sys_iovec_write_with {calls : List LeanExe.Wasi.Call} {World : Type}
       hNext final { sF with values := s.values } trace reply execution step
         (outsideF.values s.values)
   have hRefl : Step heap (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.scratch) heap (PureTransport.erase initial)
+      (fun region => regionsDisjoint region ABI.low) heap (PureTransport.erase initial)
       (Bytes.regions (PureTransport.erase initial) 0) := by
     simpa only [Bytes.regions, ite_true] using
-      Step.refl hHeap (fun region => regionsDisjoint region ABI.scratch)
+      Step.refl hHeap (fun region => regionsDisjoint region ABI.low)
   by_cases hAccepted : reject = 0
   · rw [ite_eq_left (by simp [hAccepted] : (if reject = 0 then (1 : UInt32) else 0) ≠ 0)]
     have hSmall : handle.toNat < 4294967296 ∧ input.2.data.size < 4294967296 := by
@@ -566,7 +566,7 @@ theorem wp_sys_iovec_write_with {calls : List LeanExe.Wasi.Call} {World : Type}
           subst member
           exact ⟨ABI.scratch, List.mem_cons_self .., by decide, by decide⟩
       have hStep : Step heap (PureTransport.erase initial)
-          (fun region => regionsDisjoint region ABI.scratch) heap (PureTransport.erase after)
+          (fun region => regionsDisjoint region ABI.low) heap (PureTransport.erase after)
           [] := by
         simpa only [Bytes.regions, ite_true] using
           ReadReady.frame_step (Or.inl ⟨rfl, rfl⟩) hRefl (by simpa using hFrame')
@@ -680,7 +680,7 @@ theorem wp_sys_iovec_window_with {calls : List LeanExe.Wasi.Call} {World : Type}
       (reply : Reply),
       Exec (observedHost host) (.sys call (sysArgs call.params values [input] []) Action.pure)
         initial.host trace (.returned reply) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap (PureTransport.erase final) [] →
       LocalsOutside s finalLocals base 8 →
       wp target rest Q final { finalLocals with values :=

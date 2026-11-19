@@ -89,7 +89,7 @@ theorem wp_process_begin_with {calls : List LeanExe.Wasi.Call}
     (valid : targetHost.Satisfies target (hostSpecWith host calls))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (params : locals.params = []) (positions : locals.positions = processPositions entry.state)
     (baseLocal : locals.get (processAux entry.state) = some (.i64 heap.top)) :
@@ -112,7 +112,7 @@ theorem wp_process_begin_with {calls : List LeanExe.Wasi.Call}
     (fun (value : (processResultTy entry.state).denote) finalHeap final words trace execution step rep => by
       have resultRep : (processResultTy entry.state).Rep .owned finalHeap
           (PureTransport.erase final) words value := rep
-      have preserved := static.step step (fun region member => ⟨Apart.nil, poolScratch region member⟩)
+      have preserved := static.step step (fun region member => ⟨Apart.nil, poolLow region member⟩)
       let current := processNative entry.state value
       have nativeExecution : LeanExe.Wasi.Exec (observedHost host) (entry.beginAction functions)
           initial.host trace (.returned current) final.host := by
@@ -125,7 +125,7 @@ theorem wp_process_begin_with {calls : List LeanExe.Wasi.Call}
           words (processValue entry.state (processNative entry.state value))
         rw [processValue_native entry.state value]
         exact ⟨step.at_, resultRep, preserved.1, preserved.2⟩
-      have grown := step.top_le at_ free ⟨Apart.nil, scratch_apart_above _⟩
+      have grown := step.top_le at_ free ⟨Apart.nil, low_apart_above _⟩
       refine wp_process_store_compact_with runtime layout profile compactable compactForm compactClosed
         nativeMemory grown baseLocal at_.base poolBelow params positions
         (by rw [step.cap target]; exact cap) (fun _ ended sameHost => ?_)
@@ -178,7 +178,7 @@ theorem wp_process_begin {World : Type} {source target : Wasm.Module} {host : Ho
     (valid : targetHost.Satisfies target (hostSpec host))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (params : locals.params = []) (positions : locals.positions = processPositions entry.state)
     (baseLocal : locals.get (processAux entry.state) = some (.i64 heap.top)) :
@@ -310,7 +310,7 @@ theorem pwp_process_entry_body_with {calls : List LeanExe.Wasi.Call}
     (valid : targetHost.Satisfies target (hostSpecWith host calls))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (iteration : ∀ current store locals,
       ProcessStored target entry.state pool heap.top current store locals →
@@ -346,7 +346,7 @@ theorem pwp_process_entry_body_with {calls : List LeanExe.Wasi.Call}
   have savedPositions : saved.positions = processPositions entry.state := by
     simp only [saved, Locals.positions_setLocal]; exact positions
   have began := wp_process_begin_with (calls := calls) (locals := saved) runtime layout profile compactable compactForm
-    compactClosed spec noImport lookup arity valid at_ free static poolScratch cap rfl
+    compactClosed spec noImport lookup arity valid at_ free static poolLow cap rfl
     savedPositions savedBase
   have composed : pwp target (beginCode ++ tailCode) Q initial saved targetHost := by
     refine pwp_append (module := target) (first := beginCode) (rest := tailCode) (post := Q)
@@ -397,7 +397,7 @@ theorem pwp_process_entry_body {World : Type} {source target : Wasm.Module} {hos
     (valid : targetHost.Satisfies target (hostSpec host))
     (at_ : heap.At (PureTransport.erase initial)) (free : heap.free = [])
     (static : pool.Static heap (PureTransport.erase initial))
-    (poolScratch : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (iteration : ∀ current store locals,
       ProcessStored target entry.state pool heap.top current store locals →

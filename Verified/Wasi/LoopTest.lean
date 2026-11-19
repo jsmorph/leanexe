@@ -26,7 +26,7 @@ theorem wp_loopTest_with {calls : List LeanExe.Wasi.Call}
     (positions : currentLocals.positions = h) (parameters : currentLocals.params = params)
     (after : After env slots liveIn live base heap initial locals (.value type) state
       currentHeap current currentLocals words)
-    (scratch : Holds.ApartFrom env slots live (PureTransport.erase current) currentLocals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots live (PureTransport.erase current) currentLocals ABI.low)
     (static : pool.Static currentHeap (PureTransport.erase current))
     (held : LocalsHold currentLocals (base + 2) type.types words)
     (counter : currentLocals.get (base + 1) = some (.i64 index))
@@ -76,7 +76,7 @@ theorem wp_loopTest {World : Type} {S : List Sig} {context : List Ty} {type : Ty
     (positions : currentLocals.positions = h) (parameters : currentLocals.params = params)
     (after : After env slots liveIn live base heap initial locals (.value type) state
       currentHeap current currentLocals words)
-    (scratch : Holds.ApartFrom env slots live (PureTransport.erase current) currentLocals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots live (PureTransport.erase current) currentLocals ABI.low)
     (static : pool.Static currentHeap (PureTransport.erase current))
     (held : LocalsHold currentLocals (base + 2) type.types words)
     (counter : currentLocals.get (base + 1) = some (.i64 index))

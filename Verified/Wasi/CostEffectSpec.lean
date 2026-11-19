@@ -20,7 +20,7 @@ def CostEffectSpecWith (calls : List LeanExe.Wasi.Call) (source target : Wasm.Mo
       (Env.represent signature.params signature.modes) pool heap (PureTransport.erase initial)
       params args →
     (∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode params args,
-      regionsDisjoint ABI.scratch region) →
+      regionsDisjoint ABI.low region) →
     (PureTransport.erase initial).memoryCap target 0 ≤ 65535 →
     (aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.CallPrefixBound (observedHost host) pure program callee depth args

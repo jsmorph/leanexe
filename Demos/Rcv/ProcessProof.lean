@@ -52,7 +52,7 @@ def compiledProcess : Compiled begin where
   runtime := compileWith_runtime io.pure.program io.pure.tables io.pure.wrappers io.literalPool
   profile := io.profile
   compactClosed := compactClosed
-  poolScratch := io.pool_apart
+  poolLow := io.pool_apart
   beginRelated := begin_related
   stepRelated := step_related
 

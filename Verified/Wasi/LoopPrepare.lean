@@ -33,8 +33,8 @@ theorem wp_loopPrepare_with {calls : List LeanExe.Wasi.Call}
     (safe : pool.Safe env slots (fun i => (live i || initial.uses i) || count.uses i) heap
       (PureTransport.erase store) locals)
     (scratch : Holds.ApartFrom env slots (fun i => (live i || initial.uses i) || count.uses i)
-      (PureTransport.erase store) locals ABI.scratch)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+      (PureTransport.erase store) locals ABI.low)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase store).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
     (countRoom : base + max count.width (copyWidth .word) ≤ h)
@@ -89,8 +89,8 @@ theorem wp_loopPrepare {World : Type} {S : List Sig} {context : List Ty} {type :
     (safe : pool.Safe env slots (fun i => (live i || initial.uses i) || count.uses i) heap
       (PureTransport.erase store) locals)
     (scratch : Holds.ApartFrom env slots (fun i => (live i || initial.uses i) || count.uses i)
-      (PureTransport.erase store) locals ABI.scratch)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+      (PureTransport.erase store) locals ABI.low)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (cap : (PureTransport.erase store).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
     (countRoom : base + max count.width (copyWidth .word) ≤ h)

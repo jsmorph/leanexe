@@ -77,7 +77,7 @@ theorem wp_sys_reported_call_with {calls : List LeanExe.Wasi.Call} {World : Type
     (hBuffer : Heap.Buffer heap (PureTransport.erase before) root previous)
     (hCapacity : size.toNat + 4 * count.toNat + 3 ≤ capacityAt (PureTransport.erase before) root)
     (hBefore : Step heap0 (PureTransport.erase initial)
-      (fun region => regionsDisjoint region ABI.scratch)
+      (fun region => regionsDisjoint region ABI.low)
       heap (PureTransport.erase before) (Bytes.regions (PureTransport.erase before) root))
     (hTop : heap.top.toNat ≤ heap0.top.toNat + budget)
     (hLow : s0.params.length ≤ base) (hHigh : base + 6 ≤ s0.positions)
@@ -88,7 +88,7 @@ theorem wp_sys_reported_call_with {calls : List LeanExe.Wasi.Call} {World : Type
     (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (sF : Locals)
       (errno root' length : UInt64) (outputs : List LeanExe.Bytes),
       (observedHost host).sys before.host call [] (.returned errno outputs) final.host →
-      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap0 (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root') →
       Bytes.Rep heap' (PureTransport.erase final) root' length
         ((sysReply errno outputs).bytes 0) →

@@ -90,9 +90,9 @@ theorem wp_ite_branch_with {calls : List LeanExe.Wasi.Call}
     (closed : Relocation.programClosed source.funcs.length
       (releaseWhere context slots (fun i => all i && !branchLive i)) = true)
     (vars : Holds env slots all base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.low)
     (safe : pool.Safe env slots all heap (PureTransport.erase initial) locals)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (at_ : heap.At (PureTransport.erase initial))
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (branchSelected : ∀ i, branchLive i = true → all i = true)
@@ -107,7 +107,7 @@ theorem wp_ite_branch_with {calls : List LeanExe.Wasi.Call}
       Holds env slots branchLive (base + result.width) middleHeap
         (PureTransport.erase middle) locals →
       pool.Safe env slots branchLive middleHeap (PureTransport.erase middle) locals →
-      Holds.ApartFrom env slots branchLive (PureTransport.erase middle) locals ABI.scratch →
+      Holds.ApartFrom env slots branchLive (PureTransport.erase middle) locals ABI.low →
       (PureTransport.erase middle).memoryCap source 0 ≤ 65535 →
       wp target code (CommandResult host env slots branchLive live (base + result.width)
         result action middleHeap middle locals aborts) middle locals targetHost)
@@ -150,7 +150,7 @@ theorem wp_ite_branch_with {calls : List LeanExe.Wasi.Call}
     refine wp.conseq (fun continuation execution => ?_)
       (body middleHeap middle evolution' top sameWorld after.step.at_ after.holds
         (after.pool_safe safe upperVars apart branchSelected poolApart).1
-        (after.scratch upperVars apart branchSelected)
+        (after.low upperVars apart branchSelected)
         (by rw [after.step.cap source]; exact cap))
     simpa only [Action.bind] using CommandResult.bind_unit (next := fun _ => action)
       upperVars apart firstExecution after rfl execution branchSelected liveSelected
@@ -171,9 +171,9 @@ theorem wp_ite_branch {World : Type} {host : Host World} {source target : Module
     (closed : Relocation.programClosed source.funcs.length
       (releaseWhere context slots (fun i => all i && !branchLive i)) = true)
     (vars : Holds env slots all base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.low)
     (safe : pool.Safe env slots all heap (PureTransport.erase initial) locals)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (at_ : heap.At (PureTransport.erase initial))
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (branchSelected : ∀ i, branchLive i = true → all i = true)
@@ -188,7 +188,7 @@ theorem wp_ite_branch {World : Type} {host : Host World} {source target : Module
       Holds env slots branchLive (base + result.width) middleHeap
         (PureTransport.erase middle) locals →
       pool.Safe env slots branchLive middleHeap (PureTransport.erase middle) locals →
-      Holds.ApartFrom env slots branchLive (PureTransport.erase middle) locals ABI.scratch →
+      Holds.ApartFrom env slots branchLive (PureTransport.erase middle) locals ABI.low →
       (PureTransport.erase middle).memoryCap source 0 ≤ 65535 →
       wp target code (CommandResult host env slots branchLive live (base + result.width)
         result action middleHeap middle locals aborts) middle locals targetHost)

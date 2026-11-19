@@ -11,7 +11,7 @@ theorem call_after {World : Type} {context : List Ty} {env : Env context}
     {locals argumentLocals : Locals} {signature : EffectSig} {args : Env signature.params}
     {params words : List Value} {fresh : List (Nat × Nat)} {value : signature.result.denote}
     (vars : Holds env slots all base heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots all (PureTransport.erase initial) locals ABI.low)
     (argumentStep : Step heap (PureTransport.erase initial) (fun _ => True)
       argumentHeap (PureTransport.erase arguments) fresh)
     (frame : Frame base locals argumentLocals)
@@ -32,7 +32,7 @@ theorem call_after {World : Type} {context : List Ty} {env : Env context}
     (callStep : Step argumentHeap (PureTransport.erase arguments)
       (fun region => Apart (PureTransport.erase arguments)
           (Env.moves (PureTransport.erase arguments) signature.mode params args) region ∧
-        regionsDisjoint region ABI.scratch)
+        regionsDisjoint region ABI.low)
       finalHeap (PureTransport.erase final)
       (signature.result.fresh (PureTransport.erase final) words value))
     (rep : signature.result.Rep finalHeap (PureTransport.erase final) words value) :
@@ -40,7 +40,7 @@ theorem call_after {World : Type} {context : List Ty} {env : Env context}
       finalHeap final argumentLocals words := by
   have keptVars := argumentVars.live_mono keptSelected
   have keptScratch : Holds.ApartFrom env slots kept (PureTransport.erase arguments)
-      argumentLocals ABI.scratch :=
+      argumentLocals ABI.low :=
     Holds.ApartFrom.transfer vars (scratch.mono keptSelected) argumentStep frame keptSelected
       (fun _ _ _ _ _ _ _ _ => trivial)
   have keep : ∀ type (sourceVar : Var context type), kept sourceVar.index = true →
@@ -50,7 +50,7 @@ theorem call_after {World : Type} {context : List Ty} {env : Env context}
           (PureTransport.erase arguments) values (env.get sourceVar),
       Apart (PureTransport.erase arguments)
           (Env.moves (PureTransport.erase arguments) signature.mode params args) region ∧
-        regionsDisjoint region ABI.scratch := by
+        regionsDisjoint region ABI.low := by
     intro type sourceVar live values held width region member
     exact ⟨keptApart type sourceVar live values held width region member,
       regionsDisjoint_symm (keptScratch type sourceVar live values held width region member)⟩

@@ -26,7 +26,7 @@ structure CompilerFactsWith (imported : List LeanExe.Wasi.Call) (source target :
     ∃ function, target.funcs[Wrappers.effectIndexWith imported source callee.index -
         target.imports.length]? =
         some function ∧ function.numParams = 1 + widthSum signature.params
-  poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch
+  poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low
 
 structure CompilerFacts (source target : Wasm.Module) (pure : Resource.PureContext pureSigs)
     (effects : EffectFuns effectSigs) (pool : Bytes.LiteralPool) : Prop where
@@ -44,7 +44,7 @@ structure CompilerFacts (source target : Wasm.Module) (pure : Resource.PureConte
   effectFunctions : ∀ {signature : EffectSig} (callee : EffectVar effectSigs signature),
     ∃ function, target.funcs[Wrappers.effectIndex source callee.index - target.imports.length]? =
         some function ∧ function.numParams = 1 + widthSum signature.params
-  poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch
+  poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low
 
 theorem CompilerFacts.toWith {source target : Wasm.Module}
     {pure : Resource.PureContext pureSigs} {effects : EffectFuns effectSigs}

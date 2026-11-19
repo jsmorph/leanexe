@@ -104,7 +104,7 @@ theorem cost_command_bind_value_spec_with {calls : List LeanExe.Wasi.Call}
     have frame' : Frame base middleLocals { boundLocals with values := locals.values } :=
       ⟨frame.params, frame.length, frame.below, frame.below32⟩
     have boundVars := bind_context_holds firstAfter frame' held tailSelected
-    have boundScratch := bind_context_scratch firstAfter vars scratch frame' held midSelected tailSelected
+    have boundScratch := bind_context_low firstAfter vars scratch frame' held midSelected tailSelected
     have boundSafe := bind_context_safe firstAfter vars scratch safe facts.poolApart
       frame' held midSelected tailSelected
     refine wp_loopRelease_with (sourceHost := sourceHost) (targetHost := targetHost)
@@ -121,7 +121,7 @@ theorem cost_command_bind_value_spec_with {calls : List LeanExe.Wasi.Call}
       valid below (by rw [frame'.params, firstAfter.frame.params]; exact depthParam)
       (frame'.positions.trans (firstAfter.frame.positions.trans positions)) cleanup.holds cleanup.step.at_
       (cleanupAfter.pool_safe boundSafe boundVars boundScratch bodySelected facts.poolApart).1
-      (cleanupAfter.scratch boundVars boundScratch bodySelected)
+      (cleanupAfter.low boundVars boundScratch bodySelected)
       (by rw [cleanup.step.cap source, firstAfter.step.cap source]; exact cap)
       (by rw [frame'.params, firstAfter.frame.params]; omega) nextRoom nextReady nextCovered placement.2
       (fun noAbort => by

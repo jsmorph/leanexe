@@ -58,7 +58,7 @@ theorem wp_cost_effect_helper_with {calls : List LeanExe.Wasi.Call}
       (Env.represent signature.params signature.modes) pool heap (PureTransport.erase initial)
       params args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode params args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.CallPrefixBound (observedHost host) pure program callee depth args initial.host budget)
@@ -68,7 +68,7 @@ theorem wp_cost_effect_helper_with {calls : List LeanExe.Wasi.Call}
       Step heap (PureTransport.erase initial)
         (fun region => Apart (PureTransport.erase initial)
             (Env.moves (PureTransport.erase initial) signature.mode params args) region ∧
-          regionsDisjoint region ABI.scratch)
+          regionsDisjoint region ABI.low)
         finalHeap (PureTransport.erase final)
         (signature.result.fresh (PureTransport.erase final) words value) →
       signature.result.Rep finalHeap (PureTransport.erase final) words value →
@@ -117,7 +117,7 @@ theorem wp_cost_effect_helper {World : Type} {source target : Wasm.Module} {host
       (Env.represent signature.params signature.modes) pool heap (PureTransport.erase initial)
       params args)
     (scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode params args,
-      regionsDisjoint ABI.scratch region)
+      regionsDisjoint ABI.low region)
     (cap : (PureTransport.erase initial).memoryCap target 0 ≤ 65535)
     (resources : aborts = false → heap.Within (PureTransport.erase initial) source budget ∧
       Resource.CallPrefixBound (observedHost host) pure program callee depth args initial.host budget)
@@ -127,7 +127,7 @@ theorem wp_cost_effect_helper {World : Type} {source target : Wasm.Module} {host
       Step heap (PureTransport.erase initial)
         (fun region => Apart (PureTransport.erase initial)
             (Env.moves (PureTransport.erase initial) signature.mode params args) region ∧
-          regionsDisjoint region ABI.scratch)
+          regionsDisjoint region ABI.low)
         finalHeap (PureTransport.erase final)
         (signature.result.fresh (PureTransport.erase final) words value) →
       signature.result.Rep finalHeap (PureTransport.erase final) words value →

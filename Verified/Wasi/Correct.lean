@@ -11,7 +11,7 @@ theorem EffectProg.correct_with {calls : List LeanExe.Wasi.Call}
     (main : Option (EffectMain effectSigs)) (pool : Bytes.LiteralPool)
     (runtime : Runtime source) (profile : Relocation.Profile source)
     (effectCalls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (sourceHost : HostEnv Unit)
     (ready : program.ReadyWith calls source pool) (covered : program.Covered pool) :
     CostEffectCallsWith calls source (compileCalls calls source program entries main pool) pure program pool :=
@@ -25,7 +25,7 @@ theorem EffectProg.correct {source : Wasm.Module} {pure : Resource.PureContext p
     (main : Option (EffectMain effectSigs)) (pool : Bytes.LiteralPool)
     (runtime : Runtime source) (profile : Relocation.Profile source)
     (calls : Calls source pure.funs pure.flags pure.bounds pure.fits pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (sourceHost : HostEnv Unit)
     (ready : program.Ready source pool) (covered : program.Covered pool) :
     CostEffectCalls source (compile source program entries main pool) pure program pool := by
@@ -39,7 +39,7 @@ theorem EffectProg.correctWith_with {calls : List LeanExe.Wasi.Call}
     (main : Option (EffectMain effectSigs))
     (profile : Relocation.Profile (Verified.compileWith pure tables wrappers pool))
     (pureCovered : pure.Covered pool) (covered : program.Covered pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (ready : program.ReadyWith calls (Verified.compileWith pure tables wrappers pool) pool)
     (sourceHost : HostEnv Unit) :
     CostEffectCallsWith calls (Verified.compileWith pure tables wrappers pool)
@@ -57,7 +57,7 @@ theorem EffectProg.correctWith {pureSigs : List Sig} (pure : Prog pureSigs)
     (main : Option (EffectMain effectSigs))
     (profile : Relocation.Profile (Verified.compileWith pure tables wrappers pool))
     (pureCovered : pure.Covered pool) (covered : program.Covered pool)
-    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch)
+    (poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
     (ready : program.Ready (Verified.compileWith pure tables wrappers pool) pool)
     (sourceHost : HostEnv Unit) :
     CostEffectCalls (Verified.compileWith pure tables wrappers pool)

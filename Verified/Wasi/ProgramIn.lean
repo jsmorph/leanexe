@@ -17,7 +17,7 @@ structure CompilerBaseWith (imported : List LeanExe.Wasi.Call) (source target : 
     some (writeFunction .stdout typeIndex)
   stderr : ∃ typeIndex, target.funcs[source.funcs.length + 2]? =
     some (writeFunction .stderr typeIndex)
-  poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch
+  poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low
 
 structure CompilerBase (source target : Wasm.Module) (pure : Resource.PureContext pureSigs)
     (pool : Bytes.LiteralPool) : Prop where
@@ -31,7 +31,7 @@ structure CompilerBase (source target : Wasm.Module) (pure : Resource.PureContex
     some (writeFunction .stdout typeIndex)
   stderr : ∃ typeIndex, target.funcs[source.funcs.length + 2]? =
     some (writeFunction .stderr typeIndex)
-  poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.scratch
+  poolApart : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low
 
 theorem CompilerBase.toWith {source target : Wasm.Module} {pure : Resource.PureContext pureSigs}
     {pool : Bytes.LiteralPool} (base : CompilerBase source target pure pool) :

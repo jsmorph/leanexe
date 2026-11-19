@@ -17,7 +17,7 @@ theorem wp_loopFinish_with {calls : List LeanExe.Wasi.Call}
     (closed : Relocation.programClosed source.funcs.length
       (releaseWhere context slots (fun i => used i && !live i)) = true)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (after : After env slots liveIn (fun i => live i || used i) base heap initial locals
       (.value type) state currentHeap current currentLocals words)
     (selected : ∀ i, (live i || used i) = true → liveIn i = true)
@@ -61,7 +61,7 @@ theorem wp_loopFinish {World : Type} {source target : Wasm.Module} {host : Host 
     (closed : Relocation.programClosed source.funcs.length
       (releaseWhere context slots (fun i => used i && !live i)) = true)
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (scratch : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (after : After env slots liveIn (fun i => live i || used i) base heap initial locals
       (.value type) state currentHeap current currentLocals words)
     (selected : ∀ i, (live i || used i) = true → liveIn i = true)

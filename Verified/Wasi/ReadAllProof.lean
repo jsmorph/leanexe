@@ -48,7 +48,7 @@ theorem wp_readAll_with {calls : List LeanExe.Wasi.Call}
     (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (finalLocals : Locals)
       (root length : UInt64) (result : LeanExe.Wasi.ReadResult) (trace : List Event),
       Exec (observedHost host) (readAll limit) initial.host trace (.returned result) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       Bytes.Rep heap' (PureTransport.erase final) root length result.bytes →
       heap'.top.toNat ≤ heap.top.toNat + readAllCost limit →
@@ -58,7 +58,7 @@ theorem wp_readAll_with {calls : List LeanExe.Wasi.Call}
     (hTrap : ∀ (heap' : Heap) (final : Store (Observed World)) (root : UInt64)
       (message : String) (trace : List Event),
       Exec (observedHost host) (readAll limit) initial.host trace (.trapped message) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       heap'.top.toNat ≤ heap.top.toNat + readAllCost limit → Q (.Trap final message)) :
     wp target (readAllCodeWith calls base ++ rest) Q initial { s with values := .i64 limit :: values }
@@ -130,7 +130,7 @@ theorem wp_readAll_with {calls : List LeanExe.Wasi.Call}
     refine hNext heap initial { s4 with values := values } 0 0 ⟨61, LeanExe.Bytes.empty⟩ [] exec
       ?_ (Bytes.Rep.empty heap _) (by omega) ((outside4.values _).frame hHigh0).values
     simpa only [Bytes.regions, ↓reduceIte] using
-      Step.refl hHeap (fun region => regionsDisjoint region ABI.scratch)
+      Step.refl hHeap (fun region => regionsDisjoint region ABI.low)
   · -- The buffer and the read loop.
     have hSmall : limit.toNat < 4294963200 := by
       rw [UInt64.le_iff_toNat_le] at hLarge
@@ -182,7 +182,7 @@ theorem wp_readAll_with {calls : List LeanExe.Wasi.Call}
     have get2 : ∀ j, j ≠ base + 2 → s2.get j = s1.get j := fun j hj =>
       Locals.get_setLocal_ne hLow2 hj
     have hStart : Step heap (PureTransport.erase initial)
-        (fun region => regionsDisjoint region ABI.scratch)
+        (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase before) [block (PureTransport.erase before) root] :=
       hAllocate.mono (fun _ _ => True.intro) (fun _ member => member)
     have hTopCost : heap'.top.toNat ≤ heap.top.toNat + readAllCost limit := by
@@ -233,7 +233,7 @@ theorem wp_readAll {World : Type} {source target : Module} {host : Host World}
     (hNext : ∀ (heap' : Heap) (final : Store (Observed World)) (finalLocals : Locals)
       (root length : UInt64) (result : LeanExe.Wasi.ReadResult) (trace : List Event),
       Exec (observedHost host) (readAll limit) initial.host trace (.returned result) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       Bytes.Rep heap' (PureTransport.erase final) root length result.bytes →
       heap'.top.toNat ≤ heap.top.toNat + readAllCost limit →
@@ -243,7 +243,7 @@ theorem wp_readAll {World : Type} {source target : Module} {host : Host World}
     (hTrap : ∀ (heap' : Heap) (final : Store (Observed World)) (root : UInt64)
       (message : String) (trace : List Event),
       Exec (observedHost host) (readAll limit) initial.host trace (.trapped message) final.host →
-      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.scratch)
+      Step heap (PureTransport.erase initial) (fun region => regionsDisjoint region ABI.low)
         heap' (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       heap'.top.toNat ≤ heap.top.toNat + readAllCost limit → Q (.Trap final message)) :
     wp target (readAllCode base ++ rest) Q initial { s with values := .i64 limit :: values }

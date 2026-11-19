@@ -16,7 +16,7 @@ inductive FunctionResult {World : Type} (host : Host World) (signature : EffectS
       (step : Step heap (PureTransport.erase initial)
         (fun region => Apart (PureTransport.erase initial)
             (Env.moves (PureTransport.erase initial) signature.mode params args) region ∧
-          regionsDisjoint region ABI.scratch)
+          regionsDisjoint region ABI.low)
         finalHeap (PureTransport.erase final)
         (signature.result.fresh (PureTransport.erase final) words value))
       (rep : signature.result.Rep finalHeap (PureTransport.erase final) words value) :
@@ -48,7 +48,7 @@ def EffectSpecWith (calls : List LeanExe.Wasi.Call) (target : Wasm.Module) (sign
       (Env.represent signature.params signature.modes) pool heap (PureTransport.erase initial)
       params args →
     (∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode params args,
-      regionsDisjoint ABI.scratch region) →
+      regionsDisjoint ABI.low region) →
     (PureTransport.erase initial).memoryCap target 0 ≤ 65535 →
     ∃ bound, ∀ fuel ≥ bound,
       FunctionResult host signature (meaning args) args params heap initial true

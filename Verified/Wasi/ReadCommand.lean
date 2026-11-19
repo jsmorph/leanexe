@@ -120,7 +120,7 @@ theorem wp_read_fill_with {calls : List LeanExe.Wasi.Call} {World : Type}
       Exec (observedHost host) (readStdin buffer start count) initial.host trace
         (.returned result) final.host →
       Step heap (PureTransport.erase initial)
-        (fun r => regionsDisjoint r ABI.scratch ∧
+        (fun r => regionsDisjoint r ABI.low ∧
           ∀ b ∈ Bytes.regions (PureTransport.erase initial) root, regionsDisjoint r b)
         heap (PureTransport.erase final) (Bytes.regions (PureTransport.erase final) root) →
       Bytes.Rep heap (PureTransport.erase final) root size result.buffer →
@@ -273,7 +273,7 @@ theorem wp_read_fill_result_with {calls : List LeanExe.Wasi.Call} {World : Type}
     (hFunction : target.funcs[index]? = some (readFunction typeIdx))
     (hHost : targetHost.Satisfies target (hostSpecWith host calls))
     (vars : Holds env slots liveIn base heap (PureTransport.erase initial) locals)
-    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.scratch)
+    (apart : Holds.ApartFrom env slots liveIn (PureTransport.erase initial) locals ABI.low)
     (selected : ∀ i, live i = true → liveIn i = true)
     (hBufferIn : liveIn buffer.index = true) (hBufferOut : live buffer.index = false)
     (hOwned : (slots.getD buffer.index default).mode = .owned)
@@ -333,7 +333,7 @@ theorem wp_read_command_with {calls : List LeanExe.Wasi.Call}
       (PureTransport.erase initial) locals)
     (scratch : Holds.ApartFrom env slots (fun i => live i || (Command.read (pureSigs := pureSigs)
       (effectSigs := effectSigs) buffer start count).uses i)
-      (PureTransport.erase initial) locals ABI.scratch)
+      (PureTransport.erase initial) locals ABI.low)
     (cap : (PureTransport.erase initial).memoryCap source 0 ≤ 65535)
     (low : locals.params.length ≤ base)
     (room : base + (Command.read (pureSigs := pureSigs) (effectSigs := effectSigs) buffer start

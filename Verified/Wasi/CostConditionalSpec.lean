@@ -160,7 +160,7 @@ theorem cost_command_ite_spec_with {calls : List LeanExe.Wasi.Call}
       have first' := first.reframe (show Frame base prefixLocals
         { prefixLocals with values := locals.values } from Frame.ofValues)
       have prefixVars := first'.holds
-      have prefixApart := first'.scratch vars scratch midSelected
+      have prefixApart := first'.low vars scratch midSelected
       have prefixSafe := (first'.pool_safe safe vars scratch midSelected facts.poolApart).1
       have upperVars := prefixVars.mono (Nat.le_add_right base result.width)
       have selectedBranch : wp target
@@ -184,7 +184,7 @@ theorem cost_command_ite_spec_with {calls : List LeanExe.Wasi.Call}
           valid below (by rw [first.frame.params]; exact depthParam)
           (first.frame.positions.trans positions) cleanup.holds cleanup.step.at_
           (cleanup.pool_safe prefixSafe upperVars prefixApart branchSelected facts.poolApart).1
-          (cleanup.scratch upperVars prefixApart branchSelected)
+          (cleanup.low upperVars prefixApart branchSelected)
           (by rw [cleanup.step.cap source, first'.step.cap source]; exact cap)
           (by rw [first.frame.params]; omega) (by omega) pickedReady pickedCovered pickedPlace
           (fun noAbort => by
