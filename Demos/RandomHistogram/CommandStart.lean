@@ -2,9 +2,9 @@ import Demos.RandomHistogram.CommandProof
 import Verified.Shim.Footprint
 
 /-! The theorem of the compiled command.  For every host, every host environment that satisfies the
-host's contracts for the module's imports, `hostSpecWith host command.sysCalls`, and every world,
-every run of `_start` from the command's initial store with enough fuel traps (`start_ends`).  The
-trap is one of three:
+host's specifications for the module's imports, `hostSpecWith host command.sysCalls`, and every
+world, every run of `_start` from the command's initial store with enough fuel traps
+(`start_ends`).  The trap is one of three:
 
 - the accepted exit, with a status `code` of at most 77, after the events of `Meets`
   (`exec_main`): the status is the errno of `args`, 2 for a refused argument, the errno of a
@@ -79,7 +79,7 @@ theorem ends_of_result {World : Type} {host : Host World} {heap : Heap}
     exact ⟨trace, events, .inr (.inr ⟨rfl, residual, progress⟩)⟩
 
 /-- Every run of `_start` from the command's initial store with enough fuel ends as `Ends` states,
-for every host, every host environment that satisfies the host's contracts, and every world. -/
+for every host, every host environment that satisfies the host's specifications, and every world. -/
 theorem start_ends {World : Type} {host : Host World} (world : Observed World)
     (targetHost : HostEnv (Observed World))
     (valid : targetHost.Satisfies command.module (hostSpecWith host command.sysCalls)) :

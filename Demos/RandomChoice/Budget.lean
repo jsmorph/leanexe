@@ -209,9 +209,9 @@ theorem initial_within {World : Type} (world : Observed World) :
 
 /-- The accepted exit of every run of `_start`, for every N and K, under every host whose
 successful `args_sizes_get` replies ask for at most `argsLimit` bytes and that traps nowhere along
-`main` and its exit, and every host environment that satisfies the host's contracts: with enough
-fuel the run ends with the accepted exit, with a status of at most 78, after events that meet
-`Meets`. -/
+`main` and its exit, and every host environment that satisfies the host's specifications: with
+enough fuel the run ends with the accepted exit, with a status of at most 78, after events that
+meet `Meets`. -/
 theorem total_meets_every {World : Type} {host : Host World} (world : Observed World)
     (targetHost : HostEnv (Observed World))
     (valid : targetHost.Satisfies command.module (hostSpecWith host command.sysCalls))
