@@ -29,9 +29,13 @@ when its result is a resource derived from `fd`, and exit_group, which ends the 
 terminal.  The script refuses a call whose lowering needs anything else: a length that does not
 follow its pointer, a `len` over an array whose element has more than one byte, a nested pointer,
 an optional pointer, the direction inout, a `ptr[in, T]` without a length, an output pointer with
-a `bytesize`, another resource, or more than one output region.  A structure's fields lie at the
-next multiple of their size, and its size is rounded up to its largest field; integers and
-pointers have 8 bytes on arm64 and x86-64 (sys/targets/targets.go lines 270 and 302).
+a `bytesize`, another resource, or more than one output region.  A structure's fields are
+integers, structures of the same kind, and arrays of a fixed count of integers; a field lies at the
+next multiple of its alignment, its size for an integer and an array's element and its largest
+field for a structure, and the structure's size is rounded up to its largest alignment.  A nested
+structure's fields and an array's elements are fields of the layout, named `field.inner` and
+`field[i]`.  Integers and pointers have 8 bytes on arm64 and x86-64 (sys/targets/targets.go lines
+270 and 302).
 """
 import difflib
 import hashlib
@@ -50,7 +54,7 @@ DIGESTS = {
 # The calls of the table, in its order.  The frame of the trusted base holds for this set of calls
 # together, so a call joins it only after a review of its effect on the others.
 ADMITTED = ["openat", "close", "read", "write", "exit_group", "clock_gettime", "getrandom",
-            "openat2"]
+            "openat2", "statx"]
 TERMINAL = {"exit_group"}
 # Syzkaller's built-in templates (pkg/compiler/types.go lines 1143 and 1146).
 BUILTIN = {"filename": ([], "string[filename]"), "buffer": (["DIR"], "ptr[DIR, array[int8]]")}
@@ -326,6 +330,9 @@ def scalar_size(spec, t):
 
 
 def struct_layout(spec, name):
+    """The layout of a structure whose fields are integers, structures of the same kind, and
+    arrays of a fixed count of integers.  A nested structure's fields and an array's elements
+    become fields of their own, named `field.inner` and `field[i]`, at their offsets."""
     if name not in spec.structs:
         raise Refusal(f"no structure {name}")
     struct = spec.structs[name]
@@ -333,13 +340,29 @@ def struct_layout(spec, name):
         raise Refusal(f"{name}: a union or a structure with attributes")
     offset, align, out = 0, 1, []
     for field, text in struct.fields:
-        size = scalar_size(spec, expand(spec, parse_type(text)))
-        if size is None:
-            raise Refusal(f"{name}.{field}: a field that is not an integer")
-        offset = (offset + size - 1) // size * size
-        out.append((field, offset, size))
-        offset += size
-        align = max(align, size)
+        t = expand(spec, parse_type(text))
+        size = scalar_size(spec, t)
+        if size is not None:
+            offset = (offset + size - 1) // size * size
+            out.append((field, offset, size))
+            offset += size
+            align = max(align, size)
+        elif isinstance(t, Type) and t.name in spec.structs:
+            inner = struct_layout(spec, t.name)
+            offset = (offset + inner.align - 1) // inner.align * inner.align
+            out += [(f"{field}.{n}", offset + o, w) for n, o, w in inner.fields]
+            offset += inner.size
+            align = max(align, inner.align)
+        elif (isinstance(t, Type) and t.name == "array" and len(t.args) == 2
+              and isinstance(t.args[1], tuple) and t.args[1][0] == "number"
+              and (size := scalar_size(spec, expand(spec, t.args[0]))) is not None):
+            offset = (offset + size - 1) // size * size
+            out += [(f"{field}[{i}]", offset + i * size, size) for i in range(t.args[1][1])]
+            offset += t.args[1][1] * size
+            align = max(align, size)
+        else:
+            raise Refusal(f"{name}.{field}: a field that is neither an integer, a structure, "
+                          "nor an array of integers of a fixed count")
     return Layout(name, struct.first, struct.last, (offset + align - 1) // align * align, align,
                   out)
 
@@ -600,12 +623,16 @@ def render_table(descriptions):
         for layout, role in d.records:
             roles.setdefault(layout.name, (layout, []))[1].append((role, d.name))
     for layout, uses in roles.values():
-        fields = ", ".join(f"⟨\"{n}\", {o}, {w}⟩" for n, o, w in layout.fields)
+        fields = [f"⟨\"{n}\", {o}, {w}⟩" for n, o, w in layout.fields]
         used = " and ".join(f"the {role} record of `{name}`" for role, name in uses)
+        head = f"def {camel(layout.name)}Layout : Layout"
+        start = f"⟨\"{layout.name}\", {layout.size}, {layout.align}, ["
         out += ["", f"/-- `{layout.name}` (`sys.txt` lines {layout.first} to {layout.last}), "
-                    f"{used}. -/",
-                *definition(f"def {camel(layout.name)}Layout : Layout",
-                            f"⟨\"{layout.name}\", {layout.size}, {layout.align}, [{fields}]⟩")]
+                    f"{used}. -/"]
+        if len(f"  {start}{', '.join(fields)}]⟩") <= WIDTH:
+            out += definition(head, f"{start}{', '.join(fields)}]⟩")
+        else:
+            out += [f"{head} :=", *wrap(f"  {start}", fields, "]⟩", 4)]
     out += [""] + TABLE_ONE_OUTPUT.splitlines()
     for d in descriptions:
         out += [""] + region_lemma(d)
@@ -621,18 +648,21 @@ DATA = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-+"
 # kernel fails it only where a byte that varies equals the fill of every run, which for a uniformly
 # random byte has probability 256^-k for k fills.  The bytes that vary are getrandom's 8 and the low
 # 4 bytes of tv_sec and of tv_nsec: 8 at each of the 2 placements of each of the two steps, 32 in
-# a run of the frame test that reaches both.  tests/linux/sys-run.sh makes 2 such runs, natively
-# and under QEMU, and 3 runs of seeded faults pass the coverage check of clock_gettime before they
-# fail (getrandom-short natively and under QEMU, openat2-record-short natively), 112 bytes in all.
+# a run of the frame test that reaches both.  statx's record does not vary between the runs of a
+# placement: the file `data` keeps its bytes and its times after the read steps, so each of its
+# bytes is fixed.  tests/linux/sys-run.sh makes 2 runs that reach both steps, natively and under
+# QEMU, and 2 runs of the seeded fault statx-record-short, natively and under QEMU, reach both
+# before they fail; 3 runs of seeded faults pass the coverage check of clock_gettime before they
+# fail (getrandom-short natively and under QEMU, openat2-record-short natively), 176 bytes in all.
 # The other faults stop before that check or, for the record of 24 bytes, fail it with the predicted
-# status whatever the varying bytes hold.  Three fills give a rate of 112 * 256^-3, about 6.7 *
-# 10^-6, for a run of tests/linux/sys-run.sh, and four give 112 * 256^-4, about 2.6 * 10^-8.  The
+# status whatever the varying bytes hold.  Three fills give a rate of 176 * 256^-3, about 1.0 *
+# 10^-5, for a run of tests/linux/sys-run.sh, and four give 176 * 256^-4, about 4.1 * 10^-8.  The
 # fills differ pairwise, so a fixed byte of a reply equals at most one of them, and none is 0, the
 # value of the high bytes of tv_sec and tv_nsec.  A byte that follows the clock matches them only if
 # it advances by 181, 226, and 135 units between consecutive runs, the differences of the fills
 # modulo 256, which runs of nearly equal duration do not produce.
 FILLS = (0xA5, 0x5A, 0x3C, 0xC3)
-VARYING = 112
+VARYING = 176
 RATE = VARYING * 256.0 ** -len(FILLS)
 assert RATE < 1e-6 and len(set(FILLS)) == len(FILLS) and 0 not in FILLS
 CHECKS = {"return": 1, "registers": 2, "frame": 3, "value": 4, "reply": 5, "coverage": 6}
@@ -690,6 +720,9 @@ def steps(consts, layouts):
          "native": QEMU_OPENAT2},
         {"label": "getrandom of 8 bytes", "call": "getrandom", "args": [8, 0], "expect": 8,
          "fills": "all"},
+        {"label": "statx of an open file with AT_EMPTY_PATH", "call": "statx",
+         "args": [0, "", ["AT_EMPTY_PATH"], ["STATX_BASIC_STATS", "STATX_BTIME"], None],
+         "expect": 0, "fills": "all", "setup": "data", "offset": 0, "check": "statx"},
         {"label": "exit_group with 0x12A", "call": "exit_group", "args": [0x12A],
          "expect": ("status", 0x2A)},
     ]
@@ -705,6 +738,8 @@ def steps(consts, layouts):
 # the call writes before it; and a write's input declared as an output receives no bytes, so the
 # file holds the fill.  openat2's record lies inside the pages at that placement, and the byte
 # after its 23 declared bytes, the fill, makes `resolve` invalid, so the call returns EINVAL.
+# statx's record, the second region, lies inside the pages there, and the call writes the byte
+# after its 255 declared bytes.
 FAULTS = {
     "clock-record-8": ("clock_gettime", 1, ("kind", ("record", 8)), "return"),
     "clock-record-24": ("clock_gettime", 1, ("kind", ("record", 24)), "coverage"),
@@ -715,6 +750,7 @@ FAULTS = {
     "write-as-output": ("write", 1, ("kind", ("output",)), "value"),
     "openat2-record-short": ("openat2", 2, ("size", -1), "return"),
     "path-short": ("openat", 1, ("size", -1), "return"),
+    "statx-record-short": ("statx", 4, ("size", -1), "frame"),
 }
 
 
@@ -863,7 +899,7 @@ FRAME_HEAD = r"""/* The frame test of the Linux call layer, generated by tools/l
 
    Build: cc -O1 -static -o frame frame.c.  Run in an empty directory: frame [--qemu].  With
    --qemu the steps that QEMU 8.2.2 does not run as Linux does are skipped, each with its reason.
-   Exit status: 0 when every step passes, 10 * STEP + CHECK at the first check that fails, 1 when
+   Exit status: 0 when every step passes, 8 * STEP + CHECK at the first check that fails, 1 when
    the test itself fails, and 2 for a usage error. */
 #include <errno.h>
 #include <fcntl.h>
@@ -1108,6 +1144,16 @@ static const char *check_clock(const struct step *s, uint64_t ret, const unsigne
   return NULL;
 }
 
+/* The statx record of data: STATX_TYPE and STATX_SIZE in stx_mask, the mode of a regular file,
+   and the size of data. */
+static const char *check_statx(const struct step *s, uint64_t ret, const unsigned char *out) {
+  (void)s, (void)ret;
+  if ((le(out, 4) & 0x201) != 0x201) return "stx_mask lacks STATX_TYPE or STATX_SIZE";
+  if ((le(out + 28, 2) & 0170000) != 0100000) return "stx_mode is not a regular file's";
+  if (le(out + 40, 8) != sizeof data - 1) return "stx_size is not the size of data";
+  return NULL;
+}
+
 """
 
 FRAME_ENGINE = r"""
@@ -1145,7 +1191,7 @@ static void fail(int n, const struct step *s, int p, int fill, enum check c, con
   if (s->nregions) printf("region %d at the %s, ", p / 2, p % 2 ? "start" : "end");
   if (fill >= 0) printf("fill 0x%02X, ", fill);
   printf("check %d: %s\n", c, why);
-  exit(10 * n + c);
+  exit(8 * n + c);
 }
 
 static uint64_t pattern(int i) { return 0x1111111111111111ULL * (uint64_t)(i % 15 + 1) + i; }
@@ -1310,7 +1356,8 @@ def render_frame(descriptions, consts, plan, fault=None):
     by_name = {d.name: d for d in descriptions}
     missing = [d.name for d in descriptions if d.name not in {s["call"] for s in plan}]
     assert not missing, f"no step calls {missing}"
-    assert 10 * len(plan) + max(CHECKS.values()) < 128, "too many steps for distinct statuses"
+    assert 8 * len(plan) + max(CHECKS.values()) < 128 and max(CHECKS.values()) < 8, \
+        "too many steps or checks for distinct statuses"
     body = ["static const struct step steps[] = {"]
     for index, step in enumerate(plan, 1):
         change = fault[1:3] if fault and fault[0] == step["call"] else None
@@ -1331,7 +1378,7 @@ def fault_status(plan, fault):
     check at the first step of its call, and whether that step runs only natively."""
     call, _, _, check = fault
     index = next(i for i, step in enumerate(plan, 1) if step["call"] == call)
-    return 10 * index + CHECKS[check], "native" in plan[index - 1]
+    return 8 * index + CHECKS[check], "native" in plan[index - 1]
 
 
 def option(rest, name):
