@@ -5,15 +5,16 @@ import LeanExe.Dialect.Lemmas
 
 /-! The block-level SHA-256 computes FIPS 180-4.  `blocksFold data q s` is the copied
 implementation's hash value after the first `q` blocks of `data` from `s`.  `update_toVec32` states
-that the 32-bit words of `update h b` are `blocksFold` of the whole blocks of `b` from those of `h`,
-since `byteBlock` reads the words of a block as `SHS.SHA256.Impl.toU32s` does (`byteBlock_toVec32`)
+that the 32-bit words of `update h b q` are `blocksFold` of the first `q` blocks of `b` from those
+of `h`, since `byteBlock` reads the words of a block as `SHS.SHA256.Impl.toU32s` does (`byteBlock_toVec32`)
 and `compress_toVec32` gives each compression.  `blocksFold_append` splits a fold over a
 concatenation whose first part is whole blocks, and `blocksFold_append_tail` drops the bytes after
 the blocks that a fold reads.  `finish_bytes` states that `finish` from the hash value of a prefix
-of whole blocks gives the digest bytes of `Impl.sha256` of the whole message, through
-`hashFrom_toVec32` and the packing of `pack` (`pack_bytes`), and `finish_spec` the digest of the
-transcription.  `stream_spec` composes them: hashing pieces of whole blocks with `update` from
-`iv256` and the remaining bytes with `finish` gives the digest of FIPS 180-4 of the concatenation.
+of whole blocks gives the digest bytes of `Impl.sha256` of the prefix followed by the bytes of the
+window that it hashes, through `hashFrom_toVec32` and the packing of `pack` (`pack_bytes`), and
+`finish_spec` the digest of the transcription.  `stream_spec` composes them: hashing pieces of
+whole blocks with `update` from `iv256` and the remaining bytes with `finish` gives the digest of
+FIPS 180-4 of the concatenation.
 `digestBitVec_inj` states that two digests with the same bits are equal. -/
 
 namespace Library.Hashing.Sha256
@@ -129,16 +130,13 @@ theorem blocksFold_congr (d e : ByteArray) (s : SHS.SHA256.Impl.State) :
     rw [blocksFold_succ, blocksFold_succ, ih (fun i hi => same i (by omega)),
       same q (by omega)]
 
-/-- The 32-bit words of `update h b` are the implementation's hash value after the whole blocks
-of `b` from those of `h`. -/
-theorem update_toVec32 (h : Words8) (b : LeanExe.Bytes) (hb : b.data.size < 2 ^ 64) :
-    (update h b).toVec32 = blocksFold b.data (b.data.size / 64) h.toVec32 := by
-  have hq : (b.size >>> 6).toNat = b.data.size / 64 := by
-    rw [UInt64.toNat_shiftRight, LeanExe.Bytes.size_toNat b hb]
-    simp [Nat.shiftRight_eq_div_pow]
+/-- The 32-bit words of `update h b q` are the implementation's hash value after the first `q`
+blocks of `b` from those of `h`. -/
+theorem update_toVec32 (h : Words8) (b : LeanExe.Bytes) (q : UInt64) (hq : 64 * q.toNat ≤ 2 ^ 64) :
+    (update h b q).toVec32 = blocksFold b.data q.toNat h.toVec32 := by
   unfold update updateWith
-  rw [LeanExe.loop, hq]
-  have key : ∀ k, k ≤ b.data.size / 64 →
+  rw [LeanExe.loop]
+  have key : ∀ k, k ≤ q.toNat →
       (Nat.fold k (fun i _ s => compress roundConstants s
           (byteBlock b (UInt64.ofNat i <<< 4))) h).toVec32 = blocksFold b.data k h.toVec32 := by
     intro k
@@ -192,97 +190,120 @@ theorem blocksFold_append_tail (a t : ByteArray) (q : Nat) (hq : 64 * q ≤ a.si
 
 /-! ## The digest -/
 
-/-- Position `k` of word `i` of eight bytes, for `k` below 8 and a word that ends within
-`2^64` bytes. -/
-theorem packPos (i : Nat) (k : UInt64) (hk : k.toNat < 8) (hi : 8 * i + 8 ≤ 2 ^ 64) :
-    ((UInt64.ofNat i <<< 3) + k).toNat = 8 * i + k.toNat := by
-  rw [UInt64.toNat_add, UInt64.toNat_shiftLeft, UInt64.toNat_ofNat',
+/-- Position `k` of word `i` of eight bytes from `start`, for `k` below 8 and a word that ends
+within `2^64` bytes. -/
+theorem packPos (start : UInt64) (i : Nat) (k : UInt64) (hk : k.toNat < 8)
+    (hi : start.toNat + 8 * i + 8 ≤ 2 ^ 64) :
+    ((start + (UInt64.ofNat i <<< 3)) + k).toNat = start.toNat + 8 * i + k.toNat := by
+  rw [UInt64.toNat_add, UInt64.toNat_add, UInt64.toNat_shiftLeft, UInt64.toNat_ofNat',
     show UInt64.toNat 3 % 64 = 3 by decide, Nat.shiftLeft_eq,
     Nat.mod_eq_of_lt (by omega : i < 2 ^ 64), Nat.mod_eq_of_lt (by omega : i * 2 ^ 3 < 2 ^ 64),
-    Nat.mod_eq_of_lt (by omega : i * 2 ^ 3 + k.toNat < 2 ^ 64)]
+    Nat.mod_eq_of_lt (by omega : start.toNat + i * 2 ^ 3 < 2 ^ 64),
+    Nat.mod_eq_of_lt (by omega : start.toNat + i * 2 ^ 3 + k.toNat < 2 ^ 64)]
   omega
 
-/-- `packWord` is the word whose bytes are those of `b` from `8 i`, the first least significant. -/
-theorem packWord_eq (b : LeanExe.Bytes) (i : Nat) (hi : 8 * i + 8 ≤ 2 ^ 64) :
-    packWord b (UInt64.ofNat i) = be8 (b.data.get! (8 * i + 7)) (b.data.get! (8 * i + 6))
-      (b.data.get! (8 * i + 5)) (b.data.get! (8 * i + 4)) (b.data.get! (8 * i + 3))
-      (b.data.get! (8 * i + 2)) (b.data.get! (8 * i + 1)) (b.data.get! (8 * i)) := by
-  have p0 : (UInt64.ofNat i <<< 3).toNat = 8 * i := by
-    have := packPos i 0 (by decide) hi
+/-- `packWord` is the word whose bytes are those of `b` from `start + 8 i`, the first least
+significant. -/
+theorem packWord_eq (b : LeanExe.Bytes) (start : UInt64) (i : Nat)
+    (hi : start.toNat + 8 * i + 8 ≤ 2 ^ 64) :
+    packWord b start (UInt64.ofNat i) = be8 (b.data.get! (start.toNat + 8 * i + 7))
+      (b.data.get! (start.toNat + 8 * i + 6)) (b.data.get! (start.toNat + 8 * i + 5))
+      (b.data.get! (start.toNat + 8 * i + 4)) (b.data.get! (start.toNat + 8 * i + 3))
+      (b.data.get! (start.toNat + 8 * i + 2)) (b.data.get! (start.toNat + 8 * i + 1))
+      (b.data.get! (start.toNat + 8 * i)) := by
+  have p0 : (start + (UInt64.ofNat i <<< 3)).toNat = start.toNat + 8 * i := by
+    have := packPos start i 0 (by decide) hi
     rwa [UInt64.add_zero] at this
   unfold packWord
   dsimp only
   simp only [get_eq_get!]
-  rw [p0, packPos i 1 (by decide) hi, packPos i 2 (by decide) hi, packPos i 3 (by decide) hi,
-    packPos i 4 (by decide) hi, packPos i 5 (by decide) hi, packPos i 6 (by decide) hi,
-    packPos i 7 (by decide) hi]
+  rw [p0, packPos start i 1 (by decide) hi, packPos start i 2 (by decide) hi,
+    packPos start i 3 (by decide) hi, packPos start i 4 (by decide) hi,
+    packPos start i 5 (by decide) hi, packPos start i 6 (by decide) hi,
+    packPos start i 7 (by decide) hi]
   exact le8_widened _ _ _ _ _ _ _ _
 
-/-- Byte `i` of the packed words of `b` is byte `i` of `b`. -/
-theorem byteAt_pack (b : LeanExe.Bytes) (hb : b.data.size + 8 < 2 ^ 64) (i : Nat)
-    (hi : i < b.data.size) : byteAt (pack b) i = b.data.get! i := by
-  have hs := LeanExe.Bytes.size_toNat b (by omega)
-  have hcount : ((b.size + 7) >>> 3).toNat = (b.data.size + 7) / 8 := by
-    have hlt : (b.data.size + 7) % 18446744073709551616 = b.data.size + 7 :=
+/-- Byte `i` of the packed words of the `n` bytes of `b` from `start` is byte `start + i` of `b`. -/
+theorem byteAt_pack (b : LeanExe.Bytes) (start n : UInt64)
+    (hb : start.toNat + n.toNat + 8 < 2 ^ 64) (i : Nat) (hi : i < n.toNat) :
+    byteAt (pack b start n) i = b.data.get! (start.toNat + i) := by
+  have hcount : ((n + 7) >>> 3).toNat = (n.toNat + 7) / 8 := by
+    have hlt : (n.toNat + 7) % 18446744073709551616 = n.toNat + 7 :=
       Nat.mod_eq_of_lt (by omega)
-    rw [UInt64.toNat_shiftRight, UInt64.toNat_add, hs]
+    rw [UInt64.toNat_shiftRight, UInt64.toNat_add]
     simp [Nat.shiftRight_eq_div_pow, hlt]
   obtain ⟨q, r, rfl, hr⟩ : ∃ q r, i = 8 * q + r ∧ r < 8 :=
     ⟨i / 8, i % 8, by omega, by omega⟩
-  rw [byteAt_eq _ _ _ hr]
+  rw [byteAt_eq _ _ _ hr, show start.toNat + (8 * q + r) = start.toNat + 8 * q + r by omega]
   unfold pack
-  rw [LeanExe.Dialect.build_get (by rw [hcount]; omega), packWord_eq b q (by omega),
+  rw [LeanExe.Dialect.build_get (by rw [hcount]; omega), packWord_eq b start q (by omega),
     byteOf_be8 _ _ _ _ _ _ _ _ _ hr]
   interval_cases r <;> rfl
 
-/-- The packed bytes of `pack b` are the bytes of `b`. -/
-theorem pack_bytes (b : LeanExe.Bytes) (hb : b.data.size + 8 < 2 ^ 64) :
-    bytes (pack b) b.data.size = b.data := by
+/-- The packed bytes of `pack b start n` are the `n` bytes of `b` from `start`. -/
+theorem pack_bytes (b : LeanExe.Bytes) (start n : UInt64)
+    (hb : start.toNat + n.toNat + 8 < 2 ^ 64) (hw : start.toNat + n.toNat ≤ b.data.size) :
+    bytes (pack b start n) n.toNat = b.data.extract start.toNat (start.toNat + n.toNat) := by
   apply ByteArray.ext
   apply Array.ext
-  · show (bytes (pack b) b.data.size).size = b.data.size
-    rw [bytes_size]
+  · show (bytes (pack b start n) n.toNat).size =
+      (b.data.extract start.toNat (start.toNat + n.toNat)).size
+    rw [bytes_size, ByteArray.size_extract]
+    omega
   · intro i h1 h2
-    have hi : i < b.data.size := h2
-    have e : (bytes (pack b) b.data.size).data[i] = byteAt (pack b) i := by
-      have general : ∀ j (hj : j < ((Array.range b.data.size).map (byteAt (pack b))).size),
-          ((Array.range b.data.size).map (byteAt (pack b)))[j] = byteAt (pack b) j :=
+    have hi : i < n.toNat := by
+      have := h1
+      simp only [ByteArray.size_data, bytes_size] at this
+      exact this
+    have e : (bytes (pack b start n) n.toNat).data[i] = byteAt (pack b start n) i := by
+      have general : ∀ j (hj : j < ((Array.range n.toNat).map (byteAt (pack b start n))).size),
+          ((Array.range n.toNat).map (byteAt (pack b start n)))[j] = byteAt (pack b start n) j :=
         fun j hj => by simp
       exact general i _
-    rw [e, byteAt_pack b hb i hi, get!_of_lt _ hi]
+    rw [e, byteAt_pack b start n hb i hi, get!_of_lt _ (by omega)]
+    simp only [ByteArray.data_extract, Array.getElem_extract]
     rfl
 
-/-- `finish` from the hash value of `p` whole blocks `pre`, with the bytes `b` and the length of
-`pre ++ b`, gives the digest bytes of the implementation's SHA-256 of `pre ++ b`. -/
+/-- `finish` from the hash value of `p` whole blocks `pre`, with the `n` bytes of `b` from `start`
+and the length of the whole message, gives the digest bytes of the implementation's SHA-256 of
+`pre` followed by those bytes. -/
 theorem finish_bytes (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (h : Words8)
     (hh : h.toVec32 = blocksFold pre p SHS.SHA256.Impl.H256_256) (b : LeanExe.Bytes)
-    (len : UInt64) (hlen : len.toNat = pre.size + b.data.size) (hl : len.toNat < 2 ^ 61) :
-    (finish h b len).bytes 32 = SHS.SHA256.Impl.sha256 (pre ++ b.data) := by
-  have hn : b.size.toNat = b.data.size := LeanExe.Bytes.size_toNat b (by omega)
-  rw [impl_sha256_eq_refactored _ (by rw [ByteArray.size_append]; omega)]
+    (start n len : UInt64) (hw : start.toNat + n.toNat ≤ b.data.size)
+    (hb : b.data.size + 8 < 2 ^ 64) (hlen : len.toNat = pre.size + n.toNat)
+    (hl : len.toNat < 2 ^ 61) :
+    (finish h b start n len).bytes 32 =
+      SHS.SHA256.Impl.sha256 (pre ++ b.data.extract start.toNat (start.toNat + n.toNat)) := by
+  have hE : (b.data.extract start.toNat (start.toNat + n.toNat)).size = n.toNat := by
+    rw [ByteArray.size_extract]
+    omega
+  rw [impl_sha256_eq_refactored _ (by rw [ByteArray.size_append, hE]; omega)]
   unfold implSha256Refactored implSha256StateRefactored
-  rw [foldl_append pre p hpre b.data]
-  have e := hashFrom_toVec32 pre p hpre h (pack b) b.size len (by rw [hn]; omega) hl
-  rw [hn, pack_bytes b (by omega), hh] at e
+  rw [foldl_append pre p hpre _, hE]
+  have e := hashFrom_toVec32 pre p hpre h (pack b start n) n len (by omega) hl
+  rw [pack_bytes b start n (by omega) hw, hh] at e
   unfold blocksFold at e
   rw [← e]
   unfold finish finishWith extractDigest
-  generalize hashFrom roundConstants h (pack b) b.size len = g
+  generalize hashFrom roundConstants h (pack b start n) n len = g
   apply Vector.ext
   intro i hi
   rw [Words4.bytes, Vector.getElem_ofFn, Vector.getElem_ofFn]
   exact digestByte g i hi
 
 /-- `finish` from the hash value of `p` whole blocks `pre` gives the digest of the transcription of
-FIPS 180-4 for the bits of `pre ++ b`. -/
+FIPS 180-4 for the bits of `pre` followed by the `n` bytes of `b` from `start`. -/
 theorem finish_spec (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (h : Words8)
     (hh : h.toVec32 = blocksFold pre p SHS.SHA256.Impl.H256_256) (b : LeanExe.Bytes)
-    (len : UInt64) (hlen : len.toNat = pre.size + b.data.size) (hl : len.toNat < 2 ^ 61) :
-    digestBitVec ((finish h b len).bytes 32) =
-      SHS.SHA256.sha256 (bytesToBitMessage (pre ++ b.data))
-        (bitLen_lt_of_size_lt _ (by rw [ByteArray.size_append]; omega)) := by
-  rw [finish_bytes pre p hpre h hh b len hlen hl]
-  exact sha256_correct _ (by rw [ByteArray.size_append]; omega)
+    (start n len : UInt64) (hw : start.toNat + n.toNat ≤ b.data.size)
+    (hb : b.data.size + 8 < 2 ^ 64) (hlen : len.toNat = pre.size + n.toNat)
+    (hl : len.toNat < 2 ^ 61) :
+    digestBitVec ((finish h b start n len).bytes 32) =
+      SHS.SHA256.sha256
+        (bytesToBitMessage (pre ++ b.data.extract start.toNat (start.toNat + n.toNat)))
+        (bitLen_lt_of_size_lt _ (by rw [ByteArray.size_append, ByteArray.size_extract]; omega)) := by
+  rw [finish_bytes pre p hpre h hh b start n len hw hb hlen hl]
+  exact sha256_correct _ (by rw [ByteArray.size_append, ByteArray.size_extract]; omega)
 
 /-! ## Distinct digests have distinct bits -/
 
@@ -373,13 +394,19 @@ theorem joinFrom_size_le : ∀ (rest : List LeanExe.Bytes) (acc : ByteArray),
     simp only [List.foldl_cons]
     exact le_trans (by rw [ByteArray.size_append]; omega) (joinFrom_size_le rest (acc ++ c.data))
 
-/-- Hashing pieces of whole blocks with `update` from `iv256`, and the bytes `b` that follow them
-with `finish` and the length of the whole message, gives the digest of the transcription of FIPS
-180-4 for the bits of the pieces followed by `b`. -/
+/-- The bytes of `d` from its start to its end are `d`. -/
+theorem extract_all (d : ByteArray) : d.extract 0 d.size = d := by
+  apply ByteArray.ext
+  simp [ByteArray.data_extract]
+
+/-- Hashing pieces of whole blocks with `update` of all their blocks from `iv256`, and the bytes
+`b` that follow them with `finish` and the length of the whole message, gives the digest of the
+transcription of FIPS 180-4 for the bits of the pieces followed by `b`. -/
 theorem stream_spec (pieces : List LeanExe.Bytes) (whole : ∀ c ∈ pieces, c.data.size % 64 = 0)
     (b : LeanExe.Bytes) (len : UInt64)
     (hlen : len.toNat = (joinAll pieces).size + b.data.size) (hl : len.toNat < 2 ^ 61) :
-    digestBitVec ((finish (pieces.foldl update iv256) b len).bytes 32) =
+    digestBitVec ((finish (pieces.foldl (fun h c => update h c (c.size >>> 6)) iv256) b 0 b.size
+      len).bytes 32) =
       SHS.SHA256.sha256 (bytesToBitMessage (joinAll pieces ++ b.data))
         (bitLen_lt_of_size_lt _ (by rw [ByteArray.size_append]; omega)) := by
   have key : ∀ (rest : List LeanExe.Bytes) (acc : ByteArray) (h : Words8),
@@ -387,7 +414,8 @@ theorem stream_spec (pieces : List LeanExe.Bytes) (whole : ∀ c ∈ pieces, c.d
       (rest.foldl (fun a piece => a ++ piece.data) acc).size < 2 ^ 61 →
       h.toVec32 = blocksFold acc (acc.size / 64) SHS.SHA256.Impl.H256_256 →
       (rest.foldl (fun a piece => a ++ piece.data) acc).size % 64 = 0 ∧
-        (rest.foldl update h).toVec32 = blocksFold (rest.foldl (fun a piece => a ++ piece.data) acc)
+        (rest.foldl (fun h c => update h c (c.size >>> 6)) h).toVec32 =
+          blocksFold (rest.foldl (fun a piece => a ++ piece.data) acc)
           ((rest.foldl (fun a piece => a ++ piece.data) acc).size / 64)
           SHS.SHA256.Impl.H256_256 := by
     intro rest
@@ -398,9 +426,14 @@ theorem stream_spec (pieces : List LeanExe.Bytes) (whole : ∀ c ∈ pieces, c.d
       simp only [List.foldl_cons] at hsize ⊢
       have hgrow := joinFrom_size_le rest (acc ++ c.data)
       have hc := hrest c (List.mem_cons_self ..)
-      refine ih (acc ++ c.data) (update h c) (fun d hd => hrest d (List.mem_cons_of_mem _ hd))
+      have hcs : c.data.size < 2 ^ 64 := by rw [ByteArray.size_append] at hgrow; omega
+      have hq : (c.size >>> 6).toNat = c.data.size / 64 := by
+        rw [UInt64.toNat_shiftRight, LeanExe.Bytes.size_toNat c hcs]
+        simp [Nat.shiftRight_eq_div_pow]
+      refine ih (acc ++ c.data) (update h c (c.size >>> 6))
+        (fun d hd => hrest d (List.mem_cons_of_mem _ hd))
         (by rw [ByteArray.size_append]; omega) hsize ?_
-      rw [update_toVec32 h c (by rw [ByteArray.size_append] at hgrow; omega), hh,
+      rw [update_toVec32 h c _ (by rw [hq]; omega), hq, hh,
         ← blocksFold_append acc c.data (acc.size / 64) (by omega), ByteArray.size_append]
       congr 1
       omega
@@ -409,7 +442,11 @@ theorem stream_spec (pieces : List LeanExe.Bytes) (whole : ∀ c ∈ pieces, c.d
   obtain ⟨hwhole, hstate⟩ :=
     key pieces ByteArray.empty iv256 whole rfl (by rw [← hj]; omega) rfl
   rw [← hj] at hwhole hstate
-  exact finish_spec (joinAll pieces) ((joinAll pieces).size / 64) (by omega) _ hstate b len hlen hl
+  have hs : b.size.toNat = b.data.size := LeanExe.Bytes.size_toNat b (by omega)
+  have e := finish_spec (joinAll pieces) ((joinAll pieces).size / 64) (by omega) _ hstate b 0 b.size
+    len (by rw [hs]; simp) (by omega) (by rw [hs]; exact hlen) hl
+  simp only [UInt64.toNat_zero, Nat.zero_add, hs, extract_all] at e
+  exact e
 
 end Library.Hashing.Sha256
 
