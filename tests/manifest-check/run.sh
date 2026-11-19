@@ -35,7 +35,9 @@
 # `openat` is the startup's check that descriptor 3 is a directory, which opens `.` relative to it
 # with O_DIRECTORY and closes the result.  Every `openat2` must name descriptor 3, the flags
 # O_RDONLY and O_CLOEXEC, and the resolution flags RESOLVE_BENEATH and RESOLVE_NO_MAGICLINKS, every
-# `statx` an empty path with AT_EMPTY_PATH, and every `write` descriptor 1.  The `openat2` of each
+# `statx` an empty path with AT_EMPTY_PATH and the mask STATX_ALL (0xfff), and every `write`
+# descriptor 1.  Every `read`, `statx`, and `close` must name the descriptor that the last `openat`
+# or `openat2` returned, which a `close` must end before the next open and before the exit.  The `openat2` of each
 # name that leaves the directory, through `..`, as an absolute name, or through the link, must fail
 # in the kernel with EXDEV.  The file theorems of the executable are checked in
 # tests/linux/a64-wasi.sh, which writes the executable from the same module with the same commands.
@@ -310,8 +312,25 @@ traced() {
   [ -z "$bad" ] || fail "strace $name" "the call $bad"
   bad=$(grep '^openat2(' "$body" | grep -v 'resolve=[A-Z_|]*RESOLVE_NO_MAGICLINKS' | head -1)
   [ -z "$bad" ] || fail "strace $name" "the call $bad"
-  bad=$(grep '^statx(' "$body" | grep -v '^statx([0-9]*, "", AT_EMPTY_PATH, ' | head -1)
+  bad=$(grep '^statx(' "$body" |
+    grep -v '^statx([0-9]*, "", AT_STATX_SYNC_AS_STAT|AT_EMPTY_PATH, STATX_ALL, ' | head -1)
   [ -z "$bad" ] || fail "strace $name" "the call $bad"
+  bad=$(awk '
+    function bad(line) { print line; failed = 1; exit }
+    /^openat2?\(/ {
+      if (held != "") bad($0)
+      if ($0 ~ /\) += [0-9]+$/) held = $NF
+      next
+    }
+    /^(read|statx|close)\(/ {
+      fd = $0
+      sub(/^[a-z]+\(/, "", fd)
+      sub(/[,)].*/, "", fd)
+      if (fd != held) bad($0)
+      if ($0 ~ /^close\(/) held = ""
+    }
+    END { if (!failed && held != "") print "descriptor " held " left open" }' "$body")
+  [ -z "$bad" ] || fail "strace $name" "the use of descriptors at $bad"
   bad=$(grep '^write(' "$body" | grep -v '^write(1, ' | head -1)
   [ -z "$bad" ] || fail "strace $name" "the call $bad"
   cases=$((cases + 1))
