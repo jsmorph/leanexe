@@ -110,6 +110,7 @@ import Examples.Verified
 import Verified.Examples.Forms
 import Verified.Examples.Patterns
 import Verified.Wasi
+import Verified.Wasi.BudgetTactics
 import Verified.Examples.Literals
 import Verified.ProgramLiterals
 import Verified.Examples.WasiDepth
