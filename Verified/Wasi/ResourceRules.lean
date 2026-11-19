@@ -1,10 +1,14 @@
 import Verified.Wasi.ResourcePrefix
+import Verified.BoundFacts
 
 /-! Compositional bounds on the resource semantics of effect commands.  `Bounded` states that every
 run and every prefix of a command uses at most a budget and has enough frames, and `Rule` gives,
 for each form of command, the facts about its parts from which that follows.  A bound on an effect
-function's body follows by `bounded_of_rule` at each command.  `loop_bounded` bounds a loop whose
-passes each charge at most a constant from the states of an invariant that every pass keeps. -/
+function's body follows by `bounded_of_rule` at each command, and `returns_fact` gives the values
+that the parts of a command that returns compute (`ReturnFact`).  `loop_bounded` bounds a loop
+whose passes each charge at most a constant from the states of an invariant that every pass keeps,
+and `loop_bounded_sum` one whose pass at each index charges at most a charge of that index, by
+their sum (`passSum`). -/
 
 namespace Verified.Wasi.Resource
 
@@ -510,6 +514,141 @@ theorem Returns.readAll_size {World : Type} {host : Host World} {pure : PureCont
   obtain ⟨_, _, _, _, _, run⟩ := returns
   exact exec_readReturns run
 
+/-! ## The parts of a command that returns -/
+
+/-- A run of `pure result` that returns `value` returns `result`. -/
+theorem exec_pure_value {World α : Type} {host : Host World} {result value : α}
+    {world final : World} {trace : List Event}
+    (run : Exec host (.pure result) world trace (.returned value) final) : value = result := by
+  cases run
+  rfl
+
+/-- What a run of a command with the outcome `outcome` gives about its parts: a `ret` returns the
+value of its expression, a `sys` command ends as a run of its action, a `bind` that returns has a
+first command that returns and a second command that returns the same value, an `ite` that returns
+has a branch that returns the same value, and a call ends as a run of the call. -/
+def ReturnFact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
+    (host : Host World) (pure : PureContext pureSigs) (program : EffectProg pureSigs effectSigs)
+    (depth : UInt64) (modes : List Mode) (live : Nat → Bool) :
+    {context : List Ty} → {result : ResultTy} → Command pureSigs effectSigs context result →
+      Env context → Outcome result.denote → Prop
+  | _, _, .ret value, env, .returned returned => returned = value.denote pure.funs env
+  | _, _, .sys operation form args inputs buffers, env, outcome => ∃ world trace final,
+      Exec host (form.runWith operation (args.map env.get) (inputs.map env.get)
+        (buffers.map env.get)) world trace outcome final
+  | _, _, .bind (intermediate := intermediate) first next, env, outcome => ∀ returned,
+      outcome = .returned returned → ∃ value,
+        Returns host pure program depth modes (bindLive intermediate next live) first env value ∧
+          Returns host pure program depth (bindModes intermediate modes)
+            (shift intermediate.bindCount live) next (intermediate.bindEnv value env) returned
+  | _, _, .ite _ yes no, env, outcome => ∀ returned, outcome = .returned returned →
+      Returns host pure program depth modes live yes env returned ∨
+        Returns host pure program depth modes live no env returned
+  | _, _, .call callee args, env, outcome => ∃ world trace final spent fits,
+      ResourceCall host pure program callee (depth + 1)
+        (Env.ofFn fun i => (args i).denote pure.funs env) world trace outcome final spent fits
+  | _, _, _, _, _ => True
+
+/-- Every run of a command gives `ReturnFact` of its outcome. -/
+theorem returnFact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
+    {host : Host World} {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {depth : UInt64} {modes : List Mode} {live : Nat → Bool} {context : List Ty}
+    {result : ResultTy} {command : Command pureSigs effectSigs context result} {env : Env context}
+    {world final : World} {trace : List Event} {outcome : Outcome result.denote} {spent : Nat}
+    {fits : Bool}
+    (run : ResourceExec host pure program depth modes live command env world trace outcome final
+      spent fits) :
+    ReturnFact host pure program depth modes live command env outcome := by
+  cases run with
+  | ret => rfl
+  | sys execution => exact ⟨_, _, _, execution⟩
+  | bind_return firstRun nextRun =>
+    intro _ same
+    subst same
+    exact ⟨_, ⟨_, _, _, _, _, firstRun⟩, ⟨_, _, _, _, _, nextRun⟩⟩
+  | bind_exit => exact fun _ same => by cases same
+  | bind_trap => exact fun _ same => by cases same
+  | ite_yes _ execution =>
+    intro _ same
+    subst same
+    exact .inl ⟨_, _, _, _, _, execution⟩
+  | ite_no _ execution =>
+    intro _ same
+    subst same
+    exact .inr ⟨_, _, _, _, _, execution⟩
+  | call execution => exact ⟨_, _, _, _, _, execution⟩
+  | _ => trivial
+
+/-- A command that returns `value` gives `ReturnFact` of that value. -/
+theorem returns_fact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
+    {host : Host World} {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+    {depth : UInt64} {modes : List Mode} {live : Nat → Bool} {context : List Ty}
+    {result : ResultTy} {command : Command pureSigs effectSigs context result} {env : Env context}
+    {value : result.denote}
+    (returns : Returns host pure program depth modes live command env value) :
+    ReturnFact host pure program depth modes live command env (.returned value) := by
+  obtain ⟨_, _, _, _, _, run⟩ := returns
+  exact returnFact run
+
+/-! ## Charges of tests and calls -/
+
+theorem ite_same {c : Prop} (decision : Decidable c) (a : Nat) : @ite Nat c decision a a = a := by
+  cases decision <;> rfl
+
+open Lean Meta Simp in
+/-- Reads `if c then a else a` as `a` for any decision procedure of `c`.  `ite_self` does not apply
+where a rewrite of the condition by `simp` kept the procedure of the condition before it, whose
+type matches `Decidable c` only at the default transparency. -/
+simproc_decl iteSame (@ite Nat _ _ _ _) := fun e => do
+  let (``ite, #[_, c, decision, a, b]) := e.getAppFnArgs | return .continue
+  unless a == b do return .continue
+  return .done { expr := a, proof? := some (mkApp3 (mkConst ``ite_same) c decision a) }
+
+/-- The reflector writes the test `C` of an `if` as `if C then true else !true`, and when that
+value is false, `C` is false, for any decision procedure of `C = true`. -/
+theorem reflected_test_false {C : Bool} {decision : Decidable (C = true)}
+    (h : @ite Bool (C = true) decision true (!true) = false) : C = false := by
+  cases decision with
+  | isTrue holds =>
+    have contradiction : true = false := h
+    exact absurd contradiction (by decide)
+  | isFalse fails => simpa using fails
+
+/-- A charge `cost` followed by an `if` whose branches each charge `branch` is bounded by a bound
+on `cost + branch`, for any decision procedure of the condition. -/
+theorem ite_cost {c : Prop} {decision : Decidable c} {cost branch total : Nat}
+    (bound : cost + branch ≤ total) : cost + @ite Nat c decision branch branch ≤ total := by
+  cases decision <;> exact bound
+
+theorem allocationCost_zero : Bytes.allocationCost 0 = 0 := rfl
+
+/-- The call of `fd_filestat_get` charges 120 bytes for the block of its record, 71 bytes. -/
+theorem filestat_block (trace : List Event) :
+    sysCost (.record 8) Call.fdFilestatGet trace = 120 := by
+  simp only [sysCost]
+  decide
+
+/-- A descriptor that `fd_filestat_get` does not reject lies below `2^32`. -/
+theorem filestat_fd {fd : UInt64} (fits : Call.fdFilestatGet.reject [.word fd] = 0) :
+    fd.toNat < 2 ^ 32 := by
+  by_contra large
+  have h : ¬ fd.toNat < 4294967296 := large
+  simp [Call.reject, rejectArgs, Call.fdFilestatGet, Param.takesArg, Param.reject, Arg.value, h]
+    at fits
+
+/-- The block of the words that hold the last bytes of a SHA-256 message, `x &&& 63` of them, as
+`finish` packs them eight to a word, charges at most 120 bytes. -/
+theorem finish_block_le (x : UInt64) : blockCost (((x &&& 63) + 7) >>> 3).toNat ≤ 120 := by
+  have hx : (x &&& 63).toNat ≤ 63 := by
+    rw [UInt64.toNat_and]
+    exact Nat.and_le_right
+  have hs : ((x &&& 63) + 7).toNat = (x &&& 63).toNat + 7 := by
+    rw [UInt64.toNat_add]
+    simp only [UInt64.reduceToNat]
+    omega
+  rw [blockCost_eq, UInt64.toNat_shiftRight, hs]
+  simp only [UInt64.reduceToNat, Nat.shiftRight_eq_div_pow, Nat.reduceMod, Nat.reducePow]
+  omega
 
 /-! ## Loops with a bounded charge for each pass -/
 
@@ -605,6 +744,108 @@ theorem LoopBounded.mono {remaining index : Nat} {state : type.denote} {budget l
     fun _ _ _ _ _ _ progress => by
       obtain ⟨cost, valid⟩ := bounded.2 _ _ _ _ _ _ progress
       exact ⟨by omega, valid⟩⟩
+
+/-- The sum of `charge` over `remaining` indices from `index`. -/
+def passSum (charge : Nat → Nat) : Nat → Nat → Nat
+  | _, 0 => 0
+  | index, remaining + 1 => charge index + passSum charge (index + 1) remaining
+
+/-- The sum of `charge` over the indices of the elements of `ls` from `index` is at most the sum
+of `g` over the elements when `charge` at each index is at most `g` of its element. -/
+theorem passSum_le {α : Type} (charge : Nat → Nat) (g : α → Nat) :
+    ∀ (ls : List α) (index : Nat), (∀ j (hj : j < ls.length), charge (index + j) ≤ g ls[j]) →
+      passSum charge index ls.length ≤ (ls.map g).sum
+  | [], _, _ => by simp [passSum]
+  | l :: ls, index, h => by
+    have h0 := h 0 (by simp)
+    have ih := passSum_le charge g ls (index + 1) fun j hj => by
+      have := h (j + 1) (by simp; omega)
+      rwa [show index + (j + 1) = index + 1 + j by omega, List.getElem_cons_succ] at this
+    simp only [List.length_cons, passSum, List.map_cons, List.sum_cons]
+    simp only [Nat.add_zero, List.getElem_cons_zero] at h0
+    omega
+
+theorem sum_map_four {α : Type} (f : α → Nat) :
+    ∀ ls : List α, (ls.map fun l => 4 * f l).sum = 4 * (ls.map f).sum
+  | [] => rfl
+  | l :: ls => by
+    simp only [List.map_cons, List.sum_cons, sum_map_four f ls]
+    omega
+
+/-- A loop whose test charges at most `t` and whose step at pass `index` is bounded by
+`charge index` from every state of the invariant `held`, which every returned step keeps, charges
+at most the sum of `charge` over its passes and `t` for each test. -/
+theorem loop_bounded_sum (held : type.denote → Prop) {t : Nat} (charge : Nat → Nat)
+    (testCost : ∀ index state, held state →
+      pure.loopTestCost depth modes live test step env index state ≤ t)
+    (testFits : ∀ index state, held state → pure.loopTestFits depth test env index state = true)
+    (stepBounded : ∀ index state, held state →
+      Bounded host pure program depth (loopModes .owned modes) (shift 2 (loopLive test step live))
+        step (loopEnv env index state) (charge index))
+    (kept : ∀ index state next, held state →
+      Returns host pure program depth (loopModes .owned modes) (shift 2 (loopLive test step live))
+        step (loopEnv env index state) next → held next) :
+    ∀ remaining index state, held state →
+      LoopBounded host pure program depth modes live test step env remaining index state
+        (passSum charge index remaining + (remaining + 1) * t) := by
+  intro remaining
+  induction remaining with
+  | zero =>
+    intro index state _
+    refine ⟨fun _ _ _ _ _ _ run => ?_, fun _ _ _ _ _ _ progress => ?_⟩
+    · cases run
+      exact ⟨Nat.zero_le _, rfl⟩
+    · cases progress with
+      | refl => exact ⟨Nat.zero_le _, rfl⟩
+      | returned execution =>
+        cases execution
+        exact ⟨Nat.zero_le _, rfl⟩
+  | succ remaining ih =>
+    intro index state current
+    have more : passSum charge index (remaining + 1) + (remaining + 1 + 1) * t =
+        passSum charge (index + 1) remaining + (remaining + 1) * t + (t + charge index) := by
+      simp only [passSum]
+      rw [Nat.succ_mul]
+      omega
+    have cost := testCost index state current
+    have valid := testFits index state current
+    have exec : ∀ world trace outcome final spent fits,
+        ResourceLoopExec host pure program depth modes live test step env (remaining + 1) index
+          state world trace outcome final spent fits →
+        spent ≤ passSum charge index (remaining + 1) + (remaining + 1 + 1) * t ∧ fits = true := by
+      intro _ _ _ _ _ _ run
+      rw [more]
+      cases run with
+      | stop chosen => exact ⟨by omega, valid⟩
+      | next chosen stepRun restRun =>
+        obtain ⟨stepCost, stepFits⟩ := (stepBounded index state current).1 _ _ _ _ _ _ stepRun
+        obtain ⟨restCost, restFits⟩ := (ih (index + 1) _
+          (kept index state _ current ⟨_, _, _, _, _, stepRun⟩)).1 _ _ _ _ _ _ restRun
+        rw [valid, stepFits, restFits]
+        exact ⟨by omega, rfl⟩
+      | exit chosen stepRun =>
+        obtain ⟨stepCost, stepFits⟩ := (stepBounded index state current).1 _ _ _ _ _ _ stepRun
+        rw [valid, stepFits]
+        exact ⟨by omega, rfl⟩
+      | trap chosen stepRun =>
+        obtain ⟨stepCost, stepFits⟩ := (stepBounded index state current).1 _ _ _ _ _ _ stepRun
+        rw [valid, stepFits]
+        exact ⟨by omega, rfl⟩
+    refine ⟨exec, fun _ _ _ _ _ _ progress => ?_⟩
+    cases progress with
+    | refl => exact ⟨Nat.zero_le _, rfl⟩
+    | test_charge => exact ⟨by rw [more]; omega, valid⟩
+    | returned execution => exact exec _ _ _ _ _ _ execution
+    | step chosen progress =>
+      obtain ⟨stepCost, stepFits⟩ := (stepBounded index state current).2 _ _ _ _ _ _ progress
+      rw [valid, stepFits, more]
+      exact ⟨by omega, rfl⟩
+    | next chosen stepRun progress =>
+      obtain ⟨stepCost, stepFits⟩ := (stepBounded index state current).1 _ _ _ _ _ _ stepRun
+      obtain ⟨restCost, restFits⟩ := (ih (index + 1) _
+        (kept index state _ current ⟨_, _, _, _, _, stepRun⟩)).2 _ _ _ _ _ _ progress
+      rw [valid, stepFits, restFits, more]
+      exact ⟨by omega, rfl⟩
 
 end Loop
 
