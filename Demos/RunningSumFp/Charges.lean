@@ -37,16 +37,6 @@ theorem Sized.copyCost {L : Nat} {state : State} (sized : Sized L state) :
   unfold copyBytes copyLimit
   omega
 
-theorem remainingOutput_bound_le (state : State) (pending : state.written < state.output.size) :
-    io.pureSources.remainingOutput.bound state ≤ Bytes.allocationCost state.output.data.size := by
-  rw [io.pureSources.remainingOutput.bound_eq]
-  apply allocationCost_mono
-  rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_of_lt pending)]
-  have size : state.output.size.toNat ≤ state.output.data.size := by
-    simp only [LeanExe.Bytes.size, UInt64.toNat_ofNat']
-    exact Nat.mod_le _ _
-  omega
-
 theorem afterWrite_bound_le (state : State) (reply : WriteResult) :
     io.pureSources.afterWrite.bound (state, reply) ≤ stateTy.copyCost (sourceState state) := by
   rw [io.pureSources.afterWrite.bound_eq, state_copyCost]
@@ -196,9 +186,10 @@ theorem readModes : entryModes io.readStep.func.params io.readStep.func.modes = 
 theorem writeModes : entryModes io.writeStep.func.params io.writeStep.func.modes = [.borrowed] := by
   decide
 
-/-- The charge of the write step from `state`: the remaining output and a copy of the state. -/
+/-- The charge of the write step from `state`: a copy of the state.  The write of the output's
+window allocates nothing. -/
 def writeCharge (state : State) : Nat :=
-  io.pureSources.remainingOutput.bound state + stateTy.copyCost (sourceState state)
+  stateTy.copyCost (sourceState state)
 
 /-- The charge of the read step from `state`: the read and the copies of the state and of the
 state with the bytes read. -/
@@ -229,23 +220,21 @@ theorem writeStep_bounded {World : Type} (host : Host World) (depth : UInt64) (s
   letPair_free
   apply bounded_of_rule
   intro spent fits rule
-  refine rule (io.pureSources.remainingOutput.bound state) (stateTy.copyCost (sourceState state))
-    (Nat.le_refl _) ?_ ?_
-  · apply bounded_of_rule
-    intro spent fits rule
-    refine rule (io.pureSources.remainingOutput.bound state) 0 (Nat.le_of_eq (Nat.add_zero _)) ?_ ?_
-    · apply bounded_of_rule
-      intro spent fits rule
-      refine rule ?_ rfl
-      simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg,
-        Expr.allocs, Var.cost, Expr.mode, argsSum, callCredits, ↓reduceIte, Nat.add_zero,
-        Nat.zero_add, coerceCost]
-      show io.pureSources.remainingOutput.bound state ≤ _
-      exact Nat.le_refl _
-    · intro value _
-      apply bounded_of_rule
-      intro spent fits rule
-      exact rule
+  refine rule 0 (stateTy.copyCost (sourceState state)) (Nat.le_of_eq (Nat.zero_add _)) ?_ ?_
+  · repeat (first
+      | (apply bounded_of_rule
+         intro spent fits rule
+         refine rule 0 0 (Nat.le_refl _) ?_ ?_)
+      | (intro value _)
+      | (apply bounded_of_rule
+         intro spent fits rule
+         exact rule)
+      | (apply bounded_of_rule
+         intro spent fits rule
+         refine rule ?_ rfl
+         simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg,
+           Expr.allocs, Var.cost, Expr.mode, argsSum, callCredits, Ty.copyCost,
+           Ty.copyCost_of_scalar, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost]))
   · intro value _
     apply bounded_of_rule
     intro spent fits rule
@@ -421,7 +410,6 @@ theorem stepBudget_le {L : Nat} {state : State} (sized : Sized L state) :
   unfold stepBudget inputCharge endCharge
   split
   · rename_i pending
-    have remaining := remainingOutput_bound_le state pending
     unfold writeCharge copyLimit stepCharge at *
     omega
   · split

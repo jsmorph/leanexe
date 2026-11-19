@@ -22,6 +22,6 @@ verified_compile_wasi io := [bitIndex, classify, examineAt, tallyRound, continui
   fieldWord, fieldsFrom, countByte, ballotWords, readHead, candidatesFrom, ballotsFrom,
   readContest, digitCount, digitByte, pushWord, pushNumber, pushRange, pushHead, pushLine,
   pushMembers, pushVotes, pushElimination, pushRoundLines, toBytes, printReport, pushRole,
-  printError, tabulate, initial, remainingOutput, afterWrite, started, writeStep, step, begin]
+  printError, tabulate, initial, afterWrite, started, writeStep, step, begin]
 
 end Demos.Rcv.Process

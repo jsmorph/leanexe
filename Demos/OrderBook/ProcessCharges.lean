@@ -48,8 +48,8 @@ computes them once, so that the charges of the effect bodies read a list rather 
 `Prog.flags`, which the elaborator would do over the bodies of every earlier function at each
 call. -/
 theorem flags_toList : io.pure.program.flags.toList =
-    [([false, false], false), ([false, false], false), ([false], false),
-      ([false, false, false, false], false), ([false, false, false], false), ([false], false),
+    [([false, false], false), ([false, false], false), ([false, false, false, false], false),
+      ([false, false, false], false), ([false], false),
       ([false, false, false], false), ([], false),
       ([true, true, true, true, true, true, true, false, false, false], false),
       ([true, true, true, true, true, true, true, false, false, true, false, false], false),
@@ -61,16 +61,6 @@ theorem flags_toList : io.pure.program.flags.toList =
       ([false, false, false, false], false), ([false], false), ([false, false], false),
       ([true, false, false, false, false, false, false, false], true)] := by
   decide +kernel
-
-theorem remainingOutput_bound_le (s : State) (pending : s.written < s.output.size) :
-    io.pureSources.remainingOutput.bound s ≤ Bytes.allocationCost s.output.data.size := by
-  rw [io.pureSources.remainingOutput.bound_eq]
-  apply allocationCost_mono
-  rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_of_lt pending)]
-  have size : s.output.size.toNat ≤ s.output.data.size := by
-    simp only [LeanExe.Bytes.size, UInt64.toNat_ofNat']
-    exact Nat.mod_le _ _
-  omega
 
 theorem afterWrite_bound_le (s : State) (reply : WriteResult) :
     io.pureSources.afterWrite.bound (s, reply) ≤ stateTy.copyCost (sourceState s) := by
@@ -235,9 +225,10 @@ theorem readModes : entryModes io.readStep.func.params io.readStep.func.modes = 
 theorem writeModes : entryModes io.writeStep.func.params io.writeStep.func.modes = [.borrowed] := by
   decide
 
-/-- The charge of the write step from `s`: the remaining output and a copy of the state. -/
+/-- The charge of the write step from `s`: a copy of the state.  The write of the output's
+window allocates nothing. -/
 def writeCharge (s : State) : Nat :=
-  io.pureSources.remainingOutput.bound s + stateTy.copyCost (sourceState s)
+  stateTy.copyCost (sourceState s)
 
 /-- The charge of the read step from `s`: the read buffer, and a copy of the state or a batch. -/
 def readCharge (R : Nat) (s : State) : Nat :=
@@ -261,24 +252,23 @@ theorem writeStep_bounded {World : Type} (host : Host World) (depth : UInt64) (s
   letPair_free
   apply bounded_of_rule
   intro spent fits rule
-  refine rule (io.pureSources.remainingOutput.bound s) (stateTy.copyCost (sourceState s))
-    (Nat.le_refl _) ?_ ?_
-  · apply bounded_of_rule
-    intro spent fits rule
-    refine rule (io.pureSources.remainingOutput.bound s) 0 (Nat.le_of_eq (Nat.add_zero _)) ?_ ?_
-    · apply bounded_of_rule
-      intro spent fits rule
-      refine rule ?_ rfl
-      simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg,
-        Expr.allocs, Var.cost, Expr.mode, argsSum, callCredits, Flags.params, flags_toList,
-        FVar.index, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost]
-      read_state
-      show io.pureSources.remainingOutput.bound s ≤ _
-      exact Nat.le_refl _
-    · intro value _
-      apply bounded_of_rule
-      intro spent fits rule
-      exact rule
+  refine rule 0 (stateTy.copyCost (sourceState s)) (Nat.le_of_eq (Nat.zero_add _)) ?_ ?_
+  · repeat (first
+      | (apply bounded_of_rule
+         intro spent fits rule
+         refine rule 0 0 (Nat.le_refl _) ?_ ?_)
+      | (intro value _)
+      | (apply bounded_of_rule
+         intro spent fits rule
+         exact rule)
+      | (apply bounded_of_rule
+         intro spent fits rule
+         refine rule ?_ rfl
+         simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg,
+           Expr.allocs, Var.cost, Expr.mode, argsSum, callCredits, Flags.params, flags_toList,
+           FVar.index, Ty.copyCost, Ty.copyCost_of_scalar, ↓reduceIte, Nat.add_zero, Nat.zero_add,
+           coerceCost]
+         try read_state))
   · intro value _
     apply bounded_of_rule
     intro spent fits rule
@@ -406,7 +396,7 @@ set_option maxHeartbeats 1000000 in
 arrays. -/
 theorem initial_entry :
     ((Resource.PureContext.ofProg io.pure.program io.pure.funs).callBounds 0).get
-      FVar.here.there.there.there.there.there.there.there Env.nil = 197040 := by
+      FVar.here.there.there.there.there.there.there Env.nil = 197040 := by
   decide +kernel
 
 set_option maxHeartbeats 1000000 in
@@ -443,7 +433,6 @@ theorem stepBudget_le {R : Nat} {s : State} (sized : Sized s) : stepBudget R s �
   unfold stepBudget restCharge
   split
   · rename_i pending
-    have remaining := remainingOutput_bound_le s pending
     unfold writeCharge stepCharge
     omega
   · split

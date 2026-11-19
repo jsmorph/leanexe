@@ -44,8 +44,8 @@ theorem streamFuture_initial (seed : Acc) (position : StreamPosition)
   refine ⟨Safe.initial seed, good, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · simp [initial]
   · simp [initial]
-  · simp [outputWords, remainingOutput, initial, empty, byteWords, Bytes.size, Bytes.build,
-      Bytes.empty]
+  · simp [outputWords, remainingOutput, Bytes.range, Bytes.window, initial, empty, byteWords,
+      Bytes.size, Bytes.empty]
   · rw [model, unread]
     exact Model.safe_of_rooms spec seed #[] [] position.input rooms
   · intro final executed nonempty

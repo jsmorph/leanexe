@@ -41,29 +41,8 @@ theorem remainingOutput_words {state : (BufferState Acc)}
     (size : state.output.data.size < UInt64.size)
     (written : state.written.toNat ≤ state.output.data.size) :
     byteWords (remainingOutput state) = (byteWords state.output).drop state.written.toNat := by
-  have sizeNat : state.output.size.toNat = state.output.data.size := Bytes.size_toNat state.output size
-  have writtenLe : state.written ≤ state.output.size := UInt64.le_iff_toNat_le.mpr (by
-    rw [sizeNat]
-    exact written)
-  have countNat : (state.output.size - state.written).toNat =
-      state.output.data.size - state.written.toNat := by
-    rw [UInt64.toNat_sub_of_le _ _ writtenLe, sizeNat]
-  unfold remainingOutput
-  apply List.ext_getElem
-  · simp only [byteWords_length, Bytes.data_size_build, List.length_drop, countNat]
-  · intro index left right
-    have indexBound : index < state.output.data.size - state.written.toNat := by
-      simpa only [byteWords_length, Bytes.data_size_build, countNat] using left
-    have indexNat : (UInt64.ofNat index).toNat = index := UInt64.toNat_ofNat_of_lt' (by omega)
-    have sumNat : (state.written + UInt64.ofNat index).toNat = state.written.toNat + index := by
-      rw [UInt64.toNat_add, indexNat]
-      exact Nat.mod_eq_of_lt (show state.written.toNat + index < UInt64.size by omega)
-    rw [byteWords_build_get (state.output.size - state.written)
-      (fun i => state.output.get (state.written + i)) index (by rw [countNat]; exact indexBound),
-      bytes_get_narrow]
-    rw [List.getElem_drop]
-    simpa only [sumNat] using
-      (byteWords_get state.output (state.written + UInt64.ofNat index) (by omega)).symm
+  unfold remainingOutput byteWords
+  rw [state.output.range_from_toList size written, List.map_drop]
 
 theorem remainingOutput_words_safe {state : (BufferState Acc)} (safe : Safe state) :
     byteWords (remainingOutput state) = (byteWords state.output).drop state.written.toNat :=

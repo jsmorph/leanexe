@@ -165,11 +165,8 @@ theorem consumeInput_stopped (state : BufferState Acc) (stopped : ((consumeInput
     (by simp) stopped
 
 theorem remainingOutput_size {state : BufferState Acc} (safe : Safe state) :
-    (remainingOutput state).data.size = state.output.data.size - state.written.toNat := by
-  unfold remainingOutput
-  rw [Bytes.data_size_build, UInt64.toNat_sub_of_le]
-  · rw [safe.output_toNat]
-  · exact UInt64.le_iff_toNat_le.mpr (by rw [safe.output_toNat]; exact safe.written_le)
+    (remainingOutput state).data.size = state.output.data.size - state.written.toNat :=
+  state.output.range_from_size safe.outputSize safe.written_le
 
 theorem afterRead_safe {state : BufferState Acc} (safe : Safe state) (bytes : Bytes)
     (bound : bytes.data.size ≤ 4096) : Safe (afterRead state ⟨0, bytes⟩).state := by
