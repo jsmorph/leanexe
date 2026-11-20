@@ -544,7 +544,7 @@ def patternCases : IO Unit := do
       for x in [(0 : UInt64), 9] do
         let r := Patterns.record ⟨md, xs⟩ x
         IO.println s!"patterns|record|list:i64,array-u64|i64:{mode md} {arrayArg xs} i64:{x}|\
-          {mode r.mode} {arrayOut r.items}|2|2"
+          {mode r.mode} {arrayOut r.items}|1|2"
 
 /-- The cases of the verified modules of the examples of `Examples/` and of the verified-request
 skill: the inputs of their `Cases.lean` or their samples, against the specification `expected`
@@ -1689,21 +1689,21 @@ def main : IO Unit := do
     IO.println s!"fields|withTotal|list:{bookKinds},i64|{bookArg b}|{bookOut b'} {t}|4"
     for (i, q) in [((0 : UInt64), (9 : UInt64)), (2, 4), (100, 1)] do
       let r := bookOut (Fields.fillOrder b i q)
-      IO.println s!"fields|fillOrder|list:{bookKinds}|{bookArg b} i64:{i} i64:{q}|{r}|4"
+      IO.println s!"fields|fillOrder|list:{bookKinds}|{bookArg b} i64:{i} i64:{q}|{r}|2"
     for c in [true, false] do
       let other := Fields.mkBook 2
       let r := bookOut (Fields.pickBook c b other)
-      IO.println s!"fields|pickBook|list:{bookKinds}|{boolArg c} {bookArg b} {bookArg other}|{r}|6"
+      IO.println s!"fields|pickBook|list:{bookKinds}|{boolArg c} {bookArg b} {bookArg other}|{r}|2"
     for n in [(0 : UInt64), 3, 1000] do
       IO.println s!"fields|pushPrices|list:{bookKinds}|{bookArg b} i64:{n}|\
-        {bookOut (Fields.pushPrices b n)}|4"
+        {bookOut (Fields.pushPrices b n)}|2"
       IO.println s!"fields|heavyPick|list:{bookKinds}|{bookArg b} i64:{n}|\
-        {bookOut (Fields.heavyPick b n)}|4"
+        {bookOut (Fields.heavyPick b n)}|2"
   for t in [(⟨#[], 0⟩ : Fields.Tape), ⟨#[4, 5, 6], 1⟩] do
     for k in [(0 : UInt64), 7] do
       let r := Fields.moveHead t k
       IO.println s!"fields|moveHead|list:array-u64,i64|{arrayArg t.marks} i64:{t.head} i64:{k}|\
-        {arrayOut r.marks} {r.head}|2"
+        {arrayOut r.marks} {r.head}|1"
   for (xs, lo, hi) in [((#[] : Array UInt64), (0 : UInt64), (0 : UInt64)), (#[4, 5, 6], 1, 9),
       (#[7], 0, 2)] do
     IO.println s!"fields|spanOf|i64|{arrayArg xs} i64:{lo} i64:{hi}|{Fields.spanOf xs lo hi}|1|1"
@@ -1713,16 +1713,16 @@ def main : IO Unit := do
   for g in grids do
     for (k, dt) in [((0 : UInt64), (0.5 : Float)), (1, 0.5), (7, 0.125), (100, 1e-3)] do
       let r := gridOut (Fields.advance g k dt)
-      IO.println s!"fields|advance|list:array-u64,f64,i64|{gridArg g} i64:{k} {floatArg dt}|{r}|2|2"
+      IO.println s!"fields|advance|list:array-u64,f64,i64|{gridArg g} i64:{k} {floatArg dt}|{r}|1|2"
     IO.println s!"fields|gridLevel|f64|{gridArg g}|{(Fields.gridLevel g).toBits}|1"
     let cells := arrayOut (fieldCellWords (Fields.gridCells g))
-    IO.println s!"fields|gridCells|array-u64|{gridArg g}|{cells}|2"
+    IO.println s!"fields|gridCells|array-u64|{gridArg g}|{cells}|1"
     for label in [(0 : UInt64), 5] do
       let w : Fields.World := ⟨g, label⟩
       IO.println s!"fields|worldLevel|f64|{gridArg g} i64:{label}|{(Fields.worldLevel w).toBits}|1"
       let w' := Fields.relabel w 3
       let r := s!"{gridOut w'.grid} {w'.label}"
-      IO.println s!"fields|relabel|list:array-u64,f64,i64,i64|{gridArg g} i64:{label} i64:3|{r}|2"
+      IO.println s!"fields|relabel|list:array-u64,f64,i64,i64|{gridArg g} i64:{label} i64:3|{r}|1"
   for x in trigArgs do
     IO.println s!"trig|sin|f64|{floatArg x}|{(Library.Numerics.Float64.Trig.sin x).toBits}"
     IO.println s!"trig|cos|f64|{floatArg x}|{(Library.Numerics.Float64.Trig.cos x).toBits}"

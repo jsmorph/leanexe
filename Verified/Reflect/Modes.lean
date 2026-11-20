@@ -8,9 +8,10 @@ moves it into an owned parameter, as the function's result, or through a binding
 pair, or a loop's state into one of these.  The reflector splits a tuple parameter at the
 function's entry, so the body consumes the tuple when it consumes one of its components that holds
 an array, a buffer, or a tree, and a body that returns only a word of the tuple consumes nothing
-of it.  Every
-other parameter is borrowed, so that a caller need not copy an array that the function only
-reads.  The live sets follow those of `Expr.code`. -/
+of it.  A destructuring of a variable that stays live copies the variable when it is owned, as a
+match on a sum does when an alternative names the matched value, so such a destructuring makes no
+demand of the variable.  Every other parameter is borrowed, so that a caller need not copy an array
+that the function only reads.  The live sets follow those of `Expr.code`. -/
 
 namespace Verified
 
@@ -94,9 +95,11 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
       second.demands live component k
   | _, _, .letPair (s := s) (t := t) e body, live, owned, k =>
     let inner := shift 2 live
-    e.demands (fun i => live i || body.uses (i + 2))
-        ((!t.scalar && body.demands inner owned 0) || (!s.scalar && body.demands inner owned 1)) k ||
-      body.demands inner owned (k + 2)
+    !(e.varIndex? == some k && body.uses (k + 2)) &&
+      (e.demands (fun i => live i || body.uses (i + 2))
+          ((!t.scalar && body.demands inner owned 0) ||
+            (!s.scalar && body.demands inner owned 1)) k ||
+        body.demands inner owned (k + 2))
   | _, _, .loop count init cond body, live, owned, k =>
     let all := fun i => live i || cond.uses (i + 1) || body.uses (i + 2)
     let inner := shift 2 all

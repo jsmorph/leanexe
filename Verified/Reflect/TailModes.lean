@@ -22,10 +22,11 @@ def TailBody.demands (targetModes : List Mode) (modes : List Mode) :
       body.demands targetModes inner (k + 1)
   | _, .letPair (s := s) (t := t) value body, k =>
     let inner := value.mode modes :: value.mode modes :: modes
-    value.demands (fun i => body.uses (i + 2))
-        ((!t.scalar && body.demands targetModes inner 0) ||
-          (!s.scalar && body.demands targetModes inner 1)) k ||
-      body.demands targetModes inner (k + 2)
+    !(value.varIndex? == some k && body.uses (k + 2)) &&
+      (value.demands (fun i => body.uses (i + 2))
+          ((!t.scalar && body.demands targetModes inner 0) ||
+            (!s.scalar && body.demands targetModes inner 1)) k ||
+        body.demands targetModes inner (k + 2))
   | _, .treeCase (shape := shape) x empty nodes, k =>
     let nodeDemands := fun r : Fin shape.records =>
       let inner := shape.modes r (modes.getD x.index .borrowed) modes

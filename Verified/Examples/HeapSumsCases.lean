@@ -9,7 +9,9 @@ of the host's, as the `#[]` of the instance is; and an inactive tree is null.
 The block counts follow the code: a construction of a text, a tree, or an empty item allocates the
 `#[]` of its words, a copy of an item allocates one block for its array, one for its bytes when
 they are not empty, and one for each node of its tree, and a match on an owned item releases the
-components that its branch does not use.  A borrowed parameter keeps the host's blocks. -/
+components that its branch does not use.  A borrowed parameter keeps the host's blocks, and an
+owned one, as the item of `textOf`, `grow`, `regrow`, and `convert` is, moves them into the
+result or releases them. -/
 
 namespace Verified.Examples.HeapSums
 
@@ -96,9 +98,9 @@ def cases : IO Unit := do
     let arg := itemArg i
     IO.println s!"heapsums|measure|i64|{arg}|{measure i}|{host}|{host}"
     let text := match i with
-      | .text b => if b.size = 0 then 0 else 1
+      | .text _ => 1
       | _ => 0
-    IO.println s!"heapsums|textOf|bytes|{arg}|{hex (textOf i)}|{host + text}|{host + text}"
+    IO.println s!"heapsums|textOf|bytes|{arg}|{hex (textOf i)}|{text}|{host}"
     let rescaled := match i with
       | .words _ _ => 1
       | _ => copyBlocks i
@@ -108,13 +110,14 @@ def cases : IO Unit := do
       let (j, w) := tally i n
       IO.println s!"heapsums|tally|{itemKind},i64|{arg} i64:{n}|{itemOut j} {w}|\
         {host + copyBlocks i}|{host + copyBlocks i}"
-    -- Each step of `grow` copies the state and releases the copy's unused components.  A words
-    -- item's push then may move the copied array, so a step allocates at most two blocks.  Each
-    -- step of `regrow` allocates the empty array of a rebuilt constructor, or at most one block
-    -- for the push.
+    -- `grow` and `regrow` take the item owned and move it into the loop's state.  Each step of
+    -- `grow` copies the state and releases the copy's unused components.  A words item's push
+    -- then may move the copied array, so a step allocates at most two blocks.  Each step of
+    -- `regrow` allocates the empty array of a rebuilt constructor, or at most one block for the
+    -- push.
     for n in [0, 1, 5, 100] do
       let steps := n.toNat
-      let start := host + copyBlocks i
+      let start := host
       let growStep := match i with
         | .words _ _ => 2
         | _ => copyBlocks i
@@ -127,8 +130,11 @@ def cases : IO Unit := do
       | .words xs _ => (if xs.size = 0 then 0 else 1) + 1
       | .keys t _ => t.size.toNat + 1
       | .none => 1
-    IO.println s!"heapsums|convert|{itemKind}|{arg}|{itemOut (convert i)}|{host + converted}|\
-      {host + converted}"
+    let built := match i with
+      | .keys _ _ => 1
+      | _ => converted
+    IO.println s!"heapsums|convert|{itemKind}|{arg}|{itemOut (convert i)}|{converted}|\
+      {host + built}"
   for xs in [[], [7], [1, 2, 3, maxU], (List.range 50).map rw] do
     for k in [0, 1, maxU] do
       let n := xs.length
