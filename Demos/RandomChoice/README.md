@@ -189,41 +189,53 @@ footprints](Native.lean), and [the corollary under the shim](NativeChoices.lean)
 | `choice_elf_file`, `choice_elf_segments`, `choice_elf_layout`, `choice_elf_entry`, `choice_elf_room` | The file's bytes are those that `genWasiElf` gives for the command's module, its program headers are those of the generator's layout, its entry is the shim's prefix, and the stack's room holds the module's stack bound. |
 | `choice_elf` | For every reply sequence, a process that Linux's loader started from the file reaches `exit_group`, and its trace holds the layer events of a run of `main` and its exit under the shim's host with the process's arguments: an accepted exit, whose status X0 holds, a rejected exit, a trap of the shim, or a guest trap after a prefix. |
 | `linux_footprint_bounded` | Under the shim's host, for every N and K, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, and at a cap of at most 65,535 pages that holds `budget` above byte 4,096, every run of `_start` with enough fuel ends without a guest trap. |
-| `linux_exec_choices` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, a run of `main` and its exit whose layer events meet `Full` ends at the accepted exit, and its status and layer events meet `Choices`. |
-| `choice_elf_choices` | For every reply sequence and every N and K, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes reaches `exit_group` with layer events that hold the replies, and when they meet `Full`, X0 and the events meet `Choices`. |
-| `witness_run`, `choice_elf_witness` | The premises of `choice_elf_choices` and `Full` hold together: for the replies `witnessReplies`, the arguments `c`, `1`, and `1`, and a process `witnessProc` that holds the file and the initial stack, the process reaches `exit_group` with X0 at 0 after layer events that meet `Full` and `Choices`. |
+| `linux_exec_choices` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, a run of `main` and its exit whose layer events meet `InRange` and `Sized` ends at the accepted exit, and its status and layer events meet `Choices`. |
+| `choice_elf_choices` | For every reply sequence and every N and K, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes reaches `exit_group` with layer events that hold the replies, and when they meet `InRange`, X0 and the events meet `Choices`. |
+| `witness_run`, `choice_elf_witness` | The premises of `choice_elf_choices` and `InRange` hold together: for the replies `witnessReplies`, the arguments `c`, `1`, and `1`, and a process `witnessProc` that holds the file and the initial stack, the process reaches `exit_group` with X0 at 0 after layer events that meet `InRange` and `Choices`. |
 
-The random histogram's `Full ls` holds when every `getrandom` of the layer events `ls` returned the
-count that it asked for and every `write` returned an error number or at most the count of bytes
-that it offered, and its `randomData ls` collects the bytes that the `getrandom` events returned.
-`Mirrors x e` states that the layer event `e` is the one event that the shim makes for the WASI
-event `x` of such a run.  For a `random_get` of 4,096 bytes, `e` is a `getrandom` of 4,096 bytes
-with flags 0 that returned 4,096, whose output region holds the bytes of the call's reply, and for
-a write to standard output, `e` is a `write` of descriptor 1 whose input holds the write's bytes and
-whose result is the write's count, at most the bytes offered, or an error number whose WASI errno
-is the write's.  No layer event mirrors any other WASI event.
+The shim answers a `random_get` with a group of `getrandom` calls, each for the bytes that the
+calls before it did not return, as [the random histogram's
+guide](../RandomHistogram/README.md#the-native-executable-writes-the-counts) describes, and the
+histogram's `RandomGroup` states that group.  Its `InRange ls` holds when every `getrandom` of the
+layer events `ls` returned an error number or a count of at most its length, positive for a positive
+length, and every `write` returned an error number or at most the count of bytes that it offered,
+and it excludes exactly the results at which the shim traps.  Its `Sized ls` holds when each
+`getrandom` holds in its output as many bytes as it asked for, which the events of every run give,
+and its `randomData` collects the bytes that `getrandom` events returned.  `Mirrors x g` states
+that the layer events `g` are those that the shim makes for the WASI event `x`.  For a
+`random_get` of 4,096 bytes, `g` is the group of a `random_get` of 4,096 bytes that returned the
+call's errno, and when the errno is 0, the call's buffer holds the bytes that the group returned,
+`randomData g` (the histogram's `RandomMirrors`).  For a write to standard output, `g` is one
+`write` of descriptor 1 whose input holds the write's bytes and whose result is the write's count,
+at most the bytes offered, or an error number whose WASI errno is the write's.  No layer events
+mirror any other WASI event.
 
-`Choices args ls status` states the layer events and the status that the request asks of such a
-run, with N and K the values that `parseSpec` reads from arguments 1 and 2 (`argN`, `argK`).  When
+`Choices args ls status` states the layer events and the status that the request asks of a run,
+with N and K the values that `parseSpec` reads from arguments 1 and 2 (`argN`, `argK`).  When
 `parseSpec` refuses N or K, no layer event precedes `exit_group`, and the status is 2.  Otherwise
-the layer events mirror, one for one, WASI events that make the passes of `Rounds` from K values
-and `passes K` passes, whose random bytes are `randomData ls` and whose status is the run's.  Each
-pass is therefore a `getrandom` of 4,096 bytes followed by `write` calls, each of which offers the
-bytes of the pass's lines that the writes before it did not take.  The status is 0 only when the
-bytes that the writes took, `Linux.writeData 1 ls`, are `outputOf N chosen` for the K-tuple
-`chosen` of the first K accepted words of `randomData ls`, and 77 only when `randomData ls` holds
-the `512 · passes K` words of the cap's passes, fewer than K of them accepted.  `Rounds` gives the
-other statuses: 78 when the writes of a pass stalled, and the errno of a `write` that returned an
-error number.  With `output_count`, the status-0 case gives the count of the request for the
-executable: for every K and every sequence o of K values in [1, N], exactly `⌊2^64 / N⌋^K` K-tuples
-of accepted words make the process's writes take the lines of o.
+`ls` is the concatenation of groups that mirror, one for one, WASI events that make the passes of
+`Rounds` from K values and `passes K` passes, whose random bytes are `bytes` and whose status is the
+run's.  Each pass is therefore the group of a `random_get` of 4,096 bytes, followed, when the group
+returned errno 0, by `write` calls, each of which offers the bytes of the pass's lines that the
+writes before it did not take, and `bytes` are the bytes that the groups that returned errno 0
+returned, in order.  The status is 0 only when the bytes that the writes took,
+`Linux.writeData 1 ls`, are `outputOf N chosen` for the K-tuple `chosen` of the first K accepted
+words of `bytes`, and 77 only when `bytes` hold the `512 · passes K` words of the cap's passes,
+fewer than K of them accepted.  `Rounds` gives the other statuses: 78 when the writes of a pass
+stalled, the errno of a group whose last `getrandom` returned an error number, and the errno of a
+`write` that returned an error number.  With `output_count`, the status-0 case gives the count of
+the request for the executable: for every K and every sequence o of K values in [1, N], exactly
+`⌊2^64 / N⌋^K` K-tuples of accepted words make the process's writes take the lines of o.
 
-Linux's `write` returns an error number or at most the count that it was given (write(2)), so the
-condition on writes holds for every run.  getrandom(2) guarantees every byte of a read of up to 256
-bytes once the urandom source is initialized, and Linux 6.12's `get_random_bytes_user` returns
-every byte of a read of at most a page unless the copy faults.  Each of the command's reads asks
-for 4,096 bytes.  [The random histogram's guide](../RandomHistogram/README.md#the-native-executable-writes-the-counts)
-gives the signals and the limits under which a write takes fewer bytes than it offers.
+Linux's `getrandom` returns an error number or the number of bytes that it copied (getrandom(2)),
+which Linux 7.0's code makes positive for a positive length, and its `write` an error number or at
+most the count that it was given (write(2)), so `InRange` holds for every run, short and failed
+reads among them.  A read of 4,096 bytes returns fewer bytes only when the copy faults, since Linux
+7.0's `get_random_bytes_user` tests for a pending signal only between pages while bytes remain, and
+each of the command's reads asks for 4,096 bytes.  [The random histogram's
+guide](../RandomHistogram/README.md#the-native-executable-writes-the-counts) gives the kernel's
+code, the runs with a pending signal, and the signals and the limits under which a write takes
+fewer bytes than it offers.
 
 The proof composes the footprint with the command's theorems.  `linux_footprint_bounded` gives the
 budget premise of the generated `command.start` from `body_bounded` through `call_prefix_bound`,
@@ -232,10 +244,11 @@ budget does not depend on N or K, so the corollary holds for every N and K.  `li
 excludes the trapped runs.  Under a host that rejects no exit status below 126, as the shim does,
 the loop of `main` traps only at a trapped `random_get` of 4,096 bytes or a trapped write
 (`draw_loop`), so a trapped run of `main` has a trapped `args_sizes_get`, `args_get`,
-`random_get`, or write (`main_trapped`), whose image no layer events that meet `Full` give (the
+`random_get`, or write (`main_trapped`), whose image no layer events that meet `InRange` give (the
 histogram's `image_untrapped`), and the exit of a status of at most 78 is accepted.  For the
-accepted exit, `exec_main` gives `Meets`, and the images of the events of `Rounds` mirror them and
-return the bytes that the passes drew (`rounds_mirrors`, from `random_mirror` and `write_mirror`).
+accepted exit, `exec_main` gives `Meets`, and the images of the events of `Rounds` are groups that
+mirror them (`rounds_mirrors`, from `random_mirror`, which takes the group and its bytes from the
+histogram's `random_mirror`, and `write_mirror`).
 The writes of the images took the bytes that the writes of `Rounds` committed
 (`Images.writeData`), and `first_picks` gives the K-tuple of the first K accepted words.
 
@@ -289,17 +302,24 @@ bytes of its pass that the pass's earlier writes did not take, from the address 
 write plus the bytes that they took, and returns its count, so each pass makes one write.  The
 first run makes a `getrandom`, a write of 1,024 bytes, a `getrandom`, and a write of 976 bytes.
 Under the file size limit, the first write offers 1,024 bytes and returns 12, and the second passes
-the address plus 12, offers 1,012 bytes, and fails with `EFBIG`.  Two runs replace replies with
-strace's injection.  When every `getrandom` of `choose 6 1000` returns 4,096 without filling the
-buffer, the draw buffer keeps its zero bytes, which N of 6 rejects, and the run reaches the cap: ten
-`getrandom` calls, the `passes` of K = 1,000, no write, and status 77.  When every `write` of
+the address plus 12, offers 1,012 bytes, and fails with `EFBIG`.  Three runs replace replies with
+strace's injection, which skips the call and leaves its buffer as it was.  When every `getrandom` of
+`choose 6 1000` returns 4,096, the draw buffer keeps its zero bytes, which N of 6 rejects, and the
+run reaches the cap: ten `getrandom` calls, the `passes` of K = 1,000, no write, and status 77.
+When the first `getrandom` of `choose 6 1000` returns 100, a short count, the shim asks for the
+other 3,996 bytes at the draw buffer's address plus 100, and Linux returns them.  The first 12
+words keep their zero bytes, which N of 6 rejects, so the first pass writes 500 lines, a second
+pass draws 4,096 bytes and writes the other 500, and the run exits with status 0.  When every
+`write` of
 `choose 6 1` returns 0, the run makes three writes of its line's 2 bytes, the passes of `writeAll`,
 and exits with status 78.  A run with `abc` makes only `exit_group`.  The driver prints
 `random choice axiom check passed for 34 theorems`, the module's size, 5,851 bytes, the
 executable's size, 69,632 bytes, and its SHA-256,
 ce3a19326ee50a73b738542c649d7675602b2e82a9d9683cebc1d116a270e52d, and
-`random choice: 71 runs passed`, with the elapsed time and the maximum resident set of the run with
-N of `2^64 - 1` and K of 1,000,000 in each runner.
+`random choice: 72 runs passed`, with the elapsed time and the maximum resident set of the run with
+N of `2^64 - 1` and K of 1,000,000 in each runner.  No run gets a short count from Linux: with a
+signal pending at each `getrandom`, Linux 7.0 returned all 4,096 bytes of each call of
+`choose 6 1000`.
 
 The second, third, and fourth commands run the module, the executable, and the executable under
 QEMU's user-mode emulator with N of 6 and K of 10, after the driver has written them.  Each writes
@@ -324,9 +344,9 @@ case to pass.
 ## Related examples
 
 [The random-residue histogram](../RandomHistogram/README.md) draws random words in the same way,
-and this demo reuses its `wordAt`, `words`, its lemmas on argument buffers and words, its `Full`,
-`randomData`, and lemmas on the shim's images, and its shape of the command's and the executable's
-theorems.  [The manifest checker](../ManifestCheck/README.md) keeps one
+and this demo reuses its `wordAt`, `words`, its lemmas on argument buffers and words, its
+`InRange`, `Sized`, `RandomGroup`, `randomData`, and lemmas on the shim's images, and its shape of
+the command's and the executable's theorems.  [The manifest checker](../ManifestCheck/README.md) keeps one
 read buffer in the states of its loops in the same way.  [The byte update
 examples](../../Verified/Examples/BytesSet.lean) count the allocations of `Bytes.set` in place and
 of a copy, and [the running maximum](../../Examples/RunningMax/README.md) is a run of the
@@ -338,3 +358,6 @@ verified-request skill on words.
 - [Verified WASI Manual](../../docs/wasi.md)
 - [`Verified.Call`](../../Verified/Call.lean)
 - [Mathlib `Nat.count_modEq_card`](https://github.com/leanprover-community/mathlib4/blob/master/Mathlib/Data/Int/CardIntervalMod.lean)
+- [Linux `drivers/char/random.c`, v7.0](https://github.com/torvalds/linux/blob/v7.0/drivers/char/random.c)
+- [getrandom(2)](https://man7.org/linux/man-pages/man2/getrandom.2.html)
+- [write(2)](https://man7.org/linux/man-pages/man2/write.2.html)
