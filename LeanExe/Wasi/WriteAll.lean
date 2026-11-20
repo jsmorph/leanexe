@@ -5,26 +5,28 @@ import LeanExe.Wasi.Semantics
 computes the window's first position and length as words, as `Bytes.window` states them.  Each
 pass that finds bytes left writes the window of the same buffer that starts `written` bytes past
 the first position and holds the bytes that remain, and adds the count that the write returned to
-`written`, so a short write is followed by a write of the rest.  No pass copies the buffer.  A write that returns an errno ends the run with the exit
-of that errno.  The loop returns the number of bytes that the writes took, which falls short of
-the window's length only when the passes run out.
+`written`, so a short write is followed by a write of the rest while passes remain.  No pass copies
+the buffer.  A write that returns an errno ends the run with the exit of that errno.  The loop
+returns the number of bytes that the writes took, which falls short of the window's length only
+when the passes run out.
 
 `WriteAllRun host bytes written passes events outcome` states the events and the outcome of every
 run of the loop under `host` over the bytes `bytes` from `written` bytes taken with `passes`
-passes left, and `writeAll_run` proves it of every run of `writeAll buffer start count`, over the
-window's bytes from 0 with the window's length plus one passes.  `writeAll_run_whole` states the
-case of the whole buffer, a start of 0 and a count of its size.  `stdoutTaken` collects the bytes
-that the writes of a trace to standard output took when they returned errno 0, and
-`Offered bytes taken events` states that each event is a write to standard output that offered the
-bytes of `bytes` after those that the writes before it took.  `WroteSome e` states that the event
-`e` is a write to standard output that offered at least one byte, and `WriteAllRun.shape` states
-that every write of a run that returns or exits is one, since a pass writes only while bytes
-remain, and that the writes number at most the passes.  `WriteAllRun.taken` states that a
-run that returns `value` made writes that each returned errno 0, offered the bytes that remained,
-and took the bytes from `written` up to `value`, one write for each pass when `value` falls short
-of the bytes.  A run that exits does so with the errno, from 1 to 76, of its last write, after
-taking fewer than the bytes from `written` on.  `WriteAllRun.trapped_write` states that a run that
-traps under a host that accepts every status below 126 has a trapped write. -/
+passes left, and `writeAll_run` proves it of every run of `writeAll buffer start count` over a
+buffer of fewer than `2^64 - 1` bytes, over the window's bytes from 0 with the window's length plus
+one passes.  `writeAll_run_whole` states the case of the whole buffer, a start of 0 and a count of
+its size.  `stdoutTaken` collects the bytes that the writes of a trace to standard output took when
+they returned errno 0, and `Offered bytes taken events` states that each event is a write to
+standard output that offered the bytes of `bytes` after the first `taken` and those that the
+writes before it took.  `WroteSome e` states that the event `e` is a write to standard output that
+offered at least one byte, and `WriteAllRun.shape` states that every write of a run that returns
+or exits is one, since a pass writes only while bytes remain, and that the writes number at most
+the passes.  `WriteAllRun.taken` states, for fewer than `2^64` bytes, that a run that returns
+`value` made writes that each returned errno 0, offered the bytes that remained, and took the
+bytes from `written` up to `value`, one write for each pass when `value` falls short of the bytes.
+A run that exits does so with the errno, from 1 to 76, of its last write, after taking fewer than
+the bytes from `written` on.  `WriteAllRun.trapped_write` states that a run that traps under a
+host that accepts every status below 126 has a trapped write. -/
 
 namespace LeanExe.Wasi
 
@@ -197,8 +199,9 @@ theorem writeAll_loop_run {World : Type} {host : Host World} (buffer : Bytes) (s
           exact .failed (by omega) offers zero (host.write_bound reply).2 ⟨_, _, next⟩
       | write_trap _ => exact .trapped (by omega) offers
 
-/-- Every run of `writeAll buffer start count` meets `WriteAllRun` over the window's bytes from 0
-bytes taken with the window's length plus one passes. -/
+/-- Every run of `writeAll buffer start count` over a buffer of fewer than `2^64 - 1` bytes meets
+`WriteAllRun` over the window's bytes from 0 bytes taken with the window's length plus one
+passes. -/
 theorem writeAll_run {World : Type} {host : Host World} {buffer : Bytes} {start count : UInt64}
     (small : buffer.data.size + 1 < 2 ^ 64) {world : World} {trace : List Event}
     {outcome : Outcome UInt64} {final : World}
@@ -219,8 +222,8 @@ theorem writeAll_run {World : Type} {host : Host World} {buffer : Bytes} {start 
     exact writeAll_loop_run buffer start count (by omega) (fun _ _ => rfl) (fun _ _ => rfl) _ 0 0
       (by simp) run
 
-/-- Every run of `writeAll bytes 0 bytes.size` meets `WriteAllRun` over the bytes of `bytes` from 0
-bytes taken with `bytes`'s size plus one passes. -/
+/-- Every run of `writeAll bytes 0 bytes.size` over fewer than `2^64 - 1` bytes `bytes` meets
+`WriteAllRun` over the bytes of `bytes` from 0 bytes taken with `bytes`'s size plus one passes. -/
 theorem writeAll_run_whole {World : Type} {host : Host World} {bytes : Bytes}
     (small : bytes.data.size + 1 < 2 ^ 64) {world : World} {trace : List Event}
     {outcome : Outcome UInt64} {final : World}
@@ -238,14 +241,14 @@ theorem exitStatus_of_lt {code : UInt64} (small : code.toNat < 2 ^ 32) :
   simp only [exitStatus_toNat]
   omega
 
-/-- A run of the loop of `writeAll` over `bytes` from `written` bytes taken, at most `bytes`'s
-length, that returns `value` made writes to standard output that each returned errno 0 and offered
-the bytes that remained, and took the bytes from `written` up to `value`, at most `bytes`'s length.
-When `value` falls short of `bytes`'s length, the run made one write for each of its passes.  A
-run that exits does so with a status `code` from 1 to 76 after events that end with a write that
-returned the errno `code` and the exit, every write before which returned errno 0, each write
-offered the bytes that remained, and the bytes that the writes took form a prefix of the bytes
-from `written` on that leaves at least one byte. -/
+/-- A run of the loop of `writeAll` over fewer than `2^64` bytes `bytes` from `written` bytes taken,
+at most `bytes`'s length, that returns `value` made writes to standard output that each returned
+errno 0 and offered the bytes that remained, and took the bytes from `written` up to `value`, at
+most `bytes`'s length.  When `value` falls short of `bytes`'s length, the run made one write for
+each of its passes.  A run that exits does so with a status `code` from 1 to 76 after events that
+end with a write that returned the errno `code` and the exit, every write before which returned
+errno 0, each write offered the bytes that remained, and the bytes that the writes took form a
+prefix of the bytes from `written` on that leaves at least one byte. -/
 theorem WriteAllRun.taken {World : Type} {host : Host World} {bytes : List UInt8}
     (small : bytes.length < 2 ^ 64) {written : UInt64} {passes : Nat} {events : List Event}
     {outcome : Outcome UInt64} (run : WriteAllRun host bytes written passes events outcome) :
@@ -343,8 +346,8 @@ theorem WriteAllRun.taken {World : Type} {host : Host World} {bytes : List UInt8
     intro _
     exact ⟨fun _ same => (by cases same), fun _ same => by cases same⟩
 
-/-- The writes of a run of the loop of `writeAll` offer at least one byte each and number at most
-its passes, and a run that exits ends with the exit after them. -/
+/-- The writes of a run of the loop of `writeAll` that returns or exits offer at least one byte
+each and number at most its passes, and a run that exits ends with the exit after them. -/
 theorem WriteAllRun.shape {World : Type} {host : Host World} {bytes : List UInt8}
     {written : UInt64} {passes : Nat} {events : List Event} {outcome : Outcome UInt64}
     (run : WriteAllRun host bytes written passes events outcome) :
