@@ -71,9 +71,9 @@ the window of the whole output: a loop of at most `B + 1` passes for the B bytes
 each of which writes in place the window of the output that the writes before it did not take.
 
 A write that returns an errno ends the run with that errno as the status.  When the passes run out
-with bytes unwritten, which takes at least two writes that took no byte, the status is 77, one more than the
-largest WASI errno, so it differs from 2 and from every errno that the run can return.  Otherwise
-the status is 0.  `verified_compile_wasi` writes a module of 6,228 bytes that imports `fd_read`,
+with bytes unwritten, which takes at least two writes that took no byte, the status is 77, one more
+than the largest WASI errno, so it differs from 2 and from every errno that the run can return.
+Otherwise the status is 0.  `verified_compile_wasi` writes a module of 6,228 bytes that imports `fd_read`,
 `fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
 
 ## The command writes the counts of N random words
@@ -210,11 +210,11 @@ is the status, and no `write` follows.  Otherwise the random bytes of `Draws`, t
 groups returned, hold exactly N little-endian words `w`, whose counts in `histogramSpec w` sum to N.
 The `write` calls number at most B + 1 for the B bytes of `renderSpec (histogramSpec w)`, each
 offered at least one byte, the bytes of that output that the writes before it did not take
-(`OfferedLayer`), the bytes that the writes took form a prefix of that output, and the status is 0
-exactly when they are the whole output.  Either every `write` returned
-at most its count (`Took`) and the status is 0, or 77 after one `write` for each of the loop's
-passes, or the last `write` returned an error number, the status is that number's WASI errno, and
-every `write` before it returned at most its count.
+(`OfferedLayer`), with a count, its third argument, of the number of those bytes, the bytes that
+the writes took form a prefix of that output, and the status is 0 exactly when they are the whole
+output.  Either every `write` returned at most its count (`Took`) and the status is 0, or 77 after
+one `write` for each of the loop's passes, or the last `write` returned an error number, the
+status is that number's WASI errno, and every `write` before it returned at most its count.
 
 Linux's `getrandom` returns an error number or the number of bytes that it copied, at most its
 length (getrandom(2)), and Linux 7.0's `get_random_bytes_user` returns `-EFAULT` when it copied
