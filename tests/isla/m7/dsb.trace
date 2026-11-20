@@ -30,4 +30,4 @@
   (declare-const v313 (_ BitVec 32)) ; src/v8_base.sail 8391:19 - 8391:23
   (read-reg |_HCR| nil (_ struct (|bits| v313)))
   (read-reg |HCR_EL2| ((_ field |bits|)) (_ struct (|bits| #x0000000080000000)))
-  (abstract-primop |sail_barrier| (_ unit) (|Barrier_DSB| (_ struct (|nXS| false) (|types| |MBReqTypes_All|) (|domain| |MBReqDomain_FullSystem|)))))
+  (abstract-primop |sail_barrier| (_ unit) (|Barrier_DSB| (_ struct (|domain| |MBReqDomain_FullSystem|) (|nXS| false) (|types| |MBReqTypes_All|)))))

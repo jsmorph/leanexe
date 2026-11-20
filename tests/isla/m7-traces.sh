@@ -41,7 +41,9 @@
 # DIR defaults to tests/isla/m7, and IR_DIR, the directory of the two IR copies, to
 # ~/isla-probe/ir.  For each form, the script writes DIR/FORM.opcode, which holds on one line the
 # pattern of the opcode's bits that it passes to Isla with -i, then writes DIR/FORM.trace and
-# prints "FORM SECONDS KIB", the elapsed time and peak resident memory.  With PRINT_ARGS set to a
+# prints "FORM SECONDS KIB", the elapsed time and peak resident memory.  Isla prints the fields of
+# a struct value in an order that changes from run to run, and the script writes each trace
+# through tests/isla/canonical-trace.py, which sorts them by name.  With PRINT_ARGS set to a
 # directory, it writes DIR/FORM.opcode and each form's arguments to Isla, separated by NUL bytes,
 # to PRINT_ARGS/FORM.args, and runs nothing.
 set -euo pipefail
@@ -105,7 +107,7 @@ run() {
   fi
   /usr/bin/time -a -f "$name %e %M" -o /dev/fd/3 \
     systemd-run --user --scope -q -p MemoryMax=16G -p MemorySwapMax=0 timeout 1800 \
-    "$isla" "${args[@]}" > "$dir/$name.trace"
+    "$isla" "${args[@]}" | uv run "$here/canonical-trace.py" > "$dir/$name.trace"
 }
 only=("$@")
 

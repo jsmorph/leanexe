@@ -41,8 +41,10 @@
 #
 # Usage: tests/isla/linux-traces.sh vhe|el1 [DIR [FORM...]]
 # DIR defaults to tests/isla/linux-PROFILE.  For each form, the script writes DIR/FORM.opcode and
-# DIR/FORM.trace and prints "FORM SECONDS KIB".  ISLA_IR names the directory of the IR copies,
-# ~/isla-probe/ir unless set, which the commands of traces.sh make.
+# DIR/FORM.trace and prints "FORM SECONDS KIB".  Isla prints the fields of a struct value in an
+# order that changes from run to run, and the script writes each trace through
+# tests/isla/canonical-trace.py, which sorts them by name.  ISLA_IR names the directory of the IR
+# copies, ~/isla-probe/ir unless set, which the commands of traces.sh make.
 set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 profile=$1
@@ -119,8 +121,8 @@ run() {
   printf '%s\n' "$opcode" > "$dir/$name.opcode"
   /usr/bin/time -f "$name %e %M" -o "$dir/$name.time" \
     systemd-run --user --scope -q -p MemoryMax=8G -p MemorySwapMax=0 -p CPUQuota=100% \
-    timeout 1800 "$isla" -A "$irdir/$ir" "${base[@]}" "$@" --partial -i "$opcode" \
-    > "$dir/$name.trace"
+    timeout 1800 "$isla" -A "$irdir/$ir" "${base[@]}" "$@" --partial -i "$opcode" |
+    uv run "$here/canonical-trace.py" > "$dir/$name.trace"
   cat "$dir/$name.time"
   rm "$dir/$name.time"
 }

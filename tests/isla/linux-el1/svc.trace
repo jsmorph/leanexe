@@ -88,7 +88,7 @@
   (declare-const v542 Bool) ; 4839:0 - 0:0
   (define-const v543 (ite v542 |PAS_NonSecure| (ite v540 |PAS_Realm| (ite v538 |PAS_Root| |PAS_Secure|)))) ; 4839:0 - 0:0
   (declare-const v544 (_ BitVec 56)) ; src/prelude.sail 331:29 - 331:38
-  (abstract-primop |sail_take_exception| (_ unit) (_ struct (|exception| (_ struct (|vaddress| #x0000000000000000) (|trappedsyscallinst| false) (|ipaddress| #x00000000000000) (|ipavalid| false) (|NS| #b0) (|pavalid| false) (|syndrome| #b0000000000000000000000000) (|exceptype| |Exception_SupervisorCall|) (|syndrome2| #x000000) (|paddress| (_ struct (|address| v544) (|paspace| v543))))) (|fault| (|None| (_ unit)))))
+  (abstract-primop |sail_take_exception| (_ unit) (_ struct (|exception| (_ struct (|NS| #b0) (|exceptype| |Exception_SupervisorCall|) (|ipaddress| #x00000000000000) (|ipavalid| false) (|paddress| (_ struct (|address| v544) (|paspace| v543))) (|pavalid| false) (|syndrome| #b0000000000000000000000000) (|syndrome2| #x000000) (|trappedsyscallinst| false) (|vaddress| #x0000000000000000))) (|fault| (|None| (_ unit)))))
   (assert (not (= ((_ extract 27 27) v291) #b1))) ; 0:0 - 0:0
   (read-reg |_EDSCR| nil (_ struct (|bits| #x02000002)))
   (read-reg |MDCCSR_EL0| ((_ field |bits|)) (_ struct (|bits| #x0000000000000000)))

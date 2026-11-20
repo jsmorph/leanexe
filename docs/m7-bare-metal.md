@@ -563,7 +563,7 @@ Lean runs through `tools/leanrun`, which the scripts call with their memory caps
 | `m7-board.sh replay PREFIX` | The BMS step's answers in the logs `PREFIX.in` and `PREFIX.out` of `uart_bms.py` against the specification's, with `bms-replay` | Lean |
 | `m7-board.sh measure-div` and `measure NAME DEVICE` | The cycles of `udivmod64` and `UDIV`, and of each kind of window, read with `tests/baremetal/m7_dwt.py` | The board |
 | `m7-board.sh cosim-image SEED PER_FORM`, `cosim`, and `cosim-check SEED PER_FORM` | The board's co-simulation and the check with the changed `ADC`, with `seeded` after the arguments to omit the fixed cases | Lean for the first and the last, and the board for `cosim` |
-| `tests/isla/m7-traces.sh` | The traces of `tests/isla/m7` | The patched Isla, the IR copies in `IR_DIR`, and Z3 |
+| `tests/isla/m7-traces.sh` | The traces of `tests/isla/m7` | The patched Isla, the IR copies in `IR_DIR`, Z3, and `uv` |
 | `tests/isla/m7-theorems.sh` | The theorems of `Agrees` and their axioms | 8 GiB and 4 CPUs |
 | `m7-windows frames`, `static NAME`, and `run NAME DIR` | The frames, the longest paths, and the window counts of the generated programs in the model | `lake build m7-windows` |
 
