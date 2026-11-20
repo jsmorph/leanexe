@@ -192,7 +192,7 @@ the lines that follow it.  A run that stops after `main` returned has the events
 
 | Theorem | Statement |
 |---|---|
-| `body_bounded`, `prefix_bound`, `total_meets_budget`, `initial_within` | Every run and every prefix of `main`'s body charges at most `budget M` under a host whose replies give an argument block of at most `argsLimit` bytes and sizes of at most `M` bytes from `fd_filestat_get`, `total_meets` holds with these two premises in place of the bound on the heap, and the budget fits the module's cap for every `M` of at most 23,000,000 ([the budget](Budget.lean)). |
+| `body_bounded`, `prefix_bound`, `total_meets_budget`, `initial_within` | Every run and every prefix of `main`'s body from a world charges at most `budget M` under a host whose replies give an argument block of at most `argsLimit` bytes and that meets `StatAlong host M main` from that world: every reply with errno 0 that the host permits to the manifest's `fd_filestat_get`, of which `main` makes at most one request, reports at most `M` bytes or `2^32` bytes or more.  `total_meets` holds with these two premises in place of the bound on the heap, and the budget fits the module's cap for every `M` of at most 23,000,000 ([the budget](Budget.lean)). |
 
 The command holds the block of `args`, the read buffer of 65,536 bytes, the manifest's buffer of
 the size that `fd_filestat_get` reports, the positions that `parse` gives, and for each line the
@@ -203,10 +203,17 @@ sizes of the files checked.  The resource model credits no release, so its charg
 of every line.
 
 [The budget](Budget.lean) states that charge as a function of the manifest's size.  `body_bounded`
-bounds every run and every prefix of `main`'s body by `budget M` under every host whose successful
-`args_sizes_get` replies report at most `argsLimit` bytes, 6 MiB, the most that Linux lets the
-strings and pointers of `argv` and `envp` take, and whose successful `fd_filestat_get` replies
-report a size of at most `M` bytes.  `budget M` sums the block of `args` and the copy of the
+bounds every run and every prefix of `main`'s body from a world by `budget M` under every host whose
+successful `args_sizes_get` replies report at most `argsLimit` bytes, 6 MiB, the most that Linux
+lets the strings and pointers of `argv` and `envp` take, and that meets `StatAlong host M main`
+from that world.  `StatAlong` states that every reply with errno 0 to a request of
+`fd_filestat_get` that a prefix of `main` makes reports a size of at most `M` bytes or of `2^32`
+bytes or more.  `main` asks `fd_filestat_get` only in `readManifest`, at most once, of the
+manifest's descriptor, so the premise bounds that reply and no other.  `StatWithin` exempts a size
+of `2^32` bytes or more, which `readManifest` answers with status 61 before it builds a buffer, and
+it bounds no reply with an errno other than 0.  `total_meets_budget` states nothing of a run whose
+manifest's `fd_filestat_get` returns errno 0 and a size of more than `M` bytes and fewer than
+`2^32`, and `initial_within` admits every `M` of at most 23,000,000.  `budget M` sums the block of `args` and the copy of the
 manifest's name, at most `argsLimit` bytes each, the read buffer of 65,536 bytes, the manifest's
 buffer of at most `M` bytes, the charge of `parse`, at most `176 M + 464` bytes, and the charge of
 `checkLines`, at most `4 (M + 1)` bytes.  The call of `fd_filestat_get` charges nothing, since a
@@ -217,6 +224,20 @@ manifest (`lines_total`).  A pass of the reads of a file, of the reads of the ma
 `writeAll` charges nothing.  `budget_le` states `budget M ≤ 181 M + 12,649,115`, and
 `initial_within` states that the budget fits the 65,535 pages of the module's cap for every `M` of
 at most 23,000,000.
+
+The host gives its reply to `fd_filestat_get` at the world in which the command asks the size, so
+`body_bounded` states `BoundedAt` of [the world-indexed resource
+rules](../../Verified/Wasi/ResourceRulesAt.lean), which bound a command's runs and prefixes from
+one world.  `main_along` carries `StatAlong` from `main` to its reflected body through
+`command.main.related`, and the proof follows the body from the start world to the call of
+`readManifest` with `boundedAt_of_rule`.  At each `bind` on that path the second command starts in
+the world in which a run of the first returned, and `StatFrom.next` carries the premise to it
+through `ResourceExec.erase` and `Prefix.bind_after`.  `readManifest_bounded` reads the reply of its
+first command with `stat_le`, and the commands off the path take their bounds from `Bounded`
+through `Bounded.at`.  The charge of `parse` depends on the manifest that the bracket of `main`
+returned: `StatFrom.split` and `StatFrom.branch` take a returned run of the bracket's action apart
+with the worlds of its parts, and `readManifest_call_size` bounds the manifest that the call of
+`readManifest` returned, from the world in which the call started.
 
 ## Confinement
 
@@ -261,9 +282,9 @@ specification over Linux events](NativeSpec.lean) states `InRange` and `NMeets`.
 |---|---|
 | `manifest_elf_file`, `manifest_elf_segments`, `manifest_elf_layout`, `manifest_elf_entry`, `manifest_elf_room` | The file's bytes are those that `genWasiElf` gives for the command's module, its program headers are those of the generator's layout, its entry is the shim's prefix, and the stack's room holds the module's stack bound. |
 | `manifest_elf` | For every reply sequence, a process that Linux's loader started from the file reaches `exit_group`.  When the check of descriptor 3 ends the run, X0 is 67.  Otherwise the trace holds the check's events and then the layer events of a run of `main` and its exit under the shim's host with the process's arguments, which name only standard streams and the descriptors that the shim holds open: an accepted exit, whose status X0 holds, a rejected exit, a trap of the shim, or a guest trap after a prefix. |
-| `linux_footprint_bounded`, `budget_fits` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes and replies that meet `StatBounded M`, at a cap of at most 65,535 pages that holds `budget M` above the static heap's top, every run of `_start` with enough fuel ends without a guest trap.  The budget for a manifest of `manifestLimit` bytes, 1 MiB, fits the executable's 4,096 pages. |
+| `linux_footprint_bounded`, `budget_fits` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes and replies that meet `StatxBounded M`, at a cap of at most 65,535 pages that holds `budget M` above the static heap's top, every run of `_start` with enough fuel ends without a guest trap.  The budget for a manifest of `manifestLimit` bytes, 1 MiB, fits the executable's 4,096 pages. |
 | `linux_exec_meets` | Under the shim's host, from a world without layer events, with arguments without a zero byte whose strings and eight-byte pointers take at most `argsLimit` bytes, a run of `main` and its exit whose layer events meet `InRange` and `Sized` ends at the accepted exit, and its status and layer events meet `NMeets` for the launch's grant of descriptor 3. |
-| `manifest_elf_meets` | For every reply sequence that meets `StatBounded manifestLimit`, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes reaches `exit_group` with layer events that hold the replies, and when the check of descriptor 3 does not end the run and the layer events meet `InRange`, X0 and the events meet `NMeets` for the check's grant. |
+| `manifest_elf_meets` | For every reply sequence that meets `StatxAfterCheck`, whose reply to the manifest's `statx`, when the shim reads errno 0 from it, reports at most `manifestLimit` bytes or `2^32` bytes or more, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes reaches `exit_group` with layer events that hold the replies, and when the check of descriptor 3 does not end the run and the layer events meet `InRange`, X0 and the events meet `NMeets` for the check's grant. |
 | `manifest_elf_witness` | The premises of `manifest_elf_meets` and `InRange` hold together: for the replies `witnessReplies`, the arguments `h` and `1`, and a process that holds the file and the initial stack, the check grants descriptor 3, and the process reaches `exit_group` after layer events that meet `InRange` and, with X0, `NMeets`. |
 
 `NMeets held args ls code` restates `Meets` over the layer events `ls`, which record each Linux
@@ -301,26 +322,30 @@ descriptor of 1,024 or more.  Since no `openat2` returns 3 and no `close` names 
 descriptor 3 throughout the run exactly when the check granted it.  `Sized`, that each `read`'s
 output holds as many bytes as the `read` asked for, follows from `Carried`.
 
-`StatBounded M R` states the premise of `body_bounded` on `fd_filestat_get` over the replies: every
-reply of `R` that the shim's `filestatReply` reads as a `statx` record with errno 0 reports a size
-of at most `M` bytes.  `linuxHost` answers a `fd_filestat_get` at any world from the reply whose
-index is the number of the world's layer events, and `body_bounded` covers every world, so the
-premise covers every reply of `R`, those to the command's other calls among them.  The corollary
-therefore covers manifests of at most 1 MiB, `manifestLimit`, and holds for reply sequences whose
-every reply meets the bound, a stronger premise than a bound on the size that the manifest's `statx`
-reports, and real runs can fail it.  A `read` that returns 0 leaves its window's bytes in place, and
-the reply that `Carried` records for it holds those bytes.  A file whose last 65,536 bytes hold a
-size above 1 MiB where a `statx` record holds `stx_size`, and, where it holds the times, seconds
-that keep each time that the shim reads below `2^64` nanoseconds and nanoseconds below `10^9`, gives
-such a reply at its last `read`, and the corollary states nothing of that run, whose verdict is
-correct.  A premise on the `statx` events of the run alone needs a budget that follows the run's
-worlds.
+`StatxBounded F L I M R` states the premise of `body_bounded` on `fd_filestat_get` over the
+replies, in the form of `NoTrapsAlong`: at each prefix of `main` under `linuxHost F L I R` whose
+next request is `fd_filestat_get` of a descriptor that the shim holds, the reply `R k` to the
+`statx` that the shim then makes, after the world's `k` layer events, reports a size of at most `M`
+bytes or of `2^32` bytes or more when `filestatReply` reads errno 0 from it.  `StatxAfterCheck args
+environ R` states `StatxBounded manifestLimit` for the launch with the check's grant and the
+replies after the check's.  `main` asks `fd_filestat_get` at most once, of the manifest's
+descriptor, so the premise bounds `R` only at the index of the run's one `statx`, and the earlier
+replies decide whether that `statx` happens and its index.  The reply to a `read` that returns 0,
+whose bytes are those that the window held before the call, does not enter it.  The corollary
+states nothing of exactly the runs from whose manifest's `statx` the shim reads errno 0 and a size
+of more than 1 MiB, `manifestLimit`, and fewer than `2^32` bytes: the budget of such a manifest can
+exceed the executable's 4,096 pages, and `manifest_elf` then admits a guest trap when the memory
+cannot grow.  Every other run of the executable on Linux meets the premise, among them runs in
+which the manifest's open fails, its `statx` fails, or its `statx` reports a time that gives
+status 61, whatever size the record holds.
 
 The proof composes the footprint with the command's theorems.  `linux_footprint_bounded` gives the
 budget premise of the generated `command.start` from `body_bounded` through `call_prefix_bound`,
 since the shim answers `args_sizes_get` with the count and size of the launch's arguments
-(`linux_sizes`, `reportedSize_le`) and `fd_filestat_get` with the size of a reply that meets
-`StatBounded M` (`linux_stat_bound`).  `linux_exec_meets` excludes the trapped runs.  Under a host
+(`linux_sizes`, `reportedSize_le`), and `statx_along` gives `StatAlong` of `main` from
+`StatxBounded M`: the shim answers `fd_filestat_get` of a descriptor that it holds with one `statx`
+that holds the reply `R k`, and any other descriptor with errno 8.  `linux_exec_meets` excludes the
+trapped runs.  Under a host
 that rejects only exit statuses of 126 or more, as the shim does, a trapped run of `main` and its
 exit has a trapped call among its events (`exec_trapped_call`, from `TrapsInCall` of each part of
 `main`), and no call of the command whose image meets `InRange` traps (`image_untrapped`).  For
@@ -336,11 +361,12 @@ reach Linux, and `confined_accepted` gives the names of `NConfined` from `Confin
 `2^32` and the initial stack of `h` and `1` at `2^32` (`loadedMem` of [the shared
 witness](../../tests/TestSupport/A64/ElfWitness.lean)), and the replies `witnessReplies`, which
 answer the check's `openat` with descriptor 4, its `close` with 0, and every later call with
-`-ENOENT`.  Every layer event after the check returns an error number, so `InRange` holds, and of
-the replies that the shim reads as `statx` records, only the `close`'s gives errno 0, and its zero
-bytes report a size of 0, so `StatBounded manifestLimit` holds.  The kernel evaluates no run of
-the executable: the footprint theorem gives the process's run, and the proof reasons over its
-events.
+`-ENOENT`.  Every layer event after the check returns an error number, so `InRange` holds, and
+`filestatReply` reads errno 44 (`noent`) from every reply after the check's, so `StatxAfterCheck`
+holds.  Under these replies the manifest's `openat2` returns `-ENOENT`, so the run ends before any
+`statx`, and the bound of `StatxAfterCheck` applies to no reply of that run.  The kernel evaluates
+no run of the executable: the footprint theorem gives the process's run, and the proof reasons over
+its events.
 
 ## Building, running, and testing
 

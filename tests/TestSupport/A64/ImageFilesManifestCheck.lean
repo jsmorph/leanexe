@@ -33,12 +33,14 @@ standard output committed.  The run is an accepted exit, whose status X0 holds, 
 shim rejects, with X0 at 1, a trap of the shim, with X0 at 2, or a trap of the guest after a
 prefix of the action, with X0 at 2.
 
-`manifest_elf_meets` is the corollary for the file, for every reply sequence, from arguments
-whose strings, each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes, as
-Linux requires of every process, and for replies that meet `StatBounded manifestLimit`, whose
-budget fits the executable's 4,096 pages (`budget_fits`).  When the check does not end the run and
-the results of the layer events `ls` lie in Linux's range (`InRange`), X0 and `ls` meet `NMeets`
-for the check's grant of descriptor 3.
+`manifest_elf_meets` is the corollary for the file, from arguments whose strings, each with its
+zero byte, and eight-byte pointers take at most `argsLimit` bytes, as Linux requires of every
+process, and for replies that meet `StatxAfterCheck`: after the check, the reply to the `statx` of
+the manifest's `fd_filestat_get`, when the shim reads errno 0 from it, reports at most
+`manifestLimit` bytes, whose budget fits the executable's 4,096 pages (`budget_fits`), or `2^32`
+bytes or more.  The premise bounds no other reply.  When the check does
+not end the run and the results of the layer events `ls` lie in Linux's range (`InRange`), X0 and
+`ls` meet `NMeets` for the check's grant of descriptor 3.
 `manifest_elf_runs` gives the run from `linux_footprint_bounded`, the footprint without a guest
 trap, through `wasiElf_footprint_with`, and `linux_exec_meets` gives the status and `NMeets` from
 the `Exec` run that the footprint names.
@@ -47,8 +49,10 @@ the `Exec` run that the footprint names.
 process holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the initial stack of the
 arguments `witnessArgs`, `h` and `1`, with no environment.  Under the replies `witnessReplies`, the
 check's `openat` returns descriptor 4 and its `close` 0, so the check grants descriptor 3, and
-every later call returns `-ENOENT`.  The process reaches `exit_group` after layer events whose
-results lie in Linux's range and that meet `NMeets` with X0.
+every later call returns `-ENOENT`, from which `filestatReply` reads errno 44, so the replies meet
+`StatxAfterCheck`.  The process reaches `exit_group` after layer events whose results lie in
+Linux's range and that meet `NMeets` with X0.  The manifest's `openat2` returns `-ENOENT`, so the
+run ends before any `statx`, and the bound of `StatxAfterCheck` applies to no reply of that run.
 -/
 
 namespace TestSupport.A64.ImageFilesManifestCheck
@@ -147,6 +151,15 @@ theorem manifest_elf (R : Linux.Replies) (p : Proc) {args environ : List (List U
     · exact .inr (.inr (.inl h))
     · exact .inr (.inr (.inr h))
 
+/-- The replies `R` meet `StatxBounded manifestLimit` after the check of descriptor 3 when the
+check does not end the run: under the shim's host for the launch of `args` and `environ` with the
+check's grant, with the replies after the check's.  The premise bounds only the reply to the
+`statx` of the manifest's `fd_filestat_get`. -/
+def StatxAfterCheck (args environ : List (List UInt8)) (R : Linux.Replies) : Prop :=
+  ∀ l₀ granted, preopenRun manifestScratch.path R 0 = (l₀, some granted) →
+    StatxBounded arm64Flags manifestShimLayout ⟨args, environ, granted⟩ manifestLimit
+      (fun j => R (l₀.length + j))
+
 /-- The runs of the file from arguments and replies within the limits of the corollary: when the
 check does not end the run, the process reaches `exit_group` after the check's events and the
 layer events `ls`, which hold their replies, and `ls` are the images of the WASI events `T` of an
@@ -154,7 +167,7 @@ layer events `ls`, which hold their replies, and `ls` are the images of the WASI
 exit that the shim rejects, or at a trap of the shim. -/
 theorem manifest_elf_runs (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
     {top : UInt64} (small : stringsSize args + 8 * args.length ≤ argsLimit)
-    (bounded : StatBounded manifestLimit R)
+    (bounded : StatxAfterCheck args environ R)
     (hl : ElfLoaded (byteAt manifestElfBytes) p.core.mem)
     (hstack : InitialStack args environ p.core.sp top p.core.mem)
     (hpc : p.core.pc = wasiEntry) (htr : p.trace = []) :
@@ -186,8 +199,8 @@ theorem manifest_elf_runs (R : Linux.Replies) (p : Proc) {args environ : List (L
     wasiElf_footprint_with manifest_elf_file
       (manifest_elf_segments.trans manifest_elf_layout.symm) himp calls_supported (by decide)
       manifest_elf_room R p
-      (fun l₀ granted _ => linux_footprint_bounded arm64Flags _ ⟨args, environ, granted⟩ _ small
-        (fun j => bounded (l₀.length + j)) (by decide) budget_fits)
+      (fun l₀ granted h => linux_footprint_bounded arm64Flags _ ⟨args, environ, granted⟩ _ small
+        (bounded l₀ granted h) (by decide) budget_fits)
       hl hstack hpc htr
   refine ⟨q, rq, cq, x8q, ioq, ?_⟩
   rw [manifest_startup] at hq
@@ -203,7 +216,7 @@ theorem manifest_elf_runs (R : Linux.Replies) (p : Proc) {args environ : List (L
     · cases impossible
 
 /-- The manifest checker's corollary for `manifest.elf`.  For every reply sequence `R` that meets
-`StatBounded manifestLimit`, a process started as for `manifest_elf` with arguments whose strings,
+`StatxAfterCheck`, a process started as for `manifest_elf` with arguments whose strings,
 each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes, 6 MiB, reaches
 `SVC #0` with X8 at 94, `exit_group`, and the UART's state as it was.  When the check of
 descriptor 3 ends the run, the trace holds its events and X0 is 67.  Otherwise the trace holds the
@@ -214,7 +227,7 @@ writes of descriptor 1 offered and took, the status, the confinement of every `o
 descriptor 3 with RESOLVE_BENEATH, and the handles of the `read`, `statx`, and `close` calls. -/
 theorem manifest_elf_meets (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
     {top : UInt64} (small : stringsSize args + 8 * args.length ≤ argsLimit)
-    (bounded : StatBounded manifestLimit R)
+    (bounded : StatxAfterCheck args environ R)
     (hl : ElfLoaded (byteAt manifestElfBytes) p.core.mem)
     (hstack : InitialStack args environ p.core.sp top p.core.mem)
     (hpc : p.core.pc = wasiEntry) (htr : p.trace = []) :
@@ -260,30 +273,27 @@ theorem witness_startup : preopenRun manifestScratch.path witnessReplies 0 =
       preopenCloseEvent 4 ⟨0, fun _ => 0⟩], some true) := by
   rfl
 
-theorem witness_bounded : StatBounded manifestLimit witnessReplies := by
-  intro j outputs reply
-  by_cases h0 : j = 0
-  · subst h0
-    have trapped : filestatReply (witnessReplies 0).ret
-        ((List.range 256).map (witnessReplies 0).bytes) = .trapped shimTrap [zeros 64] := rfl
-    rw [trapped] at reply
-    cases reply
-  by_cases h1 : j = 1
-  · subst h1
-    have zero : filestatReply (witnessReplies 1).ret
-        ((List.range 256).map (witnessReplies 1).bytes) =
-        .returned 0 [filestatBytes ((List.range 256).map fun _ => 0)] := rfl
-    rw [zero] at reply
-    cases reply
-    decide +kernel
-  have later : witnessReplies j = ⟨0 - 2, fun _ => 0⟩ := by
-    unfold witnessReplies
-    rw [ite_eq_right h0, ite_eq_right h1]
-  have error : filestatReply (witnessReplies j).ret
-      ((List.range 256).map (witnessReplies j).bytes) = .returned 44 [zeros 64] := by
-    rw [later]
-    rfl
-  exact absurd (Transfer.returned.inj (error.symm.trans reply)).1 (by decide)
+/-- The witness's replies after the check's two give errno 44 (`noent`) to every `statx`, so they
+meet `StatxAfterCheck` for every argument list and environment. -/
+theorem witness_bounded {args environ : List (List UInt8)} :
+    StatxAfterCheck args environ witnessReplies := by
+  intro l₀ granted h
+  rw [witness_startup] at h
+  cases h
+  intro trace residual world _
+  cases residual with
+  | sys call args next =>
+    intro _ fd _ _ outputs reply _
+    have later : witnessReplies (2 + world.events.length) = ⟨0 - 2, fun _ => 0⟩ := by
+      unfold witnessReplies
+      rw [ite_eq_right (by omega), ite_eq_right (by omega)]
+    have error : filestatReply (witnessReplies (2 + world.events.length)).ret
+        ((List.range 256).map (witnessReplies (2 + world.events.length)).bytes) =
+          .returned 44 [zeros 64] := by
+      rw [later]
+      rfl
+    exact absurd (Transfer.returned.inj (error.symm.trans reply)).1 (by decide)
+  | _ => trivial
 
 theorem carried_errors : ∀ {k : Nat} {ls : List Linux.Event}, 2 ≤ k →
     Carried witnessReplies k ls → ∀ e ∈ ls, e.ret = 0 - 2
@@ -310,7 +320,7 @@ check's events and layer events that hold their replies, whose results lie in Li
 that meet `NMeets` with X0. -/
 theorem manifest_elf_witness :
     ∃ (R : Linux.Replies) (p : Proc) (args environ : List (List UInt8)) (top : UInt64),
-      stringsSize args + 8 * args.length ≤ argsLimit ∧ StatBounded manifestLimit R ∧
+      stringsSize args + 8 * args.length ≤ argsLimit ∧ StatxAfterCheck args environ R ∧
       ElfLoaded (byteAt manifestElfBytes) p.core.mem ∧
       InitialStack args environ p.core.sp top p.core.mem ∧ p.core.pc = wasiEntry ∧
       p.trace = [] ∧

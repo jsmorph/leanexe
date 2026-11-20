@@ -14,17 +14,21 @@ fuel has the footprint of `Footprint`: the layer events are images of the run's 
 ends at an accepted exit, a rejected exit, a trap of the shim, or a trap of the guest after a
 prefix of `main`.
 
-`linux_footprint_bounded` states the footprint without a guest trap at a cap whose pages hold
-`budget M` above the static heap's top, for a launch whose arguments' strings, each with its zero
+`linux_footprint_bounded` states the footprint without a guest trap at a cap of at most 65,535
+pages that hold `budget M` above the static heap's top, for a launch whose arguments' strings, each
+with its zero
 byte, and eight-byte pointers take at most `argsLimit` bytes, and for replies `R` that meet
-`StatBounded M R`.  `StatBounded M R` states the premise of `body_bounded` on `fd_filestat_get` in
-terms of the replies: every reply of `R` that the shim's `filestatReply` reads as a `statx` record
-with errno 0 reports a size of at most `M` bytes.  `linuxHost` answers a `fd_filestat_get` at any
-world from the reply whose index is the number of the world's layer events, so the premise of
-`body_bounded`, which covers every world, needs every reply of `R`.  The premise therefore also
-constrains the replies to the command's other calls through the bytes that a `statx` would read
-from them.  `budget_fits` states that the budget of a manifest of `manifestLimit` bytes, 1 MiB,
-fits the 4,096 pages of the native executable. -/
+`StatxBounded F L I M R`.  `StatxBounded` states the premise of `body_bounded` on
+`fd_filestat_get` in terms of the replies, in the form of `LeanExe.Wasi.Host.NoTrapsAlong`: at
+each prefix of `main` under `linuxHost F L I R` whose next request is `fd_filestat_get` of a
+descriptor that the shim holds, the reply `R k` of the `statx` that the shim then makes after the
+world's `k` layer events, when the shim's `filestatReply` reads errno 0 from it, reports a size of
+at most `M` bytes or of `2^32` bytes or more.  `main` makes at most one such request, of the
+manifest's descriptor, so the premise bounds the reply to the run's `statx` and no other reply of
+`R`.  The earlier replies decide whether that `statx` happens and its index.
+`statx_along` gives `StatAlong` of `main` from it, since the image of `fd_filestat_get` of a held
+descriptor is one `statx` that holds the reply `R k`.  `budget_fits` states that the budget of a
+manifest of `manifestLimit` bytes, 1 MiB, fits the 4,096 pages of the native executable. -/
 
 namespace Demos.ManifestCheck
 
@@ -132,53 +136,74 @@ theorem linux_footprint_native (F : OpenFlags) (L : ShimLayout) (I : Launch)
     (native_table_low rfl) hcap (fun impossible => nomatch impossible)
   exact ⟨bound, fun fuel enough => footprint_of_result F L I replies (results fuel enough)⟩
 
-/-- Every reply of `R` that `filestatReply` reads as a `statx` record with errno 0 reports a size
-of at most `M` bytes. -/
-def StatBounded (M : Nat) (R : Linux.Replies) : Prop :=
-  ∀ j outputs, filestatReply (R j).ret ((List.range 256).map (R j).bytes) = .returned 0 outputs →
-    (statSize outputs).toNat ≤ M
+/-- The reply `r` answers the `statx` that the shim makes for a request of `fd_filestat_get` of a
+descriptor of `opened` that `action` makes first: when `filestatReply` reads errno 0 from it, the
+record reports a size of at most `M` bytes or of `2^32` bytes or more. -/
+def StatxAt (opened : List UInt64) (M : Nat) (r : Linux.Reply) : Action α → Prop
+  | .sys call args _ => call = Call.fdFilestatGet → ∀ fd, args = [.word fd] → fd ∈ opened →
+      ∀ outputs, filestatReply r.ret ((List.range 256).map r.bytes) = .returned 0 outputs →
+        (statSize outputs).toNat < 2 ^ 32 → (statSize outputs).toNat ≤ M
+  | _ => True
 
-/-- Under the shim's host with replies that meet `StatBounded M`, every successful
-`fd_filestat_get` reports a size of at most `M` bytes. -/
-theorem linux_stat_bound {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Replies}
-    {M : Nat} (bounded : StatBounded M R) :
-    ∀ world args outputs after, (linuxHost F L I R).sys world Call.fdFilestatGet args
-      (.returned 0 outputs) after → (statSize outputs).toNat ≤ M := by
-  intro world args outputs after step
-  obtain ⟨l, ⟨-, image⟩, carried, -, -⟩ := step
-  rw [sysImage_filestat] at image
-  unfold FilestatImage at image
-  split at image
-  · split at image
-    · obtain ⟨ret, output, rfl, reply⟩ := image
-      obtain ⟨⟨hret, hout⟩, -⟩ := carried
-      dsimp only at hret hout
-      simp only [Linux.outputRegions, Linux.statxCall, Linux.arg, Linux.Param.words] at hout
-      rw [hret, hout] at reply
-      exact bounded _ _ reply.symm
-    · obtain ⟨-, same⟩ := image
-      exact absurd (Transfer.returned.inj same).1 (by decide)
-  · exact image.elim
+/-- The replies `R` answer as `StatxAt` states every `statx` that the shim makes for a request of
+`fd_filestat_get` of a prefix of `main` under `linuxHost F L I R` from `nativeWorld`: the shim
+makes it for a descriptor that it holds, as the call after the world's `k` layer events, which
+takes the reply `R k`.  `main` makes at most one such request, of the manifest's descriptor, and
+the premise bounds no other reply of `R`. -/
+def StatxBounded (F : OpenFlags) (L : ShimLayout) (I : Launch) (M : Nat) (R : Linux.Replies) :
+    Prop :=
+  ∀ {trace residual world}, Prefix (linuxHost F L I R) main nativeWorld.world trace residual world →
+    StatxAt (openNumbers I world.events) M (R world.events.length) residual
+
+/-- Under the shim's host with replies that meet `StatxBounded M`, every reply with errno 0 to a
+request of `fd_filestat_get` that a prefix of `main` makes reports a size of at most `M` bytes or
+of `2^32` bytes or more. -/
+theorem statx_along {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Replies}
+    {M : Nat} (bounded : StatxBounded F L I M R) :
+    StatAlong (linuxHost F L I R) M main nativeWorld.world := by
+  intro trace residual world progress
+  have answered := bounded progress
+  cases residual with
+  | sys call args next =>
+    intro named outputs after step small
+    subst named
+    obtain ⟨l, ⟨-, image⟩, carried, -, -⟩ := step
+    rw [sysImage_filestat] at image
+    unfold FilestatImage at image
+    split at image
+    · rename_i fd
+      split at image
+      · rename_i held
+        obtain ⟨ret, output, rfl, reply⟩ := image
+        obtain ⟨⟨hret, hout⟩, -⟩ := carried
+        dsimp only at hret hout
+        simp only [Linux.outputRegions, Linux.statxCall, Linux.arg, Linux.Param.words] at hout
+        rw [hret, hout] at reply
+        exact answered rfl fd rfl held _ reply.symm small
+      · obtain ⟨-, same⟩ := image
+        exact absurd (Transfer.returned.inj same).1 (by decide)
+    · exact image.elim
+  | _ => trivial
 
 /-- The budget of `main` holds under the shim's host for a launch whose arguments' strings and
-eight-byte pointers take at most `argsLimit` bytes and for replies that meet `StatBounded M`. -/
+eight-byte pointers take at most `argsLimit` bytes and for replies that meet `StatxBounded M`. -/
 theorem call_prefix_bound (F : OpenFlags) (L : ShimLayout) (I : Launch) (R : Linux.Replies)
     {M : Nat} (small : stringsSize I.args + 8 * I.args.length ≤ argsLimit)
-    (bounded : StatBounded M R) (world : Observed LinuxWorld) :
+    (bounded : StatxBounded F L I M R) :
     Resource.CallPrefixBound (observedHost (linuxHost F L I R))
-      (.ofProg command.pure.program command.pure.funs) command.program .here 0 mainArgs world
+      (.ofProg command.pure.program command.pure.funs) command.program .here 0 mainArgs nativeWorld
       (budget M) :=
   prefix_bound (fun _ _ _ step => by
       rw [linux_sizes step]
       exact reportedSize_le (by decide) (by decide) small)
-    (linux_stat_bound bounded) world
+    (statx_along bounded)
 
-/-- The footprint of `linux_footprint_native` without a guest trap, at a cap whose pages hold
-`budget M` above the static heap's top, for a launch whose arguments meet the premise of
-`call_prefix_bound` and replies that meet `StatBounded M`. -/
+/-- The footprint of `linux_footprint_native` without a guest trap, at a cap of at most 65,535 pages
+that hold `budget M` above the static heap's top, for a launch whose arguments meet the premise of
+`call_prefix_bound` and replies that meet `StatxBounded M`. -/
 theorem linux_footprint_bounded (F : OpenFlags) (L : ShimLayout) (I : Launch)
     (R : Linux.Replies) {M : Nat} (small : stringsSize I.args + 8 * I.args.length ≤ argsLimit)
-    (bounded : StatBounded M R) {cap : Nat} (hcap : cap ≤ 65535)
+    (bounded : StatxBounded F L I M R) {cap : Nat} (hcap : cap ≤ 65535)
     (room : (Verified.initialStaticHeap command.literalPool).top.toNat + budget M ≤ 65536 * cap) :
     ∃ bound, ∀ fuel ≥ bound,
       Footprint F L I R (main.bind fun status => Action.exit status) nativeWorld false
@@ -191,7 +216,7 @@ theorem linux_footprint_bounded (F : OpenFlags) (L : ShimLayout) (I : Launch)
     native_at (native_table_rep rfl) Separate.nil ⟨native_static, fun _ _ => Apart.nil⟩
     (native_table_low rfl) hcap
     (fun _ => ⟨by change _ + budget M ≤ 65536 * cap; exact room,
-      call_prefix_bound F L I R small bounded _⟩)
+      call_prefix_bound F L I R small bounded⟩)
   exact ⟨bound, fun fuel enough => footprint_of_result F L I R (results fuel enough)⟩
 
 /-- The bound on the manifest's size of the native executable's corollary: 1 MiB, whose budget
@@ -207,7 +232,7 @@ theorem budget_fits :
 
 #print axioms calls_supported
 #print axioms linux_footprint_native
-#print axioms linux_stat_bound
+#print axioms statx_along
 #print axioms call_prefix_bound
 #print axioms linux_footprint_bounded
 #print axioms budget_fits

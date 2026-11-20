@@ -253,3 +253,72 @@ refused line discards its errno.  A program that opens the checked files with th
 `Confined` at WASI excludes it.  A program that reads a file in full before hashing it, with the
 same reads, meets `NMeets`, and `manifest_elf_meets` excludes it only through the guest trap of a
 file that outgrows the executable's 4,096 pages.
+
+## Review of the premises on the manifest's `statx`
+
+The budget's premise and the native corollary's premise bound only the reply to the manifest's
+`fd_filestat_get`.  `StatAlong host M main world` of [the budget](Budget.lean) bounds, at every
+prefix of `main` whose next request is `fd_filestat_get`, the size of every reply with errno 0
+that the host permits, and `body_bounded` carries it along the body with the world-indexed rules.
+`StatxBounded` of [the footprints](Native.lean) bounds, at every such prefix under `linuxHost` of a
+descriptor that the shim holds, the reply `R k` to the `statx` that the shim then makes, and
+`StatxAfterCheck` of [the executable's
+theorems](../../tests/TestSupport/A64/ImageFilesManifestCheck.lean) states it after the check of
+descriptor 3.  Each premise admits a size of `2^32` bytes or more, which `readManifest` answers
+with status 61 before it builds a buffer.
+
+A sixth fresh agent reviewed `StatWithin`, `StatAt`, `StatAlong`, `StatxAt`, `StatxBounded`,
+`StatxAfterCheck`, the statements that take them, and the guide's sentences about them, by the
+method of the knowledge base's entry on independent review, without the proofs.  It wrote a model
+in Python of the command, the shim's images, `filestatReply`, `openNumbers`, `preopenRun`, and
+Linux's replies with faults, and transcribed the premises.  It ran 219 scenarios, 170 of them with
+replies that Linux gives, each under two fillings of the bytes that `Carries` leaves free and of
+the replies after the run, 438 cases.
+
+`StatxAfterCheck` failed on exactly the scenarios from whose manifest's `statx` the shim reads
+errno 0 and a size of more than 1 MiB and fewer than `2^32` bytes: 26 scenarios, 18 of them with
+Linux's replies, among them manifests of 1 MiB and one byte, 2 MiB, `2^28`, and `2^32 - 1` bytes,
+after `EAGAIN` and after a failed `close` of the check.  `StatAlong` under the shim's host gave the
+same verdict in every case.  A `statx` whose `stx_size` lies in that range and whose times give
+errno 61 meets the premise, so the class differs from one stated by `stx_size` alone in 29
+scenarios, 21 with Linux's replies.  A transcription of the earlier premise over every reply
+failed on 31 scenarios with Linux's replies that `StatxAfterCheck` admits, each with a file whose
+last `read` returns 0 over a window whose first 256 bytes form a `statx` record of 2 MiB.  In 58
+scenarios the reviewer replaced the window of every such `read` with that record, and
+`StatxAfterCheck` never changed.  In 141 scenarios `StatxAfterCheck`, `InRange`, and a grant held
+together and the run reached the `statx`.
+
+The reviewer ran 19 variants of the definitions as wrong premises.  Its cases told 14 from the Lean
+text: indices one before or after the `statx`, the index of the world after the call, the count of
+WASI events, replies not shifted past the check, no exception at `2^32` bytes, a bound below `M`
+in place of at most `M`, an exception only above `2^32`, a bound over every reply or with no test of
+the call, `stx_size` without the shim's tests of the times, `stx_size` whatever `statx` returned, a
+test of the descriptor against the launch's numbers, and a launch that always grants descriptor 3.
+The last differs only in replies after the run, which Linux leaves free.  The other five give the
+Lean text's verdict on every case:
+
+| Variant | Reason |
+|---|---|
+| No test that the shim holds the descriptor | The shim gives errno 0 to `path_open` only for a descriptor below 1,024, which it then holds, and nothing closes it before `fd_filestat_get` |
+| A premise over `main` and its exit | The exit makes no request |
+| A premise over the `fd_filestat_get` events of the prefixes' traces | A prefix may end with any reply that the host permits, so the two forms bound the same replies |
+| A shift of two replies, or a premise only after a grant | After a check that grants nothing, the shim refuses the manifest's open, and no `statx` follows |
+
+| Finding | Response |
+|---|---|
+| The guide said that a run whose `statx` reports a time that gives status 61 meets the premise, and in the next sentence that the corollary states nothing of a `statx` that reports more than 1 MiB, which a manifest of 2 MiB with a time before 1970 meets as well | Adopted: the guide states the excluded class as the runs from whose manifest's `statx` the shim reads errno 0 and a size of more than 1 MiB and fewer than `2^32` bytes |
+| The guide's rows of `manifest_elf_meets` and the summaries in `README.md`, `index.md`, and `docs/a64-bare-metal.md` omitted that the bound holds when the shim reads errno 0 | Adopted |
+| The row of `body_bounded` stated the host's reply without errno 0, while `StatWithin` bounds every reply with errno 0 that the host permits | Adopted |
+| The guide said that a manifest of `2^32` bytes or more meets the premise since `readManifest` answers it with status 61, while `StatWithin` exempts the size, and status 61 is why the exemption keeps the budget | Adopted |
+| "`main` makes one such request": 28 of the reviewer's 219 runs make none | Adopted: "at most one" |
+| "The premise reads no other reply": the earlier replies decide whether the `statx` happens and its index | Adopted: "bounds no other reply", and the guide and `Native.lean` state that the earlier replies decide the `statx` and its index |
+| The docstrings of `linux_footprint_bounded` and of `Native.lean` omitted the cap of at most 65,535 pages | Adopted |
+| The module docstring of the executable's theorems said "for every reply sequence" and then "for replies that meet `StatxAfterCheck`" | Adopted: the first phrase is gone |
+| Neither the guide nor the docstring said that the witness's run ends at the manifest's failed `openat2`, before any `statx` | Adopted: both say so |
+
+Classes that no statement excludes, after this review: runs from whose manifest's `statx` the shim
+reads errno 0 and a size of more than 1 MiB and fewer than `2^32` bytes, of which the corollary
+states nothing; under the WASI theorems, a host whose relation permits at one world both a small
+and a large reply to the manifest's `fd_filestat_get` fails `StatWithin` even for a run that
+received the small one, since `StatAlong` bounds the host's relation, while `linuxHost` permits one
+reply for each reply sequence; and the classes that the reviews above record.
