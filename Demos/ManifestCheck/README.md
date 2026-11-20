@@ -228,15 +228,16 @@ at most 23,000,000.
 The host gives its reply to `fd_filestat_get` at the world in which the command asks the size, so
 `body_bounded` states `BoundedAt` of [the world-indexed resource
 rules](../../Verified/Wasi/ResourceRulesAt.lean), which bound a command's runs and prefixes from
-one world.  `main_along` carries `StatAlong` from `main` to its reflected body through
-`command.main.related`, and the proof follows the body from the start world to the call of
-`readManifest` with `boundedAt_of_rule`.  At each `bind` on that path the second command starts in
-the world in which a run of the first returned, and `StatFrom.next` carries the premise to it
-through `ResourceExec.erase` and `Prefix.bind_after`.  `readManifest_bounded` reads the reply of its
-first command with `stat_le`, and the commands off the path take their bounds from `Bounded`
+one world.  `StatAlong` is `Host.Along` of `StatAt`, the premise's bound on the next request, and
+`main_along` carries it from `main` to its reflected body through `command.main.related`.  The
+proof follows the body from the start world to the call of `readManifest` with
+`boundedAt_of_rule`.  At each `bind` on that path the second command starts in the world in which a
+run of the first returned, and `CommandAlong.next` of the world-indexed rules carries the premise to
+it through `ResourceExec.erase` and `Prefix.bind_after`.  `readManifest_bounded` reads the reply of
+its first command with `stat_le`, and the commands off the path take their bounds from `Bounded`
 through `Bounded.at`.  The charge of `parse` depends on the manifest that the bracket of `main`
-returned: `StatFrom.split` and `StatFrom.branch` take a returned run of the bracket's action apart
-with the worlds of its parts, and `readManifest_call_size` bounds the manifest that the call of
+returned: `CommandAlong.split` and `CommandAlong.branch` take a returned run of the bracket's action
+apart with the worlds of its parts, and `readManifest_call_size` bounds the manifest that the call of
 `readManifest` returned, from the world in which the call started.
 
 ## Confinement
@@ -323,9 +324,9 @@ descriptor 3 throughout the run exactly when the check granted it.  `Sized`, tha
 output holds as many bytes as the `read` asked for, follows from `Carried`.
 
 `StatxBounded F L I M R` states the premise of `body_bounded` on `fd_filestat_get` over the
-replies, in the form of `NoTrapsAlong`: at each prefix of `main` under `linuxHost F L I R` whose
-next request is `fd_filestat_get` of a descriptor that the shim holds, the reply `R k` to the
-`statx` that the shim then makes, after the world's `k` layer events, reports a size of at most `M`
+replies, as `Host.Along`: at each prefix of `main` under `linuxHost F L I R` whose next request is
+`fd_filestat_get` of a descriptor that the shim holds, the reply `R k` to the `statx` that the shim
+then makes, after the world's `k` layer events, reports a size of at most `M`
 bytes or of `2^32` bytes or more when `filestatReply` reads errno 0 from it.  `StatxAfterCheck args
 environ R` states `StatxBounded manifestLimit` for the launch with the check's grant and the
 replies after the check's.  `main` asks `fd_filestat_get` at most once, of the manifest's

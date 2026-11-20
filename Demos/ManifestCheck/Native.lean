@@ -19,9 +19,9 @@ pages that hold `budget M` above the static heap's top, for a launch whose argum
 with its zero
 byte, and eight-byte pointers take at most `argsLimit` bytes, and for replies `R` that meet
 `StatxBounded F L I M R`.  `StatxBounded` states the premise of `body_bounded` on
-`fd_filestat_get` in terms of the replies, in the form of `LeanExe.Wasi.Host.NoTrapsAlong`: at
-each prefix of `main` under `linuxHost F L I R` whose next request is `fd_filestat_get` of a
-descriptor that the shim holds, the reply `R k` of the `statx` that the shim then makes after the
+`fd_filestat_get` in terms of the replies, as `LeanExe.Wasi.Host.Along`: at each prefix of
+`main` under `linuxHost F L I R` whose next request is `fd_filestat_get` of a descriptor that the
+shim holds, the reply `R k` of the `statx` that the shim then makes after the
 world's `k` layer events, when the shim's `filestatReply` reads errno 0 from it, reports a size of
 at most `M` bytes or of `2^32` bytes or more.  `main` makes at most one such request, of the
 manifest's descriptor, so the premise bounds the reply to the run's `statx` and no other reply of
@@ -152,8 +152,9 @@ takes the reply `R k`.  `main` makes at most one such request, of the manifest's
 the premise bounds no other reply of `R`. -/
 def StatxBounded (F : OpenFlags) (L : ShimLayout) (I : Launch) (M : Nat) (R : Linux.Replies) :
     Prop :=
-  ∀ {trace residual world}, Prefix (linuxHost F L I R) main nativeWorld.world trace residual world →
-    StatxAt (openNumbers I world.events) M (R world.events.length) residual
+  (linuxHost F L I R).Along
+    (fun residual world => StatxAt (openNumbers I world.events) M (R world.events.length) residual)
+    main nativeWorld.world
 
 /-- Under the shim's host with replies that meet `StatxBounded M`, every reply with errno 0 to a
 request of `fd_filestat_get` that a prefix of `main` makes reports a size of at most `M` bytes or
@@ -162,7 +163,7 @@ theorem statx_along {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Rep
     {M : Nat} (bounded : StatxBounded F L I M R) :
     StatAlong (linuxHost F L I R) M main nativeWorld.world := by
   intro trace residual world progress
-  have answered := bounded progress
+  have answered := bounded _ _ _ progress
   cases residual with
   | sys call args next =>
     intro named outputs after step small

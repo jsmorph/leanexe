@@ -348,4 +348,116 @@ theorem callBoundedAt_here {World : Type} {host : Host World} {pure : PureContex
   ⟨fun _ _ _ _ _ execution => call_exec_rule_at budget execution valid bounded,
     fun _ _ _ _ _ progress => call_prefix_rule_at budget progress valid bounded⟩
 
+/-- A call of a later function of a program from one world is bounded by a bound on the call in
+the rest of the program from that world. -/
+theorem callBoundedAt_there {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {function : EffectFunc pureSigs effectSigs} {rest : EffectProg pureSigs effectSigs}
+    {signature : EffectSig} {callee : EffectVar effectSigs signature} {depth : UInt64}
+    {env : Env signature.params} {world : World} {budget : Nat}
+    (bounded : CallBoundedAt host pure rest callee depth env world budget) :
+    CallBoundedAt host pure (.cons function rest) (.there callee) depth env world budget :=
+  ⟨fun _ _ _ _ _ execution => call_exec_rule_at budget execution bounded,
+    fun _ _ _ _ _ progress => call_prefix_rule_at budget progress bounded⟩
+
+/-! ## A property of the host's replies along a command
+
+A command whose charge depends on a reply at the world in which the command asks it takes its
+bound from a premise on the host, such as `Host.Along property` of a program's action from the
+start world.  `CommandAlong` states it of the action of a command, and its lemmas carry it to the
+parts of the command along the path that `boundedAt_of_rule` follows: `CommandAlong.first` and
+`CommandAlong.next` to the commands of a `bind`, the second from the world in which a run of the
+first returned, `CommandAlong.body` to the body of a `letPair`, and `CommandAlong.no` to the second
+branch of an `ite` whose condition is false.  `CommandAlong.split` and `CommandAlong.branch` take a
+run of a `bind` or an `ite` apart and keep the worlds of its parts, which `ReturnFact` drops. -/
+
+/-- `Host.Along property` of the action of `command` in the environment `env` from `world`. -/
+abbrev CommandAlong {World : Type} (host : Host World)
+    (property : ∀ {β : Type}, Action β → World → Prop) (pure : PureContext pureSigs)
+    (program : EffectProg pureSigs effectSigs)
+    (command : Command pureSigs effectSigs context result) (env : Env context) (world : World) :
+    Prop :=
+  host.Along property (command.denote pure.funs (program.funs pure.funs) env) world
+
+section Along
+
+variable {World : Type} {host : Host World} {property : ∀ {β : Type}, Action β → World → Prop}
+  {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
+
+theorem CommandAlong.first {first : Command pureSigs effectSigs context intermediate}
+    {next : Command pureSigs effectSigs (intermediate.extend context) result} {env : Env context}
+    {world : World} (along : CommandAlong host property pure program (.bind first next) env world)
+    (of_bind : ∀ {α β : Type} {action : Action α} {next : α → Action β} {world : World},
+      property (Action.bind action next) world → property action world) :
+    CommandAlong host property pure program first env world :=
+  along.bind_left of_bind
+
+theorem CommandAlong.next {first : Command pureSigs effectSigs context intermediate}
+    {next : Command pureSigs effectSigs (intermediate.extend context) result} {env : Env context}
+    {depth modes live world trace value after spent fits}
+    (along : CommandAlong host property pure program (.bind first next) env world)
+    (run : ResourceExec host pure program depth modes live first env world trace (.returned value)
+      after spent fits) :
+    CommandAlong host property pure program next (intermediate.bindEnv value env) after :=
+  Host.Along.bind_right
+    (next := fun value => next.denote pure.funs (program.funs pure.funs)
+      (intermediate.bindEnv value env)) along run.erase
+
+theorem CommandAlong.body {pair : Var context (.pair left right)}
+    {body : Command pureSigs effectSigs (right :: left :: context) result} {env : Env context}
+    {world : World}
+    (along : CommandAlong host property pure program (.letPair pair body) env world) :
+    CommandAlong host property pure program body (letPairEnv pair env) world :=
+  along
+
+theorem CommandAlong.no {condition : Expr pureSigs context .bool}
+    {yes no : Command pureSigs effectSigs context result} {env : Env context} {world : World}
+    (along : CommandAlong host property pure program (.ite condition yes no) env world)
+    (chosen : condition.denote pure.funs env = false) :
+    CommandAlong host property pure program no env world := by
+  simp only [CommandAlong, Command.denote, chosen, Bool.cond_false] at along
+  exact along
+
+/-- A returned run of the action of `bind first next` from a world along which `property` holds is
+a returned run of `first` followed by a returned run of `next`, along which `property` holds as
+well. -/
+theorem CommandAlong.split {first : Command pureSigs effectSigs context (.value type)}
+    {next : Command pureSigs effectSigs (type :: context) result} {env : Env context}
+    {world trace returned final}
+    (along : CommandAlong host property pure program (.bind first next) env world)
+    (run : Exec host ((Command.bind first next).denote pure.funs (program.funs pure.funs) env)
+      world trace (.returned returned) final) :
+    ∃ value middle,
+      (∃ first', Exec host (first.denote pure.funs (program.funs pure.funs) env) world first'
+        (.returned value) middle) ∧
+      CommandAlong host property pure program next (.cons value env) middle ∧
+      ∃ rest, Exec host (next.denote pure.funs (program.funs pure.funs) (.cons value env)) middle
+        rest (.returned returned) final := by
+  obtain ⟨middle, first', outcome, rest, firstRun, restRun, -⟩ := Exec.unbind _ run
+  cases outcome with
+  | returned value =>
+    exact ⟨value, middle, ⟨_, firstRun⟩, along.bind_right firstRun, ⟨_, restRun⟩⟩
+  | exited => cases restRun.2.1
+  | trapped => cases restRun.2.1
+
+/-- A run of the action of `ite condition yes no` from a world along which `property` holds is a
+run of the branch that the condition chooses, along which `property` holds as well. -/
+theorem CommandAlong.branch {condition : Expr pureSigs context .bool}
+    {yes no : Command pureSigs effectSigs context result} {env : Env context}
+    {world trace outcome final}
+    (along : CommandAlong host property pure program (.ite condition yes no) env world)
+    (run : Exec host ((Command.ite condition yes no).denote pure.funs (program.funs pure.funs) env)
+      world trace outcome final) :
+    (CommandAlong host property pure program yes env world ∧
+      Exec host (yes.denote pure.funs (program.funs pure.funs) env) world trace outcome final) ∨
+    (CommandAlong host property pure program no env world ∧
+      Exec host (no.denote pure.funs (program.funs pure.funs) env) world trace outcome final) := by
+  simp only [CommandAlong, Command.denote] at along run
+  cases chosen : condition.denote pure.funs env
+  · rw [chosen] at along run
+    exact .inr ⟨along, run⟩
+  · rw [chosen] at along run
+    exact .inl ⟨along, run⟩
+
+end Along
+
 end Verified.Wasi.Resource

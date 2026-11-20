@@ -90,11 +90,11 @@ elab "check_wasi_resource_axioms" : command => do
     ``LeanExe.Wasi.Exec.not_trapped,
     ``LeanExe.Wasi.Exec.returned_or_exited,
     ``LeanExe.Wasi.Host.NoTraps.along,
-    ``LeanExe.Wasi.Host.NoTrapsAlong.congr,
-    ``LeanExe.Wasi.Host.NoTrapsAlong.after,
+    ``LeanExe.Wasi.Host.Along.congr,
+    ``LeanExe.Wasi.Host.Along.after,
     ``LeanExe.Wasi.Host.NoTrapsAt.of_bind,
-    ``LeanExe.Wasi.Host.NoTrapsAlong.bind_left,
-    ``LeanExe.Wasi.Host.NoTrapsAlong.bind_right,
+    ``LeanExe.Wasi.Host.Along.bind_left,
+    ``LeanExe.Wasi.Host.Along.bind_right,
     ``LeanExe.Wasi.Exec.not_trapped_of_prefix,
     ``LeanExe.Wasi.Exec.returned_or_exited_of_prefix]
   for theoremName in theorems do

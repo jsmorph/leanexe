@@ -10,29 +10,30 @@ import Verified.Wasi.ResourceRulesAt
 enough frames, for every host whose successful `args_sizes_get` replies ask for at most `argsLimit`
 bytes and that meets `StatAlong host M main` from that world: every reply with errno 0 to a request
 of `fd_filestat_get` that a prefix of `main` makes reports a size of at most `M` bytes or of `2^32`
-bytes or more.  `main` makes at most one such request, of the manifest's descriptor, so the
-premise bounds no other reply.  The model charges a copy of an owned value at each use after which the
-value stays live, and it credits no release.  The charge of `main` holds the block of `args`, the
+bytes or more.  `StatAlong` is `Host.Along` of `StatAt`, the bound on the next request.  `main`
+makes at most one such request, of the manifest's descriptor, so the premise bounds no other
+reply.  The model charges a copy of an owned value at each use after which the value stays live,
+and it credits no release.  The charge of `main` holds the block of `args`, the
 copy of the argument that names the manifest, the read buffer of 65,536 bytes, the charge of
 `readManifest`, that of `parse`, and that of `checkLines`.
 
 The charge of `readManifest` depends on the reply that the host gives at the world in which the
 command asks the size, so `body_bounded` states `BoundedAt` of the world-indexed rules of
 `Verified/Wasi/ResourceRulesAt.lean`.  `main_along` carries `StatAlong` from `main` to its
-reflected body through `command.main.related`, and the proof follows the body from the start world
-to the call of `readManifest` with `boundedAt_of_rule`: the second command of each `bind` starts in
-the world in which a run of the first returned, and `StatFrom.next` carries the premise there
-through `ResourceExec.erase` and `Prefix.bind_after`.  The commands off that path take their bounds
+reflected body through `command.main.related` as `CommandAlong` of `StatAt`, and the proof follows
+the body from the start world to the call of `readManifest` with `boundedAt_of_rule`: the second
+command of each `bind` starts in the world in which a run of the first returned, and
+`CommandAlong.next` carries the premise there.  The commands off that path take their bounds
 from `Bounded` through `Bounded.at`.  `readManifest_bounded` reads the reply of its first command,
 `fd_filestat_get`, with `stat_le`, and charges the call of `readBytes`, which builds the manifest's
 buffer of the reported size and whose read passes charge nothing.  The call of `fd_filestat_get`
 charges nothing, since a record call places its record in the call area.
 
-The charge of `parse` depends on the manifest that the bracket of `main` returned.  `StatFrom.split`
-and `StatFrom.branch` take a returned run of the bracket's action apart with the worlds of its
-parts, and the run of the reflected call of `readManifest` in it is a run of `readManifest` that
-returns the same value (`command.readManifest.related`), from a world along which the host answers
-as `StatAlong` states.  With status 0 its manifest has the reported size (`readManifest_size`, from
+The charge of `parse` depends on the manifest that the bracket of `main` returned.
+`CommandAlong.split` and `CommandAlong.branch` take a returned run of the bracket's action apart
+with the worlds of its parts, and the run of the reflected call of `readManifest` in it is a run of
+`readManifest` that returns the same value (`command.readManifest.related`), from a world along
+which the host answers as `StatAlong` states.  With status 0 its manifest has the reported size (`readManifest_size`, from
 `readBytes_run` of `CommandProof.lean`), so `parse` charges at most `176 M + 464` bytes.
 `hashFile` charges the block of `finish`'s last words, at most `blockCost 8`, and its read passes
 charge nothing.  `writeAll` charges nothing (`writeAll_bounded`).
@@ -99,32 +100,17 @@ def StatAt {World : Type} (host : Host World) (M : Nat) : Action α → World �
 /-- The host answers every request of `fd_filestat_get` that a prefix of `action` from `world`
 makes as `StatWithin` states.  `main` makes at most one such request, of the manifest's
 descriptor. -/
-def StatAlong {World : Type} (host : Host World) (M : Nat) (action : Action α) (world : World) :
+abbrev StatAlong {World : Type} (host : Host World) (M : Nat) (action : Action α) (world : World) :
     Prop :=
-  ∀ trace residual after, Prefix host action world trace residual after →
-    StatAt host M residual after
+  host.Along (StatAt host M) action world
 
 section Along
 
 variable {World : Type} {host : Host World} {M : Nat}
 
-theorem StatAlong.at {action : Action α} {world : World} (along : StatAlong host M action world) :
-    StatAt host M action world :=
-  along _ _ _ (.refl _ _)
-
 theorem StatAt.of_bind {action : Action α} {next : α → Action β} {world : World}
     (along : StatAt host M (Action.bind action next) world) : StatAt host M action world := by
   cases action <;> first | exact along | trivial
-
-theorem StatAlong.bind_left {action : Action α} {next : α → Action β} {world : World}
-    (along : StatAlong host M (Action.bind action next) world) : StatAlong host M action world :=
-  fun _ _ _ progress => (along _ _ _ progress.bind).of_bind
-
-theorem StatAlong.bind_right {action : Action α} {next : α → Action β}
-    {world first value after : _} (along : StatAlong host M (Action.bind action next) world)
-    (execution : Exec host action world first (.returned value) after) :
-    StatAlong host M (next value) after :=
-  fun _ _ _ progress => along _ _ _ (Prefix.bind_after execution progress)
 
 /-- Related actions make the same first request. -/
 theorem StatAt.rel {relation : α → β → Prop} {left : Action α} {right : Action β} {world : World}
@@ -132,119 +118,14 @@ theorem StatAt.rel {relation : α → β → Prop} {left : Action α} {right : A
     StatAt host M left world ↔ StatAt host M right world := by
   cases related <;> exact Iff.rfl
 
-theorem StatAlong.of_rel {relation : α → β → Prop} {left : Action α} {right : Action β}
-    {world : World} (related : Action.Rel relation left right)
-    (along : StatAlong host M left world) : StatAlong host M right world := fun _ _ _ progress =>
-  let ⟨_, source, same⟩ := related.transportPrefixBack progress
-  (StatAt.rel same).mp (along _ _ _ source)
-
-theorem StatAlong.back {relation : α → β → Prop} {left : Action α} {right : Action β}
-    {world : World} (related : Action.Rel relation left right)
-    (along : StatAlong host M right world) : StatAlong host M left world := fun _ _ _ progress =>
-  let ⟨_, target, same⟩ := related.transportPrefix progress
-  (StatAt.rel same).mpr (along _ _ _ target)
-
-theorem StatAlong.observed {action : Action α} {world : Observed World}
-    (along : StatAlong host M action world.world) : StatAlong (observedHost host) M action world := by
-  intro trace residual after progress
-  have held := along _ _ _ (Verified.Shim.prefix_observed progress).1
-  cases residual with
+theorem StatAt.observed {action : Action α} {world : Observed World}
+    (held : StatAt host M action world.world) : StatAt (observedHost host) M action world := by
+  cases action with
   | sys call args next =>
     exact fun named outputs final permitted => held named outputs final.world permitted.1
   | _ => trivial
 
-/-- `StatAlong` of the action of `command` in the environment `env`. -/
-abbrev StatFrom (host : Host World) (M : Nat) (pure : PureContext pureSigs)
-    (program : EffectProg pureSigs effectSigs) (command : Command pureSigs effectSigs context result)
-    (env : Env context) (world : World) : Prop :=
-  StatAlong host M (command.denote pure.funs (program.funs pure.funs) env) world
-
-variable {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
-
-theorem StatFrom.first {first : Command pureSigs effectSigs context intermediate}
-    {next : Command pureSigs effectSigs (intermediate.extend context) result} {env : Env context}
-    {world : World} (along : StatFrom host M pure program (.bind first next) env world) :
-    StatFrom host M pure program first env world :=
-  StatAlong.bind_left along
-
-theorem StatFrom.next {first : Command pureSigs effectSigs context intermediate}
-    {next : Command pureSigs effectSigs (intermediate.extend context) result} {env : Env context}
-    {depth modes live world trace value after spent fits}
-    (along : StatFrom host M pure program (.bind first next) env world)
-    (run : ResourceExec host pure program depth modes live first env world trace (.returned value)
-      after spent fits) :
-    StatFrom host M pure program next (intermediate.bindEnv value env) after :=
-  StatAlong.bind_right
-    (next := fun value => next.denote pure.funs (program.funs pure.funs)
-      (intermediate.bindEnv value env)) along run.erase
-
-theorem StatFrom.body {pair : Var context (.pair left right)}
-    {body : Command pureSigs effectSigs (right :: left :: context) result} {env : Env context}
-    {world : World} (along : StatFrom host M pure program (.letPair pair body) env world) :
-    StatFrom host M pure program body (letPairEnv pair env) world :=
-  along
-
-theorem StatFrom.no {condition : Expr pureSigs context .bool}
-    {yes no : Command pureSigs effectSigs context result} {env : Env context} {world : World}
-    (along : StatFrom host M pure program (.ite condition yes no) env world)
-    (chosen : condition.denote pure.funs env = false) :
-    StatFrom host M pure program no env world := by
-  simp only [StatFrom, Command.denote, chosen, Bool.cond_false] at along
-  exact along
-
-/-- A returned run of the action of `bind first next` along which the host answers as `StatAlong`
-states is a returned run of `first` followed by a returned run of `next`, along which the host
-answers as well. -/
-theorem StatFrom.split {first : Command pureSigs effectSigs context (.value type)}
-    {next : Command pureSigs effectSigs (type :: context) result} {env : Env context}
-    {world trace returned final}
-    (along : StatFrom host M pure program (.bind first next) env world)
-    (run : Exec host ((Command.bind first next).denote pure.funs (program.funs pure.funs) env)
-      world trace (.returned returned) final) :
-    ∃ value middle,
-      (∃ first', Exec host (first.denote pure.funs (program.funs pure.funs) env) world first'
-        (.returned value) middle) ∧
-      StatFrom host M pure program next (.cons value env) middle ∧
-      ∃ rest, Exec host (next.denote pure.funs (program.funs pure.funs) (.cons value env)) middle
-        rest (.returned returned) final := by
-  obtain ⟨middle, first', outcome, rest, firstRun, restRun, -⟩ := Exec.unbind _ run
-  cases outcome with
-  | returned value =>
-    exact ⟨value, middle, ⟨_, firstRun⟩, along.bind_right firstRun, ⟨_, restRun⟩⟩
-  | exited => cases restRun.2.1
-  | trapped => cases restRun.2.1
-
-/-- A run of the action of `ite condition yes no` along which the host answers as `StatAlong`
-states is a run of the branch that the condition chooses, along which the host answers as well. -/
-theorem StatFrom.branch {condition : Expr pureSigs context .bool}
-    {yes no : Command pureSigs effectSigs context result} {env : Env context}
-    {world trace outcome final}
-    (along : StatFrom host M pure program (.ite condition yes no) env world)
-    (run : Exec host ((Command.ite condition yes no).denote pure.funs (program.funs pure.funs) env)
-      world trace outcome final) :
-    (StatFrom host M pure program yes env world ∧
-      Exec host (yes.denote pure.funs (program.funs pure.funs) env) world trace outcome final) ∨
-    (StatFrom host M pure program no env world ∧
-      Exec host (no.denote pure.funs (program.funs pure.funs) env) world trace outcome final) := by
-  simp only [StatFrom, Command.denote] at along run
-  cases chosen : condition.denote pure.funs env
-  · rw [chosen] at along run
-    exact .inr ⟨along, run⟩
-  · rw [chosen] at along run
-    exact .inl ⟨along, run⟩
-
 end Along
-
-/-- A call of the second function of a program from one world is bounded by a bound on the call
-in the rest of the program from that world. -/
-theorem callBoundedAt_there {World : Type} {host : Host World} {pure : PureContext pureSigs}
-    {function : EffectFunc pureSigs effectSigs} {rest : EffectProg pureSigs effectSigs}
-    {signature : EffectSig} {callee : EffectVar effectSigs signature} {depth : UInt64}
-    {env : Env signature.params} {world : World} {budget : Nat}
-    (bounded : CallBoundedAt host pure rest callee depth env world budget) :
-    CallBoundedAt host pure (.cons function rest) (.there callee) depth env world budget :=
-  ⟨fun _ _ _ _ _ execution => call_exec_rule_at budget execution bounded,
-    fun _ _ _ _ _ progress => call_prefix_rule_at budget progress bounded⟩
 
 /-! ## Facts about the reflected program -/
 
@@ -543,7 +424,7 @@ theorem readManifest_call_size {World : Type} {host : Host World} {M : Nat} {fd 
   cases same with
   | returned same =>
     subst same
-    exact readManifest_size (along.back related).at hbuffer nativeRun ok
+    exact readManifest_size (along.of_rel StatAt.rel related.symm).at hbuffer nativeRun ok
 
 /-- The program's test of the argument buffer accepts it only when the argument that names the
 manifest has at most the buffer's bytes. -/
@@ -872,7 +753,7 @@ theorem writeAll_bounded {World : Type} {host : Host World} {depth : UInt64}
 reported, at most `M` bytes.  The call of `fd_filestat_get` charges nothing. -/
 theorem readManifest_bounded {World : Type} {host : Host World} {M : Nat}
     (env : Env [Ty.array Elem.word, Ty.word, Ty.bytes]) {world : World}
-    (along : StatFrom host M (.ofProg command.pure.program command.pure.funs)
+    (along : CommandAlong host (StatAt host M) (.ofProg command.pure.program command.pure.funs)
       (.cons command.readBytes.func .nil) command.readManifest.func.body env world) :
     BoundedAt host (.ofProg command.pure.program command.pure.funs)
       (.cons command.readBytes.func .nil) 1
@@ -882,7 +763,7 @@ theorem readManifest_bounded {World : Type} {host : Host World} {M : Nat}
   · refine Bounded.at ?_ _
     sys_bound
   intro _ stat _ _ _ statRun
-  have hle := stat_le along.first.at statRun.erase
+  have hle := stat_le (along.first StatAt.of_bind).at statRun.erase
   refine Bounded.at ?_ _
   apply bounded_of_rule
   intro _ _ rule
@@ -1019,11 +900,12 @@ theorem checkLines_bounded {World : Type} {host : Host World} (table : Array UIn
 reflected body from that observed world. -/
 theorem main_along {World : Type} {host : Host World} {M : Nat} {world : Observed World}
     (along : StatAlong host M main world.world) :
-    StatFrom (observedHost host) M (.ofProg command.pure.program command.pure.funs)
+    CommandAlong (observedHost host) (StatAt (observedHost host) M)
+      (.ofProg command.pure.program command.pure.funs)
       (.cons command.checkLines.func (.cons command.writeAll.func (.cons command.hashFile.func
         (.cons command.readManifest.func (.cons command.readBytes.func .nil)))))
       command.main.func.body mainArgs world :=
-  along.observed.of_rel command.main.related
+  (Verified.Shim.along_observed along StatAt.observed).of_rel StatAt.rel command.main.related
 
 /-- Every run and every prefix of `main`'s body from the observed world `world` charges at most
 `budget M` and has enough frames, for every host whose successful `args_sizes_get` replies ask for
@@ -1107,7 +989,7 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
     rw [h, build_size]
     rfl
   bind_at B ((176 * M + 464) + 4 * (M + 1))
-  · have bracket := along.first
+  · have bracket := along.first StatAt.of_bind
     bind_at 0 B
     · refine Bounded.at ?_ _
       ret_bound
@@ -1163,14 +1045,14 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
       refine rule B (by charge) rfl ?_
       rw [← hB]
       exact callBoundedAt_there (callBoundedAt_there (callBoundedAt_there
-        (callBoundedAt_here (by decide) (readManifest_bounded _ bracket.first))))
+        (callBoundedAt_here (by decide) (readManifest_bounded _ (bracket.first StatAt.of_bind)))))
     · intro _ _ _ _ _ _
       refine Bounded.at ?_ _
       free_bound
   intro _ (gotPair : (UInt64 × LeanExe.Bytes × LeanExe.Bytes) × UInt64) _ _ _ bracketRun
   have hsize : gotPair.1.1 = 0 →
       gotPair.1.2.1.data.size ≤ M ∧ gotPair.1.2.1.data.size < 2 ^ 32 := by
-    obtain ⟨_, _, -, s1, _, r1⟩ := along.first.split bracketRun.erase
+    obtain ⟨_, _, -, s1, _, r1⟩ := (along.first StatAt.of_bind).split bracketRun.erase
     obtain ⟨_, _, -, s2, _, r2⟩ := s1.split r1
     obtain ⟨_, _, -, s3, _, r3⟩ := s2.split r2
     obtain ⟨_, _, -, s4, _, r4⟩ := s3.split r3
@@ -1194,7 +1076,7 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
       have e := exec_pure_value r11
       simp only [Expr.denote] at e
       rw [e]
-      exact readManifest_call_size hbuffer s9.first callRun
+      exact readManifest_call_size hbuffer (s9.first StatAt.of_bind) callRun
   replace along := along.next bracketRun
   refine Bounded.at ?_ _
   obtain ⟨⟨status, mbytes, rbuf⟩, closeErrno⟩ := gotPair

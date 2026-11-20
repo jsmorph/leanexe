@@ -17,8 +17,9 @@ def Host.NoTrapsAt {World : Type} (host : Host World) : Action α → World → 
         ∀ {message committed final}, host.sys world call args (.trapped message committed) final →
           False
 
-def Host.NoTrapsAlong {World : Type} (host : Host World) (action : Action α) (world : World) : Prop :=
-  ∀ {trace residual after}, Prefix host action world trace residual after → host.NoTrapsAt residual after
+abbrev Host.NoTrapsAlong {World : Type} (host : Host World) (action : Action α) (world : World) :
+    Prop :=
+  host.Along host.NoTrapsAt action world
 
 theorem Host.NoTraps.along {World : Type} {host : Host World} (safe : host.NoTraps)
     (action : Action α) (world : World) : host.NoTrapsAlong action world := by
@@ -38,34 +39,10 @@ theorem Host.NoTraps.along {World : Type} {host : Host World} (safe : host.NoTra
     intro _ message committed final reply
     exact safe.sys reply
 
-theorem Host.NoTrapsAlong.congr {World : Type} {host : Host World} {action other : Action α}
-    {world : World} (safe : host.NoTrapsAlong action world) (same : action = other) :
-    host.NoTrapsAlong other world := same ▸ safe
-
-theorem Host.NoTrapsAlong.after {World : Type} {host : Host World} {action residual : Action α}
-    {world trace after} (safe : host.NoTrapsAlong action world)
-    (progress : Prefix host action world trace residual after) : host.NoTrapsAlong residual after := by
-  intro rest next final tail
-  exact safe (progress.trans tail)
-
 theorem Host.NoTrapsAt.of_bind {World : Type} {host : Host World} {action : Action α}
     {next : α → Action β} {world : World} (safe : host.NoTrapsAt (Action.bind action next) world) :
     host.NoTrapsAt action world := by
   cases action <;> first | trivial | exact safe
-
-theorem Host.NoTrapsAlong.bind_left {World : Type} {host : Host World} {action : Action α}
-    {next : α → Action β} {world : World} (safe : host.NoTrapsAlong (Action.bind action next) world) :
-    host.NoTrapsAlong action world := by
-  intro trace residual after progress
-  exact (safe progress.bind).of_bind
-
-theorem Host.NoTrapsAlong.bind_right {World : Type} {host : Host World} {action : Action α}
-    {next : α → Action β} {world first value after}
-    (safe : host.NoTrapsAlong (Action.bind action next) world)
-    (execution : Exec host action world first (.returned value) after) :
-    host.NoTrapsAlong (next value) after := by
-  intro rest residual final progress
-  exact safe (Prefix.bind_after execution progress)
 
 theorem Exec.not_trapped_of_prefix {World : Type} {host : Host World} {action : Action α}
     {world trace outcome final} (execution : Exec host action world trace outcome final) :
@@ -85,15 +62,15 @@ theorem Exec.not_trapped_of_prefix {World : Type} {host : Host World} {action : 
       size first run ih safe
     exact ih (safe.after (.read_return hCapacity reply size first))
   · intro α capacity next world after message committed hCapacity reply safe
-    exact False.elim (safe (.refl _ _) hCapacity reply)
+    exact False.elim (safe _ _ _ (.refl _ _) hCapacity reply)
   · intro α output bytes next world after final trace outcome errno committed reply run ih safe
     exact ih (safe.after (.write_return reply))
   · intro α output bytes next world after message committed reply safe
-    exact False.elim (safe (.refl _ _) reply)
+    exact False.elim (safe _ _ _ (.refl _ _) reply)
   · intro α code world final accepted safe message impossible
     cases impossible
   · intro α code world final message rejected safe
-    exact False.elim (safe (.refl _ _) rejected)
+    exact False.elim (safe _ _ _ (.refl _ _) rejected)
   · intro σ α count init test step next world final trace outcome run ih safe
     exact ih (safe.after .loop)
   · intro α call args next world final trace outcome hFits run ih safe
@@ -101,7 +78,7 @@ theorem Exec.not_trapped_of_prefix {World : Type} {host : Host World} {action : 
   · intro α call args next world after final trace outcome errno committed hFits reply run ih safe
     exact ih (safe.after (.sys_return hFits reply))
   · intro α call args next world after message committed hFits reply safe
-    exact False.elim (safe (.refl _ _) hFits reply)
+    exact False.elim (safe _ _ _ (.refl _ _) hFits reply)
   · intro σ α index state test step next world final trace outcome run ih safe
     exact ih safe
   · intro σ α remaining index state test step next world final trace outcome chosen run ih safe
@@ -121,7 +98,7 @@ theorem Exec.not_trapped_of_prefix {World : Type} {host : Host World} {action : 
         (Action.bind (step (UInt64.ofNat index) state)
           (resumeLoop test step next remaining (index + 1))) world :=
       safe.congr (by simp only [resumeLoop, chosen, ite_true])
-    exact False.elim (ih current.bind_left message rfl)
+    exact False.elim (ih (current.bind_left Host.NoTrapsAt.of_bind) message rfl)
 
 theorem Exec.returned_or_exited_of_prefix {World : Type} {host : Host World} {action : Action α}
     {world trace outcome final} (execution : Exec host action world trace outcome final)

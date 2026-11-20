@@ -84,4 +84,18 @@ theorem Action.Rel.transportPrefixBack {World : Type} {host : Host World} {relat
   obtain ⟨source, hPrefix, related⟩ := related.symm.transportPrefix hPrefix
   exact ⟨source, hPrefix, related.symm⟩
 
+/-- `Host.Along` carries from an action to a related one for a property on which related actions
+agree. -/
+theorem Host.Along.of_rel {World : Type} {host : Host World}
+    {property : ∀ {γ : Type}, Action γ → World → Prop} {relation : α → β → Prop}
+    {left : Action α} {right : Action β} {world : World}
+    (along : host.Along property left world)
+    (same : ∀ {α β : Type} {relation : α → β → Prop} {left : Action α} {right : Action β}
+      {world : World}, Action.Rel relation left right →
+        (property left world ↔ property right world))
+    (related : Action.Rel relation left right) : host.Along property right world :=
+  fun _ _ _ progress =>
+    let ⟨_, source, paired⟩ := related.transportPrefixBack progress
+    (same paired).mp (along _ _ _ source)
+
 end LeanExe.Wasi

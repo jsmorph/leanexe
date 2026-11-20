@@ -45,9 +45,8 @@ def Answers (reply : Linux.Reply) : Action α → Prop
 /-- The reply sequences `R` that answer every call that a prefix of `main` and its exit makes under
 `linuxHost F L I R` from a world with no layer events, the call after `k` events with `R k`. -/
 def Steady (F : OpenFlags) (L : ShimLayout) (I : Launch) (R : Linux.Replies) : Prop :=
-  ∀ {trace residual world},
-    Prefix (linuxHost F L I R) (main.bind fun status => Action.exit (α := Unit) status)
-      linuxStart.world trace residual world → Answers (R world.events.length) residual
+  (linuxHost F L I R).Along (fun residual world => Answers (R world.events.length) residual)
+    (main.bind fun status => Action.exit (α := Unit) status) linuxStart.world
 
 /-- The host answers the next request of `action` from `world` with errno 0: a read with any bytes,
 and a write with a count of at least 1. -/
@@ -60,24 +59,12 @@ def SteadyAt {World : Type} (host : Host World) : Action α → World → Prop
 
 /-- The host answers every request that a prefix of `action` from `world` makes as `SteadyAt`
 states. -/
-def SteadyAlong {World : Type} (host : Host World) (action : Action α) (world : World) : Prop :=
-  ∀ trace residual after, Prefix host action world trace residual after →
-    SteadyAt host residual after
+abbrev SteadyAlong {World : Type} (host : Host World) (action : Action α) (world : World) : Prop :=
+  host.Along (SteadyAt host) action world
 
 section Along
 
 variable {World : Type} {host : Host World}
-
-theorem SteadyAlong.after {action residual : Action α} {world trace after : _}
-    (safe : SteadyAlong host action world)
-    (progress : Prefix host action world trace residual after) :
-    SteadyAlong host residual after :=
-  fun _ _ _ tail => safe _ _ _ (progress.trans tail)
-
-theorem SteadyAlong.congr {action other : Action α} {world : World}
-    (safe : SteadyAlong host action world) (same : action = other) :
-    SteadyAlong host other world :=
-  same ▸ safe
 
 theorem SteadyAt.of_bind {action : Action α} {next : α → Action β} {world : World}
     (safe : SteadyAt host (Action.bind action next) world) : SteadyAt host action world := by
@@ -88,18 +75,6 @@ theorem SteadyAt.of_bind {action : Action α} {next : α → Action β} {world :
   | exit => trivial
   | loop => trivial
   | sys => trivial
-
-theorem SteadyAlong.bind_left {action : Action α} {next : α → Action β} {world : World}
-    (safe : SteadyAlong host (Action.bind action next) world) :
-    SteadyAlong host action world :=
-  fun _ _ _ progress => (safe _ _ _ progress.bind).of_bind
-
-theorem SteadyAlong.bind_right {action : Action α} {next : α → Action β}
-    {world first value after : _}
-    (safe : SteadyAlong host (Action.bind action next) world)
-    (execution : Exec host action world first (.returned value) after) :
-    SteadyAlong host (next value) after :=
-  fun _ _ _ progress => safe _ _ _ (Prefix.bind_after execution progress)
 
 /-- The WASI events of a run whose requests the host answers as `SteadyAt` states meet
 `Succeeded`. -/
@@ -169,20 +144,20 @@ theorem succeeded_of_steady {action : Action α} {world trace outcome final}
           (resumeLoop test step next remaining (index + 1))) world :=
       safe.congr (by simp only [resumeLoop, chosen, ite_true])
     rcases List.mem_append.mp member with member | member
-    · exact stepIH current.bind_left e member
+    · exact stepIH (current.bind_left SteadyAt.of_bind) e member
     · exact restIH (current.bind_right stepRun) e member
   · intro σ α remaining index state test step next world final trace code chosen stepRun ih safe
     have current : SteadyAlong host
         (Action.bind (step (UInt64.ofNat index) state)
           (resumeLoop test step next remaining (index + 1))) world :=
       safe.congr (by simp only [resumeLoop, chosen, ite_true])
-    exact ih current.bind_left
+    exact ih (current.bind_left SteadyAt.of_bind)
   · intro σ α remaining index state test step next world final trace message chosen stepRun ih safe
     have current : SteadyAlong host
         (Action.bind (step (UInt64.ofNat index) state)
           (resumeLoop test step next remaining (index + 1))) world :=
       safe.congr (by simp only [resumeLoop, chosen, ite_true])
-    exact ih current.bind_left
+    exact ih (current.bind_left SteadyAt.of_bind)
 
 end Along
 
@@ -193,7 +168,7 @@ theorem Steady.along {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Re
     SteadyAlong (linuxHost F L I R) (main.bind fun status => Action.exit (α := Unit) status)
       linuxStart.world := by
   intro trace residual after progress
-  have answers := steady progress
+  have answers := steady _ _ _ progress
   cases residual with
   | read capacity next =>
     intro reply final step

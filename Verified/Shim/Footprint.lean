@@ -351,6 +351,18 @@ theorem prefix_observed {α World : Type} {host : Host World} {action residual :
   | sys_reject fits => exact ⟨.sys_reject fits, by simp⟩
   | sys_return fits reply => exact ⟨.sys_return fits reply.1, reply.2⟩
 
+/-- `Host.Along property` of an action from the world of an observed world gives
+`Host.Along observed` under `observedHost` from the observed world, for a property `observed` that
+holds of an action at an observed world where `property` holds of it at the world. -/
+theorem along_observed {α World : Type} {host : Host World}
+    {property : ∀ {β : Type}, Action β → World → Prop}
+    {observed : ∀ {β : Type}, Action β → Observed World → Prop} {action : Action α}
+    {world : Observed World} (along : host.Along property action world.world)
+    (lift : ∀ {β : Type} {action : Action β} {world : Observed World},
+      property action world.world → observed action world) :
+    (observedHost host).Along observed action world :=
+  fun _ _ _ progress => lift (along _ _ _ (prefix_observed progress).1)
+
 /-- The footprint of a result of a run of `_start`, whose action is `action`, from the observed
 world `initial` under the shim: the run trapped, with a final world whose layer events extend
 those of `initial` by images `ls` of a WASI trace `trace`, each after the events before it, which

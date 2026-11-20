@@ -220,4 +220,47 @@ theorem Prefix.bind_after {World : Type} {host : Host World} {action : Action α
     Prefix host (Action.bind action next) world (first ++ rest) residual final :=
   ((Exec.returned_prefix action hFirst).bind).trans hRest
 
+/-- `property` holds of the action that remains and the world reached at every prefix of `action`
+from `world`. -/
+def Host.Along {World : Type} (host : Host World) (property : ∀ {β : Type}, Action β → World → Prop)
+    (action : Action α) (world : World) : Prop :=
+  ∀ trace residual after, Prefix host action world trace residual after → property residual after
+
+section Along
+
+variable {World : Type} {host : Host World} {property : ∀ {β : Type}, Action β → World → Prop}
+
+theorem Host.Along.at {action : Action α} {world : World}
+    (along : host.Along property action world) : property action world :=
+  along _ _ _ (.refl _ _)
+
+theorem Host.Along.after {action residual : Action α} {world trace after}
+    (along : host.Along property action world)
+    (progress : Prefix host action world trace residual after) :
+    host.Along property residual after :=
+  fun _ _ _ tail => along _ _ _ (progress.trans tail)
+
+theorem Host.Along.congr {action other : Action α} {world : World}
+    (along : host.Along property action world) (same : action = other) :
+    host.Along property other world :=
+  same ▸ along
+
+/-- `Host.Along` of a `bind` gives `Host.Along` of its first action, for a property that holds of
+an action wherever it holds of a `bind` of that action, such as a property of the next request. -/
+theorem Host.Along.bind_left {action : Action α} {next : α → Action β} {world : World}
+    (along : host.Along property (Action.bind action next) world)
+    (of_bind : ∀ {α β : Type} {action : Action α} {next : α → Action β} {world : World},
+      property (Action.bind action next) world → property action world) :
+    host.Along property action world :=
+  fun _ _ _ progress => of_bind (along _ _ _ progress.bind)
+
+theorem Host.Along.bind_right {action : Action α} {next : α → Action β}
+    {world first value after}
+    (along : host.Along property (Action.bind action next) world)
+    (execution : Exec host action world first (.returned value) after) :
+    host.Along property (next value) after :=
+  fun _ _ _ progress => along _ _ _ (Prefix.bind_after execution progress)
+
+end Along
+
 end LeanExe.Wasi
