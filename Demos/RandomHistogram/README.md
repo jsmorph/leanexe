@@ -71,7 +71,7 @@ the window of the whole output: a loop of at most `B + 1` passes for the B bytes
 each of which writes in place the window of the output that the writes before it did not take.
 
 A write that returns an errno ends the run with that errno as the status.  When the passes run out
-with bytes unwritten, which takes a write that took no byte, the status is 77, one more than the
+with bytes unwritten, which takes at least two writes that took no byte, the status is 77, one more than the
 largest WASI errno, so it differs from 2 and from every errno that the run can return.  Otherwise
 the status is 0.  `verified_compile_wasi` writes a module of 6,228 bytes that imports `fd_read`,
 `fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
@@ -81,7 +81,7 @@ the status is 0.  `verified_compile_wasi` writes a module of 6,228 bytes that im
 | Theorem | Statement |
 |---|---|
 | `exec_main` | Under every host, every run of `main` followed by its exit that ends with the status `code` has the events `events ++ [.exit code]`, where `events` meet `Meets`, and `code` is at most 77 ([the command's proof](CommandProof.lean)). |
-| `writeAll_run_whole`, `WriteAllRun.taken`, `WriteAllRun.shape`, `WriteAllRun.trapped_write` | Under every host, every run of `writeAll bytes 0 bytes.size` meets `WriteAllRun` over the bytes of `bytes`: each pass that finds bytes left offers them, and a write continues the loop, ends the run with its errno, or traps.  A run that returns `v` took the first `v` bytes in writes that returned errno 0 and offered the bytes that remained, one write for each pass when `v` falls short, and a run that exits does so with the errno of its last write after taking fewer bytes than `bytes` holds.  Each write of a run that returns or exits offered at least one byte (`WroteSome`) ([the write loop](../../LeanExe/Wasi/WriteAll.lean)). |
+| `writeAll_run_whole`, `WriteAllRun.taken`, `WriteAllRun.shape`, `WriteAllRun.trapped_write` | Under every host, every run of `writeAll bytes 0 bytes.size` meets `WriteAllRun` over the bytes of `bytes`: each pass that finds bytes left offers them, and a write continues the loop, ends the run with its errno, or traps.  A run that returns `v` took the first `v` bytes in writes that returned errno 0 and offered the bytes that remained, one write for each pass when `v` falls short, and a run that exits does so with the errno of its last write after taking fewer bytes than `bytes` holds.  The writes of a run that returns or exits number at most its passes, and each offered at least one byte (`WroteSome`).  A run that traps under a host that accepts every status below 126 has a trapped write.  The theorems take `bytes` of fewer than `2^64 - 1` bytes ([the write loop](../../LeanExe/Wasi/WriteAll.lean)). |
 | `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states ([the compiled command](CommandStart.lean)). |
 | `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits the initial store's free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit after events that meet `Meets`. |
 
@@ -94,10 +94,10 @@ parseSpec a.bytes`, the events continue with the calls of `random_get` that `Dra
 for `8 · min r 512` bytes, until N words are drawn or a call returns an errno.  An errno ends the run
 with that errno as the status and no write.  When every call returns errno 0, the returned bytes
 hold exactly N words `w`, the counts of `histogramSpec w` sum to N, and the events after the calls
-meet `Written` for the output `renderSpec (histogramSpec w)` of B bytes.  They are writes to
-stdout, each of which offered at least one byte (`WroteSome`), the bytes of the output that the
-writes before it did not take (`Offered`), so no write follows the last byte's, and the bytes that
-they took, `stdoutTaken`, form a prefix of the output.  The status
+meet `Written` for the output `renderSpec (histogramSpec w)` of B bytes.  They are at most B + 1
+writes to stdout, each of which offered at least one byte (`WroteSome`), the bytes of the output
+that the writes before it did not take (`Offered`), so no write follows the last byte's, and the
+bytes that they took, `stdoutTaken`, form a prefix of the output.  The status
 is 0 exactly when that prefix is the whole output.  Either every write returned errno 0 and the
 status is 0, or 77 after B + 1 writes, one for each of the loop's passes, or the last write
 returned the errno, from 1 to 76, that is the status and every write before it returned errno 0.
@@ -128,8 +128,8 @@ most 210 bytes (`render_size`).  `write_tail` gives `Written` from `WriteAllRun.
 `WriteAllRun.shape`: a returned count `v` is the length of the bytes taken, a prefix of the output
 that each write extended from where the writes before it stopped, so the test `v < B` gives 77
 exactly when bytes remain, which takes one write for each pass, an exit has the errno of the write
-that failed as its status, and each write offered at least one byte, since the loop's test lets a
-pass write only while bytes remain.
+that failed as its status, and the writes number at most the loop's B + 1 passes, each offering at
+least one byte, since the loop's test lets a pass write only while bytes remain.
 
 ## Memory
 
@@ -189,7 +189,7 @@ with the call's bytes when the errno is 0.
 
 `InRange ls` holds when every `getrandom` of the layer events `ls` returned an error number or a
 count of at most its length, positive for a positive length (`LeanExe.Linux.RandomCount`), and every
-`write` returned an error number or at most the count of bytes that it offered.  The image of a
+`write` returned an error number or at most its count.  The image of a
 `random_get` or a write meets `InRange` when the call returned (`random_inRange`, `write_inRange`)
 and fails it when the call trapped (`image_untrapped`), so `InRange` excludes exactly the results
 at which the shim traps.  A trapped `random_get` or write ends the run with X0 at 2 after the call,
@@ -208,9 +208,10 @@ the events are groups that mirror, one for one, the calls of `random_get` of `Dr
 calls of `write` of descriptor 1.  When the calls of `random_get` end with an errno other than 0, it
 is the status, and no `write` follows.  Otherwise the random bytes of `Draws`, the bytes that the
 groups returned, hold exactly N little-endian words `w`, whose counts in `histogramSpec w` sum to N.
-Each `write` offered at least one byte, the bytes of `renderSpec (histogramSpec w)` that the writes
-before it did not take (`OfferedLayer`), the bytes that the writes took form a prefix of that
-output, and the status is 0 exactly when they are the whole output.  Either every `write` returned
+The `write` calls number at most B + 1 for the B bytes of `renderSpec (histogramSpec w)`, each
+offered at least one byte, the bytes of that output that the writes before it did not take
+(`OfferedLayer`), the bytes that the writes took form a prefix of that output, and the status is 0
+exactly when they are the whole output.  Either every `write` returned
 at most its count (`Took`) and the status is 0, or 77 after one `write` for each of the loop's
 passes, or the last `write` returned an error number, the status is that number's WASI errno, and
 every `write` before it returned at most its count.
