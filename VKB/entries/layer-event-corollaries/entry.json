@@ -2,13 +2,17 @@
   "id": "layer-event-corollaries",
   "goals": [
     "a corollary of a WASI command's executable over the layer events of the Linux shim",
-    "Full ls → Counts args ls (q.core.x 0)",
+    "InRange ls → Counts args ls (q.core.x 0)",
     "a trapped run of main excluded by a condition on the layer events",
     "the shape of the layer events: the calls, their counts, and their flags",
-    "List.Forall₂ Mirrors events ls",
-    "∃ q ls, … ∧ (Full ls → Counts …) shown satisfiable by a witness",
+    "List.Forall₂ Mirrors events groups with ls = groups.flatten",
+    "∃ q ls, … ∧ (InRange ls → Counts …) shown satisfiable by a witness",
     "cases on Images whose index is [] ++ []",
-    "the loader's memory and the initial stack of the witness of an executable's corollary"
+    "the loader's memory and the initial stack of the witness of an executable's corollary",
+    "a WASI call that the shim answers with a loop of Linux calls, such as random_get with getrandom until the buffer is full",
+    "a short getrandom read in a corollary over layer events",
+    "the weakest condition on Linux's results under which a corollary holds",
+    "the output length of a layer event, which an image leaves free"
   ],
   "modules": [
     "Demos.RandomHistogram.NativeCounts",
@@ -21,23 +25,29 @@
     "Verified.Shim.Carried",
     "Verified.Shim.Images",
     "LeanExe.A64.ElfLoaded",
-    "Demos.RandomHistogram.Full",
-    "Demos.RandomHistogram.Drawing",
+    "Demos.RandomHistogram.InRange",
+    "Demos.RandomHistogram.RandomMirrors",
     "Demos.RandomHistogram.OfferedLayer",
     "Demos.RandomHistogram.Counts",
     "Demos.RandomHistogram.randomData",
     "Demos.RandomChoice.Mirrors",
     "Demos.RandomChoice.Choices",
     "Demos.RandomChoice.Rounds",
-    "Demos.RandomChoice.Meets"
+    "Demos.RandomChoice.Meets",
+    "Demos.RandomHistogram.Sized",
+    "Demos.RandomHistogram.RandomGroup",
+    "Demos.RandomHistogram.ShortRead",
+    "Demos.RandomHistogram.Draws",
+    "LeanExe.Linux.RandomCount",
+    "Verified.Shim.RandomCalls"
   ],
   "examples": [
     "Demos.RandomHistogram.linux_footprint_bounded",
     "Demos.RandomHistogram.main_trapped",
     "Demos.RandomHistogram.image_untrapped",
     "Demos.RandomHistogram.linux_exec_counts",
-    "Demos.RandomHistogram.fullReplies",
-    "Demos.RandomHistogram.fullReplies_run",
+    "Demos.RandomHistogram.shortReplies",
+    "Demos.RandomHistogram.short_run",
     "Demos.RandomHistogram.carried_split",
     "Demos.RandomHistogram.images_nil",
     "Demos.RandomChoice.rounds_mirrors",
@@ -45,7 +55,14 @@
     "Demos.RandomChoice.write_mirror",
     "Demos.RandomChoice.output_count",
     "Demos.RandomChoice.linux_exec_choices",
-    "Demos.RandomChoice.witness_run"
+    "Demos.RandomChoice.witness_run",
+    "Demos.RandomHistogram.random_group",
+    "Demos.RandomHistogram.random_inRange",
+    "Demos.RandomHistogram.write_inRange",
+    "Demos.RandomHistogram.random_mirror",
+    "Demos.RandomHistogram.draws_mirrors",
+    "Demos.RandomHistogram.random_short",
+    "Demos.RandomHistogram.carried_sized"
   ],
   "unimported": {
     "tests/TestSupport/A64/ImageFilesRandomHistogram.lean": [

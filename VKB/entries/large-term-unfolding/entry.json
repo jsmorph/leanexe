@@ -110,7 +110,7 @@
     "LeanExe.A64.run_growWide_cmp",
     "Verified.Wasi.Reflect.fdFdstatGet_eq",
     "LeanExe.A64.run_strb4",
-    "Demos.RandomHistogram.fullReplies_run",
+    "Demos.RandomHistogram.short_run",
     "Demos.RandomChoice.witness_random",
     "Demos.ManifestCheck.stat_native",
     "Verified.ShimA64.filestat_reply"
