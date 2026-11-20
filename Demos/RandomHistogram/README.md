@@ -81,7 +81,7 @@ the status is 0.  `verified_compile_wasi` writes a module of 6,228 bytes that im
 | Theorem | Statement |
 |---|---|
 | `exec_main` | Under every host, every run of `main` followed by its exit that ends with the status `code` has the events `events ++ [.exit code]`, where `events` meet `Meets`, and `code` is at most 77 ([the command's proof](CommandProof.lean)). |
-| `writeAll_run_whole`, `WriteAllRun.taken`, `WriteAllRun.trapped_write` | Under every host, every run of `writeAll bytes 0 bytes.size` meets `WriteAllRun` over the bytes of `bytes`: each pass that finds bytes left offers them, and a write continues the loop, ends the run with its errno, or traps.  A run that returns `v` took the first `v` bytes in writes that returned errno 0 and offered the bytes that remained, one write for each pass when `v` falls short, and a run that exits does so with the errno of its last write after taking fewer bytes than `bytes` holds ([the write loop](../../LeanExe/Wasi/WriteAll.lean)). |
+| `writeAll_run_whole`, `WriteAllRun.taken`, `WriteAllRun.shape`, `WriteAllRun.trapped_write` | Under every host, every run of `writeAll bytes 0 bytes.size` meets `WriteAllRun` over the bytes of `bytes`: each pass that finds bytes left offers them, and a write continues the loop, ends the run with its errno, or traps.  A run that returns `v` took the first `v` bytes in writes that returned errno 0 and offered the bytes that remained, one write for each pass when `v` falls short, and a run that exits does so with the errno of its last write after taking fewer bytes than `bytes` holds.  Each write of a run that returns or exits offered at least one byte (`WroteSome`) ([the write loop](../../LeanExe/Wasi/WriteAll.lean)). |
 | `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states ([the compiled command](CommandStart.lean)). |
 | `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits the initial store's free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit after events that meet `Meets`. |
 
@@ -95,8 +95,9 @@ for `8 · min r 512` bytes, until N words are drawn or a call returns an errno. 
 with that errno as the status and no write.  When every call returns errno 0, the returned bytes
 hold exactly N words `w`, the counts of `histogramSpec w` sum to N, and the events after the calls
 meet `Written` for the output `renderSpec (histogramSpec w)` of B bytes.  They are writes to
-stdout, each of which offered the bytes of the output that the writes before it did not take
-(`Offered`), and the bytes that they took, `stdoutTaken`, form a prefix of the output.  The status
+stdout, each of which offered at least one byte (`WroteSome`), the bytes of the output that the
+writes before it did not take (`Offered`), so no write follows the last byte's, and the bytes that
+they took, `stdoutTaken`, form a prefix of the output.  The status
 is 0 exactly when that prefix is the whole output.  Either every write returned errno 0 and the
 status is 0, or 77 after B + 1 writes, one for each of the loop's passes, or the last write
 returned the errno, from 1 to 76, that is the status and every write before it returned errno 0.
@@ -123,10 +124,12 @@ reply's bytes at the buffer's start (`splice_take`), `tally` counts the first wo
 which `wordAt` reads by Horner's rule (`tally_eq`, `wordAt_eq`), and a reply of whole words adds its
 words to those before it (`words_append`).  The fold from ten zero counts is `histogram` of the
 words (`histogram_list`), and `histogram_eq` and `render_eq` give the specification's output, of at
-most 210 bytes (`render_size`).  `write_tail` gives `Written` from `WriteAllRun.taken`: a returned
-count `v` is the length of the bytes taken, a prefix of the output that each write extended from
-where the writes before it stopped, so the test `v < B` gives 77 exactly when bytes remain, which
-takes one write for each pass, and an exit has the errno of the write that failed as its status.
+most 210 bytes (`render_size`).  `write_tail` gives `Written` from `WriteAllRun.taken` and
+`WriteAllRun.shape`: a returned count `v` is the length of the bytes taken, a prefix of the output
+that each write extended from where the writes before it stopped, so the test `v < B` gives 77
+exactly when bytes remain, which takes one write for each pass, an exit has the errno of the write
+that failed as its status, and each write offered at least one byte, since the loop's test lets a
+pass write only while bytes remain.
 
 ## Memory
 
@@ -205,12 +208,12 @@ the events are groups that mirror, one for one, the calls of `random_get` of `Dr
 calls of `write` of descriptor 1.  When the calls of `random_get` end with an errno other than 0, it
 is the status, and no `write` follows.  Otherwise the random bytes of `Draws`, the bytes that the
 groups returned, hold exactly N little-endian words `w`, whose counts in `histogramSpec w` sum to N.
-Each `write` offered the bytes of `renderSpec (histogramSpec w)` that the writes before it did not
-take (`OfferedLayer`), the bytes that the writes took form a prefix of that output, and the status
-is 0 exactly when they are the whole output.  Either every `write` returned at most its count
-(`Took`) and the status is 0, or 77 after one `write` for each of the loop's passes, or the last
-`write` returned an error number, the status is that number's WASI errno, and every `write` before
-it returned at most its count.
+Each `write` offered at least one byte, the bytes of `renderSpec (histogramSpec w)` that the writes
+before it did not take (`OfferedLayer`), the bytes that the writes took form a prefix of that
+output, and the status is 0 exactly when they are the whole output.  Either every `write` returned
+at most its count (`Took`) and the status is 0, or 77 after one `write` for each of the loop's
+passes, or the last `write` returned an error number, the status is that number's WASI errno, and
+every `write` before it returned at most its count.
 
 Linux's `getrandom` returns an error number or the number of bytes that it copied, at most its
 length (getrandom(2)), and Linux 7.0's `get_random_bytes_user` returns `-EFAULT` when it copied
