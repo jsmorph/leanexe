@@ -8,12 +8,12 @@ events of a run under `linuxHost`.
 `InRange ls` states that the result of every `getrandom` and `write` of the layer events `ls` lies
 in the range that Linux gives for its call and that the shim accepts: every `getrandom` returned an
 error number or a count of at most its length, positive for a positive length
-(`LeanExe.Linux.RandomCount`), and every `write` an error number or at most the count of bytes that
-it offered.  The image of a `random_get` or a write that returned meets `InRange`
+(`LeanExe.Linux.RandomCount`), and every `write` an error number or at most its count, its third
+argument.  The image of a `random_get` or a write that returned meets `InRange`
 (`random_inRange`, `write_inRange`), and, when the arguments fit, no image of a trapped one does
 (`image_untrapped`), so `InRange` excludes exactly the results at which the shim traps: a
 `getrandom` that returned 0 or a count above its length that is no error number, and a `write` that
-returned more than it offered and no error number.  `Sized ls` states that each `getrandom` of
+returned more than its count and no error number.  `Sized ls` states that each `getrandom` of
 `ls` holds in its output as many bytes as it asked for, which the events of every run give
 (`carried_sized`).
 
@@ -34,12 +34,12 @@ calls of `random_get` of `Draws` for N words, each for `8 · min r 512` bytes wi
 still to draw, followed by calls of `write` of descriptor 1.  When the last call returned an errno
 other than 0, it is the status, and no `write` follows.  Otherwise the random bytes `bytes` that the
 groups returned hold exactly N little-endian words `w`, the counts of `histogramSpec w` sum to N,
-the bytes that the writes took form a prefix of `renderSpec (histogramSpec w)`, and each write
-offered at least one byte, the bytes that the writes before it did not take (`OfferedLayer`).  The
-status is 0 exactly
-when that prefix is the whole output.  Either every write returned at most its count and the status
-is 0, or 77 after one write for each of the loop's passes, or the last write returned an error
-number whose errno is the status and every write before it returned at most its count.
+the bytes that the writes took form a prefix of `renderSpec (histogramSpec w)`, of B bytes, the
+writes number at most B + 1, one for each of the loop's passes at most, and each write offered at
+least one byte, the bytes that the writes before it did not take (`OfferedLayer`).  The status is 0
+exactly when that prefix is the whole output.  Either every write returned at most its count and
+the status is 0, or 77 after one write for each of the loop's passes, or the last write returned an
+error number whose errno is the status and every write before it returned at most its count.
 
 `linux_exec_counts` proves `Counts` for every `Exec` run of `main` and its exit under the shim's
 host, from a launch whose arguments' strings and eight-byte pointers take at most `argsLimit`
@@ -70,8 +70,8 @@ def randomData (ls : List Linux.Event) : List UInt8 :=
 
 /-- The result of every `getrandom` and `write` of `ls` lies in the range that Linux gives for its
 call and that the shim accepts: every `getrandom` returned an error number or a count of at most
-its length, positive for a positive length, and every `write` an error number or at most the count
-of bytes that it offered. -/
+its length, positive for a positive length, and every `write` an error number or at most its
+count, its third argument. -/
 def InRange (ls : List Linux.Event) : Prop :=
   Linux.RandomCount ls ∧ ∀ e ∈ ls, e.call = Linux.writeCall →
     Linux.isError e.ret = true ∨ e.ret.toNat ≤ (Linux.arg e.args 2).toNat
@@ -119,7 +119,7 @@ def OfferedLayer (out : List UInt8) : Nat → List Linux.Event → Prop
   | taken, e :: rest => e.inputs.headD [] = out.drop taken ∧
     OfferedLayer out (taken + (Linux.Event.writeBytes 1 e).length) rest
 
-/-- The event `e` returned at most the count of bytes that it offered. -/
+/-- The event `e` returned at most its count, its third argument. -/
 def Took (e : Linux.Event) : Prop := e.ret.toNat ≤ (Linux.arg e.args 2).toNat
 
 /-- The layer events `ls` and the exit status `status` that the request asks of a run with the
@@ -128,12 +128,13 @@ arguments `args`, each followed by a zero byte in the buffer from which `parseSp
 Otherwise the events are groups that mirror, one for one, the calls of `random_get` of `Draws` for
 N words, followed by calls of `write` of descriptor 1.  When the calls of `random_get` end with an
 errno other than 0, it is the status, and no write follows.  Otherwise the random bytes `bytes` of
-`Draws` hold exactly N words `w`, and the counts of `histogramSpec w` sum to N.  Each write offered
-at least one byte, the bytes of `renderSpec (histogramSpec w)` that the writes before it did not
-take, and the bytes that the writes took form a prefix of that output.  The status is 0 exactly when they are the whole
-output.  Either every write returned at most its count and the status is 0, or 77 after one write
-for each of the loop's passes, or the last write returned an error number whose errno is the
-status and every write before it returned at most its count. -/
+`Draws` hold exactly N words `w`, and the counts of `histogramSpec w` sum to N.  The writes number
+at most one more than the bytes of `renderSpec (histogramSpec w)`, each offered at least one byte,
+the bytes of that output that the writes before it did not take, and the bytes that the writes
+took form a prefix of that output.  The status is 0 exactly when they are the whole output.  Either
+every write returned at most its count and the status is 0, or 77 after one write for each of the
+loop's passes, or the last write returned an error number whose errno is the status and every
+write before it returned at most its count. -/
 def Counts (args : List (List UInt8)) (ls : List Linux.Event) (status : UInt64) : Prop :=
   (parseSpec (bytesOfList (stringsBytes args)) = 0 → ls = [] ∧ status = 2) ∧
   (parseSpec (bytesOfList (stringsBytes args)) ≠ 0 →
@@ -151,6 +152,7 @@ def Counts (args : List (List UInt8)) (ls : List Linux.Event) (status : UInt64) 
         (∀ e ∈ writes,
           e.call = Linux.writeCall ∧ Linux.arg e.args 0 = 1 ∧ e.inputs.headD [] ≠ []) ∧
         OfferedLayer (askedOutput bytes) 0 writes ∧
+        writes.length ≤ (askedOutput bytes).length + 1 ∧
         (((∀ e ∈ writes, Took e) ∧
             (status = 0 ∨ (status = 77 ∧ writes.length = (askedOutput bytes).length + 1))) ∨
           (status ≠ 0 ∧ ∃ before e, writes = before ++ [e] ∧ (∀ x ∈ before, Took x) ∧
@@ -586,8 +588,9 @@ theorem write_image {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : List
       · cases reply
 
 /-- The images of writes to standard output that returned, each of which offered at least one
-byte, are `write` calls of descriptor 1, one for each write, which took the bytes that the writes
-took, and the input of each holds the bytes that its write offered, at least one. -/
+byte, the bytes of `out` after the first `taken` and those that the writes before it took
+(`Offered`), are `write` calls of descriptor 1, one for each write, which took the bytes that the
+writes took, and whose inputs hold those bytes of `out` (`OfferedLayer`), at least one each. -/
 theorem writes_images {F : OpenFlags} {L : ShimLayout} {I : Launch} :
     ∀ {events : List Linux.Event} {writes : List Event} {ls : List Linux.Event}
       {out : List UInt8} {taken : Nat},
@@ -707,7 +710,8 @@ theorem linux_exec_counts {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Lin
           fun errnoZero => ?_⟩
         · obtain ⟨rfl, rfl⟩ := failed drawFailed
           exact ⟨rfl, images_nil writeImages⟩
-        obtain ⟨length, sum, offeredAll, wroteSome, prefix_, whole, kinds⟩ := succeeded errnoZero
+        obtain ⟨length, sum, offeredAll, fewer, wroteSome, prefix_, whole, kinds⟩ :=
+          succeeded errnoZero
         have shape : ∀ e ∈ writes, ∃ offered errno count,
             e = .write .stdout offered (.returned errno count) := by
           rcases kinds with ⟨all, -⟩ | ⟨-, -, before, offered, count, rfl, earlier⟩
@@ -725,7 +729,8 @@ theorem linux_exec_counts {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Lin
         have taken : Linux.writeData 1 (groups.flatten ++ lw) = stdoutTaken writes := by
           rw [writeData_append, drawWrites, writeBytes, List.nil_append]
         rw [taken]
-        refine ⟨length, sum, prefix_, whole, writeShape, offeredLayer, ?_⟩
+        refine ⟨length, sum, prefix_, whole, writeShape, offeredLayer,
+          by rw [writeLength]; exact fewer, ?_⟩
         rcases kinds with ⟨all, zeroOr⟩ | ⟨failing, -, before, offered, count, rfl, earlier⟩
         · refine .inl ⟨writes_took writeImages all, ?_⟩
           rcases zeroOr with zero | ⟨seventySeven, passes⟩

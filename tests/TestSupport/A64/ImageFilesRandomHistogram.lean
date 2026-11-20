@@ -33,11 +33,11 @@ arguments whose strings, each with its zero byte, and eight-byte pointers take a
 bytes, as Linux requires of every process.  `budget`, the bound of `body_bounded` at arguments of
 `argsLimit` bytes, fits the executable's 4,096 pages.  When every `getrandom` of the trace
 returned an error number or a count of at most its length, positive for a positive length, and
-every `write` an error number or at most the count that it offered (`InRange`), X0 and the trace
-meet `Counts`.  `histogram_elf_runs` gives the run from `linux_footprint_bounded`, the footprint
-without a guest trap, through `wasiElf_footprint_with`, and `linux_exec_counts` gives the status
-and `Counts` from the `Exec` run that the footprint names, with `Sized` from the replies that the
-events hold (`carried_sized`).
+every `write` an error number or at most its count (`InRange`), X0 and the trace meet `Counts`.
+`histogram_elf_runs` gives the run from `linux_footprint_bounded`, the footprint without a guest
+trap, through `wasiElf_footprint_with`, and `linux_exec_counts` gives the status and `Counts` from
+the `Exec` run that the footprint names, with `Sized` from the replies that the events hold
+(`carried_sized`).
 
 `histogram_elf_witness` shows that the corollary's premises and `InRange` hold together with a
 short read.  The process holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the
@@ -189,17 +189,18 @@ eight-byte pointers take at most `argsLimit` bytes, 6 MiB, reaches `SVC #0` with
 `exit_group`, and the UART's state as it was.  Its
 trace holds the layer events `ls`, each of which holds its reply of `R`, and when every
 `getrandom` of `ls` returned an error number or a count of at most its length, positive for a
-positive length, and every `write` an error number or at most the count that it offered
-(`InRange`), X0 and `ls` meet `Counts`.  When `parseSpec` refuses the arguments, no layer event
+positive length, and every `write` an error number or at most its count (`InRange`), X0 and `ls`
+meet `Counts`.  When `parseSpec` refuses the arguments, no layer event
 precedes `exit_group`, and X0 is 2.  Otherwise the events start with groups of `getrandom` calls
 that mirror, one for one, the calls of `random_get` of `Draws` for N words, each for `8 · min r 512`
 bytes with `r` the words still to draw.  A group's calls ask with flags 0 for the bytes that the
 calls before them did not return, and a group whose `random_get` returned errno 0 returned that
 call's bytes.  Either the last group ended with an error number, whose errno is X0, and no `write`
 follows, or calls of `write` of descriptor 1 follow, the random bytes hold exactly N little-endian
-words `w`, the counts of `histogramSpec w` sum to N, each write offered at least one byte, the
-bytes of `renderSpec (histogramSpec w)` that the writes before it did not take, and the bytes that
-the writes took form a prefix of that output.  In the second case X0 is 0 exactly when they are the
+words `w`, the counts of `histogramSpec w` sum to N, the writes number at most one more than the
+bytes of `renderSpec (histogramSpec w)`, each offered at least one byte, the bytes of that output
+that the writes before it did not take, and the bytes that the writes took form a prefix of that
+output.  In the second case X0 is 0 exactly when they are the
 whole output, and otherwise X0 is 77 after one write for each of the loop's passes, each of which
 returned at most its count, or the errno of the error number that the last `write` returned,
 every `write` before which returned at most its count. -/
