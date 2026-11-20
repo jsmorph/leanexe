@@ -1,4 +1,4 @@
-# Reviews of the specification, of the executable's theorems, of the write loop, and of the premise on short reads
+# Reviews of the specification, of the executable's theorems, of the write loop, of the premise on short reads, and of the writes of no byte
 
 Two fresh agents reviewed [the specification](Spec.lean) and [the samples](Samples.lean) against
 [the request](request.txt), as step 5 of [the verified-request
@@ -164,12 +164,52 @@ descriptor 2, except for the classes below.
 
 | Finding | Response |
 |---|---|
-| `Counts` admits a write of no byte after the output is whole, which offers `out.drop out.length` and returns 0, and the WASI specification's `Written` admits it too, while the random choice's `Writes` requires bytes to remain.  A program that adds such a write met `Counts` on 2,002 of the 2,179 runs on which it differs | Recorded: a statement that excludes the write needs `Written` to state it, which changes the command's WASI theorems, and the change is left for a decision.  `writeAll` makes no write once the bytes are written |
+| `Counts` admits a write of no byte after the output is whole, which offers `out.drop out.length` and returns 0, and the WASI specification's `Written` admits it too, while the random choice's `Writes` requires bytes to remain.  A program that adds such a write met `Counts` on 2,002 of the 2,179 runs on which it differs | Adopted after the user's decision: `Written` and `Counts` state that each write offered at least one byte, as the section "Review of the writes of no byte" describes |
 | The comments of `random_short`, of the module, and of the file theorems described the calls of the witness's run, which the statements do not state | Adopted: the comments state `ShortRead` and the replies |
 | `RandomGroup` let an error number below the bytes that remain end a group, where the shim continues, for lengths above `2^64 − 4,096`, and `ShortRead` counted such a result as a short read | Adopted: the last call of a failed group returned an error number above the bytes that remain, as the shim requires, and `ShortRead` requires a result that is no error number |
 | Comments omitted `Sized` from the bytes of `randomData`, the fit of the arguments from `image_untrapped`, and the earlier writes' counts from the last alternative, and called `loop_trapped`'s event a `random_get` | Adopted |
 | The random choice has no witness with a short read | Recorded: the histogram's witness has one, and both corollaries take the group from `random_group` |
 
-Classes that no statement excludes, besides those of the first review: the write of no byte above,
-and calls that make no layer event, such as a `random_get` of 0 bytes or an extra `args_get`, whose
+Classes that no statement excludes, besides those of the first review: calls that make no layer
+event, such as a `random_get` of 0 bytes or an extra `args_get`, whose
 layer events equal the right program's, so that only `Meets` excludes them.
+
+## Review of the writes of no byte
+
+After the second review of the premise on short reads, `Written` states that each write offered at
+least one byte (`LeanExe.Wasi.WroteSome`), and `Counts` that the input of each `write` holds at
+least one byte.  A fresh agent reviewed `Written`, `Meets`, `Counts`, the write loop's statements,
+and their comments against the request and the user's decisions on writes, by the method of the
+knowledge base's entry on independent review, and ran no Lean code.  Its model in Python,
+transcribed from the Lean text, ran `writeAll` and 29 wrong write loops under every host of at most
+five writes for eight outputs of 1 to 4 bytes, through the WASI events and through the shim's
+write image, and under 5,000 random hosts at each level on the command with N up to 1,024.  The
+right program met `Written` and `Counts` on each of the 999 small runs that exit, among them 207
+that end with 77 and 528 with a failed write, and on all 5,000 runs of the command at the WASI
+level and the 4,920 at the layer that meet `InRange` and `Sized`.  Every run outside `InRange` or
+`Sized` trapped.  The new conjuncts excluded the extra write of no byte after the whole output and a
+loop whose test is `written ≤ length`, which the earlier statements admitted on 264 and 132 small
+runs, and no run of the right program.  `Offered` and `OfferedLayer` already excluded a write of no
+byte before the output is whole, since each write offers the bytes that the writes before it did
+not take.
+
+| Finding | Response |
+|---|---|
+| `Written` and `Counts` bounded the number of writes only for status 77, so a loop of B + 2 passes met them on 285 of the 338 small runs on which it differs from the right program, and a loop without a cap on all 376, each ending with status 0 or an errno after more than B + 1 writes.  The shim gives such runs when two writes of a positive count return 0, and the manifest checker's `LineWrites` and the random choice's `Writes` exclude them | Adopted: `Written` states `writes.length ≤ out.length + 1` and `Counts` the same bound over the `write` calls, from `WriteAllRun.shape` |
+| `Counts` admitted layer sequences that no run gives: a `write` with a count argument of 0 over a nonempty input, one with a count argument of `2^64 − 1` that returned an error number, which `LeanExe.Linux.Event.writeBytes` counts as taking the whole input, and one that returned more than its input holds and at most its count argument | Adopted after the user's decision: `Counts` states that the count argument of each `write` is the length of its input, as the random choice's `Mirrors` does, from the shim's image, whose arguments are the descriptor, the address, and the size, and whose input is the bytes offered |
+| `Took`'s docstring said "at most the count of bytes that it offered" where the definition compares the result with the count argument, and `InRange`'s docstring and the module comment used the same phrase | Adopted: they state the count, the call's third argument |
+| The write loop's module comment said that a write of the rest follows a short write, which fails when the passes run out | Adopted: the comment states it while passes remain |
+| The guide said that exhausted passes take a write that took no byte, where B + 1 writes that took fewer than B bytes take at least two | Adopted |
+| `writes_images`'s docstring omitted its premise `Offered` and its conclusion `OfferedLayer` | Adopted |
+| `WriteAllRun.shape`'s docstring spoke of every run, where the theorem states runs that return or exit.  The docstrings of `writeAll_run`, `writeAll_run_whole`, and `WriteAllRun.taken` and the guide's row omitted their bounds on the number of bytes.  The module comment's description of `Offered` omitted its first `taken` bytes, and the guide's row named `WriteAllRun.trapped_write` without stating it | Adopted |
+
+The same agent then transcribed the revised `Written`, `Meets`, and `Counts` again and ran its model
+on them.  The right program met them on every run of its sets, and they admitted no run of any of
+the 29 wrong loops, among them the loop of B + 2 passes and the loop without a cap.  It found that
+the guide's row of the write loop gave every theorem the bound on bytes of `writeAll_run_whole`,
+which was corrected.
+
+Classes that no statement excludes, besides those of the earlier reviews: programs whose events
+equal the right program's, such as one in which `writeAll` exits with 77 where `main` returns it,
+which no statement over events tells apart, and a `write` with a second input region, which
+`Counts` ignores and no event of `LeanExe.Linux.step` has.
