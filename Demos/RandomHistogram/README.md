@@ -73,8 +73,8 @@ each of which writes in place the window of the output that the writes before it
 A write that returns an errno ends the run with that errno as the status.  When the passes run out
 with bytes unwritten, which takes at least two writes that took no byte, the status is 77, one more
 than the largest WASI errno, so it differs from 2 and from every errno that the run can return.
-Otherwise the status is 0.  `verified_compile_wasi` writes a module of 6,228 bytes that imports `fd_read`,
-`fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
+Otherwise the status is 0.  `verified_compile_wasi` writes a module of 6,228 bytes that imports
+`fd_read`, `fd_write`, `proc_exit`, `args_sizes_get`, `args_get`, and `random_get`.
 
 ## The command writes the counts of N random words
 

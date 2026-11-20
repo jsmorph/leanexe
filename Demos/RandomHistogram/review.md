@@ -204,10 +204,14 @@ not take.
 | `WriteAllRun.shape`'s docstring spoke of every run, where the theorem states runs that return or exit.  The docstrings of `writeAll_run`, `writeAll_run_whole`, and `WriteAllRun.taken` and the guide's row omitted their bounds on the number of bytes.  The module comment's description of `Offered` omitted its first `taken` bytes, and the guide's row named `WriteAllRun.trapped_write` without stating it | Adopted |
 
 The same agent then transcribed the revised `Written`, `Meets`, and `Counts` again and ran its model
-on them.  The right program met them on every run of its sets, and they admitted no run of any of
-the 29 wrong loops, among them the loop of B + 2 passes and the loop without a cap.  It found that
-the guide's row of the write loop gave every theorem the bound on bytes of `writeAll_run_whole`,
-which was corrected.
+on them.  The right program met them on every run of its sets, 999 small runs and 5,000 runs of the
+command at the WASI level, and 999 small runs, 4,920 runs of the command, and 1,970 further runs
+that meet `InRange` at the layer, and they admitted no run of any of the 29 wrong loops, among
+them the loop of B + 2 passes and the loop without a cap.  `Counts` rejected each layer sequence of
+finding 2 and the sequences of more than B + 1 writes, and it admitted only the right program's
+sequence among the model's eleven and a `write` with a second input region.  It found that the
+guide's row of the write loop gave every theorem the bound on bytes of `writeAll_run_whole`, which
+was corrected.
 
 Classes that no statement excludes, besides those of the earlier reviews: programs whose events
 equal the right program's, such as one in which `writeAll` exits with 77 where `main` returns it,
