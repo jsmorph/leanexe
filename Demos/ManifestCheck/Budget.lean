@@ -10,8 +10,8 @@ import Verified.Wasi.ResourceRulesAt
 enough frames, for every host whose successful `args_sizes_get` replies ask for at most `argsLimit`
 bytes and that meets `StatAlong host M main` from that world: every reply with errno 0 to a request
 of `fd_filestat_get` that a prefix of `main` makes reports a size of at most `M` bytes or of `2^32`
-bytes or more.  `main` makes one such request, of the manifest's descriptor, so the premise
-constrains no other reply.  The model charges a copy of an owned value at each use after which the
+bytes or more.  `main` makes at most one such request, of the manifest's descriptor, so the
+premise bounds no other reply.  The model charges a copy of an owned value at each use after which the
 value stays live, and it credits no release.  The charge of `main` holds the block of `args`, the
 copy of the argument that names the manifest, the read buffer of 65,536 bytes, the charge of
 `readManifest`, that of `parse`, and that of `checkLines`.
@@ -97,7 +97,8 @@ def StatAt {World : Type} (host : Host World) (M : Nat) : Action α → World �
   | _, _ => True
 
 /-- The host answers every request of `fd_filestat_get` that a prefix of `action` from `world`
-makes as `StatWithin` states.  `main` makes one such request, of the manifest's descriptor. -/
+makes as `StatWithin` states.  `main` makes at most one such request, of the manifest's
+descriptor. -/
 def StatAlong {World : Type} (host : Host World) (M : Nat) (action : Action α) (world : World) :
     Prop :=
   ∀ trace residual after, Prefix host action world trace residual after →
@@ -1027,7 +1028,7 @@ theorem main_along {World : Type} {host : Host World} {M : Nat} {world : Observe
 /-- Every run and every prefix of `main`'s body from the observed world `world` charges at most
 `budget M` and has enough frames, for every host whose successful `args_sizes_get` replies ask for
 at most `argsLimit` bytes and that answers every request of `fd_filestat_get` that a prefix of
-`main` from `world` makes as `StatWithin` states.  `main` makes one such request, of the
+`main` from `world` makes as `StatWithin` states.  `main` makes at most one such request, of the
 manifest's descriptor. -/
 theorem body_bounded {World : Type} {host : Host World} {M : Nat}
     (argsBound : ∀ world outputs after,

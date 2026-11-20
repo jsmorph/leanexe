@@ -33,12 +33,12 @@ standard output committed.  The run is an accepted exit, whose status X0 holds, 
 shim rejects, with X0 at 1, a trap of the shim, with X0 at 2, or a trap of the guest after a
 prefix of the action, with X0 at 2.
 
-`manifest_elf_meets` is the corollary for the file, for every reply sequence, from arguments
-whose strings, each with its zero byte, and eight-byte pointers take at most `argsLimit` bytes, as
-Linux requires of every process, and for replies that meet `StatxAfterCheck`: after the check,
-the reply to the `statx` of the manifest's `fd_filestat_get`, when the shim reads errno 0 from it,
-reports at most `manifestLimit` bytes, whose budget fits the executable's 4,096 pages
-(`budget_fits`), or `2^32` bytes or more.  The premise reads no other reply.  When the check does
+`manifest_elf_meets` is the corollary for the file, from arguments whose strings, each with its
+zero byte, and eight-byte pointers take at most `argsLimit` bytes, as Linux requires of every
+process, and for replies that meet `StatxAfterCheck`: after the check, the reply to the `statx` of
+the manifest's `fd_filestat_get`, when the shim reads errno 0 from it, reports at most
+`manifestLimit` bytes, whose budget fits the executable's 4,096 pages (`budget_fits`), or `2^32`
+bytes or more.  The premise bounds no other reply.  When the check does
 not end the run and the results of the layer events `ls` lie in Linux's range (`InRange`), X0 and
 `ls` meet `NMeets` for the check's grant of descriptor 3.
 `manifest_elf_runs` gives the run from `linux_footprint_bounded`, the footprint without a guest
@@ -51,7 +51,8 @@ arguments `witnessArgs`, `h` and `1`, with no environment.  Under the replies `w
 check's `openat` returns descriptor 4 and its `close` 0, so the check grants descriptor 3, and
 every later call returns `-ENOENT`, from which `filestatReply` reads errno 44, so the replies meet
 `StatxAfterCheck`.  The process reaches `exit_group` after layer events whose results lie in
-Linux's range and that meet `NMeets` with X0.
+Linux's range and that meet `NMeets` with X0.  The manifest's `openat2` returns `-ENOENT`, so the
+run ends before any `statx`, and the bound of `StatxAfterCheck` applies to no reply of that run.
 -/
 
 namespace TestSupport.A64.ImageFilesManifestCheck
@@ -152,7 +153,7 @@ theorem manifest_elf (R : Linux.Replies) (p : Proc) {args environ : List (List U
 
 /-- The replies `R` meet `StatxBounded manifestLimit` after the check of descriptor 3 when the
 check does not end the run: under the shim's host for the launch of `args` and `environ` with the
-check's grant, with the replies after the check's.  The premise reads only the reply to the
+check's grant, with the replies after the check's.  The premise bounds only the reply to the
 `statx` of the manifest's `fd_filestat_get`. -/
 def StatxAfterCheck (args environ : List (List UInt8)) (R : Linux.Replies) : Prop :=
   ∀ l₀ granted, preopenRun manifestScratch.path R 0 = (l₀, some granted) →

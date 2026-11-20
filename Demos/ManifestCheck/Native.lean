@@ -14,16 +14,18 @@ fuel has the footprint of `Footprint`: the layer events are images of the run's 
 ends at an accepted exit, a rejected exit, a trap of the shim, or a trap of the guest after a
 prefix of `main`.
 
-`linux_footprint_bounded` states the footprint without a guest trap at a cap whose pages hold
-`budget M` above the static heap's top, for a launch whose arguments' strings, each with its zero
+`linux_footprint_bounded` states the footprint without a guest trap at a cap of at most 65,535
+pages that hold `budget M` above the static heap's top, for a launch whose arguments' strings, each
+with its zero
 byte, and eight-byte pointers take at most `argsLimit` bytes, and for replies `R` that meet
 `StatxBounded F L I M R`.  `StatxBounded` states the premise of `body_bounded` on
 `fd_filestat_get` in terms of the replies, in the form of `LeanExe.Wasi.Host.NoTrapsAlong`: at
 each prefix of `main` under `linuxHost F L I R` whose next request is `fd_filestat_get` of a
 descriptor that the shim holds, the reply `R k` of the `statx` that the shim then makes after the
 world's `k` layer events, when the shim's `filestatReply` reads errno 0 from it, reports a size of
-at most `M` bytes or of `2^32` bytes or more.  `main` makes one such request, of the manifest's
-descriptor, so the premise reads the reply of the run's `statx` and no other reply of `R`.
+at most `M` bytes or of `2^32` bytes or more.  `main` makes at most one such request, of the
+manifest's descriptor, so the premise bounds the reply to the run's `statx` and no other reply of
+`R`.  The earlier replies decide whether that `statx` happens and its index.
 `statx_along` gives `StatAlong` of `main` from it, since the image of `fd_filestat_get` of a held
 descriptor is one `statx` that holds the reply `R k`.  `budget_fits` states that the budget of a
 manifest of `manifestLimit` bytes, 1 MiB, fits the 4,096 pages of the native executable. -/
@@ -146,8 +148,8 @@ def StatxAt (opened : List UInt64) (M : Nat) (r : Linux.Reply) : Action α → P
 /-- The replies `R` answer as `StatxAt` states every `statx` that the shim makes for a request of
 `fd_filestat_get` of a prefix of `main` under `linuxHost F L I R` from `nativeWorld`: the shim
 makes it for a descriptor that it holds, as the call after the world's `k` layer events, which
-takes the reply `R k`.  `main` makes one such request, of the manifest's descriptor, and the
-premise reads no other reply of `R`. -/
+takes the reply `R k`.  `main` makes at most one such request, of the manifest's descriptor, and
+the premise bounds no other reply of `R`. -/
 def StatxBounded (F : OpenFlags) (L : ShimLayout) (I : Launch) (M : Nat) (R : Linux.Replies) :
     Prop :=
   ∀ {trace residual world}, Prefix (linuxHost F L I R) main nativeWorld.world trace residual world →
@@ -196,8 +198,8 @@ theorem call_prefix_bound (F : OpenFlags) (L : ShimLayout) (I : Launch) (R : Lin
       exact reportedSize_le (by decide) (by decide) small)
     (statx_along bounded)
 
-/-- The footprint of `linux_footprint_native` without a guest trap, at a cap whose pages hold
-`budget M` above the static heap's top, for a launch whose arguments meet the premise of
+/-- The footprint of `linux_footprint_native` without a guest trap, at a cap of at most 65,535 pages
+that hold `budget M` above the static heap's top, for a launch whose arguments meet the premise of
 `call_prefix_bound` and replies that meet `StatxBounded M`. -/
 theorem linux_footprint_bounded (F : OpenFlags) (L : ShimLayout) (I : Launch)
     (R : Linux.Replies) {M : Nat} (small : stringsSize I.args + 8 * I.args.length ≤ argsLimit)
