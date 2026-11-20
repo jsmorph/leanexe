@@ -16,7 +16,9 @@
     "rw or simp only that does not find UInt64.ofNat 4092 in a step's result holding UInt64.ofNat ↑(4092 : Fin 4096)",
     "maximum recursion depth from rfl on x + UInt64.ofNat 4092 + 1 = x + UInt64.ofNat 4093",
     "maximum recursion depth in a concrete run over LeanExe.Bytes.build 4096 fun _ => 0",
-    "(List.range g.2).map r.bytes = (List.range 4096).map f"
+    "(List.range g.2).map r.bytes = (List.range 4096).map f",
+    "if p then … else … where p quantifies over a list that a function computes from a record",
+    "excessive memory in the elaboration of a Decidable instance or of simp over a statx record of 256 bytes"
   ],
   "modules": [
     "Library.Hashing.Sha512.CompressProof",
@@ -43,7 +45,9 @@
     "LeanExe.A64.Proof.WasiStrings",
     "Demos.RandomHistogram.NativeCounts",
     "Demos.RandomChoice.NativeChoices",
-    "Verified.Wasi.BudgetTactics"
+    "Verified.Wasi.BudgetTactics",
+    "Demos.ManifestCheck.NativeMeets",
+    "Verified.ShimA64.Filestat"
   ],
   "declarations": [
     "Library.Hashing.Sha256.foldl_append",
@@ -77,7 +81,16 @@
     "List.reduceReplicate",
     "Verified.sumBelow_const",
     "Verified.sumBelow",
-    "LeanExe.Wasi.Action.pure"
+    "LeanExe.Wasi.Action.pure",
+    "Demos.ManifestCheck.Overflows",
+    "Verified.Shim.stampOffsets",
+    "Demos.ManifestCheck.filestatReply_over",
+    "Demos.ManifestCheck.filestatReply_fits",
+    "Verified.Shim.filestatReply",
+    "Verified.ShimA64.find_stop",
+    "Verified.ShimA64.find_skip",
+    "Classical.em",
+    "List.find?"
   ],
   "examples": [
     "Library.Hashing.Sha512.compress_toVec",
@@ -98,6 +111,8 @@
     "Verified.Wasi.Reflect.fdFdstatGet_eq",
     "LeanExe.A64.run_strb4",
     "Demos.RandomHistogram.fullReplies_run",
-    "Demos.RandomChoice.witness_random"
+    "Demos.RandomChoice.witness_random",
+    "Demos.ManifestCheck.stat_native",
+    "Verified.ShimA64.filestat_reply"
   ]
 }

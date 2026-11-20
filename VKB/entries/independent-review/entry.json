@@ -16,7 +16,9 @@
     "a check of the reference that an invariant of the code decides, which no case distinguishes",
     "wrong stubs of system calls that differ only at replies Linux never gives",
     "a wrong request that Linux refuses with the errno of the shim's own refusal",
-    "a statement of a write loop's output that wrong loops meet"
+    "a statement of a write loop's output that wrong loops meet",
+    "a restatement of a WASI specification over Linux events with alternatives that make no layer event",
+    "0 < e.ret.toNat for a result that may be a negated error number"
   ],
   "modules": [
     "Library.Random.Sampling.Spec",
@@ -28,7 +30,8 @@
     "Verified.ShimA64",
     "LeanExe.A64.Proof.WasiPreopen",
     "LeanExe.Wasi.WriteAll",
-    "Demos.RandomHistogram.NativeCounts"
+    "Demos.RandomHistogram.NativeCounts",
+    "Demos.ManifestCheck.NativeMeets"
   ],
   "declarations": [
     "Library.Random.Sampling.Shuffles",
@@ -50,13 +53,20 @@
     "Verified.Shim.NamesHeld",
     "Verified.Shim.footprint_namesHeld",
     "LeanExe.Wasi.Offered",
-    "LeanExe.Wasi.writeAll"
+    "LeanExe.Wasi.writeAll",
+    "Demos.ManifestCheck.NMeets",
+    "Demos.ManifestCheck.Opening",
+    "Demos.ManifestCheck.nameCheck",
+    "Demos.ManifestCheck.NManifestReads",
+    "Demos.ManifestCheck.NFileReads",
+    "LeanExe.Linux.isError"
   ],
   "examples": [
     "Library.Sorting.Quicksort.quicksort_eq",
     "Verified.ShimA64.clockStub_run",
     "Verified.ShimA64.randomStub_run",
     "LeanExe.A64.run_preopenCheck",
-    "Demos.RandomHistogram.OfferedLayer"
+    "Demos.RandomHistogram.OfferedLayer",
+    "Demos.ManifestCheck.spares3_three"
   ]
 }

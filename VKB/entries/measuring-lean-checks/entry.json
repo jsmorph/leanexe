@@ -10,7 +10,8 @@
     "the declarations that the kernel unfolds most often",
     "a command that adds several theorems with Lean.addDecl and runs their kernel checks at once",
     "an elapsed time from /usr/bin/time around tools/leanrun that counts the wait for its lock",
-    "VmHWM and VmRSS after each declaration of a probe"
+    "VmHWM and VmRSS after each declaration of a probe",
+    "the time of lake build after a copy of .lake from a host of another architecture"
   ],
   "modules": [
     "Init.System.IO",

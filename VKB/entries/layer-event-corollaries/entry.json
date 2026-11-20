@@ -7,7 +7,8 @@
     "the shape of the layer events: the calls, their counts, and their flags",
     "List.Forall₂ Mirrors events ls",
     "∃ q ls, … ∧ (Full ls → Counts …) shown satisfiable by a witness",
-    "cases on Images whose index is [] ++ []"
+    "cases on Images whose index is [] ++ []",
+    "the loader's memory and the initial stack of the witness of an executable's corollary"
   ],
   "modules": [
     "Demos.RandomHistogram.NativeCounts",
@@ -54,7 +55,18 @@
     ],
     "tests/TestSupport/A64/ImageFilesRandomChoice.lean": [
       "TestSupport.A64.ImageFilesRandomChoice.choice_elf_choices",
-      "TestSupport.A64.ImageFilesRandomChoice.choice_elf_witness"
+      "TestSupport.A64.ImageFilesRandomChoice.choice_elf_witness",
+      "TestSupport.A64.ImageFilesRandomChoice.witness_stack"
+    ],
+    "tests/TestSupport/A64/ElfWitness.lean": [
+      "TestSupport.A64.ElfWitness.loadedMem",
+      "TestSupport.A64.ElfWitness.loadedMem_loaded",
+      "TestSupport.A64.ElfWitness.loadedMem_initial",
+      "TestSupport.A64.ElfWitness.loadedMem_stack",
+      "TestSupport.A64.ElfWitness.stackMem"
+    ],
+    "tests/TestSupport/A64/ImageFilesManifestCheck.lean": [
+      "TestSupport.A64.ImageFilesManifestCheck.manifest_elf_witness"
     ]
   }
 }

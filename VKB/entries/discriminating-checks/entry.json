@@ -19,7 +19,10 @@
     "a wrong call number whose call writes the same shape as the described call",
     "a recognizer of a reflected operand tested only on hand-written commands in an empty context",
     "a short write or a rare reply of Linux provoked in a native run",
-    "strace -e inject=getrandom:retval=4096 and inject=write:retval=0"
+    "strace -e inject=getrandom:retval=4096 and inject=write:retval=0",
+    "strace -e inject=CALL:error=ERRNO:when=FIRST..LAST in the driver of a native executable",
+    "a driver of a native executable whose runs give no read error, failed close, EAGAIN, or short write",
+    "strace's decoded flags and mask of statx, and strings cut at 32 bytes"
   ],
   "modules": [
     "Verified.Wasi.HandleCheck",

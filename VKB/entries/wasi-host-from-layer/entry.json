@@ -19,7 +19,8 @@
     "Verified.Shim.StreamAction action for an action that makes no flat call",
     "a binding's own bound on the output regions of the layer's events, narrower than WritesWithin",
     "a premise on the replies R : Linux.Replies of a corollary under linuxHost F L I R",
-    "a class of reply sequences that a budget premise needs before any run exists"
+    "a class of reply sequences that a budget premise needs before any run exists",
+    "a layer event whose output region is the statx record of the shim's scratch"
   ],
   "modules": [
     "Verified.Shim",
@@ -142,7 +143,11 @@
     "Verified.ShimA64.WritesNative.linear",
     "LeanExe.Linux.Replies",
     "LeanExe.Wasi.Host.NoTrapsAlong",
-    "Verified.Wasi.Resource.CallPrefixBound"
+    "Verified.Wasi.Resource.CallPrefixBound",
+    "Verified.Shim.statxEvent",
+    "Verified.Shim.step_statx",
+    "Verified.Shim.FilestatImage",
+    "Verified.Shim.ShimLayout.statx"
   ],
   "examples": [
     "Verified.Shim.open_contract",

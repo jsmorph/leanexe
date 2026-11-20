@@ -14,7 +14,8 @@
     "runs of a stub at requests that the compiled commands never make, such as pointers past the memory's end",
     "a comparison with Wasmtime that reports a difference no specification predicts, such as the padding of fd_prestat_get's record",
     "strace's fault injection of a result that no launch produces, such as openat returning 3",
-    "a stub whose outputs are right while its calls' arguments are wrong"
+    "a stub whose outputs are right while its calls' arguments are wrong",
+    "a run under qemu-aarch64 of an executable that needs the results of openat2"
   ],
   "modules": [
     "LeanExe.M7.Proof.Board"

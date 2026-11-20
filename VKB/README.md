@@ -77,6 +77,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [WASI process totality](entries/wasi-process-total/README.md) | Combines progress, resource bounds, and accepted exit for an unbounded process. |
 | [Theorems over every run of a WASI command](entries/wasi-command-runs/README.md) | Proves what a command writes and with which status it exits for every host's replies, composes it with the generated `start` and `total` theorems, and states a property of the runs that trap. |
 | [A new command of the WASI effect IR](entries/wasi-command-constructors/README.md) | Lists the definitions and proofs that a new constructor of the effect IR needs and proves the code of a pair's split. |
+| [A new flat call on the native target](entries/native-flat-calls/README.md) | Lists the parts that a flat call needs in the Linux call layer, the shim, the AArch64 stub, and the documents before a command that imports it runs as an AArch64 Linux executable. |
 | [Bytes that a trusted rule leaves free](entries/free-reply-bytes/README.md) | Gives a semantic rule a free value constrained by the host's guarantees and chooses it from the machine state in the compiler's proof. |
 | [One buffer through a loop](entries/buffer-through-loop/README.md) | Keeps a buffer in a loop's state so that a read or a draw at each pass moves it and allocates nothing. |
 | [Byte updates in place](entries/bytes-set-in-place/README.md) | Writes the bytes of a buffer with `LeanExe.Bytes.set` so that each update moves the buffer, and proves the result byte by byte. |

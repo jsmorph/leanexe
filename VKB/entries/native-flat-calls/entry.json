@@ -1,0 +1,55 @@
+{
+  "id": "native-flat-calls",
+  "goals": [
+    "a WASI command whose flat import the Linux shim does not implement",
+    "∀ call ∈ command.sysCalls, call ∈ shimCalls",
+    "a new flat call of the shim in an AArch64 Linux executable",
+    "a flat call whose output lies in the shim's scratch rather than in guest memory",
+    "a Linux call to add to ADMITTED of tools/linux-calls.py"
+  ],
+  "modules": [
+    "Verified.Shim",
+    "Verified.ShimA64",
+    "LeanExe.A64.Proof.WasiFilestat",
+    "Demos.ManifestCheck.Native",
+    "Demos.ManifestCheck.NativeMeets"
+  ],
+  "declarations": [
+    "Verified.Shim.filestatReply",
+    "Verified.Shim.statxEvent",
+    "Verified.Shim.step_statx",
+    "Verified.Shim.FilestatImage",
+    "Verified.Shim.SysImage",
+    "Verified.Shim.sysImage_filestat",
+    "Verified.Shim.shimCalls",
+    "Verified.Shim.filestatInvoke",
+    "Verified.Shim.filestat_contract",
+    "Verified.Shim.sysInvoke",
+    "Verified.Shim.sys_contract",
+    "Verified.Shim.image_namesHeld",
+    "Verified.Shim.sysImage_trapped",
+    "Verified.Shim.sysImage_calls",
+    "Verified.Shim.ShimLayout",
+    "Verified.Shim.ShimLayout.statx",
+    "Verified.Shim.WritesWithin",
+    "Verified.Shim.Exec.streams",
+    "Verified.Shim.Prefix.streams",
+    "LeanExe.A64.filestatStub",
+    "LeanExe.A64.fileStubs",
+    "LeanExe.A64.preopenNames",
+    "LeanExe.A64.run_filestatFront",
+    "LeanExe.A64.run_filestatBack",
+    "Verified.ShimA64.filestatStub_run",
+    "Verified.ShimA64.filestatStub_sim",
+    "LeanExe.A64.Machine.StubSim",
+    "Verified.ShimA64.fileStub_sim",
+    "Verified.ShimA64.flatStub_sim",
+    "LeanExe.A64.Scratch",
+    "LeanExe.A64.Scratch.statx",
+    "Verified.ShimA64.WritesNative"
+  ],
+  "examples": [
+    "Demos.ManifestCheck.calls_supported",
+    "Demos.ManifestCheck.stat_native"
+  ]
+}

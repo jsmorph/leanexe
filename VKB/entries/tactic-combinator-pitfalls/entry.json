@@ -71,7 +71,8 @@
     "omega fails with UInt64.size as an atom",
     "rw [List.take_add_one] rewrites the take of a numeral",
     "cases on Outcome.returned of a large term reaches the maximum recursion depth",
-    "generalize changes nothing inside a structure hypothesis"
+    "generalize changes nothing inside a structure hypothesis",
+    "simp only with two equations whose left sides match one term, such as Nat.testBit (1 <<< k)"
   ],
   "modules": [
     "Demos.Orbit.LambertTime",
@@ -105,7 +106,8 @@
     "Demos.ManifestCheck.CommandProof",
     "Demos.RandomChoice.CommandProof",
     "Demos.RandomChoice.Proof",
-    "Demos.ManifestCheck.Proof"
+    "Demos.ManifestCheck.Proof",
+    "Verified.CodeMask"
   ],
   "declarations": [
     "Lean.Elab.Tactic.evalFirst",
@@ -193,7 +195,10 @@
     "UInt64.size",
     "Demos.ManifestCheck.Hashed",
     "LeanExe.Wasi.Outcome.returned.inj",
-    "Min.min"
+    "Min.min",
+    "Verified.testBit_shiftLeft_eq",
+    "Verified.testBit_one_shiftLeft_eq",
+    "Verified.shift"
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
@@ -237,7 +242,8 @@
     "Demos.ManifestCheck.hashed_finish",
     "Demos.ManifestCheck.hash_loop",
     "Demos.RandomHistogram.args_returned",
-    "Demos.RandomChoice.writes_of_run"
+    "Demos.RandomChoice.writes_of_run",
+    "Verified.Expr.codeMask_eq"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [

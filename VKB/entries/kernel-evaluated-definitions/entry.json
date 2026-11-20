@@ -16,7 +16,8 @@
     "the kernel runs a computation after unfold of a definition whose body matches on it",
     "a code generator that passes a live-variable function down a term and asks a use walk about each variable",
     "a kernel check whose time grows as the cube of the program's length",
-    "verified_compile_wasi whose kernel time and memory stay high after its emitted code shrinks"
+    "verified_compile_wasi whose kernel time and memory stay high after its emitted code shrinks",
+    "a kernel check whose time grows as the square of the program's length, with a selector or a live set passed as a function"
   ],
   "modules": [
     "Verified.Source",
@@ -33,7 +34,8 @@
     "Verified.Wasi.CommandReady",
     "Verified.Wasi.EffectAnalysis",
     "Verified.Wasi.ReflectEncoding",
-    "Verified.Wasi.ReflectValidity"
+    "Verified.Wasi.ReflectValidity",
+    "Verified.CodeMask"
   ],
   "declarations": [
     "Verified.Expr.uses",
@@ -67,7 +69,20 @@
     "Verified.shift",
     "Nat.testBit",
     "Verified.Wasi.Reflect.emitEncoding",
-    "Verified.Wasi.Reflect.emitValidity"
+    "Verified.Wasi.Reflect.emitValidity",
+    "Verified.Expr.code",
+    "Verified.Expr.codeMask",
+    "Verified.Expr.codeMask_eq",
+    "Verified.releaseMask",
+    "Verified.releaseMask_eq",
+    "Verified.maskDiff",
+    "Verified.maskIf",
+    "Verified.testBit_maskDiff_eq",
+    "Verified.testBit_argsMask_eq",
+    "Verified.TailBody.codeWithMask_eq",
+    "Verified.bodyFunction",
+    "Verified.TailFunc.function",
+    "Verified.Expr.treeNode"
   ],
   "examples": [
     "Library.Random.ParkMiller.check_value",
