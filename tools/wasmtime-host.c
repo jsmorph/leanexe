@@ -41,9 +41,19 @@ typedef struct {
   const char **env_values;
   size_t env_count;
   const char *preopen_dir;
+  const char *random_bytes_file;
 } HostOptions;
 
+/* The bytes of the file of --random-bytes and the position of the next byte that `random_get`
+   gives. */
+typedef struct {
+  uint8_t *bytes;
+  size_t len;
+  size_t next;
+} RandomFile;
+
 static HostOptions options;
+static RandomFile random_file;
 static Runtime *active_runtime;
 static FILE *control_output;
 static bool owns_control_output;
@@ -321,6 +331,61 @@ static wasi_config_t *configure_wasi(void) {
   return config;
 }
 
+static wasm_trap_t *new_trap(const char *message) {
+  return wasmtime_trap_new(message, strlen(message));
+}
+
+/* `random_get(buf, buf_len)` under --random-bytes.  It copies the file's next `buf_len` bytes to
+   memory at `buf` and returns errno 0.  When fewer than `buf_len` bytes remain, it writes nothing,
+   takes no byte, and returns errno 29 (`io`).  A buffer outside memory traps, as it does in
+   Wasmtime's `random_get`. */
+static wasm_trap_t *random_get_from_file(void *env, wasmtime_caller_t *caller,
+                                         const wasmtime_val_t *args, size_t nargs,
+                                         wasmtime_val_t *results, size_t nresults) {
+  (void)nargs;
+  (void)nresults;
+  RandomFile *file = env;
+  uint32_t buf = (uint32_t)args[0].of.i32;
+  uint32_t len = (uint32_t)args[1].of.i32;
+  wasmtime_extern_t memory;
+  if (!wasmtime_caller_export_get(caller, "memory", 6, &memory) ||
+      memory.kind != WASMTIME_EXTERN_MEMORY) {
+    return new_trap("random_get: the module exports no memory");
+  }
+  wasmtime_context_t *context = wasmtime_caller_context(caller);
+  size_t size = wasmtime_memory_data_size(context, &memory.of.memory);
+  if (buf > size || len > size - buf) {
+    return new_trap("random_get: the buffer lies outside memory");
+  }
+  results[0].kind = WASMTIME_I32;
+  if (len > file->len - file->next) {
+    results[0].of.i32 = 29;
+    return NULL;
+  }
+  if (len > 0) {
+    memcpy(wasmtime_memory_data(context, &memory.of.memory) + buf, file->bytes + file->next, len);
+  }
+  file->next += len;
+  results[0].of.i32 = 0;
+  return NULL;
+}
+
+/* Reads the file of --random-bytes and defines `random_get` in `linker` over Wasmtime's. */
+static wasmtime_error_t *define_random_file(wasmtime_linker_t *linker) {
+  random_file.bytes = read_file(options.random_bytes_file, &random_file.len);
+  random_file.next = 0;
+  wasm_functype_t *type =
+      wasm_functype_new_2_1(wasm_valtype_new_i32(), wasm_valtype_new_i32(), wasm_valtype_new_i32());
+  wasmtime_linker_allow_shadowing(linker, true);
+  const char module[] = "wasi_snapshot_preview1";
+  const char name[] = "random_get";
+  wasmtime_error_t *error =
+      wasmtime_linker_define_func(linker, module, sizeof(module) - 1, name, sizeof(name) - 1, type,
+                                  random_get_from_file, &random_file, NULL);
+  wasm_functype_delete(type);
+  return error;
+}
+
 static void init_runtime(Runtime *runtime, const char *wasm_path) {
   memset(runtime, 0, sizeof(*runtime));
   size_t wasm_len = 0;
@@ -358,6 +423,9 @@ static void init_runtime(Runtime *runtime, const char *wasm_path) {
       die("failed to create Wasmtime linker");
     }
     error = wasmtime_linker_define_wasi(linker);
+    if (error == NULL && options.random_bytes_file != NULL) {
+      error = define_random_file(linker);
+    }
     if (error == NULL) {
       error = wasmtime_linker_instantiate(linker, runtime->context, runtime->module,
                                          &runtime->instance, &trap);
@@ -1714,7 +1782,7 @@ static _Noreturn void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host [--wasi] [--stdin-file PATH] [--stdout-file PATH] "
           "[--stderr-file PATH] [--control-file PATH] [--arg VALUE]... [--env NAME=VALUE]... "
-          "[--dir PATH] <mode> <module.wasm> [arguments]\n"
+          "[--dir PATH] [--random-bytes PATH] <mode> <module.wasm> [arguments]\n"
           "       wasmtime-host [options] run <module.wasm>\n"
           "       wasmtime-host [options] call|call-stats <module.wasm> <function> "
           "<i64|f64|f32|bytes|array-u64|chain-u64|tree-u64|records-u64|file-u64:PATH|slots:N|"
@@ -1784,6 +1852,8 @@ static int parse_options(int argc, char **argv) {
       path = &options.stderr_file;
     } else if (strcmp(option, "--control-file") == 0) {
       path = &options.control_file;
+    } else if (strcmp(option, "--random-bytes") == 0) {
+      path = &options.random_bytes_file;
     } else {
       fprintf(stderr, "unknown host option: %s\n", option);
       usage();
@@ -1813,6 +1883,9 @@ static int parse_options(int argc, char **argv) {
   }
   if (!options.wasi && options.env_count > 0) {
     die("--env requires --wasi or run");
+  }
+  if (!options.wasi && options.random_bytes_file != NULL) {
+    die("--random-bytes requires --wasi or run");
   }
   if (options.wasi && !options.command && options.control_file == NULL &&
       options.stdout_file == NULL) {

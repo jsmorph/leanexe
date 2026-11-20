@@ -40,6 +40,18 @@
 # The file theorems of the executable are checked in tests/linux/a64-wasi.sh, which writes the
 # executable from the same module with the same commands.
 #
+# When RUNNERS holds `wasm`, the module also runs in the Wasmtime host with `--random-bytes FILE`,
+# under which each call of `random_get` takes the next bytes of FILE and returns errno 29, `io`,
+# when fewer bytes remain than it asks for.  The driver writes each case's arguments and random
+# bytes under build/random-histogram/fixed, and tests/random-histogram/Expected.lean computes from
+# `Meets` of Demos/RandomHistogram/CommandSpec.lean the output and the status of each run.  Each
+# run must write that output byte for byte, exit with that status, and write nothing to stderr.
+# The cases are N of 12 with words chosen for the residues, among them words with the top bit set;
+# N of 1,025 with 8,200 bytes of a fixed generator, which three calls of 4,096, 4,096, and 8 bytes
+# take; N of 512 with 4,196 bytes, of which one call takes 4,096; N of 513 with 4,103 bytes, whose
+# second call finds 7 of its 8 bytes, so the run writes nothing and exits with status 29; N of 1
+# with no bytes, status 29; and `abc` with no bytes, a refusal with status 2 before any call.
+#
 # The pure module's samples run in `tests/verified/run.sh --cases randomHistogram`.
 # Usage: tests/random-histogram/run.sh
 set -eu
@@ -100,6 +112,58 @@ tools/leanrun --timeout 10m lake env .lake/build/bin/a64-wasi wasm "$module" "$e
   fail elf "genWasiElf rejects the module"
 chmod +x "$elf"
 printf 'genWasiElf: %s bytes\n' "$(wc -c < "$elf" | tr -d ' ')"
+
+fixed="$out/fixed"
+fixed_names=
+mkdir -p "$fixed"
+
+# words FILE HEX...: appends to FILE the 64-bit little-endian words whose values the 16-digit
+# hexadecimal numerals HEX give.
+words() {
+  file=$1
+  shift
+  escapes=$(printf '%s\n' "$@" | awk '
+    function digit(c) { return index("0123456789abcdef", c) - 1 }
+    length($0) != 16 || /[^0-9a-f]/ { exit 1 }
+    { for (i = 15; i >= 1; i -= 2)
+        printf "\\%03o", 16 * digit(substr($0, i, 1)) + digit(substr($0, i + 1, 1)) }') ||
+    fail bytes "a word is not 16 hexadecimal digits"
+  printf "$escapes" >> "$file"
+}
+
+# noise FILE COUNT SEED: appends to FILE COUNT bytes, the high bytes of the states that follow SEED
+# under x <- (25173 x + 13849) mod 65536.
+noise() {
+  escapes=$(awk -v count="$2" -v x="$3" 'BEGIN {
+    for (i = 0; i < count; i++) { x = (25173 * x + 13849) % 65536; printf "\\%03o", int(x / 256) }
+  }')
+  printf "$escapes" >> "$1"
+}
+
+# fixed NAME ARG...: adds the case NAME, a run with the arguments ARG after the program name, whose
+# random bytes the commands after it append to $fixed/NAME.bytes.
+fixed() {
+  name=$1
+  shift
+  printf '%s\n' histogram "$@" > "$fixed/$name.args"
+  : > "$fixed/$name.bytes"
+  fixed_names="$fixed_names $name"
+}
+
+fixed residues 12
+words "$fixed/residues.bytes" 0000000000000000 0000000000000001 0000000000000013 \
+  ffffffffffffffff 8000000000000000 7fffffffffffffff 8000000000000001 fffffffffffffffe \
+  0000000000000064 00000000ffffffff 0000000100000000 0000000000000003
+fixed noise-1025 1025
+noise "$fixed/noise-1025.bytes" 8200 1
+fixed noise-512 512
+noise "$fixed/noise-512.bytes" 4196 2
+fixed short 513
+noise "$fixed/short.bytes" 4103 3
+fixed empty 1
+fixed refused abc
+tools/leanrun --timeout 10m lake env lean --run tests/random-histogram/Expected.lean "$fixed" \
+  $fixed_names
 
 # run_wasm OUT ARG...: runs the module in the Wasmtime host with the program name `histogram` and
 # the arguments ARG, and returns its status.
@@ -204,6 +268,33 @@ limited() {
   [ ! -s "$file.stderr" ] || fail "$runner limited" "output on stderr"
   cases=$((cases + 1))
 }
+
+# exact NAME: the run of the case NAME in the Wasmtime host with --random-bytes writes the output
+# and exits with the status that Expected.lean computed, and writes nothing to stderr.
+exact() {
+  name=$1
+  stdout="$fixed/$name.stdout"
+  want=$(cat "$fixed/$name.status")
+  set --
+  while IFS= read -r value; do
+    set -- "$@" --arg "$value"
+  done < "$fixed/$name.args"
+  status=0
+  timeout 600s "$host" "$@" --random-bytes "$fixed/$name.bytes" --stdout-file "$stdout" \
+    run "$module" 2> "$stdout.stderr" || status=$?
+  [ "$status" -eq "$want" ] || fail "fixed $name" "status $status, expected $want"
+  cmp -s "$stdout" "$fixed/$name.expected" ||
+    fail "fixed $name" "the output differs from the specification's"
+  [ ! -s "$stdout.stderr" ] || fail "fixed $name" "output on stderr"
+  cases=$((cases + 1))
+}
+
+case " $RUNNERS " in
+  *" wasm "*)
+    for name in $fixed_names; do
+      exact "$name"
+    done ;;
+esac
 
 for runner in $RUNNERS; do
   full "$runner"
