@@ -12,13 +12,15 @@
     "a program that opens files while descriptors 0 to 2 may be closed",
     "the bytes of a block after reads whose replies set the whole output region",
     "heap.At store' after bytes written into an allocated block from outside the compiled code",
-    "readData d tr and writeData d tr over a trace with failed calls"
+    "readData d tr and writeData d tr over a trace with failed calls",
+    "the results of getrandom at which the shim's random_get does not trap"
   ],
   "modules": [
     "LeanExe.Linux.Replies",
     "LeanExe.Linux.Trace",
     "LeanExe.A64.Proof.LinuxCalls",
-    "LeanExe.A64.Proof.StampRuns"
+    "LeanExe.A64.Proof.StampRuns",
+    "Demos.RandomHistogram.NativeCounts"
   ],
   "declarations": [
     "LeanExe.Linux.Call",
@@ -77,6 +79,7 @@
     "LeanExe.A64.run_stampReadLoop",
     "LeanExe.A64.run_stampWriteLoop",
     "LeanExe.A64.stampProgram_run",
-    "LeanExe.A64.stamp_runs_any"
+    "LeanExe.A64.stamp_runs_any",
+    "Demos.RandomHistogram.InRange"
   ]
 }

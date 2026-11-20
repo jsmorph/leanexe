@@ -1,0 +1,39 @@
+{
+  "id": "owned-tuple-arguments",
+  "goals": [
+    "the theorem of a function with an owned tuple or structure parameter, whose argument is Moved (α × β) or Moved S",
+    "a moved pair whose components' objects lie apart, for ImplementsA.comap",
+    "Moved of a pair without heap data inside a moved pair: the instance from Scalar",
+    "the charge of a process step's call of a helper whose tuple parameter is owned and paid",
+    "stateTy.credit (sourceState s) + f.cost x ≤ _ after simp with Expr.ownedCost and Var.ownedCost"
+  ],
+  "modules": [
+    "LeanExe.Pipeline.MovedTuples",
+    "Verified.Examples.OwnedTuples",
+    "Verified.Reflect.Definitions",
+    "Verified.Wasi.ResourceCost",
+    "Demos.RunningSum.Charges",
+    "Demos.OrderBook.ProcessCharges"
+  ],
+  "declarations": [
+    "LeanExe.Pipeline.Represent.borrowed",
+    "Verified.ImplementsA.comap",
+    "Verified.Ty.movedInst",
+    "Verified.Agree.movedScalar",
+    "Verified.Reflect.agreeMoved",
+    "Verified.Expr.ownedCost",
+    "Verified.Var.ownedCost",
+    "Verified.modeAt",
+    "Verified.Wasi.Resource.letPairModes",
+    "Verified.Mode.join",
+    "Verified.Args.get_cons_zero'",
+    "Verified.Args.get_cons_succ",
+    "Verified.Var.index_ofIndex"
+  ],
+  "examples": [
+    "Demos.RunningSum.inputCharge",
+    "Demos.OrderBook.Process.readCharge",
+    "Demos.RunningSum.step_body_bounded",
+    "Demos.OrderBook.Process.readStep_bounded"
+  ]
+}

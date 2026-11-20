@@ -3,11 +3,13 @@
   "goals": [
     "Verified.Wasi.ProcessTotalPremises source host pure program entry represented relation charge beginCharge initial heap",
     "∃ bound, ∀ fuel ≥ bound, run fuel module startIndex store [] targetHost = .Trap final exitTrap",
-    "room for a step: heap.top.toNat + copyCost + charge ≤ 65536 * memoryCap",
+    "room for a step: heap.top.toNat + 4 * copyCost + charge ≤ 65536 * memoryCap",
     "a budget for a whole run of a WASI process",
     "Verified.Wasi.ReturnOrAcceptedExit host action initial (run fuel module index store [] targetHost)",
     "a process that reads its whole input in begin and only writes in its steps",
-    "the total run of a second compiled process with the same state type and steps"
+    "the total run of a second compiled process with the same state type and steps",
+    "a process step that takes its state owned",
+    "when a process compacts its state"
   ],
   "modules": [
     "Verified.Wasi.ProcessTotalCorrect",
@@ -39,7 +41,12 @@
     "Demos.Rcv.Process.Compiled.exits_long_of_room",
     "Demos.Rcv.Process.beginWith",
     "Demos.Rcv.Process.beginWith_report",
-    "Demos.Rcv.Process.beginWith_long"
+    "Demos.Rcv.Process.beginWith_long",
+    "Verified.Wasi.ProcessEntry",
+    "Verified.Step.base_le",
+    "Verified.Wasi.processCompactWhen",
+    "Verified.Wasi.copyCostCode",
+    "Verified.Wasi.wp_process_compact_when_with"
   ],
   "examples": [
     "Demos.RunningSum.RunCharges",
@@ -69,6 +76,7 @@
     "Demos.Rcv.Process.compactClosed",
     "Demos.Rcv.Process.initialState",
     "Demos.Rcv.Process.initial_memoryCap",
-    "Demos.Rcv.Process.initial_top"
+    "Demos.Rcv.Process.initial_top",
+    "Demos.Rcv.Process.step_bounded"
   ]
 }

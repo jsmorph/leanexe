@@ -55,7 +55,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Region frame of a call or a step](entries/region-frame/README.md) | Keeps the caller's arrays, buffers, and trees across a call through the region clause, composes the frames of steps, among them a WASI command and the release of the variables that die after it. |
 | [Explicit arguments before dependent proofs](entries/explicit-before-dependent-proof/README.md) | Avoids the unification failure of a proof argument about a value that a later argument fixes. |
 | [File theorems](entries/file-theorems/README.md) | States that an emitted `.wasm` file holds the encoding of a module, through a file module outside the import graph. |
-| [Checks that can fail](entries/discriminating-checks/README.md) | Shows that a check detects a seeded fault before its passes count as evidence. |
+| [Checks that can fail](entries/discriminating-checks/README.md) | Shows that a check detects a seeded fault before its passes count as evidence, and fixes the random bytes of a run so that a driver compares its output byte for byte with the specification's. |
 | [Executable mirrors of a specification](entries/mirror-cross-check/README.md) | Cross-checks a mirror that judges runs against a native replay of the specification. |
 | [Theorems outside the full check](entries/out-of-build-checks/README.md) | Identifies theorems that the full check does not check and the driver that does, and elaborates a file against a module that no build has compiled. |
 | [Results that show a check passed](entries/result-validity/README.md) | Takes a verdict from the check's own output on a known tree. |
@@ -63,6 +63,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Instructions that the encoder accepts](entries/encoder-domain/README.md) | Keeps emitted code within the verified encoder's instruction forms and builds missing loads from accepted ones. |
 | [Closed-form allocation bounds](entries/verified-bound-closed-form/README.md) | Bounds the generated allocation term in input sizes or in counts of loop passes. |
 | [Source forms and costs](entries/verified-source-costs/README.md) | Relates source choices, such as arrays kept in a loop's state, to allocation, generated bounds, and compilation cost. |
+| [Owned tuple parameters and their theorem arguments](entries/owned-tuple-arguments/README.md) | States the argument of a function with an owned tuple or structure parameter as `Moved` of its Lean type, and the charge of a process step's call of such a function. |
 | [Array literals, proposition tests, and structure patterns](entries/reflector-forms/README.md) | Explains the reflected code and allocation charges of these forms, and the structure patterns that the reflector reads and those it rejects. |
 | [Representations of structures and enumerations](entries/flat-instances/README.md) | Describes the `Flat` instances that the reflector needs for user types, and the module that holds them. |
 | [Tail-termination cases](entries/tail-termination-cases/README.md) | Diagnoses remaining functional-induction cases in a tail-loop proof. |

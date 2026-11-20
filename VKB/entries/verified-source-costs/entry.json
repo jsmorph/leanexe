@@ -16,7 +16,9 @@
     "(kernel) constant has already been declared 'p.f.func' from two listed definitions whose names end alike",
     "a loop step that chooses among updates of an array field of the loop state",
     "a loop whose state is a tuple that holds an array, charged a copy of the array at every pass",
-    "a text built by pushes, charged 80 bytes for each byte"
+    "a text built by pushes, charged 80 bytes for each byte",
+    "a tuple, structure, or sum parameter that a listed function consumes, taken owned",
+    "a process step's call of a helper whose record parameter is paid"
   ],
   "modules": [
     "Verified.Reflect.Command",
@@ -36,11 +38,12 @@
     "Demos.ManifestCheck.Proof",
     "Demos.RandomHistogram.Compiled",
     "Demos.RandomChoice.Compiled",
-    "Demos.RandomChoice.Proof"
+    "Demos.RandomChoice.Proof",
+    "Verified.Examples.Modes",
+    "Demos.OrderBook.ProcessCharges"
   ],
   "declarations": [
     "Verified.Expr.paramChoice",
-    "Library.Regex.Scan",
     "Library.Regex.scanStep",
     "Library.Regex.push",
     "Library.Regex.combine",
@@ -55,11 +58,11 @@
     "Verified.Reflect.wrapperShape?",
     "Demos.Orbit.lambertBoundsWith",
     "Demos.Sgp4.sgp4BoxAroundWith",
-    "LeanExe.repeatWhile",
     "Verified.paidGrowCost",
     "Verified.blockCost",
     "LeanExe.Dialect.get_set",
-    "LeanExe.Bytes.set"
+    "LeanExe.Bytes.set",
+    "Library.Regex.scan"
   ],
   "examples": [
     "Library.Regex.matchWith_bound",
@@ -89,7 +92,11 @@
     "Demos.RandomChoice.putLine",
     "Demos.RandomChoice.render_bound",
     "Demos.RandomChoice.putLine_get",
-    "Demos.RandomChoice.fill_fold"
+    "Demos.RandomChoice.fill_fold",
+    "Verified.Examples.HeapSums.rescale",
+    "Demos.OrderBook.Process.afterRead",
+    "Demos.OrderBook.Process.readCharge",
+    "Verified.Examples.Modes.parse"
   ],
   "unimported": {
     "Demos/Conjunction/Box.lean": [
@@ -98,11 +105,7 @@
       "Demos.Conjunction.pcBoxWith"
     ],
     "Demos/Avoidance/Program.lean": [
-      "Demos.Avoidance.search",
-      "Demos.Avoidance.action"
-    ],
-    "Demos/Avoidance/Soundness.lean": [
-      "Demos.Avoidance.search_inv"
+      "Demos.Avoidance.search"
     ]
   }
 }

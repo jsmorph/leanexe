@@ -26,7 +26,8 @@
     "Verified.Wasi.Resource.BoundedAt of a command whose charge depends on a reply at the world in which the command asks it",
     "Verified.Wasi.Resource.CommandAlong host property pure program command env world carried to the parts of a command",
     "a charge that depends on a value that an earlier call returned from its own world",
-    "Verified.Wasi.Resource.CallBoundedAt of a later function of the program"
+    "Verified.Wasi.Resource.CallBoundedAt of a later function of the program",
+    "Verified.Wasi.Resource.Bounded of Command.bind (.ret value) (.call f [x]), a state bound whole before an owned call"
   ],
   "modules": [
     "Verified.Wasi.ResourceRules",
@@ -141,7 +142,8 @@
     "LeanExe.Wasi.Host.Along.of_rel",
     "LeanExe.Wasi.Host.Along.bind_right",
     "LeanExe.Wasi.Exec.unbind",
-    "Verified.Shim.along_observed"
+    "Verified.Shim.along_observed",
+    "Verified.Wasi.Resource.Bounded.bind_ret"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",

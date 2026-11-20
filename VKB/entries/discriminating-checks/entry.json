@@ -22,7 +22,11 @@
     "strace -e inject=getrandom:retval=4096 and inject=write:retval=0",
     "strace -e inject=CALL:error=ERRNO:when=FIRST..LAST in the driver of a native executable",
     "a driver of a native executable whose runs give no read error, failed close, EAGAIN, or short write",
-    "strace's decoded flags and mask of statx, and strings cut at 32 bytes"
+    "strace's decoded flags and mask of statx, and strings cut at 32 bytes",
+    "a run of a command whose output depends on random bytes from the operating system",
+    "an expected output computed from a specification that is a relation over events",
+    "wasmtime_linker_allow_shadowing and wasmtime_linker_define_func in place of one WASI call",
+    "a file of random bytes that runs out"
   ],
   "modules": [
     "Verified.Wasi.HandleCheck",
@@ -30,7 +34,8 @@
     "Verified.Wasi.ReflectModes",
     "Verified.Compile",
     "Verified.Wasi.CodeAnalysis",
-    "LeanExe.Linux.CallTable"
+    "LeanExe.Linux.CallTable",
+    "Demos.RandomChoice.CommandSpec"
   ],
   "declarations": [
     "Verified.Wasi.Command.HandleCheck",
@@ -41,7 +46,9 @@
     "Verified.Wasi.EffectSig.callMoves",
     "LeanExe.Linux.regions_read",
     "LeanExe.Wasi.Handle.preopened",
-    "Verified.Expr.letPair"
+    "Verified.Expr.letPair",
+    "Demos.RandomChoice.Meets",
+    "Demos.RandomChoice.Rounds"
   ],
   "examples": [],
   "unimported": {

@@ -3,19 +3,22 @@
   "goals": [
     "a loop that fills one buffer at every pass without an allocation",
     "Verified.Wasi.Resource.Bounded of a loop step whose read or draw takes the state's buffer",
-    "a process step that reads into a buffer"
+    "a process step that reads into a buffer",
+    "a process step that takes its state owned and moves its buffer into a read"
   ],
   "modules": [
     "Verified.Examples.WasiRetainBudget",
     "LeanExe.Wasi.Sys",
-    "Verified.Wasi.ReadCommand"
+    "Verified.Wasi.ReadCommand",
+    "Verified.Wasi.ReflectModes"
   ],
   "declarations": [
     "LeanExe.Wasi.readStdin",
     "LeanExe.Wasi.randomGet",
     "Verified.Wasi.Resource.PureContext.sysTakeCost",
     "Verified.Wasi.sysTakeLive",
-    "Verified.Wasi.wp_take_with"
+    "Verified.Wasi.wp_take_with",
+    "Verified.Wasi.Command.paramChoice"
   ],
   "examples": [
     "Verified.Examples.WasiRetain.retain",

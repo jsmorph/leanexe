@@ -12,7 +12,8 @@
     "a WASI call that the shim answers with a loop of Linux calls, such as random_get with getrandom until the buffer is full",
     "a short getrandom read in a corollary over layer events",
     "the weakest condition on Linux's results under which a corollary holds",
-    "the output length of a layer event, which an image leaves free"
+    "the output length of a layer event, which an image leaves free",
+    "a write whose count argument is free of its input in a statement over layer events"
   ],
   "modules": [
     "Demos.RandomHistogram.NativeCounts",
@@ -39,7 +40,8 @@
     "Demos.RandomHistogram.ShortRead",
     "Demos.RandomHistogram.Draws",
     "LeanExe.Linux.RandomCount",
-    "Verified.Shim.RandomCalls"
+    "Verified.Shim.RandomCalls",
+    "LeanExe.Linux.Event.writeBytes"
   ],
   "examples": [
     "Demos.RandomHistogram.linux_footprint_bounded",

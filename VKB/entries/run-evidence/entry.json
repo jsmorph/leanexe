@@ -15,7 +15,9 @@
     "a comparison with Wasmtime that reports a difference no specification predicts, such as the padding of fd_prestat_get's record",
     "strace's fault injection of a result that no launch produces, such as openat returning 3",
     "a stub whose outputs are right while its calls' arguments are wrong",
-    "a run under qemu-aarch64 of an executable that needs the results of openat2"
+    "a run under qemu-aarch64 of an executable that needs the results of openat2",
+    "a short getrandom count in a native run, by strace's retval injection or a pending signal",
+    "strace -e inject=getrandom:signal=SIGCONT"
   ],
   "modules": [
     "LeanExe.M7.Proof.Board"

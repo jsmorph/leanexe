@@ -118,6 +118,7 @@
     "Demos.RandomHistogram.render_bound",
     "Demos.RandomHistogram.appendLine_cost_le",
     "Demos.ManifestCheck.parse_bound",
-    "Demos.ManifestCheck.parse_loop_size"
+    "Demos.ManifestCheck.parse_loop_size",
+    "Demos.Slew.Bound.round_bound"
   ]
 }

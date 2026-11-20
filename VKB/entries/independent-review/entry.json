@@ -20,7 +20,9 @@
     "a restatement of a WASI specification over Linux events with alternatives that make no layer event",
     "0 < e.ret.toNat for a result that may be a negated error number",
     "wrong premises on a host's replies, such as a bound on a reply at the wrong index",
-    "the class of runs with the host's real replies that a premise excludes"
+    "the class of runs with the host's real replies that a premise excludes",
+    "a write loop's statement that admits a write of no byte or more writes than its passes",
+    "a premise on getrandom's results that excludes runs Linux gives or admits runs at which the shim traps"
   ],
   "modules": [
     "Library.Random.Sampling.Spec",
@@ -34,7 +36,8 @@
     "LeanExe.Wasi.WriteAll",
     "Demos.RandomHistogram.NativeCounts",
     "Demos.ManifestCheck.NativeMeets",
-    "Demos.ManifestCheck.Native"
+    "Demos.ManifestCheck.Native",
+    "Demos.RandomChoice.CommandSpec"
   ],
   "declarations": [
     "Library.Random.Sampling.Shuffles",
@@ -64,7 +67,14 @@
     "Demos.ManifestCheck.NFileReads",
     "LeanExe.Linux.isError",
     "Demos.ManifestCheck.StatAlong",
-    "Demos.ManifestCheck.StatxBounded"
+    "Demos.ManifestCheck.StatxBounded",
+    "LeanExe.Wasi.WroteSome",
+    "LeanExe.Wasi.WriteAllRun.shape",
+    "Demos.ManifestCheck.LineWrites",
+    "Demos.RandomChoice.Writes",
+    "Demos.RandomHistogram.InRange",
+    "Demos.RandomHistogram.Written",
+    "Demos.RandomHistogram.Counts"
   ],
   "examples": [
     "Library.Sorting.Quicksort.quicksort_eq",
@@ -72,7 +82,10 @@
     "Verified.ShimA64.randomStub_run",
     "LeanExe.A64.run_preopenCheck",
     "Demos.RandomHistogram.OfferedLayer",
-    "Demos.ManifestCheck.spares3_three"
+    "Demos.ManifestCheck.spares3_three",
+    "Demos.RandomHistogram.random_inRange",
+    "Demos.RandomHistogram.write_inRange",
+    "Demos.RandomHistogram.image_untrapped"
   ],
   "unimported": {
     "tests/TestSupport/A64/ImageFilesManifestCheck.lean": [
