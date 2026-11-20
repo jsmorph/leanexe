@@ -256,7 +256,6 @@ The theorems' semantics, premises, frame, emitted files, WASI host, and native s
 ## Open work
 
 - [ ] A proof of the I/O adapter.
-- [ ] Owned record and pair parameters.
 
 [The Talos conformance driver](../tests/talos/run.sh) runs the interpreter over the WebAssembly testsuite.  Its run passes 64,751 commands, with 346 skips and 27 decode errors on unsupported text forms, and its report equals the one that Talos commits.  No proof relates Talos to the WebAssembly specification, so the interpreter remains trusted.
 

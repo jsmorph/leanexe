@@ -525,6 +525,77 @@ theorem Agree.flatMoved {α β : Type} [Flat α β] [Scalar β] (e : Elem) (φ :
   reads store vs xs := by rw [e.movedInst_reads]; rfl
   moves store vs xs := by rw [e.movedInst_moves]; rfl
 
+/-- Moved values without heap data agree along a map that keeps each value's words. -/
+theorem Agree.movedScalar {α β : Type} [Scalar α] [Scalar β] (φ : α → β)
+    (h : ∀ x, Scalar.values x = Scalar.values (φ x)) :
+    Agree (instRepresentOfScalar (α := Moved α)) (instRepresentOfScalar (α := Moved β))
+      (fun x => Moved.mk (φ x.val)) :=
+  Agree.scalar (fun x : Moved α => Moved.mk (φ x.val)) fun x : Moved α => h x.val
+
+/-- Moved pairs agree componentwise. -/
+theorem Agree.movedProd {α β γ δ : Type} {ia : Represent (Moved α)} {ib : Represent (Moved β)}
+    {ja : Represent (Moved γ)} {jb : Represent (Moved δ)} {φ : Moved α → Moved β}
+    {ψ : Moved γ → Moved δ} (ha : Agree ia ib φ) (hb : Agree ja jb ψ) :
+    Agree (@instRepresentMovedProd _ _ ia ja) (@instRepresentMovedProd _ _ ib jb)
+      (fun p => Moved.mk ((φ (Moved.mk p.val.1)).val, (ψ (Moved.mk p.val.2)).val)) where
+  borrowed heap store vs p := by
+    show (∃ first second, vs = first ++ second ∧
+        @Represent.borrowed _ ia heap store first ⟨p.val.1⟩ ∧
+        @Represent.borrowed _ ja heap store second ⟨p.val.2⟩ ∧
+        ∀ b ∈ @Represent.blocks _ ia store first ⟨p.val.1⟩,
+          @Represent.outside _ ja store second ⟨p.val.2⟩ b) ↔
+      (∃ first second, vs = first ++ second ∧
+        @Represent.borrowed _ ib heap store first (φ ⟨p.val.1⟩) ∧
+        @Represent.borrowed _ jb heap store second (ψ ⟨p.val.2⟩) ∧
+        ∀ b ∈ @Represent.blocks _ ib store first (φ ⟨p.val.1⟩),
+          @Represent.outside _ jb store second (ψ ⟨p.val.2⟩) b)
+    simp only [ha.borrowed, hb.borrowed, Represent.outside, ha.blocks, hb.blocks]
+  owned heap store vs p := by
+    show (∃ first second, vs = first ++ second ∧
+        @Represent.owned _ ia heap store first ⟨p.val.1⟩ ∧
+        @Represent.owned _ ja heap store second ⟨p.val.2⟩ ∧
+        ∀ b ∈ @Represent.blocks _ ia store first ⟨p.val.1⟩,
+          @Represent.outside _ ja store second ⟨p.val.2⟩ b) ↔
+      (∃ first second, vs = first ++ second ∧
+        @Represent.owned _ ib heap store first (φ ⟨p.val.1⟩) ∧
+        @Represent.owned _ jb heap store second (ψ ⟨p.val.2⟩) ∧
+        ∀ b ∈ @Represent.blocks _ ib store first (φ ⟨p.val.1⟩),
+          @Represent.outside _ jb store second (ψ ⟨p.val.2⟩) b)
+    simp only [ha.owned, hb.owned, Represent.outside, ha.blocks, hb.blocks]
+  width p := by
+    show @Represent.width _ ia ⟨p.val.1⟩ + @Represent.width _ ja ⟨p.val.2⟩ =
+      @Represent.width _ ib (φ ⟨p.val.1⟩) + @Represent.width _ jb (ψ ⟨p.val.2⟩)
+    rw [ha.width, hb.width]
+  blocks store vs p := by
+    show @Represent.blocks _ ia store (vs.take (@Represent.width _ ia ⟨p.val.1⟩)) ⟨p.val.1⟩ ++
+        @Represent.blocks _ ja store (vs.drop (@Represent.width _ ia ⟨p.val.1⟩)) ⟨p.val.2⟩ =
+      @Represent.blocks _ ib store (vs.take (@Represent.width _ ib (φ ⟨p.val.1⟩)))
+          (φ ⟨p.val.1⟩) ++
+        @Represent.blocks _ jb store (vs.drop (@Represent.width _ ib (φ ⟨p.val.1⟩)))
+          (ψ ⟨p.val.2⟩)
+    rw [ha.width, ha.blocks, hb.blocks]
+  reads _ _ _ := rfl
+  moves store vs p := by
+    show @Represent.moves _ ia store (vs.take (@Represent.width _ ia ⟨p.val.1⟩)) ⟨p.val.1⟩ ++
+        @Represent.moves _ ja store (vs.drop (@Represent.width _ ia ⟨p.val.1⟩)) ⟨p.val.2⟩ =
+      @Represent.moves _ ib store (vs.take (@Represent.width _ ib (φ ⟨p.val.1⟩)))
+          (φ ⟨p.val.1⟩) ++
+        @Represent.moves _ jb store (vs.drop (@Represent.width _ ib (φ ⟨p.val.1⟩)))
+          (ψ ⟨p.val.2⟩)
+    rw [ha.width, ha.moves, hb.moves]
+
+/-- A moved structure represented as its `Flat` tuple agrees along `φ` of the moved tuple with
+whatever the moved tuple agrees with along `φ`. -/
+theorem Agree.movedFlat {α β γ : Type} [Flat α β] {ib : Represent (Moved β)} {ic : Represent γ}
+    {φ : Moved β → γ} (h : Agree ib ic φ) :
+    Agree (@instRepresentMovedFlat α β _ ib) ic (fun x => φ (Moved.mk (Flat.flat x.val))) where
+  borrowed heap store vs x := h.borrowed heap store vs (Moved.mk (Flat.flat x.val))
+  owned heap store vs x := h.owned heap store vs (Moved.mk (Flat.flat x.val))
+  width x := h.width (Moved.mk (Flat.flat x.val))
+  blocks store vs x := h.blocks store vs (Moved.mk (Flat.flat x.val))
+  reads store vs x := h.reads store vs (Moved.mk (Flat.flat x.val))
+  moves store vs x := h.moves store vs (Moved.mk (Flat.flat x.val))
+
 /-- `transfer` for a Lean function `F` whose result `F y` the compiled function gives as `r (F y)`,
 from the agreement of the instances of the arguments along `g` and of the result along `r`. -/
 theorem ImplementsA.transferAgree {α β γ δ : Type} {ia : Represent α} {ib : Represent β}
@@ -639,7 +710,7 @@ theorem paramMode_tables_lt (n : Nat) (ps : List Ty) (ms : List Mode)
     | cons m ms =>
       simp only [List.take_succ_cons, List.all_cons, Bool.and_eq_true, beq_iff_eq] at hB
       cases i with
-      | zero => simp [Ty.paramMode, hB.1]
+      | zero => simp [hB.1]
       | succ i =>
         simp only [List.getD_cons_succ, List.tail_cons]
         have := ih ms hB.2 i (by omega)

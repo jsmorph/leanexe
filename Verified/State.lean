@@ -5,6 +5,7 @@ import Verified.Bytes.Represent
 import LeanExe.Pipeline.Rebuilt
 import LeanExe.Pipeline.RecordPointers
 import LeanExe.Pipeline.Allocation
+import LeanExe.Pipeline.MovedTuples
 import LeanExe.TalosCompat
 
 /-! The states of the verified compiler's proof: how locals hold words, how words represent values
@@ -1462,17 +1463,131 @@ theorem Ty.leanInst_reads {store : Store Unit} :
       rw [a.leanInst_width, a.leanInst_reads, b.leanInst_reads]
       rfl
 
-theorem Ty.paramMode_scalar : (t : Ty) → t.scalar = true → (m : Mode) → t.paramMode m = .borrowed
-  | .elem _, _, _ | .pair _ _, _, _ => rfl
-  | .array _, h, _ => absurd h Bool.false_ne_true
+theorem Ty.paramMode_scalar (t : Ty) (h : t.scalar = true) (m : Mode) :
+    t.paramMode m = .borrowed := by
+  simp [Ty.paramMode, h]
+
+/-- The `Represent` instance for a value of type `t` that the caller moves: the instance from
+`Scalar` for a type without heap values, the moved pair of its components' instances for another
+pair, and the instances of moved arrays, buffers, trees, and tree headers. -/
+@[instance_reducible] def Ty.movedInst : (t : Ty) → Represent (Moved t.denote)
+  | .elem e => @instRepresentOfScalar _ (@instScalarMoved _ e.scalarInst)
+  | .pair a b =>
+    if h : (Ty.pair a b).scalar = true then
+      @instRepresentOfScalar _ (@instScalarMoved _ ((Ty.pair a b).scalarInst h))
+    else @instRepresentMovedProd _ _ a.movedInst b.movedInst
+  | .array e => e.movedInst
+  | .bytes => inferInstanceAs (Represent (Moved LeanExe.Bytes))
+  | .tree shape => inferInstanceAs (Represent (Moved (Tree shape)))
+  | .treeHeader shape r => inferInstanceAs (Represent (Moved (TreeHeader shape r)))
+
+theorem Ty.movedInst_scalar : (t : Ty) → (h : t.scalar = true) →
+    t.movedInst = @instRepresentOfScalar _ (@instScalarMoved _ (t.scalarInst h))
+  | .elem _, _ => rfl
+  | .pair _ _, h => by rw [Ty.movedInst, dite_eq_left h]
+  | .array _, h => absurd h Bool.false_ne_true
+
+theorem Ty.movedInst_width : (t : Ty) → (x : Moved t.denote) →
+    @Represent.width _ t.movedInst x = t.width
+  | .elem e, x => (Ty.elem e).scalarInst_length rfl x.val
+  | .array e, x => e.movedInst_width x
+  | .tree _, _ | .treeHeader _ _, _ => rfl
+  | .bytes, _ => rfl
+  | .pair a b, p => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [(Ty.pair a b).movedInst_scalar h]
+      exact (Ty.pair a b).scalarInst_length h p.val
+    · rw [Ty.movedInst, dite_eq_right h]
+      show @Represent.width _ a.movedInst (Moved.mk p.val.1) +
+        @Represent.width _ b.movedInst (Moved.mk p.val.2) = _
+      rw [a.movedInst_width, b.movedInst_width]
+      rfl
+
+theorem Ty.movedInst_blocks {store : Store Unit} :
+    (t : Ty) → {ws : List Value} → {x : Moved t.denote} →
+      @Represent.blocks _ t.movedInst store ws x = t.blocks store ws x.val
+  | .elem _, _, _ => rfl
+  | .array e, _, _ => by cases e <;> rfl
+  | .bytes, _, _ | .tree _, _, _ | .treeHeader _ _, _, _ => rfl
+  | .pair a b, ws, p => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [(Ty.pair a b).movedInst_scalar h, Ty.blocks_scalar _ h]
+      rfl
+    · rw [Ty.movedInst, dite_eq_right h]
+      show @Represent.blocks _ a.movedInst store
+          (ws.take (@Represent.width _ a.movedInst (Moved.mk p.val.1))) (Moved.mk p.val.1) ++
+        @Represent.blocks _ b.movedInst store
+          (ws.drop (@Represent.width _ a.movedInst (Moved.mk p.val.1))) (Moved.mk p.val.2) = _
+      rw [a.movedInst_width, a.movedInst_blocks, b.movedInst_blocks]
+      rfl
+
+/-- A moved value is represented as an owned value of its type. -/
+theorem Ty.movedInst_borrowed {heap : Heap} {store : Store Unit} :
+    (t : Ty) → {ws : List Value} → {x : Moved t.denote} →
+      (@Represent.borrowed _ t.movedInst heap store ws x ↔ t.Rep .owned heap store ws x.val)
+  | .elem e, _, x => Ty.scalar_rep (mode := .owned) (v := x.val) (.elem e) rfl
+  | .array e, _, _ => e.movedInst_borrowed
+  | .bytes, _, _ | .tree _, _, _ | .treeHeader _ _, _, _ => Iff.rfl
+  | .pair a b, ws, p => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [(Ty.pair a b).movedInst_scalar h]
+      exact Ty.scalar_rep (mode := .owned) (v := p.val) (.pair a b) h
+    · rw [Ty.movedInst, dite_eq_right h]
+      constructor
+      · rintro ⟨first, second, rfl, h1, h2, hd⟩
+        refine ⟨first, second, rfl, a.movedInst_borrowed.mp h1, b.movedInst_borrowed.mp h2,
+          fun _ x hx y hy => hd x ?_ y ?_⟩
+        · rw [a.movedInst_blocks]
+          exact hx
+        · rw [b.movedInst_blocks]
+          exact hy
+      · rintro ⟨first, second, rfl, h1, h2, hd⟩
+        refine ⟨first, second, rfl, a.movedInst_borrowed.mpr h1, b.movedInst_borrowed.mpr h2,
+          fun x hx y hy => hd rfl x ?_ y ?_⟩
+        · rw [a.movedInst_blocks] at hx
+          exact hx
+        · rw [b.movedInst_blocks] at hy
+          exact hy
+
+theorem Ty.movedInst_moves {store : Store Unit} :
+    (t : Ty) → {ws : List Value} → {x : Moved t.denote} →
+      @Represent.moves _ t.movedInst store ws x = t.pointers store ws x.val
+  | .elem _, _, _ => rfl
+  | .array e, _, _ => e.movedInst_moves
+  | .bytes, _, _ | .tree _, _, _ | .treeHeader _ _, _, _ => rfl
+  | .pair a b, ws, p => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [(Ty.pair a b).movedInst_scalar h, Ty.pointers_scalar _ h]
+      rfl
+    · rw [Ty.movedInst, dite_eq_right h]
+      show @Represent.moves _ a.movedInst store
+          (ws.take (@Represent.width _ a.movedInst (Moved.mk p.val.1))) (Moved.mk p.val.1) ++
+        @Represent.moves _ b.movedInst store
+          (ws.drop (@Represent.width _ a.movedInst (Moved.mk p.val.1))) (Moved.mk p.val.2) = _
+      rw [a.movedInst_width, a.movedInst_moves, b.movedInst_moves]
+      rfl
+
+theorem Ty.movedInst_reads {store : Store Unit} :
+    (t : Ty) → {ws : List Value} → {x : Moved t.denote} →
+      @Represent.reads _ t.movedInst store ws x = []
+  | .elem _, _, _ => rfl
+  | .array e, _, _ => e.movedInst_reads
+  | .bytes, _, _ | .tree _, _, _ | .treeHeader _ _, _, _ => rfl
+  | .pair a b, _, _ => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [(Ty.pair a b).movedInst_scalar h]
+      rfl
+    · rw [Ty.movedInst, dite_eq_right h]
+      rfl
 
 /-- The Lean type of an argument of type `t` at a parameter for which the mode `m` was chosen:
-`Moved` for an owned array. -/
+`Moved` for an owned array, buffer, tree, tree header, or pair. -/
 abbrev Ty.argTy : Ty → Mode → Type
   | .bytes, .owned => Moved LeanExe.Bytes
   | .array e, .owned => Moved (Array e.denote)
   | .tree shape, .owned => Moved (Tree shape)
   | .treeHeader shape r, .owned => Moved (TreeHeader shape r)
+  | .pair a b, .owned => Moved (a.denote × b.denote)
   | t, _ => t.denote
 
 /-- The value of an argument. -/
@@ -1483,7 +1598,9 @@ def Ty.argVal : (t : Ty) → (m : Mode) → t.argTy m → t.denote
   | .array _, .borrowed, x => x
   | .tree _, .owned, x | .treeHeader _ _, .owned, x => x.val
   | .tree _, .borrowed, x | .treeHeader _ _, .borrowed, x => x
-  | .elem _, _, x | .pair _ _, _, x => x
+  | .pair _ _, .owned, x => x.val
+  | .pair _ _, .borrowed, x => x
+  | .elem _, _, x => x
 
 /-- The `Represent` instance that Lean synthesizes for an argument. -/
 @[instance_reducible] def Ty.argInst : (t : Ty) → (m : Mode) → Represent (t.argTy m)
@@ -1492,7 +1609,8 @@ def Ty.argVal : (t : Ty) → (m : Mode) → t.argTy m → t.denote
   | .array e, .owned => e.movedInst
   | .array e, .borrowed => Ty.leanInst (.array e)
   | .elem e, _ => Ty.leanInst (.elem e)
-  | .pair a b, _ => Ty.leanInst (.pair a b)
+  | .pair a b, .owned => (Ty.pair a b).movedInst
+  | .pair a b, .borrowed => Ty.leanInst (.pair a b)
   | .tree shape, .owned => inferInstanceAs (Represent (Moved (Tree shape)))
   | .tree shape, .borrowed => Ty.leanInst (.tree shape)
   | .treeHeader shape r, .owned => inferInstanceAs (Represent (Moved (TreeHeader shape r)))
@@ -1502,17 +1620,19 @@ def Ty.argVal : (t : Ty) → (m : Mode) → t.argTy m → t.denote
 @[instance_reducible] def Ty.argScalarInst : (t : Ty) → (m : Mode) → t.scalar = true →
     Scalar (t.argTy m)
   | .elem e, _, h => Ty.scalarInst (.elem e) h
-  | .pair a b, _, h => Ty.scalarInst (.pair a b) h
+  | .pair a b, .owned, h => @instScalarMoved _ (Ty.scalarInst (.pair a b) h)
+  | .pair a b, .borrowed, h => Ty.scalarInst (.pair a b) h
   | .array _, _, h => absurd h Bool.false_ne_true
 
 theorem Ty.argScalar_values : (t : Ty) → (m : Mode) → (h : t.scalar = true) → (x : t.argTy m) →
     @Scalar.values _ (t.argScalarInst m h) x = @Scalar.values _ (t.scalarInst h) (t.argVal m x)
-  | .elem _, _, _, _ | .pair _ _, _, _, _ => rfl
+  | .elem _, _, _, _ | .pair _ _, .owned, _, _ | .pair _ _, .borrowed, _, _ => rfl
   | .array _, _, h, _ => absurd h Bool.false_ne_true
 
 theorem Ty.argInst_scalar : (t : Ty) → (m : Mode) → (h : t.scalar = true) →
     t.argInst m = @instRepresentOfScalar _ (t.argScalarInst m h)
-  | .elem _, _, h | .pair _ _, _, h => Ty.leanInst_scalar _ h
+  | .elem _, _, h | .pair _ _, .borrowed, h => Ty.leanInst_scalar _ h
+  | .pair _ _, .owned, h => Ty.movedInst_scalar _ h
   | .array _, _, h => absurd h Bool.false_ne_true
 
 theorem Ty.argInst_width : (t : Ty) → (m : Mode) → (x : t.argTy m) →
@@ -1521,7 +1641,8 @@ theorem Ty.argInst_width : (t : Ty) → (m : Mode) → (x : t.argTy m) →
   | .array e, .borrowed, x => e.arrayInst_width x
   | .tree _, _, _ | .treeHeader _ _, _, _ => by cases ‹Mode› <;> rfl
   | .bytes, _, _ => by cases ‹Mode› <;> rfl
-  | .elem _, _, x | .pair _ _, _, x => Ty.leanInst_width _ x
+  | .pair a b, .owned, x => (Ty.pair a b).movedInst_width x
+  | .elem _, _, x | .pair _ _, .borrowed, x => Ty.leanInst_width _ x
 
 /-- Lean's instance for an argument agrees with the verified compiler's representation. -/
 theorem Ty.argInst_borrowed {heap : Heap} {store : Store Unit} :
@@ -1534,7 +1655,18 @@ theorem Ty.argInst_borrowed {heap : Heap} {store : Store Unit} :
   | .tree _, .owned, _, _ | .treeHeader _ _, .owned, _, _ => Iff.rfl
   | .tree shape, .borrowed, _, _ => (Ty.tree shape).leanInst_borrowed
   | .treeHeader shape r, .borrowed, _, _ => (Ty.treeHeader shape r).leanInst_borrowed
-  | .elem _, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_borrowed _
+  | .elem _, _, _, _ => Ty.leanInst_borrowed _
+  | .pair _ _, .borrowed, _, _ => by
+    rw [Ty.paramMode_borrowed]
+    exact Ty.leanInst_borrowed _
+  | .pair a b, .owned, _, x => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [Ty.paramMode_scalar _ h]
+      show @Represent.borrowed _ (Ty.pair a b).movedInst heap store _ x ↔ _
+      rw [(Ty.pair a b).movedInst_scalar h]
+      exact Ty.scalar_rep (mode := .borrowed) (v := x.val) (.pair a b) h
+    · rw [Ty.paramMode_not_scalar (Bool.eq_false_iff.mpr h)]
+      exact (Ty.pair a b).movedInst_borrowed
 
 theorem Ty.argInst_moves {store : Store Unit} :
     (t : Ty) → (m : Mode) → {ws : List Value} → {x : t.argTy m} →
@@ -1548,7 +1680,18 @@ theorem Ty.argInst_moves {store : Store Unit} :
   | .tree _, .owned, _, _ | .treeHeader _ _, .owned, _, _ => rfl
   | .tree shape, .borrowed, _, _ => (Ty.tree shape).leanInst_moves
   | .treeHeader shape r, .borrowed, _, _ => (Ty.treeHeader shape r).leanInst_moves
-  | .elem _, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_moves _
+  | .elem _, _, _, _ => Ty.leanInst_moves _
+  | .pair _ _, .borrowed, _, _ => by
+    rw [Ty.paramMode_borrowed]
+    exact Ty.leanInst_moves _
+  | .pair a b, .owned, _, x => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [Ty.paramMode_scalar _ h]
+      show @Represent.moves _ (Ty.pair a b).movedInst store _ x = []
+      rw [(Ty.pair a b).movedInst_scalar h]
+      rfl
+    · rw [Ty.paramMode_not_scalar (Bool.eq_false_iff.mpr h)]
+      exact (Ty.pair a b).movedInst_moves
 
 theorem Ty.argInst_reads {store : Store Unit} :
     (t : Ty) → (m : Mode) → {ws : List Value} → {x : t.argTy m} →
@@ -1562,7 +1705,19 @@ theorem Ty.argInst_reads {store : Store Unit} :
   | .tree _, .owned, _, _ | .treeHeader _ _, .owned, _, _ => rfl
   | .tree shape, .borrowed, _, _ => (Ty.tree shape).leanInst_reads
   | .treeHeader shape r, .borrowed, _, _ => (Ty.treeHeader shape r).leanInst_reads
-  | .elem _, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_reads _
+  | .elem _, _, _, _ => Ty.leanInst_reads _
+  | .pair _ _, .borrowed, _, _ => by
+    rw [Ty.paramMode_borrowed]
+    exact Ty.leanInst_reads _
+  | .pair a b, .owned, ws, x => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [Ty.paramMode_scalar _ h]
+      show @Represent.reads _ (Ty.pair a b).movedInst store ws x =
+        (Ty.pair a b).reads store ws x.val
+      rw [(Ty.pair a b).movedInst_scalar h, Ty.reads_scalar _ h]
+      rfl
+    · rw [Ty.paramMode_not_scalar (Bool.eq_false_iff.mpr h)]
+      exact (Ty.pair a b).movedInst_reads
 
 /-- The Lean type of a function's arguments, for parameters of types `ps` for which the modes `ms`
 were chosen: `Unit` for none, the argument's type for one, and the right-nested product of the

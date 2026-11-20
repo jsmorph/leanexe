@@ -1,12 +1,17 @@
 import Verified.Compile
 
 /-! The modes that the reflector chooses for a function's parameters.  The choice is not trusted:
-the correctness theorem holds for every choice of modes.  An array parameter is owned when the
-body consumes it where it dies, where a borrowed parameter would be copied: as the array of an
-update or an extension, at a call that moves it into an owned parameter, as the function's
-result, or through a binding, a branch, a pair, or a loop's state into one of these.  Every other
-parameter is borrowed, so that a caller need not copy an array that the function only reads.
-The live sets follow those of `Expr.code`. -/
+the correctness theorem holds for every choice of modes.  A parameter that holds an array, a
+buffer, or a tree, alone or in a tuple, is owned when the body consumes it where it dies, where a
+borrowed parameter would be copied: as the array of an update or an extension, at a call that
+moves it into an owned parameter, as the function's result, or through a binding, a branch, a
+pair, or a loop's state into one of these.  The reflector splits a tuple parameter at the
+function's entry, so the body consumes the tuple when it consumes one of its components that holds
+an array, a buffer, or a tree, and a body that returns only a word of the tuple consumes nothing
+of it.  A destructuring of a variable that stays live copies the variable when it is owned, as a
+match on a sum does when an alternative names the matched value, so such a destructuring makes no
+demand of the variable.  Every other parameter is borrowed, so that a caller need not copy an array
+that the function only reads.  The live sets follow those of `Expr.code`. -/
 
 namespace Verified
 
@@ -88,11 +93,13 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
     let component := owned || first.mode [] == .owned || second.mode [] == .owned
     first.demands (fun i => live i || second.uses i) component k ||
       second.demands live component k
-  | _, _, .letPair e body, live, owned, k =>
+  | _, _, .letPair (s := s) (t := t) e body, live, owned, k =>
     let inner := shift 2 live
-    e.demands (fun i => live i || body.uses (i + 2))
-        (body.demands inner owned 0 || body.demands inner owned 1) k ||
-      body.demands inner owned (k + 2)
+    !(e.varIndex? == some k && body.uses (k + 2)) &&
+      (e.demands (fun i => live i || body.uses (i + 2))
+          ((!t.scalar && body.demands inner owned 0) ||
+            (!s.scalar && body.demands inner owned 1)) k ||
+        body.demands inner owned (k + 2))
   | _, _, .loop count init cond body, live, owned, k =>
     let all := fun i => live i || cond.uses (i + 1) || body.uses (i + 2)
     let inner := shift 2 all
@@ -127,13 +134,12 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
     (k == x.index && !live k) || i.demands (fun j => live j || j == x.index) false k
 
 /-- The modes chosen for the parameters of types `params` of a function with body `body`: owned
-for an array parameter that the body consumes where it dies, and borrowed otherwise. -/
+for a parameter with heap values that the body consumes where it dies, and borrowed otherwise. -/
 def Expr.paramChoice {params : List Ty} {result : Ty} (body : Expr S params result) :
     List Mode :=
   (List.range params.length).map fun i =>
     match params[i]? with
-    | some (Ty.array _) | some (Ty.tree _) | some (Ty.treeHeader _ _) | some Ty.bytes =>
-      if body.demands (fun _ => false) true i then .owned else .borrowed
-    | _ => .borrowed
+    | some t => if !t.scalar && body.demands (fun _ => false) true i then .owned else .borrowed
+    | none => .borrowed
 
 end Verified

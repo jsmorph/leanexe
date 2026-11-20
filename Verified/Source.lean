@@ -320,12 +320,31 @@ inductive Mode where
   | borrowed | owned
   deriving DecidableEq, Repr, Inhabited
 
-/-- The chosen mode for an array, byte, tree, or tree-header parameter.  Other parameters are borrowed. -/
-def Ty.paramMode : Ty → Mode → Mode
-  | .array _, m => m
-  | .bytes, m => m
-  | .tree _, m | .treeHeader _ _, m => m
-  | _, _ => .borrowed
+/-- The mode of a parameter of type `t` for which the mode `m` was chosen: `m` for a type that
+holds an array, bytes, or a tree, and borrowed for a type without heap values. -/
+def Ty.paramMode (t : Ty) (m : Mode) : Mode := if t.scalar then .borrowed else m
+
+@[simp] theorem Ty.paramMode_elem (e : Elem) (m : Mode) : (Ty.elem e).paramMode m = .borrowed :=
+  rfl
+
+@[simp] theorem Ty.paramMode_array (e : Elem) (m : Mode) : (Ty.array e).paramMode m = m := rfl
+
+@[simp] theorem Ty.paramMode_bytes (m : Mode) : Ty.bytes.paramMode m = m := rfl
+
+@[simp] theorem Ty.paramMode_tree (shape : TreeShape) (m : Mode) :
+    (Ty.tree shape).paramMode m = m :=
+  rfl
+
+@[simp] theorem Ty.paramMode_treeHeader (shape : TreeShape) (r : Fin shape.records) (m : Mode) :
+    (Ty.treeHeader shape r).paramMode m = m :=
+  rfl
+
+@[simp] theorem Ty.paramMode_borrowed (t : Ty) : t.paramMode .borrowed = .borrowed := by
+  simp [Ty.paramMode]
+
+theorem Ty.paramMode_not_scalar {t : Ty} (h : t.scalar = false) (m : Mode) :
+    t.paramMode m = m := by
+  simp [Ty.paramMode, h]
 
 /-- The modes of parameters of types `ts` for which the modes `ms` were chosen, in order, a missing
 choice borrowed. -/

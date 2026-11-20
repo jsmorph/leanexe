@@ -6,8 +6,9 @@ import Verified.Wasi.ResourceRules
 /-! The allocation charges of the compiled Maine process's `begin` and steps.  `begin` allocates
 the buffer of `readAll`, of `limit + 4,096` bytes, and then calls `tabulate` on an input of at most
 `limit` bytes or builds a stopped state.  A write step allocates the remaining output and copies
-the state, and a stopping step copies the state.  The WASI compilation's bound of `tabulate` is the
-bound of `Demos.Rcv.Maine.TabulateProgram.compiled`, definitionally (`tabulate_bound_eq`), so
+the state at its call of `afterWrite`, which takes the state owned, and a stopping step copies the
+state.  The WASI compilation's bound of `tabulate` is the bound of
+`Demos.Rcv.Maine.TabulateProgram.compiled`, definitionally (`tabulate_bound_eq`), so
 `TabulateProgram.tabulate_bound` closes it.  A state whose output has at most `outputLimit` bytes,
 as every state of a run has, costs at most `copyLimit` bytes to copy (`copyCost_le`), and a step
 from it at most two copies (`step_prefix_bound`). -/
@@ -36,13 +37,10 @@ theorem copyCost_le {s : State} (size : s.output.data.size ≤ outputLimit) :
 theorem tabulate_bound_eq (b : Bytes) :
     io.pureSources.tabulate.bound b = TabulateProgram.compiled.tabulate.bound b := rfl
 
-theorem afterWrite_bound_le (s : State) (reply : WriteResult) :
-    io.pureSources.afterWrite.bound (s, reply) ≤ stateTy.copyCost (sourceState s) := by
-  rw [io.pureSources.afterWrite.bound_eq, state_copyCost]
-  simp only [LeanExe.Pipeline.Flat.flat, copyCost_bytes, copyBytes]
-  split
-  · omega
-  · split <;> omega
+/-- `afterWrite` takes the state owned and allocates nothing. -/
+theorem afterWrite_bound (s : State) (reply : WriteResult) :
+    io.pureSources.afterWrite.bound (⟨s⟩, reply) = 0 :=
+  io.pureSources.afterWrite.bound_eq s reply
 
 /-- The charge of `started`: the bound of `tabulate` on `limit` bytes. -/
 def startedCharge : Nat := 80 * 50000000 + 33958029
@@ -121,9 +119,13 @@ theorem writeStep_bounded {World : Type} (host : Host World) (depth : UInt64) (s
     simp only [bindModes, ResultTy.bindEnv]
     simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg, Expr.allocs,
       Var.cost, Expr.mode, argsSum, callCredits, Args.get_cons_zero', Args.get_cons_succ,
-      Ty.copyCost_of_scalar, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost]
-    show io.pureSources.afterWrite.bound (s, ⟨value.1, value.2⟩) ≤ _
-    exact afterWrite_bound_le s _
+      Ty.copyCost_of_scalar, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost,
+      Expr.ownedCost, Var.ownedCost, modeAt, letPairModes, Mode.join, List.getD_cons_zero,
+      List.getD_cons_succ, Var.index_ofIndex]
+    show stateTy.copyCost (sourceState s) +
+      io.pureSources.afterWrite.bound (⟨s⟩, ⟨value.1, value.2⟩) ≤ _
+    rw [afterWrite_bound]
+    exact Nat.le_of_eq (Nat.add_zero _)
 
 set_option maxHeartbeats 4000000 in
 theorem step_body_bounded {World : Type} (host : Host World) (s : State) :

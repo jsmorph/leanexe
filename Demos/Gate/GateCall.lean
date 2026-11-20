@@ -48,18 +48,18 @@ theorem gate_bound (x : Array Float × Array Float × Float) :
         rw [UInt64.toNat_mul, Nat.mod_eq_of_lt (by nlinarith)]
       rw [gateCompiled.eliminate.bound_eq]
       have hloop := Verified.loopCost_le (CA := fun _ => 0) (C := fun _ => true)
-        (BA := fun a b => gateCompiled.elimStep.bound (d, a, b))
+        (BA := fun a (b : Elim) => gateCompiled.elimStep.bound (d, a, ⟨b⟩))
         (F := fun k e => elimStep d k e) (P := fun _ (e : Elim) =>
           e.a.size = (d * d).toNat ∧ e.r.size = d.toNat)
         (cost := fun _ => Verified.blockCost ((d * d).toNat * 3) + Verified.blockCost (d.toNat * 3))
-        (fun k e he => by
+        (fun k e _ => by
           rw [gateCompiled.elimStep.bound_eq]
           simp only [Nat.zero_add, ↓reduceIte]
           split
           · split
-            · exact le_rfl
-            · rw [he.1, he.2]
-          · rw [he.1, he.2])
+            · exact Nat.le_refl _
+            · exact Nat.zero_le _
+          · exact Nat.zero_le _)
         (fun k e he _ => elimStep_sizes he.1 he.2) (n := d.toNat)
         (I := ⟨0, LeanExe.build (d * d) fun t => Library.Numerics.Interval.point s[t.toNat]!,
           LeanExe.build d fun i => Library.Numerics.Interval.point nu[i.toNat]!,

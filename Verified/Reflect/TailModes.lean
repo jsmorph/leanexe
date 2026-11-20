@@ -20,11 +20,13 @@ def TailBody.demands (targetModes : List Mode) (modes : List Mode) :
     let inner := value.mode modes :: modes
     value.demands (fun i => body.uses (i + 1)) (body.demands targetModes inner 0) k ||
       body.demands targetModes inner (k + 1)
-  | _, .letPair value body, k =>
+  | _, .letPair (s := s) (t := t) value body, k =>
     let inner := value.mode modes :: value.mode modes :: modes
-    value.demands (fun i => body.uses (i + 2))
-        (body.demands targetModes inner 0 || body.demands targetModes inner 1) k ||
-      body.demands targetModes inner (k + 2)
+    !(value.varIndex? == some k && body.uses (k + 2)) &&
+      (value.demands (fun i => body.uses (i + 2))
+          ((!t.scalar && body.demands targetModes inner 0) ||
+            (!s.scalar && body.demands targetModes inner 1)) k ||
+        body.demands targetModes inner (k + 2))
   | _, .treeCase (shape := shape) x empty nodes, k =>
     let nodeDemands := fun r : Fin shape.records =>
       let inner := shape.modes r (modes.getD x.index .borrowed) modes
@@ -51,11 +53,9 @@ def TailBody.receivesOwned (modes : List Mode) (i : Fin params.length) :
 def TailBody.paramChoice (body : TailBody S params result params) (modes : List Mode) :
     List Mode :=
   (List.finRange params.length).map fun i =>
-    match params.get i with
-    | .array _ | .tree _ | .treeHeader _ _ | .bytes =>
-      if modes.getD i .borrowed == .owned || body.demands modes (paramModes params modes) i ||
-          body.receivesOwned (paramModes params modes) i then .owned else .borrowed
-    | _ => .borrowed
+    if !(params.get i).scalar && (modes.getD i .borrowed == .owned ||
+        body.demands modes (paramModes params modes) i ||
+        body.receivesOwned (paramModes params modes) i) then .owned else .borrowed
 
 def TailBody.inferModes (body : TailBody S params result params) : List Mode :=
   Nat.fold params.length (fun _ _ modes => body.paramChoice modes)

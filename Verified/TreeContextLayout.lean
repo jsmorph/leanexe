@@ -119,7 +119,7 @@ theorem TreeShape.paramModes (shape : TreeShape) (r : Fin shape.records) (mode :
   simp only [TreeShape.context, TreeShape.modes, Verified.paramModes, List.headD_cons,
     List.tail_cons, paramModes_fn _ _ _ _ (fun i => shape.wordTy_paramMode r i _),
     paramModes_fn _ _ _ _ (fun i => shape.arrayTy_paramMode r i _),
-    paramModes_repeat, Ty.paramMode]
+    paramModes_repeat, Ty.paramMode_treeHeader, Ty.paramMode_tree, Ty.paramMode_bytes]
 
 theorem TreeShape.paramSlots (shape : TreeShape) (r : Fin shape.records) (mode : Mode)
     (base : Nat) :
@@ -129,9 +129,9 @@ theorem TreeShape.paramSlots (shape : TreeShape) (r : Fin shape.records) (mode :
     paramSlots_fn _ .borrowed _ _ (shape.wordTy_width r) (fun i => shape.wordTy_paramMode r i _),
     paramSlots_repeat (.tree shape) mode _ _ rfl,
     paramSlots_fn _ mode _ _ (shape.arrayTy_width r) (fun i => shape.arrayTy_paramMode r i _),
-    Ty.paramMode]
+    Ty.paramMode_treeHeader, Ty.paramMode_tree]
   rw [paramSlots_repeatWidth .bytes mode [] [] 2 rfl]
-  simp only [Verified.paramSlots, List.append_nil, Ty.paramMode]
+  simp only [Verified.paramSlots, List.append_nil, Ty.paramMode_bytes]
 
 theorem TreeShape.slots_modes (shape : TreeShape) (r : Fin shape.records) (mode : Mode)
     (base : Nat) :

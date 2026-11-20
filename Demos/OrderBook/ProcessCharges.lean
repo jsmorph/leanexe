@@ -3,10 +3,13 @@ import Demos.OrderBook.ProcessSizes
 import Verified.Wasi.ResourceRules
 
 /-! The allocation charges of the compiled process's `begin` and steps.  `begin` builds the seven
-arrays of the empty book.  A write step allocates the remaining output and copies the state, and a
-stopping step copies the state.  A read step allocates the read buffer and either copies the state
-at an errno or runs a batch: the words of the batch, the copies of the seven arrays into `run`,
-`run`'s generated bound, the carry after the batch, and the event bytes.  The charge of a read step
+arrays of the empty book.  A write step allocates the remaining output and copies the state at its
+call of `afterWrite`, and a stopping step copies the state.  The steps borrow the state, and
+`afterWrite` and `afterRead` take it owned.  A read step allocates the read buffer, copies the
+state at its call of `afterRead`, pays the credits of the state's seven arrays, since `afterRead`'s
+state parameter is paid, and runs a batch at a reply without an errno: the words of the batch,
+`run`'s generated bound, the carry after the batch, and the event bytes.  `runWords` moves the
+seven arrays into `run`, which updates them in place.  The charge of a read step
 holds for every reply of at most 4,096 bytes, so for a batch that need not lie in the input, and it
 cannot depend on the input's records.  It takes `run`'s generated bound on any batch of at most 518
 words from any book whose arrays have the program's sizes as a term `R` with `RunBound R`, and
@@ -48,7 +51,7 @@ computes them once, so that the charges of the effect bodies read a list rather 
 `Prog.flags`, which the elaborator would do over the bodies of every earlier function at each
 call. -/
 theorem flags_toList : io.pure.program.flags.toList =
-    [([false, false], false), ([false, false], false), ([false, false, false, false, false], false),
+    [([true, false], false), ([false, false], false), ([true, false, false, false, false], false),
       ([false, false, false, false], false), ([false], false),
       ([false, false, false], false), ([], false),
       ([true, true, true, true, true, true, true, false, false, false], false),
@@ -62,29 +65,26 @@ theorem flags_toList : io.pure.program.flags.toList =
       ([true, false, false, false, false, false, false, false], true)] := by
   decide +kernel
 
-theorem afterWrite_bound_le (s : State) (reply : WriteResult) :
-    io.pureSources.afterWrite.bound (s, reply) ≤ stateTy.copyCost (sourceState s) := by
-  rw [io.pureSources.afterWrite.bound_eq, state_copyCost]
-  simp only [LeanExe.Pipeline.Flat.flat, Ty.copyCost, blockCost_eq, copyBytes]
-  split
-  · omega
-  · split <;> omega
+/-- `afterWrite` takes the state owned and allocates nothing. -/
+theorem afterWrite_bound (s : State) (reply : WriteResult) :
+    io.pureSources.afterWrite.bound (⟨s⟩, reply) = 0 :=
+  io.pureSources.afterWrite.bound_eq s reply
 
-/-- The charge of a batch from `s`, with `R` for `run`'s bound: the batch's words, the copies of
-the seven arrays into `run`, `R`, the carry after the batch, and the event bytes. -/
+/-- The charge of a batch from `s`, with `R` for `run`'s bound: the batch's words, `R`, the carry
+after the batch, and the event bytes.  `runWords` takes the state owned and moves its seven arrays
+into `run`, which updates them in place. -/
 def batchCharge (R : Nat) (s : State) : Nat :=
-  blockCost 518 + (blockCost s.oid.size + blockCost s.acct.size + blockCost s.qty.size +
-    blockCost s.lvl.size + blockCost s.nxt.size + blockCost s.head.size + blockCost s.tail.size) +
-  R + Bytes.allocationCost (s.carry.data.size + 4096) + Bytes.allocationCost (8 * (7 * 5122 * 74))
+  blockCost 518 + R + Bytes.allocationCost (s.carry.data.size + 4096) +
+    Bytes.allocationCost (8 * (7 * 5122 * 74))
 
-theorem runWords_bound_le {R : Nat} {s : State}
+theorem runWords_cost_le {R : Nat} {s : State}
     (runLe : ∀ ws : Array UInt64, ws.size ≤ 518 →
       io.pureSources.run.bound (⟨s.oid⟩, ⟨s.acct⟩, ⟨s.qty⟩, ⟨s.lvl⟩, ⟨s.nxt⟩, ⟨s.head⟩, ⟨s.tail⟩,
         s.nextId, s.count, ws) ≤ R)
     (carrySmall : s.carry.data.size < 56) (input : Bytes) (used count : UInt64) (eof : Bool)
     (usedSize : used.toNat ≤ 4096)
     (countLe : 8 * count.toNat ≤ s.carry.data.size + used.toNat) :
-    io.pureSources.runWords.bound (s, input, used, count, eof) ≤ batchCharge R s := by
+    io.pureSources.runWords.cost (⟨s⟩, input, used, count, eof) ≤ batchCharge R s := by
   have countSmall : count.toNat ≤ 518 := by omega
   have wordsSize : (wordsOf s.carry input count).size ≤ 518 := by
     rw [wordsOf_size]
@@ -116,45 +116,47 @@ theorem runWords_bound_le {R : Nat} {s : State}
     exact Nat.le_trans (Nat.mod_le _ _) (by omega)
   have kept := allocationCost_mono (Nat.le_trans keptNat (Nat.add_le_add_left usedSize _))
   have eventCost := allocationCost_mono eventsNat
-  rw [io.pureSources.runWords.bound_eq, io.pureSources.wordsOf.bound_eq,
+  rw [io.pureSources.runWords.cost_eq, io.pureSources.wordsOf.bound_eq,
     io.pureSources.tailBytes.bound_eq, io.pureSources.eventBytes.bound_eq]
   have wordsCost := blockCost_le_of_le countSmall
   unfold batchCharge
   omega
 
-/-- The bound of `afterRead` for every reply with a count of at most 4,096: a copy of the state at
-an errno and a batch otherwise. -/
-theorem afterRead_bound_le {R : Nat} {s : State}
+/-- The cost of `afterRead` for every reply with a count of at most 4,096: nothing at an errno
+and a batch otherwise.  Its bound adds the credits of the state's arrays, which the read step pays
+at its call of `afterRead`. -/
+theorem afterRead_cost_le {R : Nat} {s : State}
     (runLe : ∀ ws : Array UInt64, ws.size ≤ 518 →
       io.pureSources.run.bound (⟨s.oid⟩, ⟨s.acct⟩, ⟨s.qty⟩, ⟨s.lvl⟩, ⟨s.nxt⟩, ⟨s.head⟩, ⟨s.tail⟩,
         s.nextId, s.count, ws) ≤ R)
     (carrySmall : s.carry.data.size < 56) (reply : FillResult)
     (size : reply.count.toNat ≤ 4096) :
-    io.pureSources.afterRead.bound (s, reply) ≤
-      stateTy.copyCost (sourceState s) + batchCharge R s := by
+    io.pureSources.afterRead.cost (⟨s⟩, reply) ≤ batchCharge R s := by
   have carryNat : s.carry.size.toNat = s.carry.data.size :=
     Bytes.size_toNat s.carry (Nat.lt_of_lt_of_le carrySmall (by decide))
-  rw [io.pureSources.afterRead.bound_eq]
+  rw [io.pureSources.afterRead.cost_eq]
   split
-  · rw [state_copyCost]
-    simp only [LeanExe.Pipeline.Flat.flat, Ty.copyCost, blockCost_eq, copyBytes]
-    omega
+  · omega
   · split
     · have countNat : (s.carry.size / 8).toNat = s.carry.data.size / 8 := by
         rw [UInt64.toNat_div, carryNat]
         rfl
-      have batch := runWords_bound_le runLe carrySmall reply.buffer 0 (s.carry.size / 8) true
+      exact runWords_cost_le runLe carrySmall reply.buffer 0 (s.carry.size / 8) true
         (by decide) (by rw [countNat, UInt64.toNat_zero]; omega)
-      omega
     · have countNat : (7 * ((s.carry.size + reply.count) / 56)).toNat =
           7 * ((s.carry.data.size + reply.count.toNat) / 56) := by
         rw [UInt64.toNat_mul, UInt64.toNat_div, UInt64.toNat_add, carryNat]
         simp only [UInt64.reduceToNat]
         rw [Nat.mod_eq_of_lt (by omega : s.carry.data.size + reply.count.toNat < 2 ^ 64),
           Nat.mod_eq_of_lt (by omega)]
-      have batch := runWords_bound_le runLe carrySmall reply.buffer reply.count
+      exact runWords_cost_le runLe carrySmall reply.buffer reply.count
         (7 * ((s.carry.size + reply.count) / 56)) false size (by rw [countNat]; omega)
-      omega
+
+/-- The credits of the arrays of a state with the sizes of `Sized`, which the read step pays at
+its call of `afterRead`, whose state parameter is paid. -/
+theorem Sized.credit {s : State} (sized : Sized s) : stateTy.credit (sourceState s) = 393408 := by
+  simp only [stateTy, sourceState, Ty.credit, Elem.width, sized.oid, sized.acct, sized.qty,
+    sized.lvl, sized.nxt, sized.head, sized.tail]
 
 /-- The charge of `begin`: the arrays of the empty book. -/
 def beginCharge : Nat := io.pureSources.initial.bound ()
@@ -219,15 +221,18 @@ theorem readModes : entryModes io.readStep.func.params io.readStep.func.modes = 
 theorem writeModes : entryModes io.writeStep.func.params io.writeStep.func.modes = [.borrowed] := by
   decide
 
-/-- The charge of the write step from `s`: a copy of the state.  The write of the output's
+/-- The charge of the write step from `s`: a copy of the state, which the call of `afterWrite`
+makes since the step borrows the state and `afterWrite` takes it owned.  The write of the output's
 window allocates nothing. -/
 def writeCharge (s : State) : Nat :=
   stateTy.copyCost (sourceState s)
 
 /-- The charge of the read step from `s`: the read's buffer of 4,096 bytes, which the read fills in
-place, and a copy of the state or a batch over the buffer's first bytes. -/
+place, and at the call of `afterRead`, which takes the state owned and paid, a copy of the state,
+the credits of its arrays, and a batch over the buffer's first bytes. -/
 def readCharge (R : Nat) (s : State) : Nat :=
-  Bytes.allocationCost 4096 + (stateTy.copyCost (sourceState s) + batchCharge R s)
+  Bytes.allocationCost 4096 + (stateTy.copyCost (sourceState s) +
+    (stateTy.credit (sourceState s) + batchCharge R s))
 
 /-- The charge of the step from `s` when no output remains: a copy of the state at EOF and a read
 otherwise. -/
@@ -272,10 +277,14 @@ theorem writeStep_bounded {World : Type} (host : Host World) (depth : UInt64) (s
     simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg, Expr.allocs,
       Var.cost, Expr.mode, argsSum, callCredits, Flags.params, flags_toList, FVar.index,
       Args.get_cons_zero', Args.get_cons_succ, Ty.copyCost_of_scalar, ↓reduceIte, Nat.add_zero,
-      Nat.zero_add, coerceCost]
+      Nat.zero_add, coerceCost, Expr.ownedCost, Var.ownedCost, modeAt, letPairModes, Mode.join,
+      List.getD_cons_zero, List.getD_cons_succ, Var.index_ofIndex]
     read_state
-    show io.pureSources.afterWrite.bound (s, ⟨value.1, value.2⟩) ≤ _
-    exact afterWrite_bound_le s _
+    show stateTy.copyCost (sourceState s) +
+        io.pureSources.afterWrite.bound (⟨s⟩, ⟨value.1, value.2⟩) ≤
+      stateTy.copyCost (sourceState s)
+    rw [afterWrite_bound]
+    exact Nat.le_of_eq (Nat.add_zero _)
 
 set_option maxHeartbeats 1000000 in
 theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) {R : Nat} {s : State}
@@ -334,10 +343,15 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) {R 
     simp only [bindModes, ResultTy.bindEnv]
     simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg, Expr.allocs,
       Var.cost, Expr.mode, argsSum, callCredits, Flags.params, flags_toList, FVar.index,
-      ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost]
+      ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost, Args.get_cons_zero', Args.get_cons_succ,
+      Expr.ownedCost, Var.ownedCost, modeAt, letPairModes, Mode.join, List.getD_cons_zero,
+      List.getD_cons_succ, Var.index_ofIndex]
     read_state
-    show io.pureSources.afterRead.bound (s, ⟨value.1, value.2.1, value.2.2⟩) ≤ _
-    exact afterRead_bound_le runLe carrySmall ⟨value.1, value.2.1, value.2.2⟩ size
+    show stateTy.copyCost (sourceState s) + stateTy.credit (sourceState s) +
+        io.pureSources.afterRead.cost (⟨s⟩, ⟨value.1, value.2.1, value.2.2⟩) ≤
+      stateTy.copyCost (sourceState s) + (stateTy.credit (sourceState s) + batchCharge R s)
+    have batch := afterRead_cost_le runLe carrySmall ⟨value.1, value.2.1, value.2.2⟩ size
+    omega
 
 set_option maxHeartbeats 4000000 in
 theorem step_body_bounded {World : Type} (host : Host World) {R : Nat} {s : State}
@@ -440,10 +454,11 @@ end Bodies
 
 /-- A bound on the charge of every step from a state with the sizes of `Sized`, with `R` for
 `run`'s bound on a batch. -/
-def stepCharge (R : Nat) : Nat := copyLimit + R + 21435213
+def stepCharge (R : Nat) : Nat := copyLimit + R + 21631581
 
 theorem stepBudget_le {R : Nat} {s : State} (sized : Sized s) : stepBudget R s ≤ stepCharge R := by
   have copy := sized.copyCost
+  have credit := sized.credit
   have output := allocationCost_le s.output.data.size
   have carry := allocationCost_le (s.carry.data.size + 4096)
   have events := allocationCost_le (8 * (7 * 5122 * 74))
@@ -460,8 +475,7 @@ theorem stepBudget_le {R : Nat} {s : State} (sized : Sized s) : stepBudget R s �
     · unfold stepCharge
       omega
     · unfold readCharge batchCharge stepCharge
-      simp only [blockCost_eq, sized.oid, sized.acct, sized.qty, sized.lvl, sized.nxt, sized.head,
-        sized.tail]
+      simp only [blockCost_eq]
       omega
 
 /-- From a state with the sizes of `Sized`, when `RunBound R` holds, the step uses at most

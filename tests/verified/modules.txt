@@ -40,6 +40,7 @@ Verified.Examples.Floats32:Verified.Examples.Floats32.compiled.module:floats32
 Verified.Examples.Sums:Verified.Examples.Sums.compiled.module:sums
 Verified.Examples.Elements:Verified.Examples.Elements.compiled.module:elements
 Verified.Examples.Tuples:Verified.Examples.Tuples.module:tuples
+Verified.Examples.OwnedTuples:Verified.Examples.OwnedTuples.module:ownedtuples
 Verified.Examples.Records:Verified.Examples.Records.compiled.module:records
 Verified.Examples.Grids:Verified.Examples.Grids.compiled.module:grids
 Verified.Examples.Repeat:Verified.Examples.Repeat.compiled.module:repeat

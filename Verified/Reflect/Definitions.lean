@@ -2431,60 +2431,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       let eta ← view.eta lam value
       let some (_, lhs, _) := (← inferType eta).eq? | throwError "verified_compile: {eta}"
       return r.as (← restate r.proof (← mkExpectedTypeHint eta (← mkEq lhs e))) e
-    let rv ← reflect c value
-    -- The value's equation states the value itself, so that the body's equation substitutes it.
-    let hv ← mkExpectedTypeHint rv.proof
-      (← mkEq (← denoteExpr c rv.src) (← flatValue value))
-    let sv ← shapeOf type
-    return ← withLocalDeclD `x type fun x => do
-      let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (tyExpr s), some (sv.apply x), some c.env]
-      let c' : Ctx := { c with vars := (x, s) :: c.vars, env := env', ctx := consCtx s c.ctx }
-      let rb ← reflect c' (body.instantiate1 x)
-      let ub : Under := ⟨{ rb with buys := some (buysOf c' rb) }, #[x], [← x.fvarId!.getDecl]⟩
-      let hb ← mkLambdaFVars #[x] rb.proof
-      let src ← mkAppM ``Expr.letE #[rv.src, rb.src]
-      let proof ← if sv.flat.isNone then mkAppM ``letE_eq #[hv, hb]
-        else mkAppM ``letE_flat_eq #[← sv.fn type, value, hv, hb]
-      let bound : BoundBuilder := fun modes paid live => do
-        let bounds := c.tables.table false
-        let flatArgs ← match sv.flat with
-          | none => pure []
-          | some φ => pure [(`φ, φ), (`X, value)]
-        let app ← LemmaApp.start (if sv.flat.isNone then ``letE_bound else ``letE_flat_bound)
-          (boundArgs c bounds modes paid live ++ [(`v, rv.src), (`b, rb.src)] ++ flatArgs)
-        let m ← assignMode app `m `hm
-        let p ← assignPaid app
-        app.assign `hv hv
-        let _ ← app.child `hva rv.bound
-        let bb ← ub.bound (← mkAppM ``List.cons #[m, modes]) (← mkAppM ``List.cons #[p, paid])
-          (← mkAppM ``shift #[mkNatLit 1, live])
-        app.assign `hba (← bb.at #[value]).proof
-        boundOf (← app.finish)
-      let fits : FitsBuilder := do
-        let flatArgs ← match sv.flat with
-          | none => pure []
-          | some φ => pure [(`φ, φ), (`X, value)]
-        let app ← LemmaApp.start (if sv.flat.isNone then ``letE_fits else ``letE_flat_fits)
-          (fitsArgs c ++ [(`v, rv.src), (`b, rb.src)] ++ flatArgs)
-        app.assign `hv hv
-        app.childFits `hvf rv.fits
-        app.childFits `hbf (do (← ub.fits).at #[value])
-        fitsOf (← app.finish)
-      let buys : BoundBuilder := fun modes paid live => do
-        let flatArgs ← match sv.flat with
-          | none => pure []
-          | some φ => pure [(`φ, φ), (`X, value)]
-        let app ← LemmaApp.start (if sv.flat.isNone then ``letE_buys else ``letE_flat_buys)
-          (buysArgs c modes paid live ++ [(`v, rv.src), (`b, rb.src)] ++ flatArgs)
-        let m ← assignMode app `m `hm
-        let p ← assignPaid app
-        app.assign `hv hv
-        let bb ← ub.buys (← mkAppM ``List.cons #[m, modes]) (← mkAppM ``List.cons #[p, paid])
-          (← mkAppM ``shift #[mkNatLit 1, live])
-        app.assign `hy (← bb.at #[value]).proof
-        boundOf (← app.finish)
-      return ⟨src, ← restate proof (← bareEq (body.instantiate1 value) e), rb.ty, e, bound, fits,
-        some buys⟩
+    return ← reflectLetWhole type value body e
   if let some app ← matchMatcherApp? e then
     if app.discrs.size != 1 then
       throwError "verified_compile: a match on several values is not supported, in {e}"
@@ -4438,6 +4385,65 @@ where
         some buys⟩
     return ⟨src, ← mkAppM ``letPair_flat_eq #[← sa.fn view.α, ← sb.fn view.β, view.pair p,
       rp.proof, rb.proof], rb.ty, rb.lean, bound, fits, some buys⟩
+  /-- A `let` whose value is not a place, or a tuple argument at an owned parameter, bound whole:
+  the variable of type `type` holds `value` in `body`, and the reflection's Lean term is `e`,
+  which `body` at `value` equals by `zeta` or is. -/
+  reflectLetWhole (type value body e : Lean.Expr) : MetaM Reflection := do
+    let s ← tyOf type
+    let rv ← reflect c value
+    -- The value's equation states the value itself, so that the body's equation substitutes it.
+    let hv ← mkExpectedTypeHint rv.proof
+      (← mkEq (← denoteExpr c rv.src) (← flatValue value))
+    let sv ← shapeOf type
+    return ← withLocalDeclD `x type fun x => do
+      let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (tyExpr s), some (sv.apply x), some c.env]
+      let c' : Ctx := { c with vars := (x, s) :: c.vars, env := env', ctx := consCtx s c.ctx }
+      let rb ← reflect c' (body.instantiate1 x)
+      let ub : Under := ⟨{ rb with buys := some (buysOf c' rb) }, #[x], [← x.fvarId!.getDecl]⟩
+      let hb ← mkLambdaFVars #[x] rb.proof
+      let src ← mkAppM ``Expr.letE #[rv.src, rb.src]
+      let proof ← if sv.flat.isNone then mkAppM ``letE_eq #[hv, hb]
+        else mkAppM ``letE_flat_eq #[← sv.fn type, value, hv, hb]
+      let bound : BoundBuilder := fun modes paid live => do
+        let bounds := c.tables.table false
+        let flatArgs ← match sv.flat with
+          | none => pure []
+          | some φ => pure [(`φ, φ), (`X, value)]
+        let app ← LemmaApp.start (if sv.flat.isNone then ``letE_bound else ``letE_flat_bound)
+          (boundArgs c bounds modes paid live ++ [(`v, rv.src), (`b, rb.src)] ++ flatArgs)
+        let m ← assignMode app `m `hm
+        let p ← assignPaid app
+        app.assign `hv hv
+        let _ ← app.child `hva rv.bound
+        let bb ← ub.bound (← mkAppM ``List.cons #[m, modes]) (← mkAppM ``List.cons #[p, paid])
+          (← mkAppM ``shift #[mkNatLit 1, live])
+        app.assign `hba (← bb.at #[value]).proof
+        boundOf (← app.finish)
+      let fits : FitsBuilder := do
+        let flatArgs ← match sv.flat with
+          | none => pure []
+          | some φ => pure [(`φ, φ), (`X, value)]
+        let app ← LemmaApp.start (if sv.flat.isNone then ``letE_fits else ``letE_flat_fits)
+          (fitsArgs c ++ [(`v, rv.src), (`b, rb.src)] ++ flatArgs)
+        app.assign `hv hv
+        app.childFits `hvf rv.fits
+        app.childFits `hbf (do (← ub.fits).at #[value])
+        fitsOf (← app.finish)
+      let buys : BoundBuilder := fun modes paid live => do
+        let flatArgs ← match sv.flat with
+          | none => pure []
+          | some φ => pure [(`φ, φ), (`X, value)]
+        let app ← LemmaApp.start (if sv.flat.isNone then ``letE_buys else ``letE_flat_buys)
+          (buysArgs c modes paid live ++ [(`v, rv.src), (`b, rb.src)] ++ flatArgs)
+        let m ← assignMode app `m `hm
+        let p ← assignPaid app
+        app.assign `hv hv
+        let bb ← ub.buys (← mkAppM ``List.cons #[m, modes]) (← mkAppM ``List.cons #[p, paid])
+          (← mkAppM ``shift #[mkNatLit 1, live])
+        app.assign `hy (← bb.at #[value]).proof
+        boundOf (← app.finish)
+      return ⟨src, ← restate proof (← bareEq (body.instantiate1 value) e), rb.ty, e, bound, fits,
+        some buys⟩
   /-- A call of a listed definition before this one: the source call, with the proof built from
   the arguments' proofs and the callee's equation. -/
   reflectCall? (e : Lean.Expr) : MetaM (Option Reflection) := do
@@ -4456,6 +4462,17 @@ where
       let early ← earlyArgs c.vars args.toList callee.sig.params callee.sig.mode bind
       if early.any id then
         return some (← reflectAs (← bindEarly e.getAppFn args.toList early) e)
+      -- A tuple argument at an owned parameter is bound whole, after the arguments before it: a
+      -- `let` of a pair type would be split into its components, and the call would bind them
+      -- again.
+      let whole := (List.range args.size).find? fun i =>
+        bind.getD i false && callee.sig.mode i == .owned &&
+          (callee.sig.params.getD i .word matches .pair _ _)
+      if let some i := whole then
+        if (bind.take i).any id then
+          return some (← reflectAs (← bindArgs e.getAppFn args.toList (bind.take i) #[] #[]) e)
+        return some (← reflectLetWhole (← inferType args[i]!) args[i]!
+          (mkAppN e.getAppFn (args.set! i (.bvar 0))) e)
       return some (← reflectAs (← bindArgs e.getAppFn args.toList bind #[] #[]) e)
     let reflected ← args.toList.mapM (reflect c)
     let nilArgs ← mkAppOptM ``Args.nil #[some c.sigs, some c.ctx]
@@ -4778,6 +4795,50 @@ partial def agreeTy (userT : Lean.Expr) (t : Ty) : MetaM (Lean.Expr × Lean.Expr
       (← mkAppOptM ``Agree.flat #[some userT, some β, none, none, none, none, none, some proof])
   | _, _ => throwError "verified_compile: the type {userT} does not have the shape of {tyExpr t}"
 
+/-- The flattening of a value of type `Moved native`, which the caller moves, to a moved value of
+`t`, and the proof that Lean's instance agrees with `Ty.movedInst t` along it, by the cases of
+`agreeTy`: `Agree.movedScalar` for a type without heap values, `Agree.refl` or `Agree.flatMoved`
+for an array, `Agree.refl` for bytes, `Agree.movedListTree` or `Agree.movedEncode` for a tree,
+`Agree.movedProd` for a pair, and `Agree.movedFlat` for a structure or a sum. -/
+partial def agreeMoved (native : Lean.Expr) (t : Ty) : MetaM (Lean.Expr × Lean.Expr) := do
+  let userT := mkApp (mkConst ``LeanExe.Pipeline.Moved) native
+  let inst ← userInst userT
+  let src := (mkApp (mkConst ``LeanExe.Pipeline.Moved) (mkApp (mkConst ``Ty.denote) (tyExpr t)),
+    mkApp (mkConst ``Ty.movedInst) (tyExpr t))
+  -- The agreement along the flattening that the proof states.
+  let along (proof : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) := do
+    agreeAs userT inst src (← Core.betaReduce (← inferType proof).appArg!) proof
+  if t.scalar then
+    let some nativeScalar ← synthInstance? (mkApp (mkConst ``LeanExe.Pipeline.Scalar) native)
+      | throwError "verified_compile: Lean has no `Scalar` instance for {native}"
+    let h ← trueByEval (mkApp (mkConst ``Ty.scalar) (tyExpr t))
+    let app ← mkAppOptM ``Agree.movedScalar #[some native,
+      some (mkApp (mkConst ``Ty.denote) (tyExpr t)), some nativeScalar,
+      some (mkApp2 (mkConst ``Ty.scalarInst) (tyExpr t) h), some (← flatFn native)]
+    let .forallE _ hTy _ _ ← inferType app | throwError "verified_compile: `Agree.movedScalar`"
+    return ← along (mkApp app (← eqByUnfolding hTy native))
+  match t, (← whnfR native).getAppFnArgs with
+  | .bytes, _ => agreeRefl userT inst src
+  | .tree _, (``List, #[_]) => along (mkConst ``Agree.movedListTree)
+  | .tree _, _ =>
+    let some layout ← recursiveLayout? native
+      | throwError "verified_compile: no recursive layout for {native}"
+    along (← mkAppM ``Agree.movedEncode
+      #[mkConst (layout.decl `toTree), mkConst (layout.decl `encoding)])
+  | .array _, (``Array, #[el]) =>
+    if (← shapeOf el).flat.isNone then return ← agreeRefl userT inst src
+    let (φ, proof) ← agreeArray ``Agree.flatMoved el
+    agreeAs userT inst src φ proof
+  | .pair a b, (``Prod, #[ua, ub]) =>
+    along (← mkAppM ``Agree.movedProd #[(← agreeMoved ua a).2, (← agreeMoved ub b).2])
+  | .pair _ _, _ =>
+    let some (β, _) ← flatInstance? native
+      | throwError "verified_compile: the type {native} does not have the shape of {tyExpr t}"
+    let (_, proof) ← agreeMoved β t
+    along (← mkAppOptM ``Agree.movedFlat
+      #[some native, some β, none, none, none, none, none, some proof])
+  | _, _ => throwError "verified_compile: the type {native} does not have the shape of {tyExpr t}"
+
 /-- The flattening of an argument of type `userT`, a value of `t.argTy m`, and the proof of
 agreement with `t.argInst m`. -/
 def agreeArg (userT : Lean.Expr) (t : Ty) (m : Mode) : MetaM (Lean.Expr × Lean.Expr) := do
@@ -4799,6 +4860,9 @@ def agreeArg (userT : Lean.Expr) (t : Ty) (m : Mode) : MetaM (Lean.Expr × Lean.
       | throwError "verified_compile: {a} is not an array"
     if (← shapeOf el).flat.isNone then return ← agreeRefl userT inst src
     let (φ, proof) ← agreeArray ``Agree.flatMoved el
+    agreeAs userT inst src φ proof
+  | .pair _ _, .owned, (``LeanExe.Pipeline.Moved, #[native]) =>
+    let (φ, proof) ← agreeMoved native t
     agreeAs userT inst src φ proof
   | _, _, _ =>
     let (φ, proof) ← agreeTy userT t

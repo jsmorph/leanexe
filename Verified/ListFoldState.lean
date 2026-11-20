@@ -4,9 +4,6 @@ import Verified.FieldsOrder
 
 namespace Verified
 
-@[simp] theorem Ty.paramMode_borrowed (t : Ty) : t.paramMode .borrowed = .borrowed := by
-  cases t <;> rfl
-
 @[simp] theorem paramModes_default (ps : List Ty) :
     paramModes ps [] = List.replicate ps.length .borrowed := by
   induction ps with
