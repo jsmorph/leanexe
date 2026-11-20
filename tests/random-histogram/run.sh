@@ -30,7 +30,13 @@
 # all of its bytes, and one write of the output's bytes that took all of them.  The run under the
 # file size limit under strace must make two writes: the first returns 12, and the second offers
 # 12 bytes fewer than the first and fails with EFBIG.  The run with N of 1000 checks that the first
-# write offers the whole output.  A run with `abc` under strace must make no call but exit_group.
+# write offers the whole output.  A run with N of 1000 in which strace's injection makes the first
+# getrandom return 100 without filling the buffer, a short count, must make three getrandom calls:
+# 4,096 bytes at the buffer, which returns 100, the other 3,996 at the buffer's address plus 100,
+# and 3,904 at the buffer, each of the last two answered with all of its bytes.  The first 12 words
+# keep the buffer's initial zero bytes, so the run must exit with status 0 and write ten counts
+# that sum to 1000, the first at least 12.  A run with `abc` under strace must make no call but
+# exit_group.
 # The file theorems of the executable are checked in tests/linux/a64-wasi.sh, which writes the
 # executable from the same module with the same commands.
 #
@@ -244,6 +250,28 @@ case " $RUNNERS " in
       "$trace" | tr '\n' ' ')
     [ "$writes" = "$size $size " ] ||
       fail strace "the writes (count, result) $writes of an output of $size bytes"
+    cases=$((cases + 1))
+    trace="$out/native-short.strace"
+    stdout="$out/native-short-strace.stdout"
+    status=0
+    strace -e raw=getrandom -e inject=getrandom:retval=100:when=1 -o "$trace" "$elf" 1000 \
+      > "$stdout" || status=$?
+    [ "$status" -eq 0 ] || fail "strace short" "status $status"
+    awk '
+      !/^(0|[1-9][0-9]*)$/ { bad = 1 }
+      { sum += $0; lines++ }
+      NR == 1 && $0 < 12 { bad = 1 }
+      END { exit !(bad == 0 && lines == 10 && sum == 1000) }' "$stdout" ||
+      fail "strace short" "output is not ten counts that sum to 1000, the first at least 12"
+    requests=$(sed -n \
+      's/^getrandom(\([^,]*\), *\([^,]*\), *\([^)]*\)) *= *\([-0-9a-fx]*\).*$/\1 \2 \3 \4/p' \
+      "$trace" | while read -r address count flags result; do
+      printf '%d %d %d %d ' "$((address))" "$((count))" "$((flags))" "$((result))"
+    done)
+    set -- $requests
+    [ "$#" -eq 12 ] && [ "$5" -eq $(($1 + 100)) ] && [ "$9" -eq "$1" ] &&
+      [ "$2 $3 $4 $6 $7 $8 ${10} ${11} ${12}" = "4096 0 100 3996 0 3996 3904 0 3904" ] ||
+      fail "strace short" "the getrandom calls (address, count, flags, result): $requests"
     cases=$((cases + 1))
     trace="$out/native-limited.strace"
     file="$out/native-limited-strace.stdout"

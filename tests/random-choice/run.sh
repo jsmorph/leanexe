@@ -43,14 +43,19 @@
 # 976 bytes, since N of 6 rejects 4 words of 2^64.  The run under the file size limit must make two
 # writes of descriptor 1 from the address of the first run's writes: the first offers 1,024 bytes
 # and returns 12, and the second passes the address plus 12, offers 1,012 bytes, and fails with
-# EFBIG.  Two runs replace replies with strace's injection, and each meets `Full` of
-# Demos/RandomHistogram/NativeCounts.lean.  In `choose 6 1000` with every getrandom returning 4,096
-# without filling the buffer, the draw buffer keeps its initial zero bytes, and N of 6 rejects the
-# word 0, so the run must reach the cap: ten getrandom calls into the draw buffer, the `passes` of
-# K = 1,000, no write, and status 77.  In `choose 6 1` with every write returning 0, the run must
-# make a getrandom of 4,096 bytes and three writes of descriptor 1 of the line's 2 bytes from one
-# address, the passes of `writeAll`, and exit with status 78 with nothing written.  A run with
-# `abc` must make no call but exit_group.  The file theorems of the executable are checked in
+# EFBIG.  Three runs replace replies with strace's injection, which skips the call and leaves its
+# buffer as it was, and each meets `InRange` of Demos/RandomHistogram/NativeCounts.lean.  In
+# `choose 6 1000` with every getrandom returning 4,096, the draw buffer keeps its initial zero
+# bytes, and N of 6 rejects the word 0, so the run must reach the cap: ten getrandom calls into the
+# draw buffer, the `passes` of K = 1,000, no write, and status 77.  In `choose 6 1000` with the
+# first getrandom returning 100, a short count, the run must ask for the other 3,996 bytes at the
+# draw buffer's address plus 100, and Linux returns them.  The first 12 words keep their zero bytes,
+# which N of 6 rejects, so the first pass writes 500 lines, 1,000 bytes, and a second pass draws
+# 4,096 bytes and writes the other 500; the run must exit with status 0 and write 1,000 values in
+# range.  In `choose 6 1` with every write returning 0, the run must make a getrandom of 4,096 bytes
+# and three writes of descriptor 1 of the line's 2 bytes from one address, the passes of
+# `writeAll`, and exit with status 78 with nothing written.  A run with `abc` must make no call but
+# exit_group.  The file theorems of the executable are checked in
 # tests/linux/a64-wasi.sh, which writes the executable from the same module with the same commands.
 #
 # The pure module's samples run in `tests/verified/run.sh --cases randomChoice`.
@@ -413,6 +418,20 @@ case " $RUNNERS " in
       END { print n + 0 }' "$trace.calls")
     [ "$draws" -eq 10 ] && [ "$(wc -l < "$trace.calls" | tr -d ' ')" -eq 10 ] ||
       fail "strace cap" "$draws getrandom calls of 4,096 bytes into the draw buffer, expected 10"
+    cases=$((cases + 1))
+    trace="$out/native-short.strace"
+    status=0
+    strace -e raw=getrandom,write -e inject=getrandom:retval=100:when=1 -o "$trace" "$elf" 6 1000 \
+      > "$out/native-short-strace.stdout" || status=$?
+    [ "$status" -eq 0 ] || fail "strace short" "status $status"
+    check "strace short" "$out/native-short-strace.stdout" 6 1000
+    found=$(calls "$trace")
+    [ "$found" = "exit_group getrandom write " ] || fail "strace short" "the calls $found"
+    passes "$trace"
+    found=$(awk '{ printf "%s %d %d %d %d ", $1, $2, $3, $4, $5 }' "$trace.calls")
+    want="getrandom $draw 4096 0 100 getrandom $((draw + 100)) 3996 0 3996 "
+    want="${want}write $buffer 1000 1 1000 getrandom $draw 4096 0 4096 write $buffer 1000 1 1000 "
+    [ "$found" = "$want" ] || fail "strace short" "the calls $found"
     cases=$((cases + 1))
     trace="$out/native-stalled.strace"
     status=0
