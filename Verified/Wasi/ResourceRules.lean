@@ -355,6 +355,30 @@ theorem Returns.bind_ret {World : Type} {host : Host World} {pure : PureContext 
     rw [same] at rest
     exact ⟨_, _, _, _, _, rest⟩
 
+/-- A `bind` whose first command is a `ret` is bounded by the `ret`'s charge and a bound on the next
+command from the environment with the value of the `ret`.  The reflector binds a tuple argument at
+an owned parameter this way. -/
+theorem Bounded.bind_ret {World : Type} {host : Host World} {pure : PureContext pureSigs}
+    {program : EffectProg pureSigs effectSigs} {depth : UInt64} {modes : List Mode}
+    {live : Nat → Bool} {context : List Ty} {type : Ty} {result : ResultTy}
+    {value : Expr pureSigs context type}
+    {next : Command pureSigs effectSigs (type :: context) result} {env : Env context}
+    {nextBudget budget : Nat}
+    (cost : pure.ownedCost depth modes (bindLive (.value type) next live) value env + nextBudget ≤
+      budget)
+    (fits : pure.exprFits depth value env = true)
+    (bounded : Bounded host pure program depth (.owned :: modes) (shift 1 live) next
+      (.cons (value.denote pure.funs env) env) nextBudget) :
+    Bounded host pure program depth modes live (.bind (.ret value) next) env budget :=
+  bounded_of_rule fun _ _ rule => rule _ nextBudget cost
+    (bounded_of_rule fun _ _ retRule => retRule (Nat.le_refl _) fits)
+    (fun returned returns => by
+      obtain ⟨_, _, _, _, _, run⟩ := returns
+      have same := retValue run
+      dsimp only [RetValue] at same
+      subst same
+      exact bounded)
+
 def CallRule {World : Type} (host : Host World) (pure : PureContext pureSigs)
     (world : World) : {effectSigs : List EffectSig} → (program : EffectProg pureSigs effectSigs) →
     {signature : EffectSig} → EffectVar effectSigs signature → UInt64 → Env signature.params →

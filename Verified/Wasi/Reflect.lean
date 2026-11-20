@@ -144,13 +144,16 @@ where
     let reflected ← reflect context normalized
     checkedReflection context reflected.result original reflected.src reflected.proof
 
-  reflectBind (firstNative nextNative original : Lean.Expr) : MetaM Reflection := do
+  /-- `Action.bind firstNative nextNative`, related to `original`.  The bound value of a pair type
+  is split into its components unless `whole` holds. -/
+  reflectBind (firstNative nextNative original : Lean.Expr) (whole : Bool := false) :
+      MetaM Reflection := do
     let first ← reflect context firstNative
     let firstType ← actionResultType (← inferType firstNative)
     withResultValue context first.result firstType fun value bodyContext => do
-      let split := match first.result with
-        | .unit => []
-        | .value _ => [value]
+      let split := match first.result, whole with
+        | .value _, false => [value]
+        | _, _ => []
       let next ← splitThen bodyContext split (nextNative.beta #[value]) reflect
       if next.src.containsFVar value.fvarId! then
         throwError "verified_compile_wasi: an action binding escaped its source context"
@@ -297,6 +300,20 @@ where
       if callee.signature.mode index = .owned then return !(← projReduce arg).isFVar
       return !(← isPlace arg)
     if bind.any id then
+      -- A tuple argument at an owned parameter is bound whole, after the arguments before it: a
+      -- binding of a pair type would be split into its components, and the call would bind them
+      -- again.
+      let whole := (List.range args.size).find? fun index =>
+        bind.getD index false && callee.signature.mode index == .owned &&
+          (callee.signature.params.getD index .word matches .pair _ _)
+      if let some index := whole then
+        if (bind.take index).any id then
+          return some (← reflectAs (← bindArgs expression.getAppFn nativeArgs.toList
+            ((bind.take index).drop tableArgs.length) #[] #[]) expression)
+        let value := args[index]!
+        let body := mkAppN expression.getAppFn (nativeArgs.set! (index - tableArgs.length) (.bvar 0))
+        return some (← reflectBind (← mkAppM ``Action.pure #[value])
+          (Lean.mkLambda `x .default (← inferType value) body) expression (whole := true))
       let visibleBind := bind.drop tableArgs.length
       return some (← reflectAs
         (← bindArgs expression.getAppFn nativeArgs.toList visibleBind #[] #[]) expression)

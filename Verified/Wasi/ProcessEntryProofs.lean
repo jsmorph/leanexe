@@ -125,7 +125,9 @@ theorem wp_process_begin_with {calls : List LeanExe.Wasi.Call}
           words (processValue entry.state (processNative entry.state value))
         rw [processValue_native entry.state value]
         exact ⟨step.at_, resultRep, preserved.1, preserved.2⟩
-      have grown := step.top_le at_ free ⟨Apart.nil, low_apart_above _⟩
+      have grown := (step.base_le at_.base le_rfl
+        (fun node member => by rw [free] at member; exact nomatch member)
+        ⟨Apart.nil, low_apart_above _⟩).1
       refine wp_process_store_compact_with runtime layout profile compactable compactForm compactClosed
         nativeMemory grown baseLocal at_.base poolBelow params positions
         (by rw [step.cap target]; exact cap) (fun _ ended sameHost => ?_)

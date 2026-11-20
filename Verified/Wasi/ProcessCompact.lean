@@ -9,9 +9,9 @@ namespace Verified.Wasi
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
 /-- The process state `current` between steps: the locals from position 0 hold its words, which
-represent it with the literal pool intact; the heap has no free block and ends between `base` and
-`base` plus the state's copy cost; local `processAux state` holds `base`, which lies above the
-reserved area and the literal pool. -/
+represent it with the literal pool intact; the heap has no free block, the state's blocks lie at or
+above `base`, and the heap ends between `base` and `base` plus the state's copy cost; local
+`processAux state` holds `base`, which lies above the reserved area and the literal pool. -/
 structure ProcessStored {World : Type} (target : Wasm.Module) (state : Ty)
     (pool : Bytes.LiteralPool) (base : UInt64) (current : ProcessStep state.denote)
     (store : Store (Observed World)) (locals : Locals) : Prop where
@@ -19,8 +19,10 @@ structure ProcessStored {World : Type} (target : Wasm.Module) (state : Ty)
     ProcessMemory (processResultTy state) pool heap (PureTransport.erase store)
       words (processValue state current) ∧
     LocalsHold locals 0 (processResultTy state).types words ∧
-    heap.free = [] ∧ base.toNat ≤ heap.top.toNat ∧
-    heap.top.toNat ≤ base.toNat + state.copyCost current.state
+    heap.free = [] ∧
+    (∀ block ∈ state.blocks (PureTransport.erase store) (words.drop 2) current.state,
+      base.toNat ≤ block.1) ∧
+    base.toNat ≤ heap.top.toNat ∧ heap.top.toNat ≤ base.toNat + state.copyCost current.state
   baseLocal : locals.get (processAux state) = some (.i64 base)
   low : 4096 ≤ base.toNat
   pool : ∀ region ∈ pool.regions, region.1 + region.2 ≤ base.toNat
@@ -36,9 +38,11 @@ theorem ProcessStored.parts {World : Type} {target : Wasm.Module} {state : Ty}
       ProcessMemory state pool heap (PureTransport.erase store) stateWords current.state ∧
       LocalsHold locals 2 state.types stateWords ∧
       locals.get 0 = some (.i64 (boolWord current.running)) ∧
-      heap.free = [] ∧ base.toNat ≤ heap.top.toNat ∧
-      heap.top.toNat ≤ base.toNat + state.copyCost current.state := by
-  obtain ⟨heap, words, memory, held, free, low, high⟩ := stored.represented
+      heap.free = [] ∧
+      (∀ block ∈ state.blocks (PureTransport.erase store) stateWords current.state,
+        base.toNat ≤ block.1) ∧
+      base.toNat ≤ heap.top.toNat ∧ heap.top.toNat ≤ base.toNat + state.copyCost current.state := by
+  obtain ⟨heap, words, memory, held, free, above, low, high⟩ := stored.represented
   obtain ⟨stateWords, wordsEq, _⟩ := processValue_rep.mp memory.rep
   have dropped : words.drop 2 = stateWords := by simp [wordsEq]
   have stateMemory : ProcessMemory state pool heap (PureTransport.erase store)
@@ -49,7 +53,8 @@ theorem ProcessStored.parts {World : Type} {target : Wasm.Module} {state : Ty}
     (first := [.i64 (boolWord current.running), .i64 current.status])
     (second := stateWords) rfl).mp
       (by simpa only [processResult_types, wordsEq] using held)
-  refine ⟨heap, stateWords, stateMemory, ?_, ?_, free, low, high⟩
+  refine ⟨heap, stateWords, stateMemory, ?_, ?_, free, by simpa only [dropped] using above, low,
+    high⟩
   · simpa only [List.length_cons, List.length_nil, Nat.zero_add] using split.2
   · have first := split.1 0 (by simp)
     change locals.get 0 = some (.i64 (boolWord current.running)) at first
@@ -84,23 +89,41 @@ theorem ProcessStored.values {World : Type} {target : Wasm.Module} {state : Ty}
     positions := stored.positions
     cap := stored.cap }
 
-/-- A step from a heap with no free block leaves the top at or above the old one: the region from
-the end of the reserved area to the old top survives it. -/
-theorem _root_.Verified.Step.top_le {heap heap' : Heap} {store store' : Store Unit}
-    {keep : Nat × Nat → Prop} {fresh : List (Nat × Nat)}
-    (step : Step heap store keep heap' store' fresh) (at_ : heap.At store) (free : heap.free = [])
-    (hKeep : keep (4096, heap.top.toNat - 4096)) : heap.top.toNat ≤ heap'.top.toNat := by
-  have hBase := at_.base
-  have hBase' := step.at_.base
-  by_cases hEq : heap.top.toNat = 4096
-  · omega
-  · have hRegion : heap.Region (4096, heap.top.toNat - 4096) :=
-      ⟨show 4096 + (heap.top.toNat - 4096) ≤ heap.top.toNat by omega,
-        fun node member => by rw [free] at member; exact nomatch member⟩
-    obtain ⟨_, hRegion', _⟩ :=
-      step.keeps _ hRegion (show 0 < heap.top.toNat - 4096 by omega) hKeep
-    have : 4096 + (heap.top.toNat - 4096) ≤ heap'.top.toNat := hRegion'.below
-    omega
+/-- A step that keeps the region from the end of the reserved area to `base`, from a heap whose top
+is at least `base` and whose free blocks lie at or above `base`, leaves the top at or above
+`base`.  Every free block of the new heap, and every block that the step leaves fresh apart from
+the reserved area, lies at or above `base`. -/
+theorem _root_.Verified.Step.base_le {heap heap' : Heap} {store store' : Store Unit}
+    {keep : Nat × Nat → Prop} {fresh : List (Nat × Nat)} {base : Nat}
+    (step : Step heap store keep heap' store' fresh) (low : 4096 ≤ base)
+    (baseTop : base ≤ heap.top.toNat) (free : ∀ node ∈ heap.free, base ≤ node.region.1)
+    (hKeep : keep (4096, base - 4096)) :
+    base ≤ heap'.top.toNat ∧ (∀ node ∈ heap'.free, base ≤ node.region.1) ∧
+      ∀ b ∈ fresh, 0 < b.2 → regionsDisjoint b ABI.low → base ≤ b.1 := by
+  have hAbove := step.at_.above
+  by_cases hEq : base = 4096
+  · subst hEq
+    refine ⟨step.at_.base, fun node member => ?_, fun b _ positive apart => ?_⟩
+    · have := hAbove node member
+      simp only [FreeNode.region]
+      omega
+    · simp only [regionsDisjoint, ABI.low] at apart
+      omega
+  · have hRegion : heap.Region (4096, base - 4096) :=
+      ⟨show 4096 + (base - 4096) ≤ heap.top.toNat by omega, fun node member => by
+        have := free node member
+        simp only [regionsDisjoint]
+        omega⟩
+    obtain ⟨_, hRegion', hFresh⟩ := step.keeps _ hRegion (show 0 < base - 4096 by omega) hKeep
+    refine ⟨by have := hRegion'.below; omega, fun node member => ?_,
+      fun b member positive apart => ?_⟩
+    · have hSeparate := hRegion'.separate node member
+      have := hAbove node member
+      simp only [regionsDisjoint, FreeNode.region] at hSeparate ⊢
+      omega
+    · have := hFresh b member
+      simp only [regionsDisjoint, ABI.low] at this apart
+      omega
 
 /-- The literal pool lies below the top of a heap that keeps it static. -/
 theorem _root_.Verified.Bytes.LiteralPool.Static.below {pool : Bytes.LiteralPool} {heap : Heap}
@@ -122,14 +145,14 @@ literal pool, and the result's blocks lie apart from the pool. -/
 theorem ProcessMemory.called {oldType resultType : Ty} {pool : Bytes.LiteralPool}
     {heap middleHeap : Heap} {initial middle : Store Unit}
     {oldWords resultWords : List Value} {oldValue : oldType.denote}
-    {resultValue : resultType.denote}
+    {resultValue : resultType.denote} {keep : Nat × Nat → Prop}
     (current : ProcessMemory oldType pool heap initial oldWords oldValue)
-    (poolLow : ∀ region ∈ pool.regions, regionsDisjoint region ABI.low)
-    (called : Step heap initial (fun region => regionsDisjoint region ABI.low)
-      middleHeap middle (resultType.blocks middle resultWords resultValue))
+    (poolKept : ∀ region ∈ pool.regions, keep region)
+    (called : Step heap initial keep middleHeap middle
+      (resultType.blocks middle resultWords resultValue))
     (resultRep : resultType.Rep .owned middleHeap middle resultWords resultValue) :
     ProcessMemory resultType pool middleHeap middle resultWords resultValue := by
-  obtain ⟨middleStatic, poolFresh⟩ := current.static.step called poolLow
+  obtain ⟨middleStatic, poolFresh⟩ := current.static.step called poolKept
   exact ⟨called.at_, resultRep, middleStatic, poolFresh⟩
 
 /-- The process memory and the base facts after the compaction: the pool, which lies below the
@@ -255,7 +278,7 @@ theorem wp_process_compact_with {calls : List LeanExe.Wasi.Call}
               [.i64 (boolWord value.running), .i64 value.status] :=
             (LocalsHold.frame frame' rfl (by simp)).mpr split.1
           refine ⟨⟨heap', [.i64 (boolWord value.running), .i64 value.status] ++ stateWords', ?_,
-              ?_, free', low', high'⟩, base', low, poolBelow, frame'.params.trans params,
+              ?_, free', ?_, low', high'⟩, base', low, poolBelow, frame'.params.trans params,
               frame'.positions.trans positions, ?_⟩
           · simpa only [PureTransport.erase_restore] using
               memory.compacted poolBelow at' free' low' rep' above' bytes'
@@ -263,6 +286,9 @@ theorem wp_process_compact_with {calls : List LeanExe.Wasi.Call}
               (LocalsHold.append (s := after) (loc := 0) (tys1 := [.i64, .i64])
                 (tys2 := state.types) (first := [.i64 (boolWord value.running), .i64 value.status])
                 (second := stateWords') rfl).mpr ⟨controlHeld, held'⟩
+          · simpa only [PureTransport.erase_restore, List.drop_left'
+              (show [Value.i64 (boolWord value.running), .i64 value.status].length = 2 from rfl)]
+              using above'
           · rw [PureTransport.erase_restore]
             have sameCap : final.memoryCap target 0 =
                 (PureTransport.erase store).memoryCap target 0 := by

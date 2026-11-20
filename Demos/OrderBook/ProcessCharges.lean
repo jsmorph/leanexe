@@ -3,11 +3,12 @@ import Demos.OrderBook.ProcessSizes
 import Verified.Wasi.ResourceRules
 
 /-! The allocation charges of the compiled process's `begin` and steps.  `begin` builds the seven
-arrays of the empty book.  A write step allocates the remaining output and copies the state at its
-call of `afterWrite`, and a stopping step copies the state.  The steps borrow the state, and
-`afterWrite` and `afterRead` take it owned.  A read step allocates the read buffer, copies the
-state at its call of `afterRead`, pays the credits of the state's seven arrays, since `afterRead`'s
-state parameter is paid, and runs a batch at a reply without an errno: the words of the batch,
+arrays of the empty book.  The steps, `afterWrite`, and `afterRead` take the state owned, so a
+step moves the state into the step that it calls and into `afterWrite` or `afterRead`, and a
+stopping step returns it.  A write step and a stopping step allocate nothing.  A read step allocates
+the read buffer, pays the credits of the state's seven arrays at its call of `afterRead`, since
+`afterRead`'s state parameter is paid, and runs a batch at a reply without an errno: the words of
+the batch,
 `run`'s generated bound, the carry after the batch, and the event bytes.  `runWords` moves the
 seven arrays into `run`, which updates them in place.  The charge of a read step
 holds for every reply of at most 4,096 bytes, so for a batch that need not lie in the input, and it
@@ -212,47 +213,41 @@ theorem ite_le_zero {c : Prop} {decision : Decidable c} {a b : Nat} (left : a �
   · exact right
   · exact left
 
-theorem stepModes : entryModes io.step.func.params io.step.func.modes = [.borrowed] := by
+theorem stepModes : entryModes io.step.func.params io.step.func.modes = [.owned] := by
   decide
 
-theorem readModes : entryModes io.readStep.func.params io.readStep.func.modes = [.borrowed] := by
+theorem readModes : entryModes io.readStep.func.params io.readStep.func.modes = [.owned] := by
   decide
 
-theorem writeModes : entryModes io.writeStep.func.params io.writeStep.func.modes = [.borrowed] := by
+theorem writeModes : entryModes io.writeStep.func.params io.writeStep.func.modes = [.owned] := by
   decide
-
-/-- The charge of the write step from `s`: a copy of the state, which the call of `afterWrite`
-makes since the step borrows the state and `afterWrite` takes it owned.  The write of the output's
-window allocates nothing. -/
-def writeCharge (s : State) : Nat :=
-  stateTy.copyCost (sourceState s)
 
 /-- The charge of the read step from `s`: the read's buffer of 4,096 bytes, which the read fills in
-place, and at the call of `afterRead`, which takes the state owned and paid, a copy of the state,
-the credits of its arrays, and a batch over the buffer's first bytes. -/
+place, and at the call of `afterRead`, which takes the state owned and paid, the credits of its
+arrays and a batch over the buffer's first bytes.  The step moves the state into `afterRead`. -/
 def readCharge (R : Nat) (s : State) : Nat :=
-  Bytes.allocationCost 4096 + (stateTy.copyCost (sourceState s) +
-    (stateTy.credit (sourceState s) + batchCharge R s))
+  Bytes.allocationCost 4096 + (stateTy.credit (sourceState s) + batchCharge R s)
 
-/-- The charge of the step from `s` when no output remains: a copy of the state at EOF and a read
-otherwise. -/
+/-- The charge of the step from `s` when no output remains: nothing at EOF, where the step returns
+the state, and a read otherwise. -/
 def restCharge (R : Nat) (s : State) : Nat :=
-  if s.eof = true then stateTy.copyCost (sourceState s) else readCharge R s
+  if s.eof = true then 0 else readCharge R s
 
-/-- The charge of the step from `s`, by its branches. -/
+/-- The charge of the step from `s`, by its branches.  A write step allocates nothing: the step
+moves the state into `afterWrite`, and the write of the output's window allocates nothing. -/
 def stepBudget (R : Nat) (s : State) : Nat :=
-  if s.written < s.output.size then writeCharge s else restCharge R s
+  if s.written < s.output.size then 0 else restCharge R s
 
 set_option maxHeartbeats 1000000 in
 theorem writeStep_bounded {World : Type} (host : Host World) (depth : UInt64) (s : State) :
     Bounded host pureContext .nil depth
       (entryModes io.writeStep.func.params io.writeStep.func.modes) (fun _ => false)
-      io.writeStep.func.body (.cons (sourceState s) .nil) (writeCharge s) := by
+      io.writeStep.func.body (.cons (sourceState s) .nil) 0 := by
   rw [writeModes]
   letPair_free
   apply bounded_of_rule
   intro spent fits rule
-  refine rule 0 (stateTy.copyCost (sourceState s)) (Nat.le_of_eq (Nat.zero_add _)) ?_ ?_
+  refine rule 0 0 (Nat.le_refl _) ?_ ?_
   · repeat (first
       | (apply bounded_of_rule
          intro spent fits rule
@@ -280,11 +275,8 @@ theorem writeStep_bounded {World : Type} (host : Host World) (depth : UInt64) (s
       Nat.zero_add, coerceCost, Expr.ownedCost, Var.ownedCost, modeAt, letPairModes, Mode.join,
       List.getD_cons_zero, List.getD_cons_succ, Var.index_ofIndex]
     read_state
-    show stateTy.copyCost (sourceState s) +
-        io.pureSources.afterWrite.bound (⟨s⟩, ⟨value.1, value.2⟩) ≤
-      stateTy.copyCost (sourceState s)
+    show io.pureSources.afterWrite.bound (⟨s⟩, ⟨value.1, value.2⟩) ≤ 0
     rw [afterWrite_bound]
-    exact Nat.le_of_eq (Nat.add_zero _)
 
 set_option maxHeartbeats 1000000 in
 theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) {R : Nat} {s : State}
@@ -347,9 +339,9 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) {R 
       Expr.ownedCost, Var.ownedCost, modeAt, letPairModes, Mode.join, List.getD_cons_zero,
       List.getD_cons_succ, Var.index_ofIndex]
     read_state
-    show stateTy.copyCost (sourceState s) + stateTy.credit (sourceState s) +
+    show stateTy.credit (sourceState s) +
         io.pureSources.afterRead.cost (⟨s⟩, ⟨value.1, value.2.1, value.2.2⟩) ≤
-      stateTy.copyCost (sourceState s) + (stateTy.credit (sourceState s) + batchCharge R s)
+      stateTy.credit (sourceState s) + batchCharge R s
     have batch := afterRead_cost_le runLe carrySmall ⟨value.1, value.2.1, value.2.2⟩ size
     omega
 
@@ -366,32 +358,34 @@ theorem step_body_bounded {World : Type} (host : Host World) {R : Nat} {s : Stat
   letPair_free
   apply bounded_of_rule
   intro spent fits rule
-  refine rule (writeCharge s) (restCharge R s) ?_ rfl ?_ ?_
-  · simp +decide only [PureContext.exprCost, PureContext.ofProg, Expr.allocs, Var.cost, ↓reduceIte,
+  refine rule 0 (restCharge R s) ?_ rfl ?_ ?_
+  · simp +decide only [PureContext.exprCost, PureContext.ofProg, Expr.allocs,
       Nat.add_zero, Nat.zero_add]
     read_state
-    show (if decide (s.written < s.output.size) = true then writeCharge s
+    show (if decide (s.written < s.output.size) = true then 0
       else restCharge R s) ≤ stepBudget R s
     simp only [stepBudget, decide_eq_true_eq, Nat.le_refl]
   · intro _
+    refine Bounded.bind_ret (nextBudget := 0) ?_ (by condition_fits) ?_
+    · simp +decide only [PureContext.ownedCost, PureContext.exprCost, Expr.allocs, Var.cost,
+        ↓reduceIte, Nat.add_zero, coerceCost, Nat.le_refl]
     apply bounded_of_rule
     intro spent fits rule
-    refine rule (writeCharge s) ?_ rfl ?_
-    · simp +decide only [PureContext.argumentCost, PureContext.exprCost, PureContext.ofProg,
-        argsSum, ↓reduceIte, Nat.add_zero, Nat.zero_add]
-      exact Nat.le_refl _
+    refine rule 0 ?_ rfl ?_
+    · exact Nat.le_trans (Nat.add_le_add_right (Nat.le_of_eq rfl) _)
+        (Nat.le_of_eq (Nat.zero_add _))
     · read_state
       show CallBounded host pureContext (.cons io.readStep.func (.cons io.writeStep.func .nil))
-        (.there .here) (0 + 1) (.cons (sourceState s) .nil) (writeCharge s)
+        (.there .here) (0 + 1) (.cons (sourceState s) .nil) 0
       exact callBounded_there (callBounded_here (by decide) (writeStep_bounded host _ s))
   · intro _
     apply bounded_of_rule
     intro spent fits rule
-    refine rule (stateTy.copyCost (sourceState s)) (readCharge R s) ?_ (by condition_fits) ?_ ?_
-    · simp +decide only [PureContext.exprCost, PureContext.ofProg, Expr.allocs, Var.cost,
+    refine rule 0 (readCharge R s) ?_ (by condition_fits) ?_ ?_
+    · simp +decide only [PureContext.exprCost, PureContext.ofProg, Expr.allocs,
         ↓reduceIte, Nat.add_zero, Nat.zero_add, ite_self, coerceCost]
       read_state
-      show (if (if s.eof = true then true else !true) = true then stateTy.copyCost (sourceState s)
+      show (if (if s.eof = true then true else !true) = true then 0
         else readCharge R s) ≤ restCharge R s
       by_cases eof : s.eof = true <;> simp [eof, restCharge]
     · intro _
@@ -399,18 +393,18 @@ theorem step_body_bounded {World : Type} (host : Host World) {R : Nat} {s : Stat
       intro spent fits rule
       refine rule ?_ (by condition_fits)
       simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg,
-        Expr.allocs, Var.cost, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost]
+        Expr.allocs, Var.cost, Ty.copyCost, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost, ]
       read_state
-      simp only [Ty.copyCost, stateTy]
-      refine Nat.le_trans (Nat.add_le_add_right (ite_le_zero (Nat.le_refl _) (Nat.le_refl _)) _) ?_
-      omega
+      exact ite_le_zero (Nat.le_refl _) (Nat.le_refl _)
     · intro _
+      refine Bounded.bind_ret (nextBudget := readCharge R s) ?_ (by condition_fits) ?_
+      · simp +decide only [PureContext.ownedCost, PureContext.exprCost, Expr.allocs, Var.cost,
+          ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost, Nat.le_refl]
       apply bounded_of_rule
       intro spent fits rule
       refine rule (readCharge R s) ?_ rfl ?_
-      · simp +decide only [PureContext.argumentCost, PureContext.exprCost, PureContext.ofProg,
-          argsSum, ↓reduceIte, Nat.add_zero, Nat.zero_add]
-        exact Nat.le_refl _
+      · exact Nat.le_trans (Nat.add_le_add_right (Nat.le_of_eq rfl) _)
+          (Nat.le_of_eq (Nat.zero_add _))
       · read_state
         show CallBounded host pureContext (.cons io.readStep.func (.cons io.writeStep.func .nil))
           .here (0 + 1) (.cons (sourceState s) .nil) (readCharge R s)
@@ -469,7 +463,7 @@ theorem stepBudget_le {R : Nat} {s : State} (sized : Sized s) : stepBudget R s �
   unfold stepBudget restCharge
   split
   · rename_i pending
-    unfold writeCharge stepCharge
+    unfold stepCharge
     omega
   · split
     · unfold stepCharge

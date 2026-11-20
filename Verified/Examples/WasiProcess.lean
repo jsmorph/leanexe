@@ -24,8 +24,10 @@ def entry : ProcessEntry [compiled.step.func.sig, compiled.begin.func.sig] :=
   { state := .word
     beginName := "begin"
     stepName := "step"
+    stepMode := .borrowed
     begin := compiled.begin.callee
-    step := compiled.step.callee }
+    step := compiled.step.callee
+    moved := .inr rfl }
 
 def module : Wasm.Module :=
   compileProcess compiled.pure.module compiled.program entry compiled.literalPool

@@ -14,8 +14,10 @@ def entry : ProcessEntry [io.begin.func.sig, io.step.func.sig, io.readStep.func.
   { state := stateTy
     beginName := "begin"
     stepName := "step"
+    stepMode := .owned
     begin := io.begin.callee
-    step := io.step.callee }
+    step := io.step.callee
+    moved := .inl rfl }
 
 def module : Wasm.Module := compileProcess io.pure.module io.program entry io.literalPool
 

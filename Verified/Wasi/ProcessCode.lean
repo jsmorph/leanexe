@@ -10,14 +10,20 @@ def processResultTy : Ty → Ty
   | .elem element => .elem (.prod .bool (.prod .word element))
   | state => .pair .bool (.pair .word state)
 
+/-- The process entry of a program: the state's type, `begin`, and the step, which takes the state
+in mode `stepMode`.  A state that holds heap values is owned by the step, which consumes it, so the
+entry makes no copy of the state for the call. -/
 structure ProcessEntry (effectSigs : List EffectSig) where
   state : Ty
   beginName : String
   stepName : String
+  stepMode : Mode
   begin : EffectVar effectSigs
     ⟨beginName, [], [], .value (processResultTy state)⟩
   step : EffectVar effectSigs
-    ⟨stepName, [state], [.borrowed], .value (processResultTy state)⟩
+    ⟨stepName, [state], [stepMode], .value (processResultTy state)⟩
+  /-- The step consumes a state that holds heap values. -/
+  moved : state.paramMode stepMode = .owned ∨ state.scalar = true
 
 abbrev ProcessEntry.result (entry : ProcessEntry effectSigs) : Ty :=
   processResultTy entry.state
@@ -36,8 +42,7 @@ def processCompaction (state : Ty) : Program :=
 
 /-- One step of the process loop: stop when the state is not running, and otherwise call the
 step on the state, store its result over the current one, and compact the new state.  The step
-borrows the state, so the old state is garbage once the result is stored, and the compaction
-reclaims it with everything else the step allocated. -/
+consumes the state, and the compaction reclaims everything else the step allocated. -/
 def ProcessEntry.iterationWith (calls : List LeanExe.Wasi.Call) (source : Wasm.Module) (entry : ProcessEntry effectSigs) : Program :=
   let positions := processPositions entry.state
   [.localGet 0, .eqzI64, .br_if 1, .constI64 0] ++

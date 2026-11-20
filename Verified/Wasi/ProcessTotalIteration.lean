@@ -75,7 +75,8 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
       initial locals targetHost := by
   let Q := GhostLoopPost (ProcessTotalInvariant source target entry.state pool base limit represented)
     relation ghost (ProcessTotalStopped target entry.state pool base represented) locals.values
-  obtain ⟨heap, stateWords, memory, stateHeld, control, free, baseTop, used⟩ := stored.parts
+  obtain ⟨heap, stateWords, memory, stateHeld, control, free, above, baseTop, used⟩ :=
+    stored.parts
   simp only [ProcessEntry.iterationWith, ProcessEntry.result, List.append_assoc,
     List.cons_append, List.nil_append, wp_localGet_cons, control, wp_eqzI64_cons]
   cases running : current.running with
@@ -84,31 +85,20 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
       simpa [running, boolWord] using stopped
   | true =>
       let signature : EffectSig :=
-        ⟨entry.stepName, [entry.state], [.borrowed], .value (processResultTy entry.state)⟩
+        ⟨entry.stepName, [entry.state], [entry.stepMode], .value (processResultTy entry.state)⟩
       let args : Env [entry.state] := .cons current.state .nil
-      have mode : signature.mode = fun _ => .borrowed := by
-        funext index
-        cases index with
-        | zero =>
-            change entry.state.paramMode .borrowed = .borrowed
-            exact Ty.paramMode_borrowed _
-        | succ index => rfl
-      have takeWords : stateWords.take entry.state.width = stateWords := by
-        rw [← memory.rep.length]
-        exact List.take_length
-      have moves : Env.moves (PureTransport.erase initial) signature.mode stateWords args = [] := by
-        simp only [args, mode, Env.moves, List.nil_append]
-      have reads : Env.reads (PureTransport.erase initial) signature.mode stateWords args =
-          entry.state.reads (PureTransport.erase initial) stateWords current.state := by
-        simp only [args, mode, Env.reads, List.append_nil, takeWords]
-      have argsRep : Env.Rep signature.mode heap (PureTransport.erase initial) stateWords args := by
-        rw [mode]
-        exact ⟨stateWords, [], (List.append_nil _).symm, memory.rep.borrow, rfl⟩
+      have shape := entry.step_args (store := PureTransport.erase initial) memory.rep
+      have argsRep : Env.Rep signature.mode heap (PureTransport.erase initial) stateWords args :=
+        shape.1
+      have moves : Env.moves (PureTransport.erase initial) signature.mode stateWords args =
+          entry.state.pointers (PureTransport.erase initial) stateWords current.state := shape.2.1
+      have reads : Env.reads (PureTransport.erase initial) signature.mode stateWords args = [] :=
+        shape.2.2
       have separate : Separate (PureTransport.erase initial)
           (Env.moves (PureTransport.erase initial) signature.mode stateWords args)
           (Env.reads (PureTransport.erase initial) signature.mode stateWords args) := by
-        rw [moves]
-        exact Separate.nil
+        rw [moves, reads]
+        exact memory.separate
       have input : @Bytes.LiteralPool.Input (Env signature.params)
           (Env.represent signature.params signature.modes) pool heap (PureTransport.erase initial)
           stateWords args := by
@@ -116,13 +106,12 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
         change ∀ region ∈ pool.regions,
           Apart (PureTransport.erase initial)
             (Env.moves (PureTransport.erase initial) signature.mode stateWords args) region
-        intro region _
         rw [moves]
-        exact Apart.nil
+        exact memory.pool_apart
       have scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode stateWords args,
           regionsDisjoint ABI.low region := by
         rw [reads]
-        exact memory.rep.reads_apart ABI.low (owned_low memory.rep)
+        exact fun _ member => nomatch member
       obtain ⟨affordable, bounded⟩ := resources running
       have within : heap.Within (PureTransport.erase initial) source (charge ghost current) := by
         unfold Heap.Within
@@ -140,13 +129,12 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
             have := rise callFitsTrue
             omega
           have called : Step heap (PureTransport.erase initial)
-              (fun region => regionsDisjoint region ABI.low)
+              (fun region => Apart (PureTransport.erase initial)
+                  (entry.state.pointers (PureTransport.erase initial) stateWords current.state)
+                  region ∧ regionsDisjoint region ABI.low)
               finalHeap (PureTransport.erase final)
-              ((processResultTy entry.state).blocks (PureTransport.erase final) words value) := by
-            exact callStep.mono (fun region kept => by
-              refine ⟨?_, kept⟩
-              rw [moves]
-              exact Apart.nil) (fun _ member => member)
+              ((processResultTy entry.state).blocks (PureTransport.erase final) words value) :=
+            callStep.mono (fun region kept => by rw [moves]; exact kept) (fun _ member => member)
           have nativeExecution : LeanExe.Wasi.Exec (observedHost host)
               (entry.action (program.funs pure.funs) current.state)
               initial.host trace (.returned (processNative entry.state value)) final.host := by
@@ -162,8 +150,11 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
               (PureTransport.erase final) words
               (processValue entry.state (processNative entry.state value)) := by
             rw [processValue_native entry.state value]
-            exact memory.called poolLow called representation
-          have grown := called.top_le memory.at_ free (low_apart_above _)
+            exact memory.called (fun region member => ⟨memory.pool_apart region member,
+              poolLow region member⟩) called representation
+          have grown := (called.base_le stored.low baseTop
+            (fun node member => by rw [free] at member; exact nomatch member)
+            ⟨below_base_apart stored.low above, low_apart_above _⟩).1
           have sameCap : (PureTransport.erase final).memoryCap source 0 =
               (PureTransport.erase initial).memoryCap source 0 := by
             simp only [Store.memoryCap, called.caps]

@@ -92,7 +92,9 @@ theorem wp_process_begin_total_with {calls : List LeanExe.Wasi.Call}
           words (processValue entry.state (processNative entry.state value))
         rw [processValue_native entry.state value]
         exact ⟨step.at_, resultRep, preserved.1, preserved.2⟩
-      have grown := step.top_le at_ free ⟨Apart.nil, low_apart_above _⟩
+      have grown := (step.base_le at_.base le_rfl
+        (fun node member => by rw [free] at member; exact nomatch member)
+        ⟨Apart.nil, low_apart_above _⟩).1
       have sameCap : (PureTransport.erase final).memoryCap source 0 =
           (PureTransport.erase initial).memoryCap source 0 := by
         simp only [Store.memoryCap, step.caps]

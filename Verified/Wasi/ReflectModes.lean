@@ -37,19 +37,22 @@ def Command.demands : {context : List Ty} → {result : ResultTy} →
     | [] => false
     | buffer :: _ =>
       (Expr.var (S := pureSigs) buffer).demands (sysTakeLive live args inputs) true index
-  | _, _, .letPair pair body, live, index =>
+  | _, _, .letPair (first := first) (second := second) pair body, live, index =>
     let inner := shift 2 live
-    (Expr.var (S := pureSigs) pair).demands (fun i => live i || body.uses (i + 2))
-        (body.demands inner 0 || body.demands inner 1) index ||
-      body.demands inner (index + 2)
+    !(pair.index == index && body.uses (index + 2)) &&
+      ((Expr.var (S := pureSigs) pair).demands (fun i => live i || body.uses (i + 2))
+          ((!second.scalar && body.demands inner 0) || (!first.scalar && body.demands inner 1))
+          index ||
+        body.demands inner (index + 2))
 
+/-- The modes chosen for the parameters of an action with body `body`: owned for a parameter with
+heap values that the body consumes where it dies, and borrowed otherwise. -/
 def Command.paramChoice {params : List Ty} {result : ResultTy}
     (body : Command pureSigs effectSigs params result) : List Mode :=
   (List.range params.length).map fun index =>
     match params[index]? with
-    | some (Ty.array _) | some (Ty.tree _) | some (Ty.treeHeader _ _) | some Ty.bytes =>
-      if body.demands (fun _ => false) index then .owned else .borrowed
-    | _ => .borrowed
+    | some t => if !t.scalar && body.demands (fun _ => false) index then .owned else .borrowed
+    | none => .borrowed
 
 namespace Reflect
 

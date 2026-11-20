@@ -12,6 +12,64 @@ theorem _root_.LeanExe.Pipeline.Heap.At.top_eq {heap other : Heap} {store : Stor
   simp only [Heap.globals, List.cons.injEq, Value.i64.injEq] at same
   exact same.1
 
+/-- The step's argument: the state's words represent the state in the step's mode, and the call
+moves the state's objects and reads none.  A state without heap values has no objects. -/
+theorem ProcessEntry.step_args (entry : ProcessEntry effectSigs) {heap : Heap}
+    {store : Store Unit} {stateWords : List Value} {value : entry.state.denote}
+    (rep : entry.state.Rep .owned heap store stateWords value) :
+    Env.Rep (EffectSig.mode
+        ⟨entry.stepName, [entry.state], [entry.stepMode], .value (processResultTy entry.state)⟩)
+      heap store stateWords (.cons value .nil) ∧
+    Env.moves store (EffectSig.mode
+        ⟨entry.stepName, [entry.state], [entry.stepMode], .value (processResultTy entry.state)⟩)
+      stateWords (.cons value .nil) = entry.state.pointers store stateWords value ∧
+    Env.reads store (EffectSig.mode
+        ⟨entry.stepName, [entry.state], [entry.stepMode], .value (processResultTy entry.state)⟩)
+      stateWords (.cons value .nil) = [] := by
+  have takeWords : stateWords.take entry.state.width = stateWords := by
+    rw [← rep.length]
+    exact List.take_length
+  rcases entry.moved with owned | scalar
+  · have mode : EffectSig.mode
+        ⟨entry.stepName, [entry.state], [entry.stepMode], .value (processResultTy entry.state)⟩ 0 =
+        .owned := owned
+    refine ⟨⟨stateWords, [], (List.append_nil _).symm, by rw [mode]; exact rep, rfl⟩, ?_, ?_⟩
+    · simp only [Env.moves, mode, takeWords, List.append_nil]
+    · simp only [Env.reads, mode, List.append_nil]
+  · have mode : EffectSig.mode
+        ⟨entry.stepName, [entry.state], [entry.stepMode], .value (processResultTy entry.state)⟩ 0 =
+        .borrowed := Ty.paramMode_scalar _ scalar _
+    refine ⟨⟨stateWords, [], (List.append_nil _).symm, by rw [mode]; exact rep.borrow, rfl⟩, ?_,
+      ?_⟩
+    · simp only [Env.moves, mode, List.append_nil, Ty.pointers_scalar _ scalar]
+    · simp only [Env.reads, mode, List.append_nil, Ty.reads_scalar _ scalar]
+
+/-- The objects of a stored state lie apart from one another. -/
+theorem ProcessMemory.separate {state : Ty} {pool : Bytes.LiteralPool} {heap : Heap}
+    {store : Store Unit} {words : List Value} {value : state.denote}
+    (memory : ProcessMemory state pool heap store words value) :
+    Separate store (state.pointers store words value) [] :=
+  ⟨by rw [← Ty.blocks_pointers]; exact memory.rep.pairwise, fun _ member => nomatch member⟩
+
+/-- The objects of a stored state lie apart from the literal pool. -/
+theorem ProcessMemory.pool_apart {state : Ty} {pool : Bytes.LiteralPool} {heap : Heap}
+    {store : Store Unit} {words : List Value} {value : state.denote}
+    (memory : ProcessMemory state pool heap store words value) :
+    ∀ region ∈ pool.regions, Apart store (state.pointers store words value) region :=
+  fun region member pointer pointed => memory.apart region member _
+    (by rw [Ty.blocks_pointers]; exact List.mem_map_of_mem pointed)
+
+/-- The region from the end of the reserved area to `base` lies apart from the objects of a value
+whose blocks lie at or above `base`. -/
+theorem below_base_apart {state : Ty} {store : Store Unit} {words : List Value}
+    {value : state.denote} {base : Nat} (low : 4096 ≤ base)
+    (above : ∀ block ∈ state.blocks store words value, base ≤ block.1) :
+    Apart store (state.pointers store words value) (4096, base - 4096) := by
+  intro pointer pointed
+  have := above _ (by rw [Ty.blocks_pointers]; exact List.mem_map_of_mem pointed)
+  simp only [regionsDisjoint]
+  omega
+
 /-- The store of a call's result over the current state, followed by the state's compaction. -/
 theorem wp_process_store_compact_with {calls : List LeanExe.Wasi.Call}
     {World : Type} {source target : Wasm.Module} {state : Ty}
@@ -94,7 +152,7 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
     (compactClosed :
       Relocation.programClosed source.funcs.length (processCompaction entry.state) = true)
     (spec : EffectSpecWith calls target
-      ⟨entry.stepName, [entry.state], [.borrowed], .value (processResultTy entry.state)⟩
+      ⟨entry.stepName, [entry.state], [entry.stepMode], .value (processResultTy entry.state)⟩
       (Wrappers.effectIndexWith calls source entry.step.index) (functions.get entry.step) pool)
     (noImport : target.imports[Wrappers.effectIndexWith calls source entry.step.index]? = none)
     (lookup : target.funcs[Wrappers.effectIndexWith calls source entry.step.index - target.imports.length]? =
@@ -109,7 +167,7 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
         (ProcessStored target entry.state pool base) locals.values) initial locals targetHost := by
   let Q := ProcessIterationResult (observedHost host) process current initial.host
     (ProcessStored target entry.state pool base) locals.values
-  obtain ⟨heap, stateWords, memory, held, control, free, baseTop, _⟩ := stored.parts
+  obtain ⟨heap, stateWords, memory, held, control, free, above, baseTop, _⟩ := stored.parts
   simp only [ProcessEntry.iterationWith, ProcessEntry.result, List.append_assoc,
     List.cons_append, List.nil_append, wp_localGet_cons, control, wp_eqzI64_cons]
   cases running : current.running with
@@ -118,31 +176,20 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
         (ProcessIterationResult.stopped initial locals rfl running stored : Q (.Break 1 initial locals))
   | true =>
       let signature : EffectSig :=
-        ⟨entry.stepName, [entry.state], [.borrowed], .value (processResultTy entry.state)⟩
+        ⟨entry.stepName, [entry.state], [entry.stepMode], .value (processResultTy entry.state)⟩
       let args : Env [entry.state] := .cons current.state .nil
-      have mode : signature.mode = fun _ => .borrowed := by
-        funext index
-        cases index with
-        | zero =>
-            change entry.state.paramMode .borrowed = .borrowed
-            exact Ty.paramMode_borrowed _
-        | succ index => rfl
-      have takeWords : stateWords.take entry.state.width = stateWords := by
-        rw [← memory.rep.length]
-        exact List.take_length
-      have moves : Env.moves (PureTransport.erase initial) signature.mode stateWords args = [] := by
-        simp only [args, mode, Env.moves, List.nil_append]
-      have reads : Env.reads (PureTransport.erase initial) signature.mode stateWords args =
-          entry.state.reads (PureTransport.erase initial) stateWords current.state := by
-        simp only [args, mode, Env.reads, List.append_nil, takeWords]
-      have argsRep : Env.Rep signature.mode heap (PureTransport.erase initial) stateWords args := by
-        rw [mode]
-        exact ⟨stateWords, [], (List.append_nil _).symm, memory.rep.borrow, rfl⟩
+      have shape := entry.step_args (store := PureTransport.erase initial) memory.rep
+      have argsRep : Env.Rep signature.mode heap (PureTransport.erase initial) stateWords args :=
+        shape.1
+      have moves : Env.moves (PureTransport.erase initial) signature.mode stateWords args =
+          entry.state.pointers (PureTransport.erase initial) stateWords current.state := shape.2.1
+      have reads : Env.reads (PureTransport.erase initial) signature.mode stateWords args = [] :=
+        shape.2.2
       have separate : Separate (PureTransport.erase initial)
           (Env.moves (PureTransport.erase initial) signature.mode stateWords args)
           (Env.reads (PureTransport.erase initial) signature.mode stateWords args) := by
-        rw [moves]
-        exact Separate.nil
+        rw [moves, reads]
+        exact memory.separate
       have input : @Bytes.LiteralPool.Input (Env signature.params)
           (Env.represent signature.params signature.modes) pool heap (PureTransport.erase initial)
           stateWords args := by
@@ -150,13 +197,12 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
         change ∀ region ∈ pool.regions,
           Apart (PureTransport.erase initial)
             (Env.moves (PureTransport.erase initial) signature.mode stateWords args) region
-        intro region _
         rw [moves]
-        exact Apart.nil
+        exact memory.pool_apart
       have scratch : ∀ region ∈ Env.reads (PureTransport.erase initial) signature.mode stateWords args,
           regionsDisjoint ABI.low region := by
         rw [reads]
-        exact memory.rep.reads_apart ABI.low (owned_low memory.rep)
+        exact fun _ member => nomatch member
       have callExecution := wp_effect_helper_with (calls := calls) (locals := locals) (values := locals.values)
         (depth := 0) (params := stateWords) (args := args) (Q := Q)
         (rest := storeCode (processPositions entry.state) 0 (processResultTy entry.state).types ++
@@ -164,13 +210,12 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
         spec noImport lookup arity valid memory.at_ argsRep separate input scratch stored.cap
         (fun value finalHeap final words trace execution callStep representation => by
           have called : Step heap (PureTransport.erase initial)
-              (fun region => regionsDisjoint region ABI.low)
+              (fun region => Apart (PureTransport.erase initial)
+                  (entry.state.pointers (PureTransport.erase initial) stateWords current.state)
+                  region ∧ regionsDisjoint region ABI.low)
               finalHeap (PureTransport.erase final)
-              ((processResultTy entry.state).blocks (PureTransport.erase final) words value) := by
-            exact callStep.mono (fun region kept => by
-              refine ⟨?_, kept⟩
-              rw [moves]
-              exact Apart.nil) (fun _ member => member)
+              ((processResultTy entry.state).blocks (PureTransport.erase final) words value) :=
+            callStep.mono (fun region kept => by rw [moves]; exact kept) (fun _ member => member)
           have nativeExecution : LeanExe.Wasi.Exec (observedHost host) (process.step current.state)
               initial.host trace (.returned (processNative entry.state value)) final.host := by
             rw [stepMeaning]
@@ -182,10 +227,13 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
               (PureTransport.erase final) words
               (processValue entry.state (processNative entry.state value)) := by
             rw [processValue_native entry.state value]
-            exact memory.called poolLow called representation
-          have grown := called.top_le memory.at_ free (low_apart_above _)
+            exact memory.called (fun region member => ⟨memory.pool_apart region member,
+              poolLow region member⟩) called representation
+          have grown := (called.base_le stored.low baseTop
+            (fun node member => by rw [free] at member; exact nomatch member)
+            ⟨below_base_apart stored.low above, low_apart_above _⟩).1
           refine wp_process_store_compact_with runtime layout profile compactable compactForm
-            compactClosed resultMemory (by omega) stored.baseLocal stored.low stored.pool stored.params
+            compactClosed resultMemory grown stored.baseLocal stored.low stored.pool stored.params
             stored.positions (by rw [called.cap target]; exact stored.cap) (fun _ ended sameHost => ?_)
             fun ended after sameHost _ nextStored _ => ?_
           · apply ProcessIterationResult.resource ended trace
@@ -236,7 +284,7 @@ theorem wp_process_iteration {World : Type} {source target : Wasm.Module}
     (compactClosed :
       Relocation.programClosed source.funcs.length (processCompaction entry.state) = true)
     (spec : EffectSpec target
-      ⟨entry.stepName, [entry.state], [.borrowed], .value (processResultTy entry.state)⟩
+      ⟨entry.stepName, [entry.state], [entry.stepMode], .value (processResultTy entry.state)⟩
       (Wrappers.effectIndex source entry.step.index) (functions.get entry.step) pool)
     (noImport : target.imports[Wrappers.effectIndex source entry.step.index]? = none)
     (lookup : target.funcs[Wrappers.effectIndex source entry.step.index - target.imports.length]? =

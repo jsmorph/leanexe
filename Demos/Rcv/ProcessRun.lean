@@ -41,13 +41,15 @@ open Demos.StreamFold (StreamPosition StreamHost StreamProgress observedStreamRe
 def processEntry {effectSigs : List EffectSig}
     (beginVar : EffectVar effectSigs ⟨"begin", [], [], .value (processResultTy stateTy)⟩)
     (stepVar :
-      EffectVar effectSigs ⟨"step", [stateTy], [.borrowed], .value (processResultTy stateTy)⟩) :
+      EffectVar effectSigs ⟨"step", [stateTy], [.owned], .value (processResultTy stateTy)⟩) :
     ProcessEntry effectSigs :=
   { state := stateTy
     beginName := "begin"
     stepName := "step"
+    stepMode := .owned
     begin := beginVar
-    step := stepVar }
+    step := stepVar
+    moved := .inl rfl }
 
 theorem compactable : stateTy.compactable = true := by decide
 
@@ -64,7 +66,7 @@ structure Compiled (start : Action (ProcessStep State)) where
   pure : Resource.PureContext pureSigs
   program : EffectProg pureSigs effectSigs
   beginVar : EffectVar effectSigs ⟨"begin", [], [], .value (processResultTy stateTy)⟩
-  stepVar : EffectVar effectSigs ⟨"step", [stateTy], [.borrowed], .value (processResultTy stateTy)⟩
+  stepVar : EffectVar effectSigs ⟨"step", [stateTy], [.owned], .value (processResultTy stateTy)⟩
   pool : Bytes.LiteralPool
   calls : CostEffectCalls source
     (compileProcess source program (processEntry beginVar stepVar) pool) pure program pool
