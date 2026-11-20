@@ -36,10 +36,11 @@ other than 0, it is the status, and no `write` follows.  Otherwise the random by
 groups returned hold exactly N little-endian words `w`, the counts of `histogramSpec w` sum to N,
 the bytes that the writes took form a prefix of `renderSpec (histogramSpec w)`, of B bytes, the
 writes number at most B + 1, one for each of the loop's passes at most, and each write offered at
-least one byte, the bytes that the writes before it did not take (`OfferedLayer`).  The status is 0
-exactly when that prefix is the whole output.  Either every write returned at most its count and
-the status is 0, or 77 after one write for each of the loop's passes, or the last write returned an
-error number whose errno is the status and every write before it returned at most its count.
+least one byte, the bytes that the writes before it did not take (`OfferedLayer`), with a count, its
+third argument, of the number of those bytes.  The status is 0 exactly when that prefix is the whole
+output.  Either every write returned at most its count and the status is 0, or 77 after one write
+for each of the loop's passes, or the last write returned an error number whose errno is the status
+and every write before it returned at most its count.
 
 `linux_exec_counts` proves `Counts` for every `Exec` run of `main` and its exit under the shim's
 host, from a launch whose arguments' strings and eight-byte pointers take at most `argsLimit`
@@ -130,11 +131,12 @@ N words, followed by calls of `write` of descriptor 1.  When the calls of `rando
 errno other than 0, it is the status, and no write follows.  Otherwise the random bytes `bytes` of
 `Draws` hold exactly N words `w`, and the counts of `histogramSpec w` sum to N.  The writes number
 at most one more than the bytes of `renderSpec (histogramSpec w)`, each offered at least one byte,
-the bytes of that output that the writes before it did not take, and the bytes that the writes
-took form a prefix of that output.  The status is 0 exactly when they are the whole output.  Either
-every write returned at most its count and the status is 0, or 77 after one write for each of the
-loop's passes, or the last write returned an error number whose errno is the status and every
-write before it returned at most its count. -/
+the bytes of that output that the writes before it did not take, with a count, its third argument,
+of the number of those bytes, and the bytes that the writes took form a prefix of that output.
+The status is 0 exactly when they are the whole output.  Either every write returned at most its
+count and the status is 0, or 77 after one write for each of the loop's passes, or the last write
+returned an error number whose errno is the status and every write before it returned at most its
+count. -/
 def Counts (args : List (List UInt8)) (ls : List Linux.Event) (status : UInt64) : Prop :=
   (parseSpec (bytesOfList (stringsBytes args)) = 0 → ls = [] ∧ status = 2) ∧
   (parseSpec (bytesOfList (stringsBytes args)) ≠ 0 →
@@ -149,8 +151,8 @@ def Counts (args : List (List UInt8)) (ls : List Linux.Event) (status : UInt64) 
           (parseSpec (bytesOfList (stringsBytes args))).toNat ∧
         Linux.writeData 1 ls <+: askedOutput bytes ∧
         (status = 0 ↔ Linux.writeData 1 ls = askedOutput bytes) ∧
-        (∀ e ∈ writes,
-          e.call = Linux.writeCall ∧ Linux.arg e.args 0 = 1 ∧ e.inputs.headD [] ≠ []) ∧
+        (∀ e ∈ writes, e.call = Linux.writeCall ∧ Linux.arg e.args 0 = 1 ∧
+          (Linux.arg e.args 2).toNat = (e.inputs.headD []).length ∧ e.inputs.headD [] ≠ []) ∧
         OfferedLayer (askedOutput bytes) 0 writes ∧
         writes.length ≤ (askedOutput bytes).length + 1 ∧
         (((∀ e ∈ writes, Took e) ∧
@@ -542,21 +544,23 @@ theorem draws_mirrors {F : OpenFlags} {L : ShimLayout} {I : Launch} :
       rfl
 
 /-- The image of a write to standard output that returned is one `write` of descriptor 1, which
-took the bytes that the write took and whose input holds the bytes that the write offered.  When
-the write returned errno 0, the `write` returned at most its count, and when the write returned an
-errno, the `write` returned an error number whose errno is the write's. -/
+took the bytes that the write took, whose input holds the bytes that the write offered, and whose
+count, its third argument, is their number.  When the write returned errno 0, the `write` returned
+at most its count, and when the write returned an errno, the `write` returned an error number whose
+errno is the write's. -/
 theorem write_image {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : List Linux.Event}
     {offered : LeanExe.Bytes} {errno count : UInt64} {l : List Linux.Event}
     (image : Image F L I events (.write .stdout offered (.returned errno count)) l) :
     ∃ x, l = [x] ∧ x.call = Linux.writeCall ∧ Linux.arg x.args 0 = 1 ∧
       Linux.writeData 1 l = (Event.write .stdout offered (.returned errno count)).stdoutTaken ∧
-      x.inputs.headD [] = offered.data.data.toList ∧ (errno = 0 → Took x) ∧
+      x.inputs.headD [] = offered.data.data.toList ∧
+      (Linux.arg x.args 2).toNat = offered.data.size ∧ (errno = 0 → Took x) ∧
       (errno ≠ 0 → Linux.isError x.ret = true ∧ errno = errnoOf (0 - x.ret)) := by
   obtain ⟨x, a, rfl, call, args, inputs, -, small, reply⟩ := image
   have wide : (UInt64.ofNat offered.data.size).toNat = offered.data.size :=
     UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
   refine ⟨x, rfl, call, by simp [args, Linux.arg, Output.fd], ?_, by simp [inputs],
-    fun zero => ?_, ?_⟩
+    by simp [args, Linux.arg, wide], fun zero => ?_, ?_⟩
   · unfold writeReply at reply
     split at reply
     · rename_i within
@@ -590,7 +594,8 @@ theorem write_image {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : List
 /-- The images of writes to standard output that returned, each of which offered at least one
 byte, the bytes of `out` after the first `taken` and those that the writes before it took
 (`Offered`), are `write` calls of descriptor 1, one for each write, which took the bytes that the
-writes took, and whose inputs hold those bytes of `out` (`OfferedLayer`), at least one each. -/
+writes took, whose inputs hold those bytes of `out` (`OfferedLayer`), at least one each, and whose
+counts, their third arguments, are the numbers of the bytes of their inputs. -/
 theorem writes_images {F : OpenFlags} {L : ShimLayout} {I : Launch} :
     ∀ {events : List Linux.Event} {writes : List Event} {ls : List Linux.Event}
       {out : List UInt8} {taken : Nat},
@@ -598,8 +603,8 @@ theorem writes_images {F : OpenFlags} {L : ShimLayout} {I : Launch} :
       (∀ e ∈ writes, ∃ offered errno count, e = .write .stdout offered (.returned errno count)) →
       (∀ e ∈ writes, WroteSome e) → Offered out taken writes →
       Linux.writeData 1 ls = stdoutTaken writes ∧
-        (∀ x ∈ ls,
-          x.call = Linux.writeCall ∧ Linux.arg x.args 0 = 1 ∧ x.inputs.headD [] ≠ []) ∧
+        (∀ x ∈ ls, x.call = Linux.writeCall ∧ Linux.arg x.args 0 = 1 ∧
+          (Linux.arg x.args 2).toNat = (x.inputs.headD []).length ∧ x.inputs.headD [] ≠ []) ∧
         ls.length = writes.length ∧ OfferedLayer out taken ls
   | _, _, _, _, _, .nil, _, _, _ => ⟨rfl, fun _ member => (nomatch member), rfl, trivial⟩
   | _, _, _, _, _, .cons image rest, shape, wroteSome,
@@ -608,7 +613,7 @@ theorem writes_images {F : OpenFlags} {L : ShimLayout} {I : Launch} :
     obtain ⟨-, rfl, -⟩ := Event.write.inj same
     obtain ⟨offered'', reply'', same', size⟩ := wroteSome _ (List.mem_cons_self ..)
     obtain ⟨-, rfl, -⟩ := Event.write.inj same'
-    obtain ⟨x, rfl, call, fd, data, input, -, -⟩ := write_image image
+    obtain ⟨x, rfl, call, fd, data, input, sized, -, -⟩ := write_image image
     have bytes : Linux.Event.writeBytes 1 x =
         (Event.write .stdout offered (.returned errno count)).stdoutTaken := by
       simpa [Linux.writeData] using data
@@ -620,7 +625,7 @@ theorem writes_images {F : OpenFlags} {L : ShimLayout} {I : Launch} :
       by simp [restLength], ⟨by rw [input, offers], restOffered⟩⟩
     rcases List.mem_append.mp member with member | member
     · obtain rfl := List.mem_singleton.mp member
-      refine ⟨call, fd, ?_⟩
+      refine ⟨call, fd, by rw [sized, input]; simp, ?_⟩
       rw [input]
       intro empty
       exact size (by simpa using congrArg List.length empty)
@@ -636,7 +641,7 @@ theorem writes_took {F : OpenFlags} {L : ShimLayout} {I : Launch} :
   | _, _, _, .nil, _ => fun _ member => (nomatch member)
   | _, _, _, .cons image rest, every => by
     obtain ⟨offered, count, rfl⟩ := every _ (List.mem_cons_self ..)
-    obtain ⟨x, rfl, -, -, -, -, took, -⟩ := write_image image
+    obtain ⟨x, rfl, -, -, -, -, -, took, -⟩ := write_image image
     intro y member
     rcases List.mem_append.mp member with member | member
     · obtain rfl := List.mem_singleton.mp member
@@ -741,7 +746,7 @@ theorem linux_exec_counts {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Lin
           cases lastImages with
           | cons image tail =>
             cases tail
-            obtain ⟨x, rfl, -, -, -, -, -, failed⟩ := write_image image
+            obtain ⟨x, rfl, -, -, -, -, -, -, failed⟩ := write_image image
             obtain ⟨error, same⟩ := failed failing
             exact .inr ⟨failing, lb, x, by simp, writes_took beforeImages earlier, error, same⟩
 

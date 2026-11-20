@@ -199,10 +199,10 @@ call's bytes.  Either the last group ended with an error number, whose errno is 
 follows, or calls of `write` of descriptor 1 follow, the random bytes hold exactly N little-endian
 words `w`, the counts of `histogramSpec w` sum to N, the writes number at most one more than the
 bytes of `renderSpec (histogramSpec w)`, each offered at least one byte, the bytes of that output
-that the writes before it did not take, and the bytes that the writes took form a prefix of that
-output.  In the second case X0 is 0 exactly when they are the
-whole output, and otherwise X0 is 77 after one write for each of the loop's passes, each of which
-returned at most its count, or the errno of the error number that the last `write` returned,
+that the writes before it did not take, with a count of the number of those bytes, and the bytes
+that the writes took form a prefix of that output.  In the second case X0 is 0 exactly when they
+are the whole output, and otherwise X0 is 77 after one write for each of the loop's passes, each of
+which returned at most its count, or the errno of the error number that the last `write` returned,
 every `write` before which returned at most its count. -/
 theorem histogram_elf_counts (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
     {top : UInt64} (small : stringsSize args + 8 * args.length ≤ argsLimit)
