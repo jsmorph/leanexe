@@ -228,10 +228,6 @@ inductive WriteEnd where
   | failed (errno : UInt64)
   deriving DecidableEq
 
-/-- The event `e` is a write to standard output that offered at least one byte. -/
-def WroteSome (e : Event) : Prop :=
-  ∃ offered reply, e = .write .stdout offered reply ∧ offered.data.size ≠ 0
-
 /-- `LineWrites text writes ending`: `writes` are at most one more than the bytes of `text` writes
 to standard output, each of which offered at least one byte, the bytes of `text` after those that
 the writes before it took (`Offered`).  With `all`, each returned errno 0 and they took every byte

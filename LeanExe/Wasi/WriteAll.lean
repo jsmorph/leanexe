@@ -16,7 +16,10 @@ window's bytes from 0 with the window's length plus one passes.  `writeAll_run_w
 case of the whole buffer, a start of 0 and a count of its size.  `stdoutTaken` collects the bytes
 that the writes of a trace to standard output took when they returned errno 0, and
 `Offered bytes taken events` states that each event is a write to standard output that offered the
-bytes of `bytes` after those that the writes before it took.  `WriteAllRun.taken` states that a
+bytes of `bytes` after those that the writes before it took.  `WroteSome e` states that the event
+`e` is a write to standard output that offered at least one byte, and `WriteAllRun.shape` states
+that every write of a run that returns or exits is one, since a pass writes only while bytes
+remain, and that the writes number at most the passes.  `WriteAllRun.taken` states that a
 run that returns `value` made writes that each returned errno 0, offered the bytes that remained,
 and took the bytes from `written` up to `value`, one write for each pass when `value` falls short
 of the bytes.  A run that exits does so with the errno, from 1 to 76, of its last write, after
@@ -59,6 +62,10 @@ def Offered (bytes : List UInt8) : Nat → List Event → Prop
   | taken, e :: rest => (∃ offered reply, e = .write .stdout offered reply ∧
       offered.data.data.toList = bytes.drop taken) ∧
     Offered bytes (taken + e.stdoutTaken.length) rest
+
+/-- The event `e` is a write to standard output that offered at least one byte. -/
+def WroteSome (e : Event) : Prop :=
+  ∃ offered reply, e = .write .stdout offered reply ∧ offered.data.size ≠ 0
 
 /-- The runs of the loop of `writeAll` under `host` over the bytes `bytes` from `written` bytes
 taken with `passes` passes left: their events and outcomes.  The loop returns `written` when no
@@ -336,6 +343,51 @@ theorem WriteAllRun.taken {World : Type} {host : Host World} {bytes : List UInt8
     intro _
     exact ⟨fun _ same => (by cases same), fun _ same => by cases same⟩
 
+/-- The writes of a run of the loop of `writeAll` offer at least one byte each and number at most
+its passes, and a run that exits ends with the exit after them. -/
+theorem WriteAllRun.shape {World : Type} {host : Host World} {bytes : List UInt8}
+    {written : UInt64} {passes : Nat} {events : List Event} {outcome : Outcome UInt64}
+    (run : WriteAllRun host bytes written passes events outcome) :
+    (∀ v, outcome = .returned v → events.length ≤ passes ∧ ∀ e ∈ events, WroteSome e) ∧
+    (∀ code, outcome = .exited code → ∃ writes, events = writes ++ [.exit code] ∧
+      writes.length ≤ passes ∧ ∀ e ∈ writes, WroteSome e) := by
+  induction run with
+  | done _ => exact ⟨fun _ _ => ⟨Nat.zero_le _, fun _ h => nomatch h⟩, fun _ e => nomatch e⟩
+  | spent _ => exact ⟨fun _ _ => ⟨Nat.zero_le _, fun _ h => nomatch h⟩, fun _ e => nomatch e⟩
+  | @wrote written count passes offered events outcome left offers within rest ih =>
+    have some : WroteSome (.write .stdout offered (.returned 0 count)) := by
+      refine ⟨offered, _, rfl, fun e => ?_⟩
+      have := congrArg List.length offers
+      simp [e] at this
+      omega
+    refine ⟨fun v e => ?_, fun code e => ?_⟩
+    · obtain ⟨hlen, hall⟩ := ih.1 v e
+      refine ⟨by simp; omega, fun x hx => ?_⟩
+      rcases List.mem_cons.mp hx with rfl | hx
+      · exact some
+      · exact hall x hx
+    · obtain ⟨writes, rfl, hlen, hall⟩ := ih.2 code e
+      refine ⟨_ :: writes, rfl, by simp; omega, fun x hx => ?_⟩
+      rcases List.mem_cons.mp hx with rfl | hx
+      · exact some
+      · exact hall x hx
+  | @failed written errno count passes offered events outcome left offers nonzero valid ended =>
+    obtain ⟨_, _, ended⟩ := ended
+    have some : WroteSome (.write .stdout offered (.returned errno count)) := by
+      refine ⟨offered, _, rfl, fun e => ?_⟩
+      have := congrArg List.length offers
+      simp [e] at this
+      omega
+    refine ⟨fun v e => ?_, fun code e => ?_⟩
+    · subst e
+      cases ended
+    · subst e
+      cases ended with
+      | exit _ =>
+        refine ⟨[.write .stdout offered (.returned errno count)], rfl, by simp, fun x hx => ?_⟩
+        rw [List.mem_singleton.mp hx]
+        exact some
+  | trapped _ _ => exact ⟨(fun _ e => nomatch e), fun _ e => nomatch e⟩
 
 /-- A run of the loop of `writeAll` that traps under a host that accepts every exit status below
 126 has a trapped write to standard output. -/

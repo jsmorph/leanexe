@@ -1498,52 +1498,6 @@ theorem entry_check {World : Type} {host : Host World} (m : Bytes) (hm : m.data.
 
 /-! ## The writes -/
 
-/-- The writes of a run of the loop of `writeAll` offer at least one byte each and number at most
-its passes, and a run that exits ends with the exit after them. -/
-theorem WriteAllRun.shape {World : Type} {host : Host World} {bytes : List UInt8}
-    {written : UInt64} {passes : Nat} {events : List Event} {outcome : Outcome UInt64}
-    (run : WriteAllRun host bytes written passes events outcome) :
-    (∀ v, outcome = .returned v → events.length ≤ passes ∧ ∀ e ∈ events, WroteSome e) ∧
-    (∀ code, outcome = .exited code → ∃ writes, events = writes ++ [.exit code] ∧
-      writes.length ≤ passes ∧ ∀ e ∈ writes, WroteSome e) := by
-  induction run with
-  | done _ => exact ⟨fun _ _ => ⟨Nat.zero_le _, fun _ h => nomatch h⟩, fun _ e => nomatch e⟩
-  | spent _ => exact ⟨fun _ _ => ⟨Nat.zero_le _, fun _ h => nomatch h⟩, fun _ e => nomatch e⟩
-  | @wrote written count passes offered events outcome left offers within rest ih =>
-    have some : WroteSome (.write .stdout offered (.returned 0 count)) := by
-      refine ⟨offered, _, rfl, fun e => ?_⟩
-      have := congrArg List.length offers
-      simp [e] at this
-      omega
-    refine ⟨fun v e => ?_, fun code e => ?_⟩
-    · obtain ⟨hlen, hall⟩ := ih.1 v e
-      refine ⟨by simp; omega, fun x hx => ?_⟩
-      rcases List.mem_cons.mp hx with rfl | hx
-      · exact some
-      · exact hall x hx
-    · obtain ⟨writes, rfl, hlen, hall⟩ := ih.2 code e
-      refine ⟨_ :: writes, rfl, by simp; omega, fun x hx => ?_⟩
-      rcases List.mem_cons.mp hx with rfl | hx
-      · exact some
-      · exact hall x hx
-  | @failed written errno count passes offered events outcome left offers nonzero valid ended =>
-    obtain ⟨_, _, ended⟩ := ended
-    have some : WroteSome (.write .stdout offered (.returned errno count)) := by
-      refine ⟨offered, _, rfl, fun e => ?_⟩
-      have := congrArg List.length offers
-      simp [e] at this
-      omega
-    refine ⟨fun v e => ?_, fun code e => ?_⟩
-    · subst e
-      cases ended
-    · subst e
-      cases ended with
-      | exit _ =>
-        refine ⟨[.write .stdout offered (.returned errno count)], rfl, by simp, fun x hx => ?_⟩
-        rw [List.mem_singleton.mp hx]
-        exact some
-  | trapped _ _ => exact ⟨(fun _ e => nomatch e), fun _ e => nomatch e⟩
-
 /-- A run of `writeAll text 0 text.size` makes the writes of `LineWrites`: when it returns `v`,
 those of `stalled` when `v` falls short of the text and of `all` otherwise, and when it exits,
 those of `failed` with its status, followed by the exit. -/
