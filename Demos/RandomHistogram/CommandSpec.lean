@@ -45,14 +45,15 @@ inductive Draws : UInt64 → List Event → List UInt8 → UInt64 → Prop
       Draws r (.sys .randomGet [.space (8 * min r 512)] (.returned 0 [buffer]) :: events)
         (buffer.data.data.toList ++ bytes) errno
 
-/-- `Written out writes code`: the events `writes` are writes to stdout, each of which offered the
-bytes of `out` after those that the writes before it took (`Offered`), and the bytes that they
-took, `stdoutTaken writes`, form a prefix of `out`.  The status `code` is 0 exactly when that
-prefix is all of `out`.  Either every write returned errno 0 and the status is 0, or 77 after one
-write for each of the loop's `out.length + 1` passes, or the last write returned the errno
-`code`, from 1 to 76, and every write before it returned errno 0. -/
+/-- `Written out writes code`: the events `writes` are writes to stdout, each of which offered at
+least one byte (`WroteSome`), the bytes of `out` after those that the writes before it took
+(`Offered`), and the bytes that they took, `stdoutTaken writes`, form a prefix of `out`.  The status
+`code` is 0 exactly when that prefix is all of `out`.  Either every write returned errno 0 and the
+status is 0, or 77 after one write for each of the loop's `out.length + 1` passes, or the last
+write returned the errno `code`, from 1 to 76, and every write before it returned errno 0. -/
 def Written (out : List UInt8) (writes : List Event) (code : UInt64) : Prop :=
-  Offered out 0 writes ∧ stdoutTaken writes <+: out ∧ (code = 0 ↔ stdoutTaken writes = out) ∧
+  Offered out 0 writes ∧ (∀ e ∈ writes, WroteSome e) ∧ stdoutTaken writes <+: out ∧
+    (code = 0 ↔ stdoutTaken writes = out) ∧
     (((∀ e ∈ writes, ∃ offered count, e = .write .stdout offered (.returned 0 count)) ∧
         (code = 0 ∨ (code = 77 ∧ writes.length = out.length + 1))) ∨
       (code ≠ 0 ∧ code.toNat ≤ 76 ∧ ∃ before offered count,

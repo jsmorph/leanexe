@@ -197,9 +197,9 @@ bytes with `r` the words still to draw.  A group's calls ask with flags 0 for th
 calls before them did not return, and a group whose `random_get` returned errno 0 returned that
 call's bytes.  Either the last group ended with an error number, whose errno is X0, and no `write`
 follows, or calls of `write` of descriptor 1 follow, the random bytes hold exactly N little-endian
-words `w`, the counts of `histogramSpec w` sum to N, each write offered the bytes of
-`renderSpec (histogramSpec w)` that the writes before it did not take, and the bytes that the
-writes took form a prefix of that output.  In the second case X0 is 0 exactly when they are the
+words `w`, the counts of `histogramSpec w` sum to N, each write offered at least one byte, the
+bytes of `renderSpec (histogramSpec w)` that the writes before it did not take, and the bytes that
+the writes took form a prefix of that output.  In the second case X0 is 0 exactly when they are the
 whole output, and otherwise X0 is 77 after one write for each of the loop's passes, each of which
 returned at most its count, or the errno of the error number that the last `write` returned,
 every `write` before which returned at most its count. -/

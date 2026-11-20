@@ -16,9 +16,10 @@ at the buffer's start (`splice_take`), `tally` counts the first words of the buf
 (`words_append`).  The counts are then
 `histogram` of the words, so `render` of them is `renderSpec (histogramSpec w)` by `histogram_eq`
 and `render_eq`, at most 210 bytes (`render_size`).  `write_tail` gives the writes of `Written`
-from `WriteAllRun.taken` of `LeanExe/Wasi/WriteAll.lean`: a run of `writeAll` that returns `v`
-took the first `v` bytes of the output, so `main`'s test `v < B` returns 77 exactly when bytes
-remain, and a run that exits does so with the errno of its last write. -/
+from `WriteAllRun.taken` and `WriteAllRun.shape` of `LeanExe/Wasi/WriteAll.lean`: a run of
+`writeAll` that returns `v` took the first `v` bytes of the output, so `main`'s test `v < B`
+returns 77 exactly when bytes remain, a run that exits does so with the errno of its last write,
+and each write offered at least one byte, since a pass writes only while bytes remain. -/
 
 namespace Demos.RandomHistogram
 
@@ -462,7 +463,8 @@ theorem write_tail {World : Type} {host : Host World} {out : Bytes} (small : out
   obtain ⟨after, writes, middle, tail, writeRun, cont, rfl⟩ :=
     Exec.unbind (writeAll out 0 out.size) run
   have length : out.data.data.toList.length = out.data.size := by simp
-  have facts := (writeAll_run_whole (by omega) writeRun).taken (by rw [length]; omega) (by simp)
+  have wrun := writeAll_run_whole (by omega) writeRun
+  have facts := wrun.taken (by rw [length]; omega) (by simp)
   have wide : out.size.toNat = out.data.size := by
     simp only [Bytes.size, UInt64.toNat_ofNat']
     exact Nat.mod_eq_of_lt (by omega)
@@ -484,7 +486,8 @@ theorem write_tail {World : Type} {host : Host World} {out : Bytes} (small : out
       have below : value.toNat < out.data.size := by
         rw [UInt64.lt_iff_toNat_lt, wide] at short
         exact short
-      refine ⟨.inr rfl, offeredAll, by rw [taken]; exact List.take_prefix _ _, ?_,
+      refine ⟨.inr rfl, offeredAll, (wrun.shape.1 value rfl).2,
+        by rw [taken]; exact List.take_prefix _ _, ?_,
         .inl ⟨shape, .inr ⟨rfl, by rw [counted (by omega), length]⟩⟩⟩
       refine ⟨fun same => absurd same (by decide), fun whole => ?_⟩
       have := congrArg List.length whole
@@ -493,14 +496,17 @@ theorem write_tail {World : Type} {host : Host World} {out : Bytes} (small : out
       have above : out.data.size ≤ value.toNat := by
         rw [UInt64.lt_iff_toNat_lt, wide] at short
         omega
-      refine ⟨.inl rfl, offeredAll, by rw [taken]; exact List.take_prefix _ _, ?_,
-        .inl ⟨shape, .inl rfl⟩⟩
+      refine ⟨.inl rfl, offeredAll, (wrun.shape.1 value rfl).2,
+        by rw [taken]; exact List.take_prefix _ _, ?_, .inl ⟨shape, .inl rfl⟩⟩
       exact ⟨fun _ => by rw [taken, List.take_of_length_le (by omega)], fun _ => rfl⟩
   | exited code =>
     obtain ⟨rfl, rfl, rfl⟩ := cont
     obtain ⟨nonzero, valid, ⟨before, offered, count, shape, earlier, offeredBefore⟩, prefix_,
       bound⟩ := facts.2 code rfl
     simp only [UInt64.toNat_zero] at offeredBefore
+    obtain ⟨wrote, ended, -, wroteSome⟩ := wrun.shape.2 code rfl
+    have last : wrote = before ++ [.write .stdout offered (.returned code count)] :=
+      List.append_cancel_right (ended.symm.trans (shape.trans (by simp)))
     refine ⟨fun _ same => (by cases same), fun code' same => ?_⟩
     cases same
     have dropped : stdoutTaken (before ++ [.write .stdout offered (.returned code count)]) =
@@ -508,7 +514,7 @@ theorem write_tail {World : Type} {host : Host World} {out : Bytes} (small : out
       rw [shape]
       simp [stdoutTaken_append, Event.stdoutTaken, nonzero]
     refine ⟨nonzero, valid, before ++ [.write .stdout offered (.returned code count)],
-      by rw [List.append_nil, shape]; simp, offeredBefore, ?_, ?_,
+      by rw [List.append_nil, shape]; simp, offeredBefore, by rw [← last]; exact wroteSome, ?_, ?_,
       .inr ⟨nonzero, valid, before, offered, count, rfl, earlier⟩⟩
     · rw [dropped]
       simpa using prefix_
@@ -651,8 +657,8 @@ exit status `code` has the events of `Meets` followed by the exit: the status is
 `random_get` returned the N words `w`, whose counts sum to N, the status of the writes of
 `renderSpec (histogramSpec w)` that `Written` states: 0 exactly when they took every byte of it,
 the errno of a write that failed, or 77 after one write for each of the loop's passes with bytes
-unwritten.  Each write offered the bytes that the writes before it did not take.  The status is at
-most 77. -/
+unwritten.  Each write offered at least one byte, the bytes that the writes before it did not
+take.  The status is at most 77. -/
 theorem exec_main {World : Type} {host : Host World} {world final : World} {trace : List Event}
     {code : UInt64}
     (execution : Exec host (main.bind fun status => Action.exit (α := Unit) status) world trace
