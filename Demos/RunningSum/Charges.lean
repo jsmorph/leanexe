@@ -91,22 +91,18 @@ theorem render_bound_le (value : Decimal) (fits : value.digits.size + 2 < UInt64
       cases value.negative <;> simp [UInt64.toNat_add, sizeNat] <;> omega
     omega
 
-theorem afterWrite_bound_le (state : State) (reply : WriteResult) :
-    io.pureSources.afterWrite.bound (state, reply) ≤ stateTy.copyCost (sourceState state) := by
-  rw [io.pureSources.afterWrite.bound_eq, state_copyCost]
-  simp only [LeanExe.Pipeline.Flat.flat, Ty.copyCost, blockCost_eq, copyBytes]
-  split
-  · omega
-  · split <;> omega
+/-- `afterWrite` takes the state owned and allocates nothing. -/
+theorem afterWrite_bound (state : State) (reply : WriteResult) :
+    io.pureSources.afterWrite.bound (⟨state⟩, reply) = 0 :=
+  io.pureSources.afterWrite.bound_eq state reply
 
+/-- `afterRead` takes the state and the reply owned and allocates the line's copy of the bytes
+read. -/
 theorem afterRead_bound_le (state : State) (reply : FillResult) :
-    io.pureSources.afterRead.bound (state, reply) ≤ stateTy.copyCost (sourceState state) +
-      copyBytes state.total.digits.size state.line.size reply.count.toNat
-        state.output.data.size := by
-  rw [io.pureSources.afterRead.bound_eq, state_copyCost]
-  split <;>
-    simp only [LeanExe.Pipeline.Flat.flat, Ty.copyCost, blockCost_eq, copyBytes] <;>
-    omega
+    io.pureSources.afterRead.bound (⟨state⟩, ⟨reply⟩) ≤
+      Bytes.allocationCost reply.count.toNat := by
+  rw [io.pureSources.afterRead.bound_eq]
+  split <;> omega
 
 /-- The charge of `begin`: the initial state's arrays. -/
 def beginCharge : Nat := io.pureSources.initial.bound ()
@@ -151,7 +147,7 @@ theorem combineMagnitude_bound_le (a b : Array UInt64) (subtract : Bool)
 
 /-- A bound on `add`'s charge for totals of `m` digits in all. -/
 theorem add_bound_le (a b : Decimal) (bound : a.digits.size + b.digits.size + 2 < UInt64.size) :
-    io.pureSources.add.bound (a, b) ≤ combineCost (a.digits.size + b.digits.size) := by
+    io.pureSources.add.bound (⟨a⟩, ⟨b⟩) ≤ combineCost (a.digits.size + b.digits.size) := by
   rw [io.pureSources.add.bound_eq]
   split
   · exact combineMagnitude_bound_le _ _ _ bound
@@ -161,16 +157,16 @@ theorem add_bound_le (a b : Decimal) (bound : a.digits.size + b.digits.size + 2 
       omega
     · exact combineMagnitude_bound_le _ _ _ bound
 
-/-- A bound on `completeLine`'s charge for a state whose total has `t` digits and whose line,
-input, and output have `l`, `i`, and `o` bytes. -/
-def completeCost (t l i o : Nat) : Nat :=
-  8 * l + 56 + copyBytes t l i o + combineCost (t + l) + (8 * (t + l + 1) + 56) + 56 +
-    Bytes.allocationCost i + (t + l + 58)
+/-- A bound on `completeLine`'s charge for a state whose total has `t` digits and whose line has
+`l` words and input `i` bytes.  The state is owned, so the charge holds no copy of it. -/
+def completeCost (t l i : Nat) : Nat :=
+  8 * l + 56 + combineCost (t + l) + (8 * (t + l + 1) + 56) + 56 + Bytes.allocationCost i +
+    (t + l + 58)
 
 theorem completeLine_bound_le (state : State)
     (small : state.total.digits.size + state.line.size + 4 < UInt64.size) :
-    io.pureSources.completeLine.bound state ≤ completeCost state.total.digits.size
-      state.line.size state.input.data.size state.output.data.size := by
+    io.pureSources.completeLine.bound ⟨state⟩ ≤ completeCost state.total.digits.size
+      state.line.size state.input.data.size := by
   have parsed := parse_digits_size_le state.line (by omega)
   have sum := add_digits_le state.total
     ⟨(parse state.line).value.negative, (parse state.line).value.digits⟩ (by dsimp only; omega)
@@ -187,8 +183,8 @@ theorem completeLine_bound_le (state : State)
   dsimp only at addCost renderCost
   rw [blockCost_eq] at parseCost
   rw [io.pureSources.completeLine.bound_eq]
-  simp only [LeanExe.Pipeline.Flat.flat, Ty.copyCost, blockCost_eq, UInt64.toNat_zero]
-  unfold completeCost copyBytes combineCost at *
+  simp only [blockCost_eq, UInt64.toNat_zero]
+  unfold completeCost combineCost at *
   split <;> omega
 
 /-- The credits of the state that `completeLine` returns. -/
@@ -206,33 +202,34 @@ theorem completeLine_credit_le (state : State)
   · simp only [List.size_toArray, List.length_nil]
     omega
 
-/-- A bound on `consumeInput`'s charge for a state whose total has `t` digits and whose line,
-input, and output have `l`, `i`, and `o` bytes. -/
-def consumeCost (t l i o : Nat) : Nat :=
-  copyBytes t l i o + 16 * (t + l + 2) + 80 * i + completeCost t (l + i) i o +
-    16 * (2 * (t + l + i) + 3)
+/-- A bound on `consumeInput`'s charge for a state whose total has `t` digits and whose line has
+`l` words and input `i` bytes: the credits of the state's arrays, which the step pays since it
+passes a borrowed state, and the passes of the loop.  The state is owned, so the charge holds no
+copy of it. -/
+def consumeCost (t l i : Nat) : Nat :=
+  16 * (t + l + 2) + 80 * i + completeCost t (l + i) i + 16 * (2 * (t + l + i) + 3)
 
 theorem consumeInput_bound_le (state : State) (remaining : state.cursor < state.input.size)
     (small : state.total.digits.size + state.line.size + state.input.data.size + 4 < UInt64.size) :
-    io.pureSources.consumeInput.bound state ≤ consumeCost state.total.digits.size
-      state.line.size state.input.data.size state.output.data.size := by
+    io.pureSources.consumeInput.bound ⟨state⟩ ≤ consumeCost state.total.digits.size
+      state.line.size state.input.data.size := by
   have count : (state.input.size - state.cursor).toNat ≤ state.input.data.size := by
     rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_of_lt remaining)]
     have size : state.input.size.toNat ≤ state.input.data.size := by
       simp only [LeanExe.Bytes.size, UInt64.toNat_ofNat']
       exact Nat.mod_le _ _
     omega
-  rw [io.pureSources.consumeInput.bound_eq]
-  refine le_trans (Nat.min_le_right _ _) ?_
-  refine le_trans (Nat.add_le_add_left (loopCost_le_last
+  rw [io.pureSources.consumeInput.bound_eq, io.pureSources.consumeInput.cost_eq]
+  refine le_trans (Nat.add_le_add_left (Nat.min_le_right _ _) _) ?_
+  refine le_trans (Nat.add_le_add_left (Nat.add_le_add_left (loopCost_le_last
     (fun left (current : ProcessStep State) => current.running = true ∧
       current.state.total = state.total ∧ current.state.input = state.input ∧
       current.state.output = state.output ∧
       current.state.line.size + left ≤ state.line.size + (state.input.size - state.cursor).toNat)
     80 (completeCost state.total.digits.size (state.line.size + state.input.data.size)
-      state.input.data.size state.output.data.size +
+      state.input.data.size +
       16 * (2 * (state.total.digits.size + state.line.size + state.input.data.size) + 3))
-    ?pass _ _ _ ?start) _) ?_
+    ?pass _ _ _ ?start) _) _) ?_
   case start => exact ⟨rfl, rfl, rfl, rfl, Nat.le_refl _⟩
   case pass =>
     intro left index current holds _
@@ -258,7 +255,7 @@ theorem consumeInput_bound_le (state : State) (remaining : state.cursor < state.
         have credit := completeLine_credit_le
           { current.state with cursor := current.state.cursor + 1 } advanced
         show io.pureSources.completeLine.bound
-            { current.state with cursor := current.state.cursor + 1 } +
+            ⟨{ current.state with cursor := current.state.cursor + 1 }⟩ +
           (creditCost (completeLine
               { current.state with cursor := current.state.cursor + 1 }).state.total.digits.size +
             (creditCost (completeLine
@@ -268,10 +265,9 @@ theorem consumeInput_bound_le (state : State) (remaining : state.cursor < state.
         dsimp only at bound credit
         have totalSize : current.state.total.digits.size = state.total.digits.size := by rw [total]
         have inputSize : current.state.input.data.size = state.input.data.size := by rw [input]
-        have outputSize : current.state.output.data.size = state.output.data.size := by rw [output]
-        rw [totalSize, inputSize, outputSize] at bound
+        rw [totalSize, inputSize] at bound
         rw [totalSize] at credit
-        unfold completeCost copyBytes combineCost at *
+        unfold completeCost combineCost at *
         omega
       · have sumSmall := add_digits_le current.state.total (parse current.state.line).value
           (by have := parse_digits_size_le current.state.line (by omega); rw [total]; omega)
@@ -302,8 +298,8 @@ theorem consumeInput_bound_le (state : State) (remaining : state.cursor < state.
       simp only [notNewline, Bool.false_eq_true, ↓reduceIte, Nat.add_zero]
       simp only [Array.size_push, total, input, output, true_and, paidGrowCost, allocCost]
       omega
-  · simp only [LeanExe.Pipeline.Flat.flat, Ty.copyCost, Ty.credit, blockCost_eq, creditCost]
-    unfold consumeCost copyBytes
+  · simp only [LeanExe.Pipeline.Flat.flat, Ty.credit, blockCost_eq, creditCost]
+    unfold consumeCost
     omega
 
 section Bodies
@@ -324,25 +320,28 @@ theorem readModes : entryModes io.readStep.func.params io.readStep.func.modes = 
 theorem writeModes : entryModes io.writeStep.func.params io.writeStep.func.modes = [.borrowed] := by
   decide
 
-/-- The charge of the write step from `state`: a copy of the state.  The write of the output's
-window allocates nothing. -/
+/-- The charge of the write step from `state`: a copy of the state, which the call of
+`afterWrite` makes since the step borrows the state and `afterWrite` takes it owned.  The write of
+the output's window allocates nothing. -/
 def writeCharge (state : State) : Nat :=
   stateTy.copyCost (sourceState state)
 
 /-- The charge of the read step from `state`: the read's buffer of 4,096 bytes, which the read
-fills in place, and the copies of the state and of the state with a copy of the bytes read. -/
+fills in place, the copy of the state at the call of `afterRead`, and the line's copy of the bytes
+read. -/
 def readCharge (state : State) : Nat :=
-  Bytes.allocationCost 4096 + (stateTy.copyCost (sourceState state) +
-    copyBytes state.total.digits.size state.line.size 4096 state.output.data.size)
+  Bytes.allocationCost 4096 + (stateTy.copyCost (sourceState state) + Bytes.allocationCost 4096)
 
-/-- The charge of the step from `state` at the end of the input. -/
+/-- The charge of the step from `state` at the end of the input: the copy of the state, in the
+result or at the call of `completeLine`, and the charge of `completeLine`. -/
 def endCharge (state : State) : Nat :=
   if state.line.size.toUInt64 = 0 then stateTy.copyCost (sourceState state)
-  else io.pureSources.completeLine.bound state
+  else stateTy.copyCost (sourceState state) + io.pureSources.completeLine.bound ⟨state⟩
 
 /-- The charge of the step from `state` when no output is pending. -/
 def inputCharge (state : State) : Nat :=
-  if state.cursor < state.input.size then io.pureSources.consumeInput.bound state
+  if state.cursor < state.input.size then
+    stateTy.copyCost (sourceState state) + io.pureSources.consumeInput.bound ⟨state⟩
   else if state.eof = true then endCharge state else readCharge state
 
 /-- The charge of the step from `state`, by its branches. -/
@@ -380,9 +379,13 @@ theorem writeStep_bounded {World : Type} (host : Host World) (depth : UInt64) (s
     simp only [bindModes, ResultTy.bindEnv]
     simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg, Expr.allocs,
       Var.cost, Expr.mode, argsSum, callCredits, Args.get_cons_zero', Args.get_cons_succ,
-      Ty.copyCost_of_scalar, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost]
-    show io.pureSources.afterWrite.bound (state, ⟨value.1, value.2⟩) ≤ _
-    exact afterWrite_bound_le state _
+      Ty.copyCost_of_scalar, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost,
+      Expr.ownedCost, Var.ownedCost, modeAt, letPairModes, Mode.join, List.getD_cons_zero,
+      List.getD_cons_succ, Var.index_ofIndex]
+    show stateTy.copyCost (sourceState state) +
+      io.pureSources.afterWrite.bound (⟨state⟩, ⟨value.1, value.2⟩) ≤ _
+    rw [afterWrite_bound]
+    exact Nat.le_of_eq (Nat.add_zero _)
 
 set_option maxHeartbeats 4000000 in
 theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) (state : State) :
@@ -436,12 +439,15 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) (st
     refine rule ?_ rfl
     simp only [bindModes, ResultTy.bindEnv]
     simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg, Expr.allocs,
-      Var.cost, Expr.mode, argsSum, callCredits, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost]
-    show io.pureSources.afterRead.bound (state, ⟨value.1, value.2.1, value.2.2⟩) ≤ _
-    refine le_trans (afterRead_bound_le state _) ?_
+      Var.cost, Expr.mode, argsSum, callCredits, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost,
+      Expr.ownedCost, Var.ownedCost, modeAt, letPairModes, Mode.join, List.getD_cons_zero,
+      Args.get_cons_zero', Args.get_cons_succ,
+      List.getD_cons_succ, Var.index_ofIndex]
+    show stateTy.copyCost (sourceState state) +
+      io.pureSources.afterRead.bound (⟨state⟩, ⟨⟨value.1, value.2.1, value.2.2⟩⟩) ≤ _
+    have afterRead := afterRead_bound_le state ⟨value.1, value.2.1, value.2.2⟩
     have bytes := allocationCost_mono size
-    dsimp only
-    unfold copyBytes
+    dsimp only at afterRead
     omega
 
 set_option maxHeartbeats 4000000 in
@@ -472,12 +478,12 @@ theorem step_body_bounded {World : Type} (host : Host World) (state : State) :
   · intro _
     apply bounded_of_rule
     intro spent fits rule
-    refine rule (io.pureSources.consumeInput.bound state)
+    refine rule (stateTy.copyCost (sourceState state) + io.pureSources.consumeInput.bound ⟨state⟩)
       (if state.eof = true then endCharge state else readCharge state) ?_ rfl ?_ ?_
     · simp +decide only [PureContext.exprCost, PureContext.ofProg, Expr.allocs, Var.cost,
       ↓reduceIte, Nat.add_zero, Nat.zero_add]
       show (if decide (state.cursor < state.input.size) = true then
-        io.pureSources.consumeInput.bound state
+        stateTy.copyCost (sourceState state) + io.pureSources.consumeInput.bound ⟨state⟩
         else if state.eof = true then endCharge state else readCharge state) ≤ inputCharge state
       simp only [inputCharge, decide_eq_true_eq, Nat.le_refl]
     · intro _
@@ -486,9 +492,14 @@ theorem step_body_bounded {World : Type} (host : Host World) (state : State) :
       refine rule ?_ rfl
       simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg,
         Expr.allocs, Var.cost, Expr.mode, argsSum, callCredits, ↓reduceIte, Nat.add_zero,
-        Nat.zero_add, coerceCost]
-      show io.pureSources.consumeInput.bound state ≤ _
-      exact Nat.le_refl _
+        Nat.zero_add, coerceCost, Expr.ownedCost, Var.ownedCost, modeAt, letPairModes, Mode.join,
+        Args.get_cons_zero', Args.get_cons_succ,
+        List.getD_cons_zero, List.getD_cons_succ, Var.index_ofIndex]
+      show stateTy.copyCost (sourceState state) + stateTy.credit (sourceState state) +
+        io.pureSources.consumeInput.cost ⟨state⟩ ≤ _
+      rw [io.pureSources.consumeInput.bound_eq]
+      simp only [stateTy, sourceState, Ty.credit, Elem.width, creditCost]
+      omega
     · intro _
       apply bounded_of_rule
       intro spent fits rule
@@ -501,13 +512,15 @@ theorem step_body_bounded {World : Type} (host : Host World) (state : State) :
       · intro _
         apply bounded_of_rule
         intro spent fits rule
-        refine rule (stateTy.copyCost (sourceState state)) (io.pureSources.completeLine.bound state)
+        refine rule (stateTy.copyCost (sourceState state))
+          (stateTy.copyCost (sourceState state) + io.pureSources.completeLine.bound ⟨state⟩)
           ?_ (by condition_fits) ?_ ?_
         · simp +decide only [PureContext.exprCost, PureContext.ofProg, Expr.allocs, Var.cost,
           ↓reduceIte, Nat.add_zero, Nat.zero_add, ite_self, coerceCost]
           show (if (if (state.line.size.toUInt64 == 0) = true then true else !true) = true then
             stateTy.copyCost (sourceState state)
-            else io.pureSources.completeLine.bound state) ≤ endCharge state
+            else stateTy.copyCost (sourceState state) + io.pureSources.completeLine.bound ⟨state⟩) ≤
+              endCharge state
           unfold endCharge
           by_cases zero : state.line.size.toUInt64 = 0 <;> simp [zero]
         · intro _
@@ -524,8 +537,10 @@ theorem step_body_bounded {World : Type} (host : Host World) (state : State) :
           refine rule ?_ rfl
           simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg,
             Expr.allocs, Var.cost, Expr.mode, argsSum, callCredits, ↓reduceIte, Nat.add_zero,
-            Nat.zero_add, coerceCost]
-          show io.pureSources.completeLine.bound state ≤ _
+            Nat.zero_add, coerceCost, Expr.ownedCost, Var.ownedCost, modeAt, letPairModes,
+            Args.get_cons_zero', Args.get_cons_succ,
+            Mode.join, List.getD_cons_zero, List.getD_cons_succ, Var.index_ofIndex]
+          show stateTy.copyCost (sourceState state) + io.pureSources.completeLine.bound ⟨state⟩ ≤ _
           exact Nat.le_refl _
       · intro _
         apply bounded_of_rule
@@ -580,16 +595,16 @@ theorem stepBudget_le {L D : Nat} {state : State} (sized : Sized L D state)
   · split
     · rename_i remaining
       have consume := consumeInput_bound_le state remaining (by omega)
-      unfold consumeCost completeCost copyBytes combineCost stepCharge at *
+      unfold consumeCost completeCost combineCost copyLimit stepCharge at *
       omega
     · split
       · split
         · unfold copyLimit stepCharge at *
           omega
         · have complete := completeLine_bound_le state (by omega)
-          unfold completeCost copyBytes combineCost stepCharge at *
+          unfold completeCost combineCost copyLimit stepCharge at *
           omega
-      · unfold readCharge copyBytes copyLimit stepCharge at *
+      · unfold readCharge copyLimit stepCharge at *
         omega
 
 theorem step_prefix_bound {World : Type} (host : Host World) {L D : Nat}

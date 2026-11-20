@@ -65,10 +65,11 @@ equation for both float formats and tuples.  A structure whose `Flat` tuple hold
 the instance `instRepresentOfFlat` of [`FlatRecords.lean`](../LeanExe/Pipeline/FlatRecords.lean),
 and the reflector treats it as a pair whose components are the tuple's.  Such a record may be a
 parameter, a result, a local value, or a loop state.  A parameter of a record with array fields is
-borrowed, so a callee that updates one of its arrays copies the array.  A function with a pair result
-returns several WebAssembly results.  Each value holds its arrays in a mode, borrowed or owned, which
-`Expr.mode` computes from the modes of the variables.  A function's signature gives each array
-parameter a mode.  The function reads a borrowed parameter and leaves it in place, and it consumes
+owned when the callee consumes one of its arrays, which the callee then updates in place, and
+borrowed otherwise.  A function with a pair result returns several WebAssembly results.  Each value
+holds its arrays in a mode, borrowed or owned, which `Expr.mode` computes from the modes of the
+variables.  A function's signature gives each parameter that holds an array, a buffer, or a tree a
+mode.  The function reads a borrowed parameter and leaves it in place, and it consumes
 an owned parameter's array, releasing it at entry when the body does not use it.  A call's result, a
 function's result, and a built, updated, or extended array are owned, so a function copies a
 borrowed value that it returns.  Each expression consumes the owned variables that die in it, those

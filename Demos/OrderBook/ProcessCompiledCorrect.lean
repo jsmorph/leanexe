@@ -217,7 +217,7 @@ theorem terminates_of_room {World : Type} (host : Host World)
   have initialCopy := initialFuture.sized.copyCost
   have beginEq := beginCharge_eq
   have limitEq : copyLimit = 197205 + outputLimit := rfl
-  have chargeEq : stepCharge R = copyLimit + R + 21435213 := rfl
+  have chargeEq : stepCharge R = copyLimit + R + 21631581 := rfl
   obtain ⟨bound, executions⟩ := target_terminates host targetHost initial heap
     (observedStreamRep rep) (fun position => position.input.length) StreamPosition.zeroWrites
     streams.observed.progress (ChargeInv position.input) (charge_advances streams ids)
@@ -255,7 +255,7 @@ theorem initial_top : (initialStaticHeap io.literalPool).top.toNat = 4096 := by
   decide +kernel
 
 /-- The memory that a run needs fits in 65,535 pages: two copies of a state and a step's charge
-with `run`'s bound on 74 records from any book of the program's sizes total 3,456,119,748 bytes
+with `run`'s bound on 74 records from any book of the program's sizes total 3,456,316,116 bytes
 above the literal pool, which ends at 4,096 bytes, and the sum lies below the 4,294,901,760 bytes
 of 65,535 pages. -/
 theorem initial_room :

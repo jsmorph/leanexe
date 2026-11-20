@@ -89,6 +89,16 @@ partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
       let early ← earlyArgs c.vars args.toList t.signature.params t.signature.mode bind
       if early.any id then
         return ← reflectTailBody t c (← bindEarly e.getAppFn args.toList early)
+      -- A tuple argument at an owned parameter is bound whole, after the arguments before it, as
+      -- in `reflect.reflectCall?`.
+      let whole := (List.range args.size).find? fun i =>
+        bind.getD i false && t.signature.mode i == .owned &&
+          (t.signature.params.getD i .word matches .pair _ _)
+      if let some i := whole then
+        if (bind.take i).any id then
+          return ← reflectTailBody t c (← bindArgs e.getAppFn args.toList (bind.take i) #[] #[])
+        return ← reflectTailLetWhole t c `a (← inferType args[i]!) args[i]!
+          (mkAppN e.getAppFn (args.set! i (.bvar 0)))
       return ← reflectTailBody t c (← bindArgs e.getAppFn args.toList bind #[] #[])
     let rs ← args.toList.mapM (reflect c)
     let nilArgs ← mkAppOptM ``Args.nil #[some c.sigs, some c.ctx]
@@ -111,25 +121,7 @@ partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
       let r ← destructureTail t c [] value fun a b => do
         return body.instantiate1 (← view.rebuild a b)
       return ← r.restate (← view.eta (Lean.mkLambda n .default type body) value)
-    let rv ← reflect c value
-    let shape ← shapeOf type
-    return ← withLocalDeclD n type fun x => do
-      let env ← mkAppOptM ``Env.cons
-        #[some c.ctx, some (tyExpr ty), some (shape.apply x), some c.env]
-      let c' := { c with vars := (x, ty) :: c.vars, env, ctx := consCtx ty c.ctx }
-      let rb ← reflectTailSplit t c' [x] (body.instantiate1 x)
-      let src ← mkAppM ``TailBody.letE #[rv.src, rb.src]
-      let stepFn ← mkLambdaFVars #[x] rb.step
-      let fixedFn ← mkLambdaFVars #[x] rb.fixed
-      let proofFn ← mkLambdaFVars #[x] rb.proof
-      let step := stepFn.beta #[value]
-      let fixed ← mkAppM ``tail_let_fixed
-        #[t.meaning, value, ← mkLambdaFVars #[x] (body.instantiate1 x), stepFn, fixedFn]
-      let proof ← tailLemma ``tail_let_eq t c
-        [(`φ, t.flattenState), (`ψ, t.flattenResult), (`flatten, ← shape.fn type),
-          (`value, rv.src), (`body, rb.src), (`V, value), (`step, stepFn)]
-        [(`hv, rv.proof), (`hb, proofFn)]
-      return ⟨src, step, fixed, proof⟩
+    return ← reflectTailLetWhole t c n type value body
   if let some app ← matchMatcherApp? e then
     if app.discrs.size == 1 then
       if let (``List, #[el]) := (← whnfR (← inferType app.discrs[0]!)).getAppFnArgs then
@@ -266,6 +258,31 @@ partial def reflectTailTreeMatch (t : TailContext) (c : Ctx) (app : MatcherApp)
     let src ← mkAppM ``TailBody.treeCase #[x, emptyFn, nodesFn]
     let r : TailReflection := ⟨src, step, fixed, proof⟩
     r.restate nativeEq
+
+/-- A `let` whose value is not a place, or a tuple argument at an owned parameter of a continuing
+call, bound whole: the variable `n` of type `type` holds `value` in `body`. -/
+partial def reflectTailLetWhole (t : TailContext) (c : Ctx) (n : Name)
+    (type value body : Lean.Expr) : MetaM TailReflection := do
+  let ty ← tyOf type
+  let rv ← reflect c value
+  let shape ← shapeOf type
+  withLocalDeclD n type fun x => do
+    let env ← mkAppOptM ``Env.cons
+      #[some c.ctx, some (tyExpr ty), some (shape.apply x), some c.env]
+    let c' := { c with vars := (x, ty) :: c.vars, env, ctx := consCtx ty c.ctx }
+    let rb ← reflectTailBody t c' (body.instantiate1 x)
+    let src ← mkAppM ``TailBody.letE #[rv.src, rb.src]
+    let stepFn ← mkLambdaFVars #[x] rb.step
+    let fixedFn ← mkLambdaFVars #[x] rb.fixed
+    let proofFn ← mkLambdaFVars #[x] rb.proof
+    let step := stepFn.beta #[value]
+    let fixed ← mkAppM ``tail_let_fixed
+      #[t.meaning, value, ← mkLambdaFVars #[x] (body.instantiate1 x), stepFn, fixedFn]
+    let proof ← tailLemma ``tail_let_eq t c
+      [(`φ, t.flattenState), (`ψ, t.flattenResult), (`flatten, ← shape.fn type),
+        (`value, rv.src), (`body, rb.src), (`V, value), (`step, stepFn)]
+      [(`hv, rv.proof), (`hb, proofFn)]
+    return ⟨src, step, fixed, proof⟩
 
 partial def reflectTailSplit (t : TailContext) (c : Ctx) (xs : List Lean.Expr)
     (body : Lean.Expr) : MetaM TailReflection := do

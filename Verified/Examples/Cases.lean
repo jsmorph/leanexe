@@ -175,6 +175,12 @@ def arrayArg (xs : Array UInt64) : String :=
 /-- The host's output for an array result. -/
 def arrayOut (xs : Array UInt64) : String :=
   "[" ++ ", ".intercalate (xs.toList.map toString) ++ "]"
+
+/-- Inputs of `Modes.parse`: empty, one line without a newline, lines of three bytes or more,
+a short line, empty lines, and 40 lines. -/
+def modesManifests : List LeanExe.Bytes :=
+  (["", "abc", "abcd\nefg\n", "abcd\nef\n", "\n\nabc\n\n",
+    String.join (List.replicate 40 "a line of text\n")]).map fun s => ⟨s.toUTF8⟩
 def boolArg (b : Bool) : String := if b then "i64:1" else "i64:0"
 
 def bit (b : Bool) : Nat := if b then 1 else 0
@@ -1203,9 +1209,12 @@ def main : IO Unit := do
     for ys in arrays do
       let c := arrayArg ys
       let (s1, s2) := Modes.swapPair (xs, ys)
-      IO.println s!"modes|swapPair|{kinds}|{a} {c}|{arrayOut s1} {arrayOut s2}|4|4"
+      IO.println s!"modes|swapPair|{kinds}|{a} {c}|{arrayOut s1} {arrayOut s2}|2|2"
       let (b1, b2) := Modes.both xs ys
       IO.println s!"modes|both|{kinds}|{a} {c}|{arrayOut b1} {arrayOut b2}|2|2"
+  for m in modesManifests do
+    IO.println s!"modes|parse|array-u64|bytes:{HeapSums.hex m}|{arrayOut (Modes.parse m)}|2|\
+      {5 + Nat.log2 (m.data.size + 1)}"
   for s in sumShapes do
     for n in ([0, 1, 2, 17, 1000] : List UInt64) do
       IO.println s!"sums|spin|list:i64,f64,i64,i64|i64:{n} {sumShapeArg s}|\

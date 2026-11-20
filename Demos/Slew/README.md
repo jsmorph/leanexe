@@ -13,7 +13,7 @@ generated inputs, its `atan2` export on 1,225 calls, and its `edgeOk` export on 
 [The theorems](#theorems) state that every plan satisfies every cone along its commanded rotations,
 that it satisfies the true cones along a flown slew when the input cones allow for the errors of the
 flown attitude and of the cone axes, that the evaluation in Lean produces no NaN, that a plan is a
-least-cost walk of the graph, that a call allocates at most 68,020,488 bytes, and that the written
+least-cost walk of the graph, that a call allocates at most 123,464 bytes, and that the written
 file holds the module.  [The limits](#limits-of-the-theorems) state what the theorems leave out.
 
 ## The planning problem
@@ -167,8 +167,8 @@ the value that `segmentField` writes at field `f` of the segment from node `a` t
 | `plan_premise` | [Premise theorem](Premise.lean) | Status 1 with `K` segments, `g < K`, `φ` in `[0, θ_g]`, a map `F` that moves every unit vector by an angle of at most `ε` from `R(n̄_g, φ) R(q̄_g)`, a cone with a true axis `u` within angle `d` of `ū`, and a real `α` | For a keep-out cone with `α + d + ε ≤ arccos c`, the angle between `F b̄` and `u` is at least `α`.  For a keep-in cone with `arccos c + d + ε ≤ α`, it is at most `α`. |
 | `edge_cost_le` | [Edge cost](Cost.lean) | `validInput xs`, and nodes `a` and `b` below `nw + 2` | Cost of the edge from `a` to `b`, `⌈1000 T(θ)⌉ + ⌈1000 t_s⌉` as computed, is at most `2^34` ms. |
 | `plan_optimal` | [Optimality](Optimal.lean) | `validInput xs`, and the start and the goal pass the static check without slack | When the graph has a walk from the start to the goal, the output has status 1, its segments are the edges of such a walk, each field as `segValue` gives it, its header reports the walk's cost, and no walk from the start to the goal costs less.  Otherwise the output has status 0. |
-| `plan_bound` | [Allocation bound](Bound.lean) | None | `compiled.plan.bound xs ≤ 68,020,488`. |
-| `slew_trapFree` | [Allocation bound](Bound.lean) | Those of `implements`, and `top` at least 68,020,488 bytes below the cap | Entry 28 returns words that represent `plan xs` without a trap, and `top` increases by at most 68,020,488 bytes. |
+| `plan_bound` | [Allocation bound](Bound.lean) | None | `compiled.plan.bound xs ≤ 123,464`. |
+| `slew_trapFree` | [Allocation bound](Bound.lean) | Those of `implements`, and `top` at least 123,464 bytes below the cap | Entry 28 returns words that represent `plan xs` without a trap, and `top` increases by at most 123,464 bytes. |
 | `slew_file` | [File theorems](File.lean) | `build/verified/slew.wasm` as written | `encode compiled.module` equals the file's bytes. |
 | `slew_file_decode` | [File theorems](File.lean) | Same file | `build/verified/slew.wasm` decodes to `compiled.module`. |
 
@@ -302,9 +302,10 @@ When several walks share the least cost, the ties to the lowest index and the re
 strict improvement determine the one returned, and no theorem states which.
 
 `plan_bound` counts every block that a call allocates as new memory, at `8n + 56` bytes for a
-block of `n` words, and does not count the reuse of freed blocks.  Its 68,020,488 bytes come to 1,038
-pages of 64 KiB, far below the module's maximum of 65,535 pages, and the peak use of a call is not
-measured.  No theorem concerns the header's count of finalized nodes.
+block of `n` words, and does not count the reuse of freed blocks.  The search's rounds take its
+state owned and update its four arrays in place, so the bound holds the arrays that `initial`
+builds and the output.  Its 123,464 bytes come to 2 pages of 64 KiB, far below the module's
+maximum of 65,535 pages, and the peak use of a call is not measured.  No theorem concerns the header's count of finalized nodes.
 
 ## Building and testing
 

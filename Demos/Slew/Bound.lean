@@ -4,87 +4,34 @@ import Demos.Slew.Valid
 
 /-! The allocation bound of the slew planner.  `compiled.plan.bound` is the number of bytes by
 which the module's `plan` can raise the allocator's `top`, which `compiled.plan.bound_eq` states
-as a Lean function of the input, and `plan_bound` bounds it by 68,020,488 for every input.
+as a Lean function of the input, and `plan_bound` bounds it by 123,464 for every input.
 `slew_trapFree` then states that the module computes `plan` without a trap whenever `top` can
 rise by that much within the memory's cap.
 
-The search state holds four arrays of `n = nw + 2` words.  `initial` builds them, and each round
-of `search` copies them, since `round` takes the state as a parameter and the verified compiler
-borrows record parameters, and `relax` copies them again.  `validInput` bounds `nw` by 1,024, so
-`n` is at most 1,026, and the search runs at most `n + 1` rounds (`search_bound`).  `output`
-builds `8 + 11 k` words for a path of `k ≤ n` edges, since `pathLength` counts at most one edge
-for each step of its fuel `n` (`pathLength_le`).  The bound counts every copy and ignores the
-reuse of freed blocks. -/
+The search state holds four arrays of `n = nw + 2` words, which `initial` builds.  `round` and
+`relax` take the state as an owned parameter, so the loop of `search` moves the state into
+`round`, which moves it into `relax`, and both update the arrays in place: their bounds are 0
+(`round_bound`), and the bound of `search` is that of `initial` (`search_bound`).  `validInput`
+bounds `nw` by 1,024, so `n` is at most 1,026.  `output` builds `8 + 11 k` words for a path of
+`k ≤ n` edges, since `pathLength` counts at most one edge for each step of its fuel `n`
+(`pathLength_le`).  The bound ignores the reuse of freed blocks. -/
 
 namespace Demos.Slew.Bound
 
 open Demos.Slew Demos.Slew.Verified Demos.Slew.Search Demos.Slew.Valid
 open _root_.Verified (blockCost blockCost_eq)
 
-theorem relax_ok (xs : Array Float) (d : Dims) (n u settleTicks : UInt64) (s : Search) :
-    (relax xs d n u settleTicks s).ok = s.ok := by
-  unfold relax
-  dsimp only
-  refine LeanExe.Dialect.loop_induction (P := fun _ (st : Search) => st.ok = s.ok) rfl ?_
-  intro k st _ hst
-  split
-  · exact hst
-  · split
-    · exact hst
-    · split
-      · split
-        · exact hst
-        · exact hst
-      · exact hst
+/-- A round allocates nothing: it updates the search's arrays in place. -/
+theorem round_bound (xs : Array Float) (d : Dims) (n settleTicks : UInt64) (s : Search) :
+    compiled.round.bound (xs, d, n, settleTicks, ⟨s⟩) = 0 :=
+  compiled.round.bound_eq xs d n settleTicks s
 
-theorem round_ok (xs : Array Float) (d : Dims) (n settleTicks : UInt64) (s : Search) :
-    (round xs d n settleTicks s).ok = s.ok := by
-  unfold round
-  generalize selectNext s n = p
-  obtain ⟨u, c⟩ := p
-  dsimp only
-  split
-  · rfl
-  · split
-    · rfl
-    · exact relax_ok _ _ _ _ _ _
-
-/-- The four arrays of a round's state have `n` entries each. -/
-def Sized (xs : Array Float) (d : Dims) (n : UInt64) (s : Search) : Prop :=
-  Inv xs d n s ∧ s.ok.size = n.toNat
-
-theorem round_bound {xs : Array Float} {d : Dims} {n settleTicks : UInt64} {s : Search}
-    (h : Sized xs d n s) :
-    compiled.round.bound (xs, d, n, settleTicks, s) ≤ 8 * blockCost n.toNat := by
-  obtain ⟨hi, hok⟩ := h
-  rw [compiled.round.bound_eq, compiled.relax.bound_eq]
-  simp only [hi.costSize, hi.parentSize, hi.doneSize, hok, size_set]
-  split
-  · omega
-  · split <;> omega
-
-/-- `initial` builds four arrays of `n` words, and each of at most `n + 1` rounds copies them
-twice. -/
-theorem search_bound (xs : Array Float) (d : Dims) (n settleTicks : UInt64)
-    (hn : n.toNat + 1 < 2 ^ 64) :
-    compiled.search.bound (xs, d, n, settleTicks) ≤
-      4 * blockCost n.toNat + (n.toNat + 1) * (8 * blockCost n.toNat) := by
+/-- `initial` builds four arrays of `n` words, and the rounds allocate nothing. -/
+theorem search_bound (xs : Array Float) (d : Dims) (n settleTicks : UInt64) :
+    compiled.search.bound (xs, d, n, settleTicks) ≤ 4 * blockCost n.toNat := by
   rw [compiled.search.bound_eq, compiled.initial.bound_eq]
-  have hn1 : (n + 1).toNat = n.toNat + 1 := by
-    rw [UInt64.toNat_add]; simp only [UInt64.reduceToNat]; omega
-  refine Nat.add_le_add (by omega) ?_
-  refine Nat.le_trans (_root_.Verified.loopCost_le (fun _ s => Sized xs d n s)
-    (fun _ => 8 * blockCost n.toNat) ?hcost ?hstep ?hI) ?_
-  case hcost =>
-    intro k s hs
-    have := round_bound (s := s) (settleTicks := settleTicks) hs
-    split <;> omega
-  case hstep =>
-    intro k s hs _
-    exact ⟨round_inv hs.1 settleTicks,
-      (congrArg Array.size (round_ok xs d n settleTicks s)).trans hs.2⟩
-  case hI => exact ⟨initial_inv xs d n, LeanExe.Dialect.build_size _ _⟩
-  exact Nat.le_of_eq (by rw [_root_.Verified.sumBelow_const, hn1])
+  omega
+
 
 theorem statusOnly_bound (status : Float) (examined : UInt64) :
     compiled.statusOnly.bound (status, examined) = 88 := by
@@ -106,10 +53,9 @@ theorem output_bound (xs : Array Float) (d : Dims) (s : Search) (n settleTicks :
     omega
 
 /-- **The allocation bound of the slew planner.**  For every input, the bytes by which the
-module's `plan` can raise `top` are at most 68,020,488: four arrays of at most 1,026 words
-built by `initial`, two copies of them in each of at most 1,027 rounds, and an output of at most
-11,294 words. -/
-theorem plan_bound (xs : Array Float) : compiled.plan.bound xs ≤ 68020488 := by
+module's `plan` can raise `top` are at most 123,464: four arrays of at most 1,026 words built by
+`initial` and an output of at most 11,294 words. -/
+theorem plan_bound (xs : Array Float) : compiled.plan.bound xs ≤ 123464 := by
   rw [compiled.plan.bound_eq]
   split
   · rw [statusOnly_bound]; omega
@@ -122,19 +68,17 @@ theorem plan_bound (xs : Array Float) : compiled.plan.bound xs ≤ 68020488 := b
   set n := (dims xs).nw + 2
   have hn : n.toNat = (dims xs).nw.toNat + 2 := by
     rw [UInt64.toNat_add]; simp only [UInt64.reduceToNat]; omega
-  refine Nat.le_trans (Nat.add_le_add (search_bound xs (dims xs) n _ (by omega))
+  refine Nat.le_trans (Nat.add_le_add (search_bound xs (dims xs) n _)
     (output_bound xs (dims xs) _ n _ (by omega))) ?_
   have h1 : blockCost n.toNat ≤ 8264 := by rw [blockCost_eq]; omega
-  have h2 : (n.toNat + 1) * (8 * blockCost n.toNat) ≤ 1027 * (8 * 8264) :=
-    Nat.mul_le_mul (by omega) (by omega)
   have h3 : blockCost (8 + 11 * n.toNat) ≤ 90408 := by rw [blockCost_eq]; omega
   omega
 
-/-- The module's entry 28 computes `plan` without a trap whenever `top` can rise by 68,020,488
+/-- The module's entry 28 computes `plan` without a trap whenever `top` can rise by 123,464
 bytes within the memory's cap, and raises `top` by at most that much. -/
 theorem slew_trapFree : LeanExe.Pipeline.ImplementsA false compiled.module 28 (fun x => plan x)
-    (fun _ heap store => heap.Within store compiled.module 68020488)
-    (fun _ heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + 68020488) :=
+    (fun _ heap store => heap.Within store compiled.module 123464)
+    (fun _ heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + 123464) :=
   compiled.plan.trapFree.mono (fun x _ _ h => h.mono (plan_bound x))
     fun x _ _ _ _ _ h => h.trans (Nat.add_le_add_left (plan_bound x) _)
 

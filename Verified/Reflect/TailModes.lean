@@ -51,11 +51,9 @@ def TailBody.receivesOwned (modes : List Mode) (i : Fin params.length) :
 def TailBody.paramChoice (body : TailBody S params result params) (modes : List Mode) :
     List Mode :=
   (List.finRange params.length).map fun i =>
-    match params.get i with
-    | .array _ | .tree _ | .treeHeader _ _ | .bytes =>
-      if modes.getD i .borrowed == .owned || body.demands modes (paramModes params modes) i ||
-          body.receivesOwned (paramModes params modes) i then .owned else .borrowed
-    | _ => .borrowed
+    if !(params.get i).scalar && (modes.getD i .borrowed == .owned ||
+        body.demands modes (paramModes params modes) i ||
+        body.receivesOwned (paramModes params modes) i) then .owned else .borrowed
 
 def TailBody.inferModes (body : TailBody S params result params) : List Mode :=
   Nat.fold params.length (fun _ _ modes => body.paramChoice modes)

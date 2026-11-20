@@ -1,9 +1,13 @@
 import Verified.Reflect.Command
 
-/-! A program of the verified compiler: parameter modes.  The reflector makes an array
-parameter owned when the body consumes it where it dies, and a caller then moves an owned
+/-! A program of the verified compiler: parameter modes.  The reflector makes a parameter that
+holds arrays owned when the body consumes it where it dies, and a caller then moves an owned
 variable that dies at the call into the function instead of copying it.  A parameter that the
-body reads, or uses again after the consuming use, stays borrowed.  `byHand` is a program written
+body reads, or uses again after the consuming use, stays borrowed.  A tuple parameter is owned
+when the body consumes one of its arrays, as `swapPair` and `parseStep` do: the loop of `parse`
+moves its state, a tuple of a word, a flag, and an array, into `parseStep` at each position, and
+`parseStep` extends the array in place, so `parse` runs in time and allocates bytes linear in its
+input.  `byHand` is a program written
 without the reflector whose parameters are owned without such a use: one function never reads its
 array parameter and releases it at entry, and the other reads it last with `size`, which releases
 it. -/
@@ -39,8 +43,25 @@ def twoSame (xs : Array UInt64) : Array UInt64 × Array UInt64 := both xs xs
 
 def bumpKeep (xs : Array UInt64) : Array UInt64 × Array UInt64 := (bump xs 0, xs)
 
+/-- The state of `parse` after position `i` of `m`: at a line's end, the next line's start, the
+flag, which stays true while every line has at least three bytes, and the positions with the
+line's start and end pushed.  The state is owned, so the pushes extend its array in place. -/
+def parseStep (m : LeanExe.Bytes) (st : UInt64 × Bool × Array UInt64) (i : UInt64) :
+    UInt64 × Bool × Array UInt64 :=
+  if i == m.size || m.get i == 10 then
+    if st.1 < i then (i + 1, st.2.1 && st.1 + 3 ≤ i, (st.2.2.push st.1).push i)
+    else (i + 1, st.2.1, st.2.2)
+  else st
+
+/-- The positions of the lines of `m`, two to a line, or the empty array when a line is short.
+The loop moves its state into `parseStep` at each position. -/
+def parse (m : LeanExe.Bytes) : Array UInt64 :=
+  let st := LeanExe.loop (m.size + 1) ((0 : UInt64), true, (#[] : Array UInt64))
+    fun i st => parseStep m st i
+  if st.2.1 then st.2.2 else #[]
+
 verified_compile compiled := [same, withCount, bump, bumpFirst, bumpTwice, bumpLast, bumpAll,
-  addSelf, sizes, pairArg, swapPair, both, twoSame, bumpKeep]
+  addSelf, sizes, pairArg, swapPair, both, twoSame, bumpKeep, parseStep, parse]
 
 /-- The theorem for an owned array parameter takes the argument as `Moved (Array UInt64)`. -/
 example : LeanExe.Pipeline.ImplementsA true compiled.module 2

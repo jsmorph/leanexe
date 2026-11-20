@@ -88,15 +88,12 @@ theorem divStep_size (d : Array UInt64) (j : UInt64) (s : UInt64 × Array UInt64
 
 theorem divStep_bound_le (d : Array UInt64) (j : UInt64) (s : UInt64 × Array UInt64)
     (dBound : d.size < UInt64.size) (sBound : s.2.size < UInt64.size) :
-    io.pureSources.divStep.bound (d, j, s) ≤
+    io.pureSources.divStep.bound (d, j, ⟨s⟩) ≤
       104 * d.size + 232 + 8 * (j >>> 5).toNat + 80 * s.2.size + 72 := by
   have shifted := shl_bound_le d j dBound
   have taken := sub_bound_le s.2 (shl d j) sBound
   rw [io.pureSources.divStep.bound_eq]
-  split
-  · omega
-  · rw [blockCost_eq]
-    omega
+  split <;> omega
 
 theorem shift_small {bits : UInt64} {k : Nat} (small : bits.toNat ≤ 64) (index : k < bits.toNat) :
     ((bits - 1 - UInt64.ofNat k) >>> 5).toNat ≤ 1 := by
