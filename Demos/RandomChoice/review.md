@@ -144,9 +144,33 @@ status 0 at the cap, other caps, and stalls after fewer passes of `writeAll`.  W
 first or big-endian and a threshold off by one change values only within [1, N], which no run
 checks beyond their range, and `choice_elf_choices` excludes them.
 
-Two classes of programs pass every statement and check.  Programs that differ only in the addresses
-that they pass, each constant within a run, meet `Choices`, which leaves the addresses free.
-For programs that differ only at replies outside `Full`, such as a short or failed `getrandom`,
-`choice_elf` fixes the calls of the shim, but no theorem states the output.  A write that fails with
-`EACCES` gives errno 2, `acces`, the status of a refused argument, so the status alone does not tell
-the two apart.  The events of `Choices` do, since a refusal has none.
+Programs that differ only in the addresses that they pass, each constant within a run, pass every
+statement and check, since `Choices` leaves the addresses free.  A write that fails with `EACCES`
+gives errno 2, `acces`, the status of a refused argument, so the status alone does not tell the two
+apart.  The events of `Choices` do, since a refusal has none.
+
+# Review of the premise on short reads
+
+The review of the premise `InRange`, which replaced `Full` so that the corollary covers short and
+failed `getrandom` reads, covered both demos, and the section "Review of the premise on short
+reads" of [the random histogram's reviews](../RandomHistogram/review.md) records it.  For this
+demo, its model ran the command on 13,398 cases.  `InRange` admitted 7,401 runs, each of which
+exits and meets `Choices`, and the other 5,997 runs trap.  `Choices` and `Mirrors` rejected every
+run on which one of 10 wrong programs or 12 wrong shims differs from the right one: draws of half
+the buffer, use of half the words, an extra draw, an ignored errno, status 1, a retry of a failed
+draw, a cap one pass short, an acceptance test off by one, a run that continues after K values, 77
+for a stall, a short count taken as the whole buffer, a retry at the buffer's start or for its whole
+length, an address advanced twice, flags 1, a failed draw's bytes kept, an error taken as success,
+the raw errno or errno 29, a retry after `EINTR`, and extra calls after a draw.  Wrong stubs that
+differ only at results outside `InRange` pass every statement, and only
+`Verified.ShimA64.randomStub_run` excludes them.  The review's findings on the docstrings of
+`Mirrors` and of the module were adopted: `Mirrors` describes the shim's events without a condition
+on the run, and the module's comment cites `choice_elf_witness` for the existence of a run.
+
+A second review of the revised statements, recorded in the same section of the histogram's reviews,
+ran 23,764 cases of this demo, among them 4,366 runs with a short read and 9,409 with a failed read.
+Every run that meets `InRange` exits and meets `Choices`, and every other run traps.  Of the
+model's 39 wrong programs and shims, `Choices` rejected every run that meets `InRange` and differs
+from the right program's, except for calls that make no layer event, such as a `random_get` of 0
+bytes, which only `Meets` excludes.  A write of no byte, which the histogram's statements admit,
+fails `Writes`, since each of its writes offers at least one byte.

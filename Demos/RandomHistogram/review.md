@@ -1,4 +1,4 @@
-# Reviews of the specification, of the executable's theorems, and of the write loop
+# Reviews of the specification, of the executable's theorems, of the write loop, and of the premise on short reads
 
 Two fresh agents reviewed [the specification](Spec.lean) and [the samples](Samples.lean) against
 [the request](request.txt), as step 5 of [the verified-request
@@ -113,3 +113,63 @@ Classes that no check or theorem excludes remain those of the earlier review, a 
 each pass's buffer and a guest trap above `drawLimit`, and one that the review named: status 2 is
 also the WASI errno `acces`, which a write that fails with `EACCES` returns, so status 2 alone does
 not tell a refused argument from that failure.  The events of `Meets` tell them apart.
+
+## Review of the premise on short reads
+
+A fresh agent reviewed `InRange`, `Sized`, `RandomGroup`, `Counts`, the theorems that state them,
+the random choice's `Mirrors` and `Choices`, the file theorems, and the witnesses against the
+requests, the shim's `random_get` (`RandomCalls`, `randomLast`, `randomLoop`, and `randomStub`),
+getrandom(2), write(2), and Linux v7.0's `drivers/char/random.c`, by the method of the knowledge
+base's entry on independent review, and ran no Lean code.  Its model in Python ran the 32
+instructions of `randomStub` against `randomInvoke` on 66,644 cases without a difference, compared
+`RandomGroup` with the groups of `RandomCalls` on 12,489,044 sequences of events and errnos without
+a difference, and ran both commands, 10 variants of the premise, and wrong programs and shims on
+24,574 cases.  `InRange` admitted 6,174 runs of the histogram and 7,401 of the random choice, each
+of which exits and meets its statement, and the other 5,002 and 5,997 runs trap.  The earlier
+`Full` excluded 5,586 and 6,690 runs whose replies getrandom(2) allows.  A premise without
+"positive for a positive length", or one that reads −4096 as an error number, admitted 1,582 and
+1,887 runs that trap, and one that bounds a count by 4,096 bytes in place of the call's length
+admitted 882 and 480.
+
+| Finding | Response |
+|---|---|
+| `Counts` stated each draw as a group of 1 to 4,096 bytes, so programs that draw one word a call, two calls of 4 bytes a word, or the remainder's words first met it on all 4,786, 5,982, and 2,394 runs on which they differ from the right program, programs with an extra draw of 4 bytes or with draws of 4,096 bytes met it on 874 of 1,240 and 1,926 of 2,950, and a stub with an extra call of 1 byte after each draw on 857 of 1,432 | Adopted: `Counts` states groups that mirror, one for one, the calls of `Draws` (`RandomMirrors`), each for `8 · min r 512` bytes, and the model with those lengths rejected every differing run of every variant |
+| The claim that `InRange` excludes exactly the results at which the shim traps had a theorem in one direction only | Adopted: `random_inRange` and `write_inRange` state that the image of a call that returned meets `InRange` |
+| The write clause of that claim omitted "and no error number" | Adopted |
+| `short_run` and `histogram_elf_witness` did not state the short read that their comments described, so full replies met them | Adopted: both conclude `ShortRead`, a `getrandom` that returned a count of at least 1 and below its length |
+| `draws_groups`, `Mirrors`, `InRange`, and `randomData` had docstrings that stated more than the definitions, and `randomData` took the whole output of a call that returned an error number | Adopted: `draws_mirrors` replaces `draws_groups`, `Mirrors` describes the shim's events without a condition on the run, `InRange` names `getrandom` and `write`, and `randomData` takes the bytes of a `getrandom` only when its result is at most its length, as `LeanExe.Linux.Event.readBytes` does |
+| `Sized` is needed: replies that move 2 bytes from the first output of a short read to the second leave the WASI reply unchanged and meet `InRange`, and the bytes of `randomData` then differ from the call's | Kept: `carried_sized` gives `Sized` for every run |
+| No signal can shorten the commands' reads, of at most 4,096 bytes | Recorded: a raw `getrandom` with a signal sent in a loop on Linux 6.12 with pages of 4 KiB returned in full on 600,000 calls of 256, 4,095, and 4,096 bytes, and returned short on 199,293 of 200,000 calls of 4,097 bytes.  glibc 2.41's `getrandom()` uses the vDSO and was never short |
+
+The review found that the random choice's `Choices` and `Mirrors` rejected every differing run of 10
+wrong programs and 12 wrong shims, among them a short count taken as the whole buffer, a retry at
+the buffer's start or for its whole length, an address advanced twice, flags 1, a failed draw's
+bytes kept, an error taken as success, and a retry after `EINTR`.  Classes that no statement
+excludes: wrong stubs of `random_get` that differ only at results outside `InRange`, which take a
+count of 0 as the end, loop on 0, take a count above the length as the end, or read −4096 as an
+error number, and which differed on none of the in-range cases, so that only
+`Verified.ShimA64.randomStub_run` excludes them; an errno table that the shim and the statements
+share; and the addresses and the `inputs` and `prior` of a `getrandom` event, of which the requests
+ask nothing.
+
+A second fresh agent reviewed the revised statements by the same method, updated the first model,
+and ran it on 38,460 cases, 14,696 of the histogram and 23,764 of the random choice, among them
+2,802 and 4,366 runs with a short read, 5,554 and 9,409 with a failed read, and 1,332 and 2,310
+with a short read followed by a failed read in one group.  Every run that meets `InRange` exits and
+meets its statement, and every other run traps.  Of the model's 42 wrong histogram programs and
+shims and 39 of the random choice, `Counts` and `Choices` rejected every run that meets `InRange`
+and differs from the right program's, among them one word a call, the remainder's words first, an
+extra draw, a failed draw's bytes kept, the raw errno, a retry after `EINTR`, and writes of
+descriptor 2, except for the classes below.
+
+| Finding | Response |
+|---|---|
+| `Counts` admits a write of no byte after the output is whole, which offers `out.drop out.length` and returns 0, and the WASI specification's `Written` admits it too, while the random choice's `Writes` requires bytes to remain.  A program that adds such a write met `Counts` on 2,002 of the 2,179 runs on which it differs | Recorded: a statement that excludes the write needs `Written` to state it, which changes the command's WASI theorems, and the change is left for a decision.  `writeAll` makes no write once the bytes are written |
+| The comments of `random_short`, of the module, and of the file theorems described the calls of the witness's run, which the statements do not state | Adopted: the comments state `ShortRead` and the replies |
+| `RandomGroup` let an error number below the bytes that remain end a group, where the shim continues, for lengths above `2^64 − 4,096`, and `ShortRead` counted such a result as a short read | Adopted: the last call of a failed group returned an error number above the bytes that remain, as the shim requires, and `ShortRead` requires a result that is no error number |
+| Comments omitted `Sized` from the bytes of `randomData`, the fit of the arguments from `image_untrapped`, and the earlier writes' counts from the last alternative, and called `loop_trapped`'s event a `random_get` | Adopted |
+| The random choice has no witness with a short read | Recorded: the histogram's witness has one, and both corollaries take the group from `random_group` |
+
+Classes that no statement excludes, besides those of the first review: the write of no byte above,
+and calls that make no layer event, such as a `random_get` of 0 bytes or an extra `args_get`, whose
+layer events equal the right program's, so that only `Meets` excludes them.
