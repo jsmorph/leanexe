@@ -10,9 +10,9 @@ open Demos.StreamFold (StreamPosition StreamHost observedStreamRep stdoutWords)
 
 /-- Charges for a run: `beginCharge` bounds the allocation of `begin`, `charge` bounds that of
 the step from each reached running state where `Inv` holds, and the heap has room for each charge
-with the copies of the state before and after it.  The process compacts the state after `begin`
-and after each step, so the heap holds the literal pool and one state between steps.
-`limitCharges` derives these charges from a limit on line length. -/
+with four copies of the state before it and the copy after it.  The process compacts the state
+after `begin`, and after a step when the heap above its base exceeds four times the state's copy
+cost.  `limitCharges` derives these charges from a limit on line length. -/
 structure RunCharges {World : Type} (host : Host World) (initial : Store (Observed World))
     (heap : Heap) (rep : StreamPosition → World → Prop) (Inv : State → StreamPosition → Prop) where
   charge : ProcessStep State → StreamPosition → Nat
@@ -26,7 +26,7 @@ structure RunCharges {World : Type} (host : Host World) (initial : Store (Observ
   stepBounded : ∀ (native : ProcessStep State) position (world : Observed World),
     Termination.Safe native.state → observedStreamRep rep position world →
     native.running = true → Inv native.state position →
-    heap.top.toNat + stateTy.copyCost (sourceState native.state) + charge native position ≤
+    heap.top.toNat + 4 * stateTy.copyCost (sourceState native.state) + charge native position ≤
         65536 * (PureTransport.erase initial).memoryCap io.pure.module 0 ∧
       Resource.CallPrefixBound (observedHost host)
         (Resource.PureContext.ofProg io.pure.program io.pure.funs) io.program entry.step 0
@@ -36,7 +36,7 @@ structure RunCharges {World : Type} (host : Host World) (initial : Store (Observ
     native.running = true → Inv native.state position → ∀ trace next final nextPosition,
     LeanExe.Wasi.Exec (observedHost host) (step native.state) world trace (.returned next) final →
     observedStreamRep rep nextPosition final →
-    heap.top.toNat + stateTy.copyCost (sourceState native.state) + charge native position +
+    heap.top.toNat + 4 * stateTy.copyCost (sourceState native.state) + charge native position +
         stateTy.copyCost (sourceState next.state) ≤
       65536 * (PureTransport.erase initial).memoryCap io.pure.module 0
 
@@ -109,11 +109,12 @@ theorem terminates_fp {World : Type} (host : Host World)
       exact ⟨final, by simp [messageEq], mathematical⟩
   | _ => exact total.elim
 
-/-- The bytes above the heap's initial top that a run within the limit `L` needs: room for the
-copies of the state before and after a step and for the step's charge. -/
-def limitMemory (L : Nat) : Nat := 80 * L + 64031000
+/-- The bytes above the heap's initial top that a run within the limit `L` needs: room for four
+copies of the state before a step, the step's charge, and the copy of the state after it.
+Between steps the heap holds at most four copies of the state above its base. -/
+def limitMemory (L : Nat) : Nat := 88 * L + 64031000
 
-theorem limitMemory_room (L : Nat) : 2 * copyLimit L + stepCharge L ≤ limitMemory L := by
+theorem limitMemory_room (L : Nat) : 5 * copyLimit L + stepCharge L ≤ limitMemory L := by
   unfold copyLimit stepCharge limitMemory renderCost quotAtCost
   omega
 
@@ -205,15 +206,15 @@ theorem initial_terminates_fp {World : Type} (host : Host World)
     (by rw [initial_top, initial_memoryCap]; exact room) accepted
 
 /-- For every input whose lines hold fewer than `2^32` bytes and whose lines up to and including the
-first line that denotes no number hold at most 50,000,000 bytes, the compiled command exits with
+first line that denotes no number hold at most 48,000,000 bytes, the compiled command exits with
 status 0 when every line denotes a number and with status 28 at the first line that does not, after
 writing the cumulative totals of the lines before it. -/
-theorem initial_terminates_fp_50000000 {World : Type} (host : Host World)
+theorem initial_terminates_fp_48000000 {World : Type} (host : Host World)
     (targetHost : HostEnv (Observed World)) (world : Observed World)
     (rep : StreamPosition → World → Prop) (streams : StreamHost host rep)
     {position : StreamPosition} (represented : rep position world.world)
     (events : world.events = []) (empty : position.output = [])
-    (short : ShortLines position.input) (limits : InputLimits 50000000 position.input)
+    (short : ShortLines position.input) (limits : InputLimits 48000000 position.input)
     (valid : targetHost.Satisfies module (hostSpec host)) (accepted : ExitAccepted host rep) :
     ∃ numbers status, InputValues position.input numbers status ∧
       ∃ bound, ∀ fuel ≥ bound, ∃ final,

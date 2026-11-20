@@ -67,7 +67,7 @@ elab "check_running_sumfp_axioms" : command => do
     ``Demos.RunningSumFp.initial_top,
     ``Demos.RunningSumFp.initial_memoryCap,
     ``Demos.RunningSumFp.initial_terminates_fp,
-    ``Demos.RunningSumFp.initial_terminates_fp_50000000,
+    ``Demos.RunningSumFp.initial_terminates_fp_48000000,
     ``Demos.RunningSumFp.fp_bytes]
   for declaration in declarations do
     for axiomName in ← collectAxioms declaration do

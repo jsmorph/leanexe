@@ -40,16 +40,39 @@ def processPositions (state : Ty) : Nat := processAux state + 5 + state.copyScra
 def processCompaction (state : Ty) : Program :=
   compactCode (processPositions state) state 2 (processAux state)
 
+/-- The compaction of the state, whose words follow the running flag and the status, when the heap
+above the base exceeds four times the state's copy cost, which the code computes from the state's
+roots and lengths.
+
+The compaction gives each array a block of its length, and a push into a full array moves the
+array into a block of twice its capacity.  Take an array that has grown since the last
+compaction from length `n₀` to length `len` and capacity `cap`.  The blocks that its growth
+allocated since the compaction hold `2 · cap - 2 · n₀` words, so with the compacted block it
+occupies `2 · cap - n₀` words, and since `cap ≤ 2 · len` that is less than `4 · len - n₀`.
+Growth alone therefore never reaches the bound: a compaction runs only after the steps have left
+more than `n₀` words of other blocks, and it copies at most what the steps allocated since the
+previous one, so the words that all compactions copy are linear in the words that the steps
+allocate.  At twice the copy cost, the regrowth after each compaction exceeds the bound by itself,
+so the entry compacts after nearly every step that grows an array, and a running sum's time on a
+long line grows fourfold with each doubling of the line.  Three times the copy cost holds steps
+that grow an array by many words, but a state that grows by one word a step reaches the bound at
+the regrowth after each compaction. -/
+def processCompactWhen (state : Ty) : Program :=
+  copyCostCode state 2 ++ [.constI64 2, .shlI64] ++
+    [.globalGet 0, .localGet (processAux state), .subI64, .ltUI64,
+     .iff 0 0 (processCompaction state) [] [] []]
+
 /-- One step of the process loop: stop when the state is not running, and otherwise call the
-step on the state, store its result over the current one, and compact the new state.  The step
-consumes the state, and the compaction reclaims everything else the step allocated. -/
+step on the state, store its result over the current one, and compact the new state when the heap
+above the base exceeds four times its copy cost.  The step consumes the state, and the compaction
+reclaims everything else that the steps since the last compaction allocated. -/
 def ProcessEntry.iterationWith (calls : List LeanExe.Wasi.Call) (source : Wasm.Module) (entry : ProcessEntry effectSigs) : Program :=
   let positions := processPositions entry.state
   [.localGet 0, .eqzI64, .br_if 1, .constI64 0] ++
     loadCode positions 2 entry.state.types ++
     [.call (Wrappers.effectIndexWith calls source entry.step.index)] ++
     storeCode positions 0 entry.result.types ++
-    Relocation.programWith calls (processCompaction entry.state) ++ [.br 0]
+    Relocation.programWith calls (processCompactWhen entry.state) ++ [.br 0]
 
 def ProcessEntry.iteration (source : Wasm.Module) (entry : ProcessEntry effectSigs) : Program :=
   ProcessEntry.iterationWith [] source entry

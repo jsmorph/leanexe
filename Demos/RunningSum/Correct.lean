@@ -9,8 +9,9 @@ open Demos.StreamFold (StreamPosition StreamHost observedStreamRep stdoutWords)
 
 /-- Charges for a run: `beginCharge` bounds the allocation of `begin`, `charge` bounds that of
 the step from each reached running state where `Inv` holds, and the heap has room for each charge
-with the copies of the state before and after it.  The process compacts the state after `begin`
-and after each step, so the heap holds the literal pool and one state between steps. -/
+with four copies of the state before it and the copy after it.  The process compacts the state
+after `begin`, and after a step when the heap above its base exceeds four times the state's copy
+cost. -/
 structure RunCharges {World : Type} (host : Host World) (initial : Store (Observed World))
     (heap : Heap) (rep : StreamPosition → World → Prop) (Inv : State → StreamPosition → Prop) where
   charge : ProcessStep State → StreamPosition → Nat
@@ -24,7 +25,7 @@ structure RunCharges {World : Type} (host : Host World) (initial : Store (Observ
   stepBounded : ∀ (native : ProcessStep State) position (world : Observed World),
     Termination.Safe native.state → observedStreamRep rep position world →
     native.running = true → Inv native.state position →
-    heap.top.toNat + stateTy.copyCost (sourceState native.state) + charge native position ≤
+    heap.top.toNat + 4 * stateTy.copyCost (sourceState native.state) + charge native position ≤
         65536 * (PureTransport.erase initial).memoryCap io.pure.module 0 ∧
       Resource.CallPrefixBound (observedHost host)
         (Resource.PureContext.ofProg io.pure.program io.pure.funs) io.program entry.step 0
@@ -34,7 +35,7 @@ structure RunCharges {World : Type} (host : Host World) (initial : Store (Observ
     native.running = true → Inv native.state position → ∀ trace next final nextPosition,
     LeanExe.Wasi.Exec (observedHost host) (step native.state) world trace (.returned next) final →
     observedStreamRep rep nextPosition final →
-    heap.top.toNat + stateTy.copyCost (sourceState native.state) + charge native position +
+    heap.top.toNat + 4 * stateTy.copyCost (sourceState native.state) + charge native position +
         stateTy.copyCost (sourceState next.state) ≤
       65536 * (PureTransport.erase initial).memoryCap io.pure.module 0
 
@@ -108,10 +109,11 @@ theorem terminates_integer {World : Type} (host : Host World)
   | _ => exact total.elim
 
 /-- The bytes above the heap's initial top that a run within the limits `L` and `D` needs: room
-for the copies of the state before and after a step and for the step's charge. -/
+for four copies of the state before a step, the step's charge, and the copy of the state after it.
+Between steps the heap holds at most four copies of the state above its base. -/
 def limitMemory (L D : Nat) : Nat := 220 * (L + D) + 1010000
 
-theorem limitMemory_room (L D : Nat) : 2 * copyLimit L D + stepCharge L D ≤ limitMemory L D := by
+theorem limitMemory_room (L D : Nat) : 5 * copyLimit L D + stepCharge L D ≤ limitMemory L D := by
   unfold copyLimit stepCharge limitMemory
   omega
 

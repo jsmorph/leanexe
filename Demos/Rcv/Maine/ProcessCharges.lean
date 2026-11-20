@@ -7,10 +7,10 @@ import Verified.Wasi.ResourceRules
 the buffer of `readAll`, of `limit + 4,096` bytes, and then calls `tabulate` on an input of at most
 `limit` bytes or builds a stopped state.  A step takes the state owned and allocates nothing: it
 moves the state into the write step, whose write of the output's window allocates nothing and which
-moves the state into `afterWrite`, or returns it.  The WASI compilation's bound of `tabulate` is the bound of
-`Demos.Rcv.Maine.TabulateProgram.compiled`, definitionally (`tabulate_bound_eq`), so
-`TabulateProgram.tabulate_bound` closes it.  A state whose output has at most `outputLimit` bytes,
-as every state of a run has, costs at most `copyLimit` bytes to copy (`copyCost_le`). -/
+moves the state into `afterWrite`, or returns it.  The WASI compilation's bound of `tabulate` is
+the bound of `Demos.Rcv.Maine.TabulateProgram.compiled`, definitionally (`tabulate_bound_eq`), so
+`TabulateProgram.tabulate_bound` closes it.  A state whose output has at most `outputLimit`
+bytes, as every state of a run has, costs at most `copyLimit` bytes to copy (`copyCost_le`). -/
 
 namespace Demos.Rcv.Maine.Process
 
@@ -191,16 +191,11 @@ theorem begin_prefix_bound {World : Type} (host : Host World) (world : World) :
 
 end Bodies
 
-/-- A bound on the charge of every step from a state whose output has at most `outputLimit`
-bytes. -/
-def stepCharge : Nat := 2 * copyLimit
-
-/-- From a state whose output has at most `outputLimit` bytes, the step uses at most
-`stepCharge`. -/
+/-- From a state whose output has at most `outputLimit` bytes, the step allocates nothing. -/
 theorem step_prefix_bound {World : Type} (host : Host World) {s : State}
     (_size : s.output.data.size ≤ outputLimit) (world : World) :
     CallPrefixBound host (Resource.PureContext.ofProg io.pure.program io.pure.funs) io.program
-      entry.step 0 (.cons (sourceState s) .nil) world stepCharge :=
-  ((step_bounded host s).mono (Nat.zero_le _)).2 world
+      entry.step 0 (.cons (sourceState s) .nil) world 0 :=
+  (step_bounded host s).2 world
 
 end Demos.Rcv.Maine.Process

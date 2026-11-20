@@ -189,7 +189,7 @@ theorem memoryCap_pure {α : Type} (store : Store α) :
     store.memoryCap module 0 = store.memoryCap io.pure.module 0 :=
   PureTransport.memoryCap_zero_eq rfl store
 
-/-- From a store with an allocator at `heap`, the literal pool, and room above `heap.top` for two
+/-- From a store with an allocator at `heap`, the literal pool, and room above `heap.top` for five
 copies of a state and the charge of a step, when the input holds fewer than 2^64 - 1 records and
 `RunBound R` holds, the module's `_start` exits after writing exactly the
 bytes of `expectedOutput` of the input, with the status `expectedStatus` of it. -/
@@ -204,7 +204,7 @@ theorem terminates_of_room {World : Type} (host : Host World)
     (static : io.literalPool.Static heap (PureTransport.erase initial))
     (cap : (PureTransport.erase initial).memoryCap module 0 ≤ 65535)
     {R : Nat} (runBound : RunBound R)
-    (room : heap.top.toNat + 2 * copyLimit + stepCharge R ≤
+    (room : heap.top.toNat + 5 * copyLimit + stepCharge R ≤
       65536 * (PureTransport.erase initial).memoryCap io.pure.module 0)
     (accepted : ExitAccepted host rep) :
     ∃ bound, ∀ fuel ≥ bound, ∃ final,
@@ -217,7 +217,7 @@ theorem terminates_of_room {World : Type} (host : Host World)
   have initialCopy := initialFuture.sized.copyCost
   have beginEq := beginCharge_eq
   have limitEq : copyLimit = 197205 + outputLimit := rfl
-  have chargeEq : stepCharge R = copyLimit + R + 21631581 := rfl
+  have chargeEq : stepCharge R = R + 21631581 := rfl
   obtain ⟨bound, executions⟩ := target_terminates host targetHost initial heap
     (observedStreamRep rep) (fun position => position.input.length) StreamPosition.zeroWrites
     streams.observed.progress (ChargeInv position.input) (charge_advances streams ids)
@@ -254,12 +254,12 @@ theorem initial_memoryCap {World : Type} (world : Observed World) :
 theorem initial_top : (initialStaticHeap io.literalPool).top.toNat = 4096 := by
   decide +kernel
 
-/-- The memory that a run needs fits in 65,535 pages: two copies of a state and a step's charge
-with `run`'s bound on 74 records from any book of the program's sizes total 3,456,316,116 bytes
+/-- The memory that a run needs fits in 65,535 pages: five copies of a state and a step's charge
+with `run`'s bound on 74 records from any book of the program's sizes total 3,490,674,750 bytes
 above the literal pool, which ends at 4,096 bytes, and the sum lies below the 4,294,901,760 bytes
 of 65,535 pages. -/
 theorem initial_room :
-    4096 + 2 * copyLimit + stepCharge (Bound.runBoundSized 74) ≤ 65536 * 65535 := by
+    4096 + 5 * copyLimit + stepCharge (Bound.runBoundSized 74) ≤ 65536 * 65535 := by
   decide
 
 /-- For every input of fewer than 2^64 - 1 records, under StreamFold's host assumptions, a Talos

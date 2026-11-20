@@ -8,10 +8,9 @@ step moves the state into the step that it calls and into `afterWrite` or `after
 stopping step returns it.  A write step and a stopping step allocate nothing.  A read step allocates
 the read buffer, pays the credits of the state's seven arrays at its call of `afterRead`, since
 `afterRead`'s state parameter is paid, and runs a batch at a reply without an errno: the words of
-the batch,
-`run`'s generated bound, the carry after the batch, and the event bytes.  `runWords` moves the
-seven arrays into `run`, which updates them in place.  The charge of a read step
-holds for every reply of at most 4,096 bytes, so for a batch that need not lie in the input, and it
+the batch, `run`'s generated bound, the carry after the batch, and the event bytes.  `runWords`
+moves the seven arrays into `run`, which updates them in place.  The charge of a read step holds
+for every reply of at most 4,096 bytes, so for a batch that need not lie in the input, and it
 cannot depend on the input's records.  It takes `run`'s generated bound on any batch of at most 518
 words from any book whose arrays have the program's sizes as a term `R` with `RunBound R`, and
 `runBound_74` gives `RunBound (Bound.runBoundSized 74)` from the closed form of
@@ -448,7 +447,7 @@ end Bodies
 
 /-- A bound on the charge of every step from a state with the sizes of `Sized`, with `R` for
 `run`'s bound on a batch. -/
-def stepCharge (R : Nat) : Nat := copyLimit + R + 21631581
+def stepCharge (R : Nat) : Nat := R + 21631581
 
 theorem stepBudget_le {R : Nat} {s : State} (sized : Sized s) : stepBudget R s ≤ stepCharge R := by
   have copy := sized.copyCost

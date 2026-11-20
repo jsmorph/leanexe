@@ -301,7 +301,7 @@ theorem Compiled.target_terminates {start : Action (ProcessStep State)} (c : Com
           65536 * (PureTransport.erase initial).memoryCap c.source 0)
     (stepBounded : ∀ (native : ProcessStep State) ghost (world : Observed World),
       Safe native.state → rep ghost world → native.running = true → Inv native.state ghost →
-      heap.top.toNat + stateTy.copyCost (sourceState native.state) + charge native ghost ≤
+      heap.top.toNat + 4 * stateTy.copyCost (sourceState native.state) + charge native ghost ≤
           65536 * (PureTransport.erase initial).memoryCap c.source 0 ∧
         Resource.CallPrefixBound (observedHost host) c.pure c.program c.entry.step 0
           (.cons (sourceState native.state) .nil) world (charge native ghost))
@@ -311,7 +311,7 @@ theorem Compiled.target_terminates {start : Action (ProcessStep State)} (c : Com
       LeanExe.Wasi.Exec (observedHost host) (step native.state) world trace (.returned next)
         final →
       rep nextGhost final →
-      heap.top.toNat + stateTy.copyCost (sourceState native.state) + charge native ghost +
+      heap.top.toNat + 4 * stateTy.copyCost (sourceState native.state) + charge native ghost +
           stateTy.copyCost (sourceState next.state) ≤
         65536 * (PureTransport.erase initial).memoryCap c.source 0)
     (accepted : ∀ ghost world, rep ghost world → ∀ message final,
@@ -567,13 +567,13 @@ theorem Compiled.terminates_of_room {tab : LeanExe.Bytes → LeanExe.Bytes}
       Writes (expected (byteWords b)) maxOutput ⟨tab b, 0⟩ position)
     (copy : ∀ s : State, s.output.data.size ≤ maxOutput →
       stateTy.copyCost (sourceState s) ≤ copyLimit)
-    (chargeLe : 3 * copyLimit ≤ beginCharge)
+    (chargeLe : 4 * copyLimit ≤ beginCharge)
     (beginBound : ∀ {World : Type} (host : Host World) (world : World),
       Resource.CallPrefixBound host c.pure c.program c.entry.begin 0 .nil world beginCharge)
     (stepBound : ∀ {World : Type} (host : Host World) (s : State),
       s.output.data.size ≤ maxOutput → ∀ world : World,
       Resource.CallPrefixBound host c.pure c.program c.entry.step 0 (.cons (sourceState s) .nil)
-        world (2 * copyLimit))
+        world 0)
     {World : Type} (host : Host World)
     (targetHost : HostEnv (Observed World)) (initial : Store (Observed World)) (heap : Heap)
     (rep : StreamPosition → World → Prop) (streams : StreamHost host rep)
@@ -597,7 +597,7 @@ theorem Compiled.terminates_of_room {tab : LeanExe.Bytes → LeanExe.Bytes}
     (observedStreamRep rep) (fun position => position.input.length) StreamPosition.zeroWrites
     streams.observed.progress (Writes (expected position.input) maxOutput) 0
     (charge_advances streams) (fun _ => rfl) valid at_ free static cap
-    (fun _ _ => 2 * copyLimit) beginCharge (by omega) (beginBound (observedHost host) initial.host)
+    (fun _ _ => 0) beginCharge (by omega) (beginBound (observedHost host) initial.host)
     (fun execution => by
       obtain ⟨first, firstPosition, same, firstRep, running, _, future⟩ :=
         beginWith_report report streams.observed size empty observed execution
@@ -608,12 +608,12 @@ theorem Compiled.terminates_of_room {tab : LeanExe.Bytes → LeanExe.Bytes}
     (fun native ghost world _ represented _ future => by
       have copied := copy _ future.outputSize
       refine ⟨?_, stepBound (observedHost host) native.state future.outputSize world⟩
-      show heap.top.toNat + stateTy.copyCost (sourceState native.state) + 2 * copyLimit ≤ _
+      show heap.top.toNat + 4 * stateTy.copyCost (sourceState native.state) + 0 ≤ _
       omega)
     (fun native ghost world _ represented _ future _ next final _ execution _ => by
       have copied := copy _ future.outputSize
       have nextCopy := copy _ (step_output_le streams.observed represented future execution)
-      show heap.top.toNat + stateTy.copyCost (sourceState native.state) + 2 * copyLimit +
+      show heap.top.toNat + 4 * stateTy.copyCost (sourceState native.state) + 0 +
         stateTy.copyCost (sourceState next.state) ≤ _
       omega)
     accepted

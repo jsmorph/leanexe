@@ -35,7 +35,7 @@ theorem target_terminates {World Ghost : Type} (host : Host World)
       initial.host beginCharge)
     (stepBounded : ∀ (native : ProcessStep State) ghost (world : Observed World),
       Safe native.state → rep ghost world → native.running = true → Inv native.state ghost →
-      heap.top.toNat + stateTy.copyCost (sourceState native.state) + charge native ghost ≤
+      heap.top.toNat + 4 * stateTy.copyCost (sourceState native.state) + charge native ghost ≤
           65536 * (PureTransport.erase initial).memoryCap io.pure.module 0 ∧
         Resource.CallPrefixBound (observedHost host)
           (Resource.PureContext.ofProg io.pure.program io.pure.funs) io.program entry.step 0
@@ -45,7 +45,7 @@ theorem target_terminates {World Ghost : Type} (host : Host World)
       ∀ trace next final nextGhost,
       LeanExe.Wasi.Exec (observedHost host) (step native.state) world trace (.returned next) final →
       rep nextGhost final →
-      heap.top.toNat + stateTy.copyCost (sourceState native.state) + charge native ghost +
+      heap.top.toNat + 4 * stateTy.copyCost (sourceState native.state) + charge native ghost +
           stateTy.copyCost (sourceState next.state) ≤
         65536 * (PureTransport.erase initial).memoryCap io.pure.module 0)
     (accepted : ∀ ghost world, rep ghost world → ∀ status,

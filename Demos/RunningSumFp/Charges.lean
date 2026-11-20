@@ -420,7 +420,7 @@ theorem begin_prefix_bound {World : Type} (host : Host World) (world : World) :
 end Bodies
 
 /-- A bound on the charge of every step from a state within the limit `L`. -/
-def stepCharge (L : Nat) : Nat := 64 * L + renderCost + 4910000
+def stepCharge (L : Nat) : Nat := 48 * L + renderCost + 4870000
 
 theorem stepBudget_le {L : Nat} {state : State} (sized : Sized L state) :
     stepBudget state ≤ stepCharge L := by

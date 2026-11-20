@@ -59,7 +59,7 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
     (held : represented ghost current initial.host)
     (limitCap : limit ≤ 65536 * (PureTransport.erase initial).memoryCap source 0)
     (resources : current.running = true →
-      base.toNat + entry.state.copyCost current.state + charge ghost current ≤ limit ∧
+      base.toNat + 4 * entry.state.copyCost current.state + charge ghost current ≤ limit ∧
       Resource.CallPrefixBound (observedHost host) pure program entry.step 0
         (.cons current.state .nil) initial.host (charge ghost current))
     (replies : current.running = true → ∀ trace outcome final,
@@ -67,7 +67,7 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
         initial.host trace outcome final →
       ∃ nextGhost next, outcome = .returned next ∧ represented nextGhost next final ∧
         relation nextGhost ghost ∧
-        base.toNat + entry.state.copyCost current.state + charge ghost current +
+        base.toNat + 4 * entry.state.copyCost current.state + charge ghost current +
           entry.state.copyCost next.state ≤ limit) :
     wp target (entry.iterationWith calls source)
       (GhostLoopPost (ProcessTotalInvariant source target entry.state pool base limit represented)
@@ -120,7 +120,7 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
         (depth := 0) (params := stateWords) (args := args) (Q := Q) (budget := charge ghost current)
         (aborts := false)
         (rest := storeCode (processPositions entry.state) 0 (processResultTy entry.state).types ++
-          (Relocation.programWith calls (processCompaction entry.state) ++ [.br 0]))
+          (Relocation.programWith calls (processCompactWhen entry.state) ++ [.br 0]))
         spec noImport lookup arity valid memory.at_ argsRep separate input scratch stored.cap
         (fun _ => ⟨within, bounded⟩)
         (fun value finalHeap final words trace spent callFits execution callStep representation rise => by
@@ -152,14 +152,14 @@ theorem wp_process_iteration_total_with {calls : List LeanExe.Wasi.Call}
             rw [processValue_native entry.state value]
             exact memory.called (fun region member => ⟨memory.pool_apart region member,
               poolLow region member⟩) called representation
-          have grown := (called.base_le stored.low baseTop
-            (fun node member => by rw [free] at member; exact nomatch member)
-            ⟨below_base_apart stored.low above, low_apart_above _⟩).1
+          obtain ⟨grown, freeAbove, freshAbove⟩ := called.base_le stored.low baseTop free
+            ⟨below_base_apart stored.low above, low_apart_above _⟩
           have sameCap : (PureTransport.erase final).memoryCap source 0 =
               (PureTransport.erase initial).memoryCap source 0 := by
             simp only [Store.memoryCap, called.caps]
-          refine wp_process_store_compact_with runtime layout profile compactable compactForm
-            compactClosed resultMemory (by omega) stored.baseLocal stored.low stored.pool stored.params
+          refine wp_process_store_compact_when_with runtime layout profile compactable compactForm
+            compactClosed resultMemory freeAbove (result_blocks_above representation freshAbove)
+            grown stored.baseLocal stored.low stored.pool stored.params
             stored.positions (by rw [called.cap target]; exact stored.cap)
             (fun noRoom _ _ => absurd (compaction_room compactable topBound (by
               rw [sameCap]; omega)) noRoom)
@@ -227,7 +227,7 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
     (held : represented ghost current initial.host)
     (limitCap : limit ≤ 65536 * (PureTransport.erase initial).memoryCap source 0)
     (resources : current.running = true →
-      base.toNat + entry.state.copyCost current.state + charge ghost current ≤ limit ∧
+      base.toNat + 4 * entry.state.copyCost current.state + charge ghost current ≤ limit ∧
       Resource.CallPrefixBound (observedHost host) pure program entry.step 0
         (.cons current.state .nil) initial.host (charge ghost current))
     (replies : current.running = true → ∀ trace outcome final,
@@ -235,7 +235,7 @@ theorem wp_process_iteration_total {World Ghost : Type} {source target : Wasm.Mo
         initial.host trace outcome final →
       ∃ nextGhost next, outcome = .returned next ∧ represented nextGhost next final ∧
         relation nextGhost ghost ∧
-        base.toNat + entry.state.copyCost current.state + charge ghost current +
+        base.toNat + 4 * entry.state.copyCost current.state + charge ghost current +
           entry.state.copyCost next.state ≤ limit) :
     wp target (entry.iteration source)
       (GhostLoopPost (ProcessTotalInvariant source target entry.state pool base limit represented)

@@ -112,6 +112,77 @@ theorem wp_process_store_compact_with {calls : List LeanExe.Wasi.Call}
     baseAfter low poolBelow (frame.params.trans params) (frame.positions.trans positions) cap
     trap fun final after' host caps stored values => next final after' host caps stored values
 
+/-- The store of a step's result over the current state, followed by the state's compaction when
+the heap above the base exceeds four times the state's copy cost. -/
+theorem wp_process_store_compact_when_with {calls : List LeanExe.Wasi.Call}
+    {World : Type} {source target : Wasm.Module} {state : Ty}
+    {pool : Bytes.LiteralPool} {base : UInt64} {targetHost : HostEnv (Observed World)}
+    {store : Store (Observed World)} {heap : Heap} {locals : Locals} {words : List Value}
+    {value : ProcessStep state.denote} {rest : Program} {Q : Assertion (Observed World)}
+    (runtime : Runtime source) (layout : Relocation.LayoutWith calls source target)
+    (profile : Relocation.Profile source) (compactable : state.compactable = true)
+    (form : Encoding.ProgramForm (processCompaction state))
+    (closed : Relocation.programClosed source.funcs.length (processCompaction state) = true)
+    (memory : ProcessMemory (processResultTy state) pool heap (PureTransport.erase store) words
+      (processValue state value))
+    (free : ∀ node ∈ heap.free, base.toNat ≤ node.region.1)
+    (blocksAbove : ∀ block ∈ state.blocks (PureTransport.erase store) (words.drop 2) value.state,
+      base.toNat ≤ block.1)
+    (baseTop : base.toNat ≤ heap.top.toNat)
+    (baseLocal : locals.get (processAux state) = some (.i64 base)) (low : 4096 ≤ base.toNat)
+    (poolBelow : ∀ region ∈ pool.regions, region.1 + region.2 ≤ base.toNat)
+    (params : locals.params = []) (positions : locals.positions = processPositions state)
+    (cap : (PureTransport.erase store).memoryCap target 0 ≤ 65535)
+    (trap : ¬ roundWord heap.top.toNat + state.copyCost value.state ≤
+        65536 * (PureTransport.erase store).memoryCap source 0 →
+      ∀ final : Store (Observed World), final.host = store.host → Q (.Trap final "unreachable"))
+    (next : ∀ final after, final.host = store.host →
+      (PureTransport.erase final).memoryCaps = (PureTransport.erase store).memoryCaps →
+      ProcessStored target state pool base value final after → after.values = locals.values →
+      wp target rest Q final after targetHost) :
+    wp target (storeCode (processPositions state) 0 (processResultTy state).types ++
+        (Relocation.programWith calls (processCompactWhen state) ++ rest)) Q store
+      { locals with values := words.reverse ++ locals.values } targetHost := by
+  have hWidth : (processResultTy state).width ≤ processPositions state := by
+    simp only [processPositions, processAux]; omega
+  refine wp_storeCode words (processPositions state) 0 (processResultTy state).types locals
+    locals.values memory.rep.typed positions (by rw [params]; exact Nat.zero_le _)
+    (by rw [Ty.types_length, positions]; omega) fun after frame held above => ?_
+  have baseAfter : ({ after with values := locals.values } : Locals).get (processAux state) =
+      some (.i64 base) := by
+    rw [Locals.get_values, (above (processAux state)
+      (by rw [Ty.types_length]; simp only [processAux]; omega)
+      (by rw [positions]; simp only [processPositions]; omega)).1]
+    exact baseLocal
+  exact wp_process_compact_when_with runtime layout profile compactable form closed memory held
+    free blocksAbove baseTop baseAfter low poolBelow (frame.params.trans params)
+    (frame.positions.trans positions) cap trap
+    fun final after' host caps stored values => next final after' host caps stored values
+
+/-- Every block of a value has a positive length: a header and its payload. -/
+theorem blocks_positive {store : Store Unit} {t : Ty} {words : List Value} {value : t.denote}
+    {b : Nat × Nat} (member : b ∈ t.blocks store words value) : 0 < b.2 := by
+  rw [Ty.blocks_pointers] at member
+  obtain ⟨pointer, _, rfl⟩ := List.mem_map.mp member
+  simp only [block]
+  omega
+
+/-- The state's blocks of a step's result lie at or above `base` when every block that the step
+leaves fresh apart from the reserved area does. -/
+theorem result_blocks_above {state : Ty} {heap : Heap} {store : Store Unit} {words : List Value}
+    {value : (processResultTy state).denote} {base : Nat}
+    (rep : (processResultTy state).Rep .owned heap store words value)
+    (fresh : ∀ b ∈ (processResultTy state).blocks store words value, 0 < b.2 →
+      regionsDisjoint b ABI.low → base ≤ b.1) :
+    ∀ block ∈ state.blocks store (words.drop 2) (processNative state value).state,
+      base ≤ block.1 := by
+  intro block member
+  have inResult : block ∈ (processResultTy state).blocks store words value := by
+    rw [← processValue_native state value, processValue_blocks]
+    exact member
+  exact fresh block inResult (blocks_positive inResult)
+    (regionsDisjoint_symm (owned_low rep block inResult))
+
 theorem wp_process_store_compact {World : Type} {source target : Wasm.Module} {state : Ty}
     {pool : Bytes.LiteralPool} {base : UInt64} {targetHost : HostEnv (Observed World)}
     {store : Store (Observed World)} {heap : Heap} {locals : Locals} {words : List Value}
@@ -206,7 +277,7 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
       have callExecution := wp_effect_helper_with (calls := calls) (locals := locals) (values := locals.values)
         (depth := 0) (params := stateWords) (args := args) (Q := Q)
         (rest := storeCode (processPositions entry.state) 0 (processResultTy entry.state).types ++
-          (Relocation.programWith calls (processCompaction entry.state) ++ [.br 0]))
+          (Relocation.programWith calls (processCompactWhen entry.state) ++ [.br 0]))
         spec noImport lookup arity valid memory.at_ argsRep separate input scratch stored.cap
         (fun value finalHeap final words trace execution callStep representation => by
           have called : Step heap (PureTransport.erase initial)
@@ -229,11 +300,11 @@ theorem wp_process_iteration_with {calls : List LeanExe.Wasi.Call}
             rw [processValue_native entry.state value]
             exact memory.called (fun region member => ⟨memory.pool_apart region member,
               poolLow region member⟩) called representation
-          have grown := (called.base_le stored.low baseTop
-            (fun node member => by rw [free] at member; exact nomatch member)
-            ⟨below_base_apart stored.low above, low_apart_above _⟩).1
-          refine wp_process_store_compact_with runtime layout profile compactable compactForm
-            compactClosed resultMemory grown stored.baseLocal stored.low stored.pool stored.params
+          obtain ⟨grown, freeAbove, freshAbove⟩ := called.base_le stored.low baseTop free
+            ⟨below_base_apart stored.low above, low_apart_above _⟩
+          refine wp_process_store_compact_when_with runtime layout profile compactable compactForm
+            compactClosed resultMemory freeAbove (result_blocks_above representation freshAbove)
+            grown stored.baseLocal stored.low stored.pool stored.params
             stored.positions (by rw [called.cap target]; exact stored.cap) (fun _ ended sameHost => ?_)
             fun ended after sameHost _ nextStored _ => ?_
           · apply ProcessIterationResult.resource ended trace

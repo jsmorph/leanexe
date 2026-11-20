@@ -70,6 +70,22 @@ def compactCode (h : Nat) (t : Ty) (loc aux : Nat) : Program :=
   relocateCode (aux + 4) t loc ++
   [.localGet aux, .localGet (aux + 2), .addI64, .globalSet 0, .constI64 0, .globalSet 1]
 
+/-- Pushes the copy cost of the compactable value of type `t` whose words positions `loc` on hold:
+for an array, a header and its length word and words, for a nonempty byte string, a header and its
+bytes rounded up to a word, and the sum for a pair.  An array's length lies in the first word of
+its payload, and a byte string's in its second word. -/
+def copyCostCode : Ty → Nat → Program
+  | .array _, loc =>
+    [.localGet loc, .wrapI64, .load64 0, .constI64 1, .addI64, .constI64 8, .mulI64,
+     .constI64 48, .addI64]
+  | .bytes, loc =>
+    [.localGet (loc + 1), .eqzI64,
+     .iff 0 1 [.constI64 0]
+       [.localGet (loc + 1), .constI64 7, .addI64, .constI64 8, .divUI64, .constI64 8, .mulI64,
+        .constI64 48, .addI64] [] [.i64]]
+  | .pair a b, loc => copyCostCode a loc ++ copyCostCode b (loc + a.width) ++ [.addI64]
+  | _, _ => [.constI64 0]
+
 /-- `n` rounded up to a multiple of 8. -/
 def roundWord (n : Nat) : Nat := 8 * ((n + 7) / 8)
 

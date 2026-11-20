@@ -8,8 +8,9 @@ open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 /-- The premises of the total process theorem.  `begin` and each step from a represented running
 state have prefix bounds `beginCharge` and `charge`, every outcome of either is a returned state,
 and the room conditions hold: with `base` the heap top before `begin`, `base + beginCharge` plus
-the copy of `begin`'s state, and `base` plus the copy of a running state, its step's charge, and
-the copy of the next state, fit in the memory cap. -/
+the copy of `begin`'s state, and `base` plus four copies of a running state, its step's charge,
+and the copy of the next state, fit in the memory cap.  Between steps the heap ends at most four
+times the state's copy cost above `base`, and the entry compacts the state when it ends higher. -/
 structure ProcessTotalPremises {World Ghost : Type} (source : Wasm.Module)
     (host : Host World) (pure : Resource.PureContext pureSigs)
     (program : EffectProg pureSigs effectSigs) (entry : ProcessEntry effectSigs)
@@ -29,7 +30,7 @@ structure ProcessTotalPremises {World Ghost : Type} (source : Wasm.Module)
         65536 * (PureTransport.erase initial).memoryCap source 0
   stepRoom : ∀ ghost current world, represented ghost current world →
     current.running = true →
-    heap.top.toNat + entry.state.copyCost current.state + charge ghost current ≤
+    heap.top.toNat + 4 * entry.state.copyCost current.state + charge ghost current ≤
       65536 * (PureTransport.erase initial).memoryCap source 0
   stepBounded : ∀ ghost current world, represented ghost current world →
     current.running = true →
@@ -41,7 +42,7 @@ structure ProcessTotalPremises {World Ghost : Type} (source : Wasm.Module)
       world trace outcome final →
     ∃ nextGhost next, outcome = .returned next ∧ represented nextGhost next final ∧
       relation nextGhost ghost ∧
-      heap.top.toNat + entry.state.copyCost current.state + charge ghost current +
+      heap.top.toNat + 4 * entry.state.copyCost current.state + charge ghost current +
         entry.state.copyCost next.state ≤
         65536 * (PureTransport.erase initial).memoryCap source 0
 

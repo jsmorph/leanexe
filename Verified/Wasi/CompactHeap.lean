@@ -355,4 +355,94 @@ theorem wp_compactCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} {t : 
     exact hBase4
   · exact hv8.trans hv7
 
+theorem _root_.Verified.LocalsHold.with_values {s : Locals} {loc : Nat} {tys : List ValueType}
+    {ws : List Value} (values : List Value) (hold : LocalsHold s loc tys ws) :
+    LocalsHold { s with values } loc tys ws :=
+  fun k hk => by simpa only [Locals.get_values, Locals.positions_values] using hold k hk
+
+/-- The copy cost of the compactable value whose words positions `loc` on hold: the code pushes the
+value's copy cost modulo `2 ^ 64` and changes nothing else. -/
+theorem wp_copyCostCode {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
+    (t : Ty) (ht : t.compactable = true) :
+    ∀ {s : Locals} {loc : Nat} {ws : List Value} {v : t.denote} {rest : Program}
+      {Q : Assertion Unit},
+    t.Rep .owned heap store ws v → LocalsHold s loc t.types ws →
+    wp m rest Q store { s with values := .i64 (UInt64.ofNat (t.copyCost v)) :: s.values } host →
+    wp m (copyCostCode t loc ++ rest) Q store s host := by
+  induction t with
+  | elem e =>
+    intro s loc ws v rest Q _ _ next
+    simpa [copyCostCode, Ty.copyCost] using next
+  | array e =>
+    rintro s loc ws xs rest Q ⟨ptr, rfl, owned⟩ hold next
+    have hPtr : s.get loc = some (.i64 ptr) := LocalsHold.word hold
+    have hAddress := UInt64Array.At.pointerAddress_toNat owned.values
+    obtain ⟨_, fitMemory, hLength, _⟩ := owned.values
+    simp only [copyCostCode, List.cons_append, List.nil_append, wp_localGet_cons, hPtr,
+      wp_wrapI64_cons, wrap_toUInt32, wp_load64_cons, UInt32.toNat_zero, Nat.add_zero,
+      UInt32.add_zero]
+    rw [ite_eq_right (show ¬(ptr.toUInt32.toNat + 8 > store.mem.pages * 65536) by omega)]
+    simp only [hLength, wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons]
+    have cost : (UInt64.ofNat (e.words xs).size + 1) * 8 + 48 =
+        UInt64.ofNat ((Ty.array e).copyCost xs) := by
+      have sizeEq : (Ty.array e).copyCost xs = 48 + ((e.words xs).size + 1) * 8 := by
+        simp only [Ty.copyCost, allocCost, Elem.words_size]
+      rw [sizeEq]
+      apply UInt64.toNat_inj.mp
+      simp only [UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_ofNat', UInt64.reduceToNat]
+      omega
+    rw [cost]
+    exact next
+  | bytes =>
+    rintro s loc ws value rest Q ⟨root, length, rfl, rep⟩ hold next
+    have hLength : s.get (loc + 1) = some (.i64 length) := by
+      simpa [Ty.types, slotIndex] using hold 1 (by simp)
+    have size := rep.length_eq
+    simp only [copyCostCode, List.cons_append, List.nil_append, wp_localGet_cons, hLength,
+      wp_eqzI64_cons, wp_iff_control_types]
+    refine wp_iff_cons rfl ?_
+    by_cases hZero : length = 0
+    · subst hZero
+      have empty : value.data.size = 0 := by simp at size; omega
+      simp (config := { decide := true }) only [↓reduceIte, wp_constI64_cons, wp_nil]
+      simpa [Ty.copyCost, Bytes.allocationCost, empty] using next
+    · have small : value.data.size < 4294967296 := by
+        rcases rep.buffer with ⟨_, empty⟩ | buffer
+        · have : length.toNat ≠ 0 := fun zero => hZero (UInt64.toNat_inj.mp zero)
+          omega
+        · have := buffer.object.address
+          have := buffer.capacity
+          omega
+      have nonempty : value.data.size ≠ 0 := by
+        intro zero
+        exact hZero (UInt64.toNat_inj.mp (by rw [size, zero]; rfl))
+      simp (config := { decide := true }) only [hZero, ↓reduceIte, ne_eq, wp_localGet_cons,
+        hLength, wp_constI64_cons, wp_addI64_cons, wp_divUI64_cons, wp_mulI64_cons, wp_nil]
+      have rounded : max 1 ((value.data.size + 7) / 8) = (value.data.size + 7) / 8 :=
+        Nat.max_eq_right (by omega)
+      have cost : (length + 7) / 8 * 8 + 48 = UInt64.ofNat (Ty.bytes.copyCost value) := by
+        apply UInt64.toNat_inj.mp
+        simp only [Ty.copyCost, Bytes.allocationCost, nonempty, ↓reduceIte, rounded,
+          UInt64.toNat_add, UInt64.toNat_mul, UInt64.toNat_div, UInt64.toNat_ofNat',
+          UInt64.reduceToNat]
+        omega
+      simpa only [cost, List.take_succ_cons, List.take_zero, List.drop_zero, List.cons_append,
+        List.nil_append] using next
+  | pair a b iha ihb =>
+    rintro s loc ws v rest Q ⟨first, second, rfl, repA, repB, _⟩ hold next
+    obtain ⟨ha, hb⟩ := Ty.compactable_pair ht
+    have hl := repA.length
+    obtain ⟨holdA, holdB⟩ :=
+      (LocalsHold.append (hl.trans a.types_length.symm)).mp (by simpa [Ty.types] using hold)
+    rw [hl] at holdB
+    simp only [copyCostCode, List.append_assoc]
+    refine iha ha repA holdA (ihb hb repB (holdB.with_values _) ?_)
+    simp only [List.cons_append, List.nil_append, wp_addI64_cons]
+    have cost : UInt64.ofNat (a.copyCost v.1) + UInt64.ofNat (b.copyCost v.2) =
+        UInt64.ofNat ((Ty.pair a b).copyCost v) := by
+      simp only [Ty.copyCost, UInt64.ofNat_add]
+    rw [cost]
+    exact next
+  | _ => simp [Ty.compactable] at ht
+
 end Verified.Wasi

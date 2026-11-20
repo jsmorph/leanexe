@@ -68,16 +68,17 @@ with an empty event journal and output history and uses these premises:
 | [Host behavior](../StreamFold/StreamHost.lean) | `StreamHost` performs successful reads and writes, consumes input prefixes, reports empty input only at EOF, and commits output prefixes.  Each zero-byte write decreases a proof-only natural-valued counter, and a read or a write of at least one byte may set the counter to any value.  The Talos host also satisfies the WASI specification. |
 | [Final exit](Correct.lean) | `ExitAccepted` excludes rejection of status 0 or 28 at represented host worlds. |
 
-The process compacts its state after `begin` and after each step: it copies the state above the
-heap's top and moves the copy down to the heap's base, the heap top when `_start` began, so
-between steps the heap holds the literal pool and one state.  The memory a run needs therefore does
-not grow with the number of lines or the total length of the input.  Each step needs memory for the
-copy of the state before it, its allocation, and the copy of the state after it.  Within the
-limits, a copy of a state costs at most `9 · D + 8 · L + 4,320` bytes, and a step at most
-`200 · (L + D) + 1,000,500` bytes: a step that consumes input pushes at most 4,096 bytes onto the
-pending line at 80 bytes each and completes at most one line.  `limitMemory L D` covers both
-copies and the step, as `limitMemory_room` proves:
-`2 · (9 · D + 8 · L + 4,320) + 200 · (L + D) + 1,000,500 ≤ 220 · (L + D) + 1,010,000`.  These
+The process compacts its state after `begin`, and after a step when the heap above its base
+exceeds four times the state's copy cost: it copies the state above the heap's top and moves the
+copy down to the heap's base, the heap top when `_start` began.  Between steps the heap above its
+base holds at most four times the state's copy cost, so the memory a run needs does not grow with
+the number of lines or the total length of the input.  Each step needs memory for four copies of
+the state before it, its allocation, and the copy of the state after it.  Within the limits, a copy of a
+state costs at most `9 · D + 8 · L + 4,320` bytes, and a step at most `170 · (L + D) + 960,000`
+bytes: a step that consumes input pushes at most 4,096 bytes onto the pending line at 80 bytes
+each and completes at most one line, and the step takes the state owned, so it copies none of it.
+`limitMemory L D` covers the five copies and the step, as `limitMemory_room` proves:
+`5 · (9 · D + 8 · L + 4,320) + 170 · (L + D) + 960,000 ≤ 220 · (L + D) + 1,010,000`.  These
 bounds concern native states and stream positions, and the invariant `LimitInv L D` preserves them
 at every step.
 
