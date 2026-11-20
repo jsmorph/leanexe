@@ -42,10 +42,10 @@ theorem afterWrite_bound (state : State) (reply : WriteResult) :
     io.pureSources.afterWrite.bound (⟨state⟩, reply) = 0 :=
   io.pureSources.afterWrite.bound_eq state reply
 
-/-- `afterRead` takes the state and the reply owned and allocates the line's copy of the bytes
+/-- `afterRead` takes the state owned, reads the reply, and allocates the copy of the bytes
 read. -/
 theorem afterRead_bound_le (state : State) (reply : FillResult) :
-    io.pureSources.afterRead.bound (⟨state⟩, ⟨reply⟩) ≤
+    io.pureSources.afterRead.bound (⟨state⟩, reply) ≤
       Bytes.allocationCost reply.count.toNat := by
   rw [io.pureSources.afterRead.bound_eq]
   split <;> omega
@@ -187,7 +187,7 @@ def writeCharge (state : State) : Nat :=
   stateTy.copyCost (sourceState state)
 
 /-- The charge of the read step from `state`: the read's buffer of 4,096 bytes, which the read
-fills in place, the copy of the state at the call of `afterRead`, and the line's copy of the bytes
+fills in place, the copy of the state at the call of `afterRead`, and the state's copy of the bytes
 read. -/
 def readCharge (state : State) : Nat :=
   Bytes.allocationCost 4096 + (stateTy.copyCost (sourceState state) + Bytes.allocationCost 4096)
@@ -303,7 +303,7 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) (st
       Expr.ownedCost, Var.ownedCost, modeAt, letPairModes, Mode.join, List.getD_cons_zero,
       Args.get_cons_zero', Args.get_cons_succ, List.getD_cons_succ, Var.index_ofIndex]
     show stateTy.copyCost (sourceState state) +
-      io.pureSources.afterRead.bound (⟨state⟩, ⟨⟨value.1, value.2.1, value.2.2⟩⟩) ≤ _
+      io.pureSources.afterRead.bound (⟨state⟩, ⟨value.1, value.2.1, value.2.2⟩) ≤ _
     have afterRead := afterRead_bound_le state ⟨value.1, value.2.1, value.2.2⟩
     have bytes := allocationCost_mono size
     dsimp only at afterRead

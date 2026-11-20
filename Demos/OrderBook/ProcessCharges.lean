@@ -51,7 +51,7 @@ computes them once, so that the charges of the effect bodies read a list rather 
 `Prog.flags`, which the elaborator would do over the bodies of every earlier function at each
 call. -/
 theorem flags_toList : io.pure.program.flags.toList =
-    [([true, true], false), ([false, false], false), ([true, false, false, false, false], false),
+    [([true, false], false), ([false, false], false), ([true, false, false, false, false], false),
       ([false, false, false, false], false), ([false], false),
       ([false, false, false], false), ([], false),
       ([true, true, true, true, true, true, true, false, false, false], false),
@@ -131,7 +131,7 @@ theorem afterRead_cost_le {R : Nat} {s : State}
         s.nextId, s.count, ws) ≤ R)
     (carrySmall : s.carry.data.size < 56) (reply : FillResult)
     (size : reply.count.toNat ≤ 4096) :
-    io.pureSources.afterRead.cost (⟨s⟩, ⟨reply⟩) ≤ batchCharge R s := by
+    io.pureSources.afterRead.cost (⟨s⟩, reply) ≤ batchCharge R s := by
   have carryNat : s.carry.size.toNat = s.carry.data.size :=
     Bytes.size_toNat s.carry (Nat.lt_of_lt_of_le carrySmall (by decide))
   rw [io.pureSources.afterRead.cost_eq]
@@ -348,7 +348,7 @@ theorem readStep_bounded {World : Type} (host : Host World) (depth : UInt64) {R 
       List.getD_cons_succ, Var.index_ofIndex]
     read_state
     show stateTy.copyCost (sourceState s) + stateTy.credit (sourceState s) +
-        io.pureSources.afterRead.cost (⟨s⟩, ⟨⟨value.1, value.2.1, value.2.2⟩⟩) ≤
+        io.pureSources.afterRead.cost (⟨s⟩, ⟨value.1, value.2.1, value.2.2⟩) ≤
       stateTy.copyCost (sourceState s) + (stateTy.credit (sourceState s) + batchCharge R s)
     have batch := afterRead_cost_le runLe carrySmall ⟨value.1, value.2.1, value.2.2⟩ size
     omega

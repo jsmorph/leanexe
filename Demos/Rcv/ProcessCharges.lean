@@ -4,11 +4,11 @@ import Verified.Wasi.ResourceRules
 
 /-! The allocation charges of the compiled process's `begin` and steps.  `begin` allocates the
 buffer of `readAll`, of `limit + 4,096` bytes, and then calls `tabulate` on an input of at most
-`limit` bytes or builds a stopped state.  `started` takes the result of `readAll` owned, which
-`begin` moves into it.  A write step allocates the remaining output and copies the state at its
-call of `afterWrite`, which takes the state owned, and a stopping step copies the state.  The WASI
-compilation's bound of `tabulate` is the bound of `Demos.Rcv.TabulateProgram.compiled`,
-definitionally (`tabulate_bound_eq`), so `TabulateProgram.tabulate_bound` closes it. -/
+`limit` bytes or builds a stopped state.  A write step allocates the remaining output and copies
+the state at its call of `afterWrite`, which takes the state owned, and a stopping step copies the
+state.  The WASI compilation's bound of `tabulate` is the bound of
+`Demos.Rcv.TabulateProgram.compiled`, definitionally (`tabulate_bound_eq`), so
+`TabulateProgram.tabulate_bound` closes it. -/
 
 namespace Demos.Rcv.Process
 
@@ -29,7 +29,7 @@ theorem afterWrite_bound (s : State) (reply : WriteResult) :
 def startedCharge : Nat := 80 * 50000000 + 33702909
 
 theorem started_bound_le (input : ReadResult) (small : input.bytes.data.size < 2 ^ 32) :
-    io.pureSources.started.bound ⟨input⟩ ≤ startedCharge := by
+    io.pureSources.started.bound input ≤ startedCharge := by
   have bytesNat : input.bytes.size.toNat = input.bytes.data.size :=
     Bytes.size_toNat input.bytes (by omega)
   rw [io.pureSources.started.bound_eq]
@@ -171,10 +171,8 @@ theorem begin_body_bounded {World : Type} (host : Host World) :
     simp only [bindModes, ResultTy.bindEnv]
     simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg, Expr.allocs,
       Var.cost, Expr.mode, argsSum, callCredits, ↓reduceIte, Nat.add_zero, Nat.zero_add,
-      coerceCost, Expr.ownedCost, Var.ownedCost, modeAt, letPairModes, Mode.join,
-      Args.get_cons_zero', Args.get_cons_succ, List.getD_cons_zero, List.getD_cons_succ,
-      Var.index_ofIndex]
-    show io.pureSources.started.bound ⟨⟨value.1, value.2⟩⟩ ≤ _
+      coerceCost]
+    show io.pureSources.started.bound ⟨value.1, value.2⟩ ≤ _
     change value.2.data.size ≤ 50000000 + 4096 at size
     exact started_bound_le ⟨value.1, value.2⟩ (show value.2.data.size < 2 ^ 32 by omega)
 

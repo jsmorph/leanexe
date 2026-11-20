@@ -3,12 +3,13 @@ import Verified.Reflect.Command
 /-! A program of the verified compiler: records with array fields.  A structure
 whose `Flat` tuple holds arrays is represented as that tuple, by `instRepresentOfFlat`, so its
 arrays are passed and returned as a tuple's arrays are.  The programs build records, read their
-fields and elements, also past the end, update a field with `{ r with … }` on a borrowed
-parameter, which copies the array, and in a loop's state, which updates it in place, pass a record
-to a call, destructure one with `match`, choose one with `if`, return one in a pair, and hold one
-record in another.  `Tape`'s `Flat` instance destructures the record with a pattern, `pushPrices`
-extends a field's array in a loop whose state is the record, `heavyPick` returns either its
-borrowed argument or a call's result, and `spanOf` passes a call a record built in place whose
+fields and elements, also past the end, update a field with `{ r with … }` on an owned parameter
+and in a loop's state, both in place, pass a record to a call, destructure one with `match`,
+choose one with `if`, return one in a pair, and hold one record in another.  A record parameter is
+owned when the function updates or returns it, and borrowed when the function only reads it, as
+`bookTotal` does.  `Tape`'s `Flat` instance destructures the record with a pattern, `pushPrices`
+extends a field's array in a loop whose state is the record, `heavyPick` returns either its owned
+argument or a call's result, and `spanOf` passes a call a record built in place whose
 `Flat` tuple ends in two words.  The bound equations of all the functions write the records'
 arrays as fields, such as `b.prices.size`. -/
 
@@ -106,8 +107,8 @@ def moveHead (t : Tape) (k : UInt64) : Tape := { t with head := t.head + k }
 def pushPrices (b : Book) (n : UInt64) : Book :=
   LeanExe.loop n b fun i s => { s with prices := s.prices.push i }
 
-/-- `b` when its total exceeds `n`, and otherwise `fillOrder b 0 n`.  The bound includes the copy
-of `b` that the first branch returns. -/
+/-- `b` when its total exceeds `n`, and otherwise `fillOrder b 0 n`.  `b` is owned, so the first
+branch returns it and the second moves it into `fillOrder`, without a copy. -/
 def heavyPick (b : Book) (n : UInt64) : Book := if bookTotal b > n then b else fillOrder b 0 n
 
 /-- A record whose `Flat` tuple ends in two words. -/
