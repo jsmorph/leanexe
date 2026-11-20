@@ -1,0 +1,60 @@
+{
+  "id": "layer-event-corollaries",
+  "goals": [
+    "a corollary of a WASI command's executable over the layer events of the Linux shim",
+    "Full ls → Counts args ls (q.core.x 0)",
+    "a trapped run of main excluded by a condition on the layer events",
+    "the shape of the layer events: the calls, their counts, and their flags",
+    "List.Forall₂ Mirrors events ls",
+    "∃ q ls, … ∧ (Full ls → Counts …) shown satisfiable by a witness",
+    "cases on Images whose index is [] ++ []"
+  ],
+  "modules": [
+    "Demos.RandomHistogram.NativeCounts",
+    "Demos.RandomChoice.NativeChoices",
+    "Verified.Shim.Trace"
+  ],
+  "declarations": [
+    "Verified.Shim.linuxHost",
+    "Verified.Shim.Images.writeData",
+    "Verified.Shim.Carried",
+    "Verified.Shim.Images",
+    "LeanExe.A64.ElfLoaded",
+    "Demos.RandomHistogram.Full",
+    "Demos.RandomHistogram.Drawing",
+    "Demos.RandomHistogram.OfferedLayer",
+    "Demos.RandomHistogram.Counts",
+    "Demos.RandomHistogram.randomData",
+    "Demos.RandomChoice.Mirrors",
+    "Demos.RandomChoice.Choices",
+    "Demos.RandomChoice.Rounds",
+    "Demos.RandomChoice.Meets"
+  ],
+  "examples": [
+    "Demos.RandomHistogram.linux_footprint_bounded",
+    "Demos.RandomHistogram.main_trapped",
+    "Demos.RandomHistogram.image_untrapped",
+    "Demos.RandomHistogram.linux_exec_counts",
+    "Demos.RandomHistogram.fullReplies",
+    "Demos.RandomHistogram.fullReplies_run",
+    "Demos.RandomHistogram.carried_split",
+    "Demos.RandomHistogram.images_nil",
+    "Demos.RandomChoice.rounds_mirrors",
+    "Demos.RandomChoice.random_mirror",
+    "Demos.RandomChoice.write_mirror",
+    "Demos.RandomChoice.output_count",
+    "Demos.RandomChoice.linux_exec_choices",
+    "Demos.RandomChoice.witness_run"
+  ],
+  "unimported": {
+    "tests/TestSupport/A64/ImageFilesRandomHistogram.lean": [
+      "TestSupport.A64.ImageFilesRandomHistogram.histogram_elf_counts",
+      "TestSupport.A64.ImageFilesRandomHistogram.histogram_elf_runs",
+      "TestSupport.A64.ImageFilesRandomHistogram.histogram_elf_witness"
+    ],
+    "tests/TestSupport/A64/ImageFilesRandomChoice.lean": [
+      "TestSupport.A64.ImageFilesRandomChoice.choice_elf_choices",
+      "TestSupport.A64.ImageFilesRandomChoice.choice_elf_witness"
+    ]
+  }
+}

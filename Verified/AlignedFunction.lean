@@ -1,5 +1,6 @@
 import Verified.AlignedExprCorrect
 import Verified.AlignedEnv
+import Verified.CodeMask
 
 /-!
 The function level under the flag.  `bodyFunction_runsX` is `bodyFunction_runs` with `RunsX` for
@@ -298,7 +299,7 @@ theorem bodyFunction_runsX {strict : Bool} {S : List Sig} {params : List Ty} {re
       (coerceCode (positions body depth) result
         (body.mode ((paramSlots params modes (if depth then 1 else 0)).map Slot.mode)) .owned
         ((if depth then 1 else 0) + widthSum params + body.width) ++ [])))) by
-    simp [bodyFunction, Expr.usesFast_eq]]
+    simp [bodyFunction, Expr.usesFast_eq, Expr.codeMask_eq, testBit_zero_eq]]
   have hl0 : ((bodyFunction modes body depth pos pool).toLocals
       ((if depth then [Value.i64 d] else []) ++ ws)).locals.length =
       body.width + copyWidth result + positions body depth + positions body depth := by

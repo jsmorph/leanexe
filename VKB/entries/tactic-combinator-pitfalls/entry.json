@@ -65,7 +65,13 @@
     "Invalid field … Function after a term whose type is a definition that begins with implicit binders",
     "don't know how to synthesize implicit argument in have h := f x for a definition whose body begins with implicit binders",
     "motive is not type correct from rw with p ↔ q at the condition of an if",
-    "congr 2 exceeds maxHeartbeats after a definition that a hypothesis names grew"
+    "congr 2 exceeds maxHeartbeats after a definition that a hypothesis names grew",
+    "⟨fun _ h => nomatch h, fun a h => ?_⟩ reported as a missing field of And.intro",
+    "min ( fails to parse with an expected { after an import of the SHA-2 specification",
+    "omega fails with UInt64.size as an atom",
+    "rw [List.take_add_one] rewrites the take of a numeral",
+    "cases on Outcome.returned of a large term reaches the maximum recursion depth",
+    "generalize changes nothing inside a structure hypothesis"
   ],
   "modules": [
     "Demos.Orbit.LambertTime",
@@ -94,7 +100,12 @@
     "Verified.Shim",
     "LeanExe.A64.Proof.Constructs",
     "Verified.ShimA64",
-    "Verified.Examples.WasiReadAllSteady"
+    "Verified.Examples.WasiReadAllSteady",
+    "Demos.RandomHistogram.CommandProof",
+    "Demos.ManifestCheck.CommandProof",
+    "Demos.RandomChoice.CommandProof",
+    "Demos.RandomChoice.Proof",
+    "Demos.ManifestCheck.Proof"
   ],
   "declarations": [
     "Lean.Elab.Tactic.evalFirst",
@@ -177,7 +188,12 @@
     "LeanExe.A64.frameSteps",
     "Verified.ShimA64.held_byte",
     "Eq.refl",
-    "HEq.refl"
+    "HEq.refl",
+    "List.take_add_one",
+    "UInt64.size",
+    "Demos.ManifestCheck.Hashed",
+    "LeanExe.Wasi.Outcome.returned.inj",
+    "Min.min"
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
@@ -214,7 +230,14 @@
     "LeanExe.A64.run_sizesStub",
     "Verified.Examples.WasiReadAll.SteadyAlong",
     "Verified.ShimA64.closeStub_sim",
-    "Verified.ShimA64.run_handleChecked"
+    "Verified.ShimA64.run_handleChecked",
+    "Demos.RandomHistogram.tally_eq",
+    "Demos.ManifestCheck.toNat_ofNat",
+    "Demos.RandomChoice.digitByte_word",
+    "Demos.ManifestCheck.hashed_finish",
+    "Demos.ManifestCheck.hash_loop",
+    "Demos.RandomHistogram.args_returned",
+    "Demos.RandomChoice.writes_of_run"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [

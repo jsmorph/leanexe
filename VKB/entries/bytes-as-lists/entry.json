@@ -6,13 +6,18 @@
     "heap.Buffer store root ⟨⟨bs.toArray⟩⟩",
     "{ toList := b.data.toList }.size left by rw [Array.length_toList]",
     "Possibly looping simp theorem with ByteArray.size and ByteArray.size_data",
-    "Type mismatch: After simplification, i < { data := l.toArray }.size"
+    "Type mismatch: After simplification, i < { data := l.toArray }.size",
+    "b.get p for a variable buffer, read as an element of b.data.data.toList",
+    "rw [Array.length_toList] rewrites the length of another list"
   ],
   "modules": [
     "LeanExe.A64.Proof.BytesRuns",
     "Demos.Rcv.ReadProgramProof",
     "Demos.StreamFold.Bytes",
-    "Demos.Rcv.Read"
+    "Demos.Rcv.Read",
+    "LeanExe.Dialect.BytesLemmas",
+    "Demos.ManifestCheck.Proof",
+    "Library.Hashing.Sha256.StreamProof"
   ],
   "declarations": [
     "LeanExe.Bytes.get",
@@ -29,7 +34,12 @@
     "ByteArray.size",
     "ByteArray.size_data",
     "ByteArray.getElem_eq_getElem_data",
-    "dite_eq_left"
+    "dite_eq_left",
+    "LeanExe.Bytes.get_eq_getD",
+    "LeanExe.Bytes.get_eq_get!",
+    "LeanExe.Bytes.get!_eq_getD",
+    "LeanExe.Bytes.get!_of_lt",
+    "LeanExe.Bytes.get!_of_le"
   ],
   "examples": [
     "Demos.Rcv.ReadProgram.bytesOf",
@@ -37,7 +47,10 @@
     "Demos.Rcv.ReadProgram.get_eq",
     "Demos.StreamFold.byteWords",
     "Demos.StreamFold.byteWords_get",
-    "Demos.Rcv.Spec.reportFile"
+    "Demos.Rcv.Spec.reportFile",
+    "Demos.ManifestCheck.lineOk_iff",
+    "Demos.ManifestCheck.hexMatches_eq",
+    "Library.Hashing.Sha256.byteWord_toUInt32"
   ],
   "unimported": {
     "tests/TestSupport/A64/Flip.lean": [

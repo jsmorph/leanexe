@@ -176,7 +176,8 @@ theorem TailFunc.function_runsX {strict : Bool} {S : List Sig} (func : TailFunc 
           1 0) [] []] [] []] ++
       loadCode func.positions
         ((if func.depth then 1 else 0) + widthSum func.params + widthSum func.params)
-        func.result.types)))) by simp only [TailFunc.function, List.append_assoc]]
+        func.result.types)))) by
+      simp only [TailFunc.function, TailBody.codeMask_eq, List.append_assoc]]
   have hl0 : ((func.function (pool := pool) pos).toLocals
       ((if func.depth then [Value.i64 d] else []) ++ ws)).locals.length =
       widthSum func.params + func.result.width + func.body.width func.modes +

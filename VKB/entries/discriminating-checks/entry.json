@@ -17,7 +17,9 @@
     "an exit status that names a step and a check of a test run under Wasmtime 44",
     "a frame test of system-call descriptions against guard pages",
     "a wrong call number whose call writes the same shape as the described call",
-    "a recognizer of a reflected operand tested only on hand-written commands in an empty context"
+    "a recognizer of a reflected operand tested only on hand-written commands in an empty context",
+    "a short write or a rare reply of Linux provoked in a native run",
+    "strace -e inject=getrandom:retval=4096 and inject=write:retval=0"
   ],
   "modules": [
     "Verified.Wasi.HandleCheck",

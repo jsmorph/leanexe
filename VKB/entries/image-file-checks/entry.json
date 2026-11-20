@@ -8,7 +8,8 @@
     "file_nat% \"NAME.img\"",
     "memory exhaustion in the kernel's check of an image file",
     "LeanExe.A64.bytesOk (LeanExe.A64.genBytesImage m k inMax room cap imageBase) n len = true",
-    "the memory cap for the kernel check of a large A64 Image"
+    "the memory cap for the kernel check of a large A64 Image",
+    "bytesOk (genWasiElf command.module startIndex wasiRoom wasiCap) n len = true for a demo's command"
   ],
   "modules": [
     "LeanExe.FileNat",
@@ -20,7 +21,8 @@
     "LeanExe.M7.Parts",
     "LeanExe.M7.Proof.Parts",
     "LeanExe.Proof.Area",
-    "TestSupport.M7.GwLoop"
+    "TestSupport.M7.GwLoop",
+    "LeanExe.A64.Wasi"
   ],
   "declarations": [
     "LeanExe.FileNat.natOfBytes",
@@ -50,10 +52,16 @@
     "LeanExe.memPrefix",
     "LeanExe.memPrefix_agrees",
     "LeanExe.A64.genInImage",
-    "LeanExe.A64.genBytesImage"
+    "LeanExe.A64.genBytesImage",
+    "LeanExe.A64.genWasiElf"
   ],
   "examples": [
     "TestSupport.M7.Gw.gwSizes",
     "TestSupport.M7.Gw.gw_count"
-  ]
+  ],
+  "unimported": {
+    "tests/TestSupport/A64/ImageFilesRandomHistogram.lean": [
+      "TestSupport.A64.ImageFilesRandomHistogram.histogram_elf_file"
+    ]
+  }
 }

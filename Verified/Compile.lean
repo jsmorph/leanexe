@@ -277,6 +277,24 @@ variables of types `Γ` in the slots `slots`. -/
 def releaseWhere (Γ : List Ty) (slots : List Slot) (sel : Nat → Bool) : Program :=
   ((List.range Γ.length).filter sel).flatMap (releaseVar Γ slots)
 
+/-- The bits of `a` that `b` does not set. -/
+def maskDiff (a b : Nat) : Nat := a ^^^ (a &&& b)
+
+/-- The bits of `m` when `b` holds, and none otherwise. -/
+def maskIf (b : Bool) (m : Nat) : Nat := if b then m else 0
+
+/-- `releaseWhere` on the selector of the set bits of `mask`: the instructions that release the
+owned variables whose bits `mask` sets, by increasing index, among the variables of types `Γ` in
+the slots `slots`.  It walks the types and the slots together and stops after the highest set
+bit, so that its steps grow with the highest index that it releases, where `releaseWhere` asks
+its selector about every variable of the context.  `releaseMask_eq` equates the two. -/
+def releaseMask : List Ty → List Slot → Nat → Program
+  | [], _, _ => []
+  | t :: Γ, slots, mask =>
+    if mask = 0 then [] else
+      (if mask.testBit 0 then releaseVar (t :: Γ) slots 0 else []) ++
+        releaseMask Γ slots.tail (mask >>> 1)
+
 /-- The instructions that push the words of variable `x`: a copy when it is owned and stays live
 in `live`, and its own words otherwise, which move it when it is owned. -/
 def Var.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) {Γ : List Ty}
@@ -486,6 +504,32 @@ def loopCode (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
     releaseWhere Γ slots (fun i => (cond.usesFast (i + 1) || body.usesFast (i + 2)) && !live i) ++
     loadCode h (base + 2) t.types
 
+/-- `loopCode` with the variables live after the loop, and those that the code closures receive,
+as bitmasks. -/
+def loopCodeMask (h : Nat) (slots : List Slot) (base : Nat) (live : Nat)
+    {Γ : List Ty} {t : Ty} (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool)
+    (body : Expr S (t :: .word :: Γ) t)
+    (countCode initCode condCode bodyCode : List Slot → Nat → Nat → Program) : Program :=
+  let modes := slots.map Slot.mode
+  let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
+  let all := live ||| cond.useMask >>> 1 ||| body.useMask >>> 2
+  countCode slots base (all ||| init.useMask) ++
+    [.localSet base] ++ initCode slots (base + 1) all ++
+    coerceCode h t (init.mode modes) mode (base + 1) ++
+    storeCode h (base + 2) t.types ++ [.constI64 0, .localSet (base + 1),
+      .block 0 0 [.loop 0 0 ([.localGet (base + 1), .localGet base, .geUI64, .br_if 1] ++
+        condCode (⟨base + 2, .borrowed⟩ :: slots) (base + 2 + t.width) (1 ||| all <<< 1) ++
+        [.eqzI64, .br_if 1] ++
+        (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t (base + 2) else []) ++
+        bodyCode (⟨base + 2, mode⟩ :: ⟨base + 1, .borrowed⟩ :: slots)
+          (base + 2 + t.width) (all <<< 2) ++
+        coerceCode h t (body.mode (mode :: .borrowed :: modes)) mode (base + 2 + t.width) ++
+        storeCode h (base + 2) t.types ++
+        [.localGet (base + 1), .constI64 1, .addI64, .localSet (base + 1), .br 0]) [] []]
+        [] []] ++
+    releaseMask Γ slots (maskDiff (cond.useMask >>> 1 ||| body.useMask >>> 2) live) ++
+    loadCode h (base + 2) t.types
+
 def tailSig (params : List Ty) (result : Ty) (modes : List Mode) : Sig :=
   ⟨params, result, true, modes, false⟩
 
@@ -578,6 +622,107 @@ def ListFold.loopCode {S : List Sig} {e : Elem} {captures : List Ty}
   [.block 0 0 [.loop 0 0
     (releaseWhere (ListFold.params e captures) stateSlots (fun i => !tail.usesFast i) ++
       tail.codeWith (ListFold.leafCode h bodyCode) [] h stateBase resultBase stateSlots
+        (resultBase + e.width) 1 0)
+    [] []] [] []]
+
+/-- `TailBody.codeWith` with the variables live after each expression as a bitmask, which
+`exprCode` receives: each set of live variables is the union or difference of the masks of the
+reads of the parts, and each release is the `releaseMask` of the variables that die there. -/
+def TailBody.codeWithMask
+    (exprCode : {Γ : List Ty} → {t : Ty} → Expr S Γ t → List Slot → Nat → Nat → Program)
+    (targetModes : List Mode) (h p0 resultBase : Nat) :
+    {Γ : List Ty} → TailBody S params result Γ → List Slot → Nat → Nat → Nat → Program
+  | _, .ret value, slots, base, exitLabel, _ =>
+    exprCode value slots base 0 ++
+      coerceCode h result (value.mode (slots.map Slot.mode)) .owned base ++
+      storeCode h resultBase result.types ++ [.br exitLabel]
+  | Γ, .next args, slots, base, _, nextLabel =>
+    let g := tailSig params result targetModes
+    let all := argsMask fun j => (args j).useMask
+    let kept := maskDiff all (argsMask fun j =>
+      maskIf (callMoves slots (fun _ => false) (g := g) args j) (args j).useMask)
+    argsCode (fun i =>
+      if (params.get i).scalar then exprCode (args i) slots base all
+      else if paramMode params targetModes i = .owned then
+        (args i).ownedCode h slots base kept.testBit
+      else (args i).placeCode h slots) ++
+      releaseMask Γ slots kept ++ storeParamsCode h p0 params ++ [.br nextLabel]
+  | Γ, .ite cond yes no, slots, base, exitLabel, nextLabel =>
+    let mid := yes.useMask ||| no.useMask
+    exprCode cond slots base mid ++
+      [.eqzI64, .iff 0 0
+        (releaseMask Γ slots (maskDiff mid no.useMask) ++
+          no.codeWithMask exprCode targetModes h p0 resultBase slots base (exitLabel + 1)
+            (nextLabel + 1))
+        (releaseMask Γ slots (maskDiff mid yes.useMask) ++
+          yes.codeWithMask exprCode targetModes h p0 resultBase slots base (exitLabel + 1)
+            (nextLabel + 1)) [] []]
+  | _, .letE (t := t) value body, slots, base, exitLabel, nextLabel =>
+    let mode := value.mode (slots.map Slot.mode)
+    exprCode value slots (base + t.width) (body.useMask >>> 1) ++
+      storeCode h base t.types ++
+      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t base else []) ++
+      body.codeWithMask exprCode targetModes h p0 resultBase (⟨base, mode⟩ :: slots)
+        (base + t.width) exitLabel nextLabel
+  | _, .letPair (s := s) (t := t) value body, slots, base, exitLabel, nextLabel =>
+    let mode := value.mode (slots.map Slot.mode)
+    exprCode value slots (base + s.width + t.width) (body.useMask >>> 2) ++
+      storeCode h (base + s.width) t.types ++ storeCode h base s.types ++
+      (if mode = .owned ∧ body.usesFast 1 = false then releaseCode s base else []) ++
+      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t (base + s.width) else []) ++
+      body.codeWithMask exprCode targetModes h p0 resultBase
+        (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots) (base + s.width + t.width) exitLabel
+        nextLabel
+  | Γ, .treeCase (shape := shape) x empty nodes, slots, base, exitLabel, nextLabel =>
+    let rootMode := (slots.getD x.index default).mode
+    let emptyUses := if hn : shape.hasNull = true then (empty hn).useMask else 0
+    let nodeLive := fun r => (nodes r).useMask >>> shape.bindCount r
+    let mid := 1 <<< x.index ||| emptyUses ||| argsMask nodeLive
+    let depth := fun r : Fin shape.records => if r.val + 1 < shape.records then r.val + 1 else r.val
+    let labels := (if shape.hasNull then 1 else 0)
+    let nodeCode := fun r : Fin shape.records =>
+      releaseMask Γ slots (maskDiff mid (nodeLive r ||| 1 <<< x.index)) ++
+        x.code h slots (base + shape.bindWidth r) (nodeLive r).testBit ++ [.localSet base] ++
+        treeLoadFields h base (shape.wordTypes r) (base + 1)
+          (base + 1 + shape.words r) shape.fieldStart (shape.fields r) ++
+        treeLoadHeaps base (shape.kinds r) (base + 1 + shape.words r + shape.children r)
+          (base + 1 + shape.words r + shape.children r + shape.arrays r)
+          (shape.fieldStart + (shape.fields r).length) ++
+        (if rootMode = .owned then
+          LeanExe.Runtime.headerStore base 8 [.constI64 0] else []) ++
+        releaseMask (shape.context r Γ) (shape.slots r base rootMode slots)
+          (maskDiff (2 ^ shape.bindCount r - 1) (nodes r).useMask) ++
+        (nodes r).codeWithMask exprCode targetModes h p0 resultBase
+          (shape.slots r base rootMode slots) (base + shape.bindWidth r)
+          (exitLabel + labels + depth r) (nextLabel + labels + depth r)
+    let recordsCode := shape.dispatchCode (slots.getD x.index default).loc nodeCode
+    if hn : shape.hasNull = true then
+      [.localGet (slots.getD x.index default).loc, .eqzI64, .iff 0 0
+        (releaseMask Γ slots (maskDiff mid emptyUses) ++
+          (empty hn).codeWithMask exprCode targetModes h p0 resultBase slots base (exitLabel + 1)
+            (nextLabel + 1))
+        recordsCode [] []]
+    else recordsCode
+
+/-- `ListFold.leafCode` with the variables live after the body as a bitmask. -/
+def ListFold.leafCodeMask {S : List Sig} (h : Nat)
+    (bodyCode : List Slot → Nat → Nat → Program)
+    {Γ : List Ty} {t : Ty} (value : Expr S Γ t) (slots : List Slot)
+    (base : Nat) (live : Nat) : Program :=
+  match value with
+  | .var x => x.code h slots base live.testBit
+  | _ => bodyCode slots base live
+
+/-- `ListFold.loopCode` through `TailBody.codeWithMask`. -/
+def ListFold.loopCodeMask {S : List Sig} {e : Elem} {captures : List Ty}
+    (body : Expr S (ListFold.context e captures) (.elem e)) (h stateBase : Nat)
+    (bodyCode : List Slot → Nat → Nat → Program) : Program :=
+  let stateSlots := paramSlots (ListFold.params e captures) [] stateBase
+  let resultBase := stateBase + widthSum (ListFold.params e captures)
+  let tail := ListFold.tailBody body
+  [.block 0 0 [.loop 0 0
+    (releaseWhere (ListFold.params e captures) stateSlots (fun i => !tail.usesFast i) ++
+      tail.codeWithMask (ListFold.leafCodeMask h bodyCode) [] h stateBase resultBase stateSlots
         (resultBase + e.width) 1 0)
     [] []] [] []]
 
@@ -938,6 +1083,303 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
   | _, _, .proj (e' := e') x p =>
     loadCode h ((slots.getD x.index default).loc + p.offset) e'.types
 
+/-- `Expr.code` with the variables live after the expression as a bitmask: each set of live
+variables that `Expr.code` builds from `live` and the reads of subexpressions is the union, shift,
+or difference of their masks, and each release is the `releaseMask` of the mask of the variables
+that die there.  An expression without subexpressions is its `Expr.code` under `live.testBit`.
+The kernel evaluates the code generator in every byte theorem, and a set of live variables as a
+function costs it a walk through the closures that built the set for each variable that the code
+asks about, so `bodyFunction` and `TailFunc.function` call this form.  `Expr.codeMask_eq` equates
+it with `Expr.code`, which the proofs unfold. -/
+def Expr.codeMask (h : Nat) (slots : List Slot) (base : Nat) (live : Nat)
+    (pool : Bytes.LiteralPool) :
+    {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
+  | _, _, e@(.word _) | _, _, e@.bytesEmpty | _, _, e@(.bytesLiteral _)
+  | _, _, e@(.bytesSize _) | _, _, e@(.treeNil _ _) | _, _, e@(.bool _)
+  | _, _, e@(.float32 _) | _, _, e@(.float _) | _, _, e@(.var _) | _, _, e@(.size _)
+  | _, _, e@(.leSize _ _) | _, _, e@(.proj _ _) =>
+    e.code (pool := pool) h slots base live.testBit
+  | _, _, .bytesGet x index =>
+    index.codeMask h slots base (live ||| 1 <<< x.index) pool ++ [.localSet base] ++
+      Bytes.getCode (slots.getD x.index default).loc
+        ((slots.getD x.index default).loc + 1) base ++
+      (if (slots.getD x.index default).mode = .owned ∧ live.testBit x.index = false then
+        releaseCode .bytes (slots.getD x.index default).loc else [])
+  | Γ, _, .bytesBuild count elem =>
+    let all := live ||| elem.useMask >>> 1
+    count.codeMask h slots base all pool ++ [.localSet base] ++
+      Bytes.buildCode base (base + 1) (base + 2)
+        (elem.codeMask h (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (all <<< 1) pool) ++
+      releaseMask Γ slots (maskDiff (elem.useMask >>> 1) live)
+  | _, _, .bytesSet x index value =>
+    index.codeMask h slots base (live ||| 1 <<< x.index ||| value.useMask) pool ++
+      [.localSet base] ++
+      value.codeMask h slots (base + 1) (live ||| 1 <<< x.index) pool ++
+      [.localSet (base + 1)] ++ x.ownedCode h slots (base + 2) live.testBit ++
+      [.localSet (base + 3), .localSet (base + 2), .localGet base, .localGet (base + 3), .ltUI64,
+        .iff 0 0 [.localGet (base + 2), .localGet base, .addI64, .wrapI64, .localGet (base + 1),
+          .wrapI64, .store8 0] [] [] [],
+        .localGet (base + 2), .localGet (base + 3)]
+  | _, _, .treeNode (shape := shape) r reuse words arrays buffers children =>
+    let modes := slots.map Slot.mode
+    let scratch := base + shape.bindWidth r
+    let kept := live ||| optionVarMask reuse
+    argsCode (fun i =>
+      (words i).codeMask h slots scratch (kept |||
+        (argsMask fun j => maskIf (decide (i.val < j.val)) (words j).useMask) |||
+        (argsMask fun j => (children j).useMask) ||| (argsMask fun j => (arrays j).useMask) |||
+        (argsMask fun j => (buffers j).useMask)) pool ++
+        storeCode h (base + 1 + i.val) (shape.wordTy r i).types) ++
+    argsCode (fun i =>
+      (children i).codeMask h slots scratch (kept |||
+        (argsMask fun j => maskIf (decide (i.val < j.val)) (children j).useMask) |||
+        (argsMask fun j => (arrays j).useMask) ||| (argsMask fun j => (buffers j).useMask)) pool ++
+      coerceCode h (.tree shape) ((children i).mode modes) .owned scratch ++
+      [.localSet (base + 1 + shape.words r + i.val)]) ++
+    argsCode (fun i =>
+      (arrays i).codeMask h slots scratch (kept |||
+        (argsMask fun j => maskIf (decide (i.val < j.val)) (arrays j).useMask) |||
+        (argsMask fun j => (buffers j).useMask)) pool ++
+      coerceCode h (shape.arrayTy r i) ((arrays i).mode modes) .owned scratch ++
+      [.localSet (base + 1 + shape.words r + shape.children r + i.val)]) ++
+    argsCode (fun i =>
+      (buffers i).codeMask h slots scratch (kept |||
+        (argsMask fun j => maskIf (decide (i.val < j.val)) (buffers j).useMask)) pool ++
+      coerceCode h .bytes ((buffers i).mode modes) .owned scratch ++
+      storeCode h (base + 1 + shape.words r + shape.children r + shape.arrays r + 2 * i.val)
+        Ty.bytes.types ++
+      Bytes.normalizeCode (base + 1 + shape.words r + shape.children r + shape.arrays r + 2 * i.val)
+        (base + 1 + shape.words r + shape.children r + shape.arrays r + 2 * i.val + 1)) ++
+    (match reuse with
+      | some x =>
+        if (slots.getD x.index default).mode = .owned ∧ live.testBit x.index = false then
+          [.localGet (slots.getD x.index default).loc, .localSet base]
+        else [.constI64 (UInt64.ofNat (8 * shape.width r)), .call 0, .localSet base]
+      | none => [.constI64 (UInt64.ofNat (8 * shape.width r)), .call 0, .localSet base]) ++
+    shape.tagStoreCode r base ++
+    treeStoreFields h base (shape.wordTypes r) (base + 1) (base + 1 + shape.words r)
+      shape.fieldStart (shape.fields r) ++
+    treeStoreHeaps base (shape.kinds r) (base + 1 + shape.words r + shape.children r)
+      (base + 1 + shape.words r + shape.children r + shape.arrays r)
+      (shape.fieldStart + (shape.fields r).length) ++
+    LeanExe.Runtime.headerStore base 24 [.constI64 1] ++
+    LeanExe.Runtime.headerStore base 16 [.constI64 (UInt64.ofNat (shape.width r))] ++
+    LeanExe.Runtime.headerStore base 8 [.constI64 (shape.mask r)] ++ [.localGet base]
+  | Γ, _, .treeCase (shape := shape) (t := t) x empty nodes =>
+    let modes := slots.map Slot.mode
+    let rootMode := (slots.getD x.index default).mode
+    let nodeModes := fun r => shape.modes r rootMode modes
+    let emptyMode := if hn : shape.hasNull = true then (empty hn).mode modes else .borrowed
+    let resultMode := recordsJoin (fun r => (nodes r).mode (nodeModes r)) emptyMode
+    let fieldBase := base + t.width
+    let emptyUses := if hn : shape.hasNull = true then (empty hn).useMask else 0
+    let nodeUses := fun r => (nodes r).useMask >>> shape.bindCount r
+    let mid := live ||| 1 <<< x.index ||| emptyUses ||| argsMask nodeUses
+    let nodeCode := fun r : Fin shape.records =>
+      let scratch := fieldBase + shape.bindWidth r
+      releaseMask Γ slots (maskDiff mid ((live ||| nodeUses r) ||| 1 <<< x.index)) ++
+        x.code h slots scratch (live ||| nodeUses r).testBit ++ [.localSet fieldBase] ++
+        treeLoadFields h fieldBase (shape.wordTypes r) (fieldBase + 1)
+          (fieldBase + 1 + shape.words r) shape.fieldStart (shape.fields r) ++
+        treeLoadHeaps fieldBase (shape.kinds r) (fieldBase + 1 + shape.words r + shape.children r)
+          (fieldBase + 1 + shape.words r + shape.children r + shape.arrays r)
+          (shape.fieldStart + (shape.fields r).length) ++
+        (if rootMode = .owned then
+          LeanExe.Runtime.headerStore fieldBase 8 [.constI64 0] else []) ++
+        releaseMask (shape.context r Γ) (shape.slots r fieldBase rootMode slots)
+          (maskDiff (2 ^ shape.bindCount r - 1) (nodes r).useMask) ++
+        (nodes r).codeMask h (shape.slots r fieldBase rootMode slots) scratch
+          (live <<< shape.bindCount r) pool ++
+        coerceCode h t ((nodes r).mode (nodeModes r)) resultMode scratch ++ storeCode h base t.types
+    let recordsCode := shape.dispatchCode (slots.getD x.index default).loc nodeCode
+    (if hn : shape.hasNull = true then
+      [.localGet (slots.getD x.index default).loc, .eqzI64, .iff 0 0
+        (releaseMask Γ slots (maskDiff mid (live ||| emptyUses)) ++
+          (empty hn).codeMask h slots fieldBase live pool ++
+          coerceCode h t ((empty hn).mode modes) resultMode fieldBase ++ storeCode h base t.types)
+        recordsCode [] []]
+    else recordsCode) ++ loadCode h base t.types
+  | _, _, .fbin op left right =>
+    left.codeMask h slots base (live ||| right.useMask) pool ++
+      right.codeMask h slots base live pool ++ [op.instr]
+  | _, _, .funary op e => op.code (e.codeMask h slots base live pool)
+  | _, _, .fcmp op left right =>
+    left.codeMask h slots base (live ||| right.useMask) pool ++
+      right.codeMask h slots base live pool ++ [op.instr, .extendUI32]
+  | _, _, .toFloat op e => e.codeMask h slots base live pool ++ op.code
+  | _, _, .toWord op e => e.codeMask h slots base live pool ++ [op.instr]
+  | _, _, .fbin32 op left right =>
+    left.codeMask h slots base (live ||| right.useMask) pool ++
+      right.codeMask h slots base live pool ++ [op.instr32]
+  | _, _, .funary32 op e => op.code (e.codeMask h slots base live pool)
+  | _, _, .fcmp32 op left right =>
+    left.codeMask h slots base (live ||| right.useMask) pool ++
+      right.codeMask h slots base live pool ++ [op.instr32, .extendUI32]
+  | _, _, .toFloat32 op e => e.codeMask h slots base live pool ++ op.code
+  | _, _, .toWord32 op e => e.codeMask h slots base live pool ++ op.code
+  | _, _, .bin op left right =>
+    left.codeMask h slots base (live ||| right.useMask) pool ++
+      right.codeMask h slots base live pool ++ op.code base
+  | _, _, .cmp op left right =>
+    left.codeMask h slots base (live ||| right.useMask) pool ++
+      right.codeMask h slots base live pool ++ [op.instr, .extendUI32]
+  | _, _, .not e => e.codeMask h slots base live pool ++ [.eqzI64, .extendUI32]
+  | _, _, .and left right =>
+    left.codeMask h slots base (live ||| right.useMask) pool ++
+      right.codeMask h slots base live pool ++ [.andI64]
+  | _, _, .or left right =>
+    left.codeMask h slots base (live ||| right.useMask) pool ++
+      right.codeMask h slots base live pool ++ [.orI64]
+  | Γ, _, .ite (t := t) c thenE elseE =>
+    let modes := slots.map Slot.mode
+    let mode := (thenE.mode modes).join (elseE.mode modes)
+    let mid := live ||| thenE.useMask ||| elseE.useMask
+    c.codeMask h slots base mid pool ++
+      [.eqzI64, .iff 0 0
+        (releaseMask Γ slots (maskDiff mid (live ||| elseE.useMask)) ++
+          elseE.codeMask h slots (base + t.width) live pool ++
+          coerceCode h t (elseE.mode modes) mode (base + t.width) ++ storeCode h base t.types)
+        (releaseMask Γ slots (maskDiff mid (live ||| thenE.useMask)) ++
+          thenE.codeMask h slots (base + t.width) live pool ++
+          coerceCode h t (thenE.mode modes) mode (base + t.width) ++ storeCode h base t.types)
+        [] []] ++
+      loadCode h base t.types
+  | _, _, .letE (s := s) value body =>
+    let mode := value.mode (slots.map Slot.mode)
+    value.codeMask h slots (base + s.width) (live ||| body.useMask >>> 1) pool ++
+      storeCode h base s.types ++
+      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode s base else []) ++
+      body.codeMask h (⟨base, mode⟩ :: slots) (base + s.width) (live <<< 1) pool
+  | Γ, _, .call (g := g) f args =>
+    let all := live ||| argsMask fun j => (args j).useMask
+    let kept := maskDiff all (argsMask fun j =>
+      maskIf (callMoves slots live.testBit args j) (args j).useMask)
+    (if g.depth then [.localGet 0, .constI64 1, .addI64] else []) ++
+    argsCode (fun i =>
+      if (g.params.get i).scalar then (args i).codeMask h slots base all pool
+      else if g.mode i = .owned then (args i).ownedCode h slots base kept.testBit
+      else (args i).placeCode h slots) ++
+      [.call f.callIndex] ++
+      releaseMask Γ slots (maskDiff kept live)
+  | _, _, .pair (s := s) (t := t) first second =>
+    let modes := slots.map Slot.mode
+    let mode := (first.mode modes).join (second.mode modes)
+    first.codeMask h slots base (live ||| second.useMask) pool ++
+      coerceCode h s (first.mode modes) mode base ++
+      second.codeMask h slots base live pool ++ coerceCode h t (second.mode modes) mode base
+  | _, _, .letPair (s := s) (t := t) e body =>
+    let mode := e.mode (slots.map Slot.mode)
+    e.codeMask h slots (base + s.width + t.width) (live ||| body.useMask >>> 2) pool ++
+      storeCode h (base + s.width) t.types ++ storeCode h base s.types ++
+      (if mode = .owned ∧ body.usesFast 1 = false then releaseCode s base else []) ++
+      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t (base + s.width) else []) ++
+      body.codeMask h (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots)
+        (base + s.width + t.width) (live <<< 2) pool
+  | _, _, .loop count init cond body =>
+    loopCodeMask h slots base live init cond body
+      (fun slots base live => count.codeMask h slots base live pool)
+      (fun slots base live => init.codeMask h slots base live pool)
+      (fun slots base live => cond.codeMask h slots base live pool)
+      (fun slots base live => body.codeMask h slots base live pool)
+  | Γ, _, .fold (e := e) (t := t) x init body =>
+    loopCodeMask h slots base live init (.bool true) (Expr.foldStep x body)
+      (fun slots _ live => x.sizeCode slots live.testBit)
+      (fun slots base live => init.codeMask h slots base live pool)
+      (fun _ _ _ => [.constI64 1])
+      (fun slots base live =>
+        getCode (Γ := t :: .word :: Γ) slots (base + e.width)
+            (live ||| body.useMask >>> 1).testBit
+            (.there (.there x))
+            (fun live => Var.code (Γ := t :: .word :: Γ) (t := .word)
+              h slots (base + e.width) live (.there .here)) ++
+          storeCode h base e.types ++
+          body.codeMask h (⟨base, .borrowed⟩ :: slots) (base + e.width) (live <<< 1) pool)
+  | Γ, _, .listFold (e := e) (captures := captures) args body =>
+    let all := live ||| argsMask fun j => (args j).useMask
+    argsCode (fun i =>
+      if ((ListFold.params e captures).get i).scalar then (args i).codeMask h slots base all pool
+      else (args i).placeCode h slots) ++
+      storeParamsCode h base (ListFold.params e captures) ++
+      ListFold.loopCodeMask body h base
+        (fun slots base live => body.codeMask h slots base live pool) ++
+      releaseMask Γ slots (maskDiff all live) ++
+      loadCode h (base + widthSum (ListFold.params e captures)) e.types
+  | _, _, .get x i =>
+    getCode slots base live.testBit x (fun _ => i.codeMask h slots base (live ||| 1 <<< x.index) pool)
+  | _, _, .set (e := e) x i v =>
+    i.codeMask h slots base (live ||| 1 <<< x.index ||| v.useMask) pool ++ [.localSet base] ++
+      v.codeMask h slots (base + 1) (live ||| 1 <<< x.index) pool ++
+      storeCode h (base + 1) e.types ++ x.ownedCode h slots (base + 1 + e.width) live.testBit ++
+      [.localSet (base + 1 + e.width), .localGet base, .localGet (base + 1 + e.width), .wrapI64,
+        .load64 0] ++ divCode e.width ++
+      [.ltUI64, .iff 0 0 ([.localGet base] ++ scaleCode e.width ++
+          [.localSet (base + 2 + e.width)] ++
+          storeWordsCode h (base + 1 + e.width) (base + 2 + e.width) 0 (base + 1) e.types) [] [] [],
+        .localGet (base + 1 + e.width)]
+  | _, _, .push (e := e) x v =>
+    v.codeMask h slots base (live ||| 1 <<< x.index) pool ++ storeCode h base e.types ++
+      [.constI64 (wordCount e.width), .localSet (base + e.width)] ++
+      x.roomCode slots (base + e.width + 1) live.testBit (base + e.width) ++
+      storeWordsCode h (base + e.width + 5) (base + e.width + 2) 0 base e.types ++
+      [.localGet (base + e.width + 5)]
+  | Γ, _, .append x y =>
+    [.localGet (slots.getD y.index default).loc, .wrapI64, .load64 0, .localSet base] ++
+      x.roomCode slots (base + 1) (live ||| 1 <<< y.index).testBit base ++
+      [.localGet (base + 5), .localGet (base + 2), .constI64 8, .mulI64, .addI64,
+        .localSet (base + 4)] ++
+      copyIntoCode (slots.getD y.index default).loc (base + 4) base (base + 6) ++
+      releaseMask Γ slots (maskDiff (1 <<< y.index) live) ++ [.localGet (base + 5)]
+  | _, _, .insertAt (e := e) x i v =>
+    i.codeMask h slots base (live ||| 1 <<< x.index ||| v.useMask) pool ++ [.localSet base] ++
+      v.codeMask h slots (base + 1) (live ||| 1 <<< x.index) pool ++
+      storeCode h (base + 1) e.types ++
+      [.constI64 (wordCount e.width), .localSet (base + e.width + 1)] ++
+      x.roomCode slots (base + e.width + 2) live.testBit (base + e.width + 1) ++
+      [.localGet base, .localGet (base + e.width + 3)] ++ divCode e.width ++
+      [.leUI64, .iff 0 0 ([.localGet base] ++ scaleCode e.width ++
+          [.localSet (base + e.width + 4), .localGet (base + e.width + 3),
+            .localSet (base + e.width + 7)] ++
+          shiftUpCode (base + e.width + 6) (base + e.width + 4) (base + e.width + 7) e.width ++
+          storeWordsCode h (base + e.width + 6) (base + e.width + 4) 0 (base + 1) e.types)
+        [.localGet (base + e.width + 6), .wrapI64, .localGet (base + e.width + 3), .store64 0]
+        [] [],
+        .localGet (base + e.width + 6)]
+  | _, _, .eraseAt (e := e) x i =>
+    i.codeMask h slots base (live ||| 1 <<< x.index) pool ++ [.localSet base] ++
+      x.ownedCode h slots (base + 1) live.testBit ++
+      [.localSet (base + 1), .localGet (base + 1), .wrapI64, .load64 0, .localSet (base + 2),
+        .localGet base, .localGet (base + 2)] ++ divCode e.width ++
+      [.ltUI64, .iff 0 0 ([.localGet base] ++ scaleCode e.width ++
+          [.localSet (base + 3), .localGet (base + 2), .localGet (base + 3), .subI64,
+            .constI64 (wordCount e.width), .subI64, .localSet (base + 4),
+            .localGet (base + 1), .localGet (base + 3), .constI64 (wordCount e.width), .addI64,
+            .constI64 8, .mulI64, .addI64, .localSet (base + 5),
+            .localGet (base + 1), .localGet (base + 3), .constI64 8, .mulI64, .addI64,
+            .localSet (base + 6)] ++
+          copyIntoCode (base + 5) (base + 6) (base + 4) (base + 7) ++
+          [.localGet (base + 1), .wrapI64, .localGet (base + 2), .constI64 (wordCount e.width),
+            .subI64, .store64 0]) [] [] [],
+        .localGet (base + 1)]
+  | Γ, _, .build (e := e) count elem =>
+    let all := live ||| elem.useMask >>> 1
+    count.codeMask h slots base all pool ++
+      [.localSet base, .localGet base,
+        .constI64 (UInt64.ofNat ((536870912 + e.width - 1) / e.width)), .geUI64,
+        .iff 0 0 [.unreachable] [] [] [], .localGet base] ++ scaleCode e.width ++
+      [.localSet (base + 2)] ++ allocArrayCode (base + 2) (base + 1) ++
+      [.constI64 0, .localSet (base + 2),
+        .block 0 0 [.loop 0 0 ([.localGet (base + 2), .localGet base, .geUI64, .br_if 1] ++
+          elem.codeMask h (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (all <<< 1) pool ++
+          storeCode h (base + 3) e.types ++ [.localGet (base + 2)] ++ scaleCode e.width ++
+          [.localSet (base + 3 + e.width)] ++
+          storeWordsCode h (base + 1) (base + 3 + e.width) 0 (base + 3) e.types ++
+          [.localGet (base + 2), .constI64 1, .addI64, .localSet (base + 2), .br 0])
+          [] []] [] []] ++
+      releaseMask Γ slots (maskDiff (elem.useMask >>> 1) live) ++ [.localGet (base + 1)]
+  | _, _, .mk first second =>
+    first.codeMask h slots base (live ||| second.useMask) pool ++
+      second.codeMask h slots base live pool
+
 /-- The parameter types of a function's code: its parameters' words, after the call depth when
 the code takes it. -/
 def codeParams (params : List Ty) (depth : Bool) : List ValueType :=
@@ -990,7 +1432,7 @@ def bodyFunction {S : List Sig} {params : List Ty} {result : Ty} (modes : List M
     body := (if depth then guardCode else []) ++
       paramCopyCode h p0 (params.flatMap Ty.types) ++
       releaseWhere params slots (fun i => !body.usesFast i) ++
-      body.code (pool := pool) h slots (p0 + widthSum params) (fun _ => false) ++
+      body.codeMask h slots (p0 + widthSum params) 0 pool ++
       coerceCode h result (body.mode (slots.map Slot.mode)) .owned
         (p0 + widthSum params + body.width)
     results := result.types
@@ -1101,6 +1543,14 @@ def TailBody.code (targetModes : List Mode) (h p0 resultBase : Nat)
   body.codeWith (fun value slots base live => value.code (pool := pool) h slots base live)
     targetModes h p0 resultBase slots base exitLabel nextLabel
 
+/-- `TailBody.code` with `Expr.codeMask`, which `TailFunc.function` calls. -/
+def TailBody.codeMask (targetModes : List Mode) (h p0 resultBase : Nat)
+    {Γ : List Ty} (body : TailBody S params result Γ) (slots : List Slot)
+    (base exitLabel nextLabel : Nat)
+    (pool : Bytes.LiteralPool) : Program :=
+  body.codeWithMask (fun value slots base live => value.codeMask h slots base live pool)
+    targetModes h p0 resultBase slots base exitLabel nextLabel
+
 def TailFunc.positions (func : TailFunc S) : Nat :=
   (if func.depth then 1 else 0) + 2 * widthSum func.params + func.result.width +
     func.body.width func.modes
@@ -1121,7 +1571,7 @@ def TailFunc.function (func : TailFunc S) (typeIdx : Nat)
       loadCode h p0 (func.params.flatMap Ty.types) ++ storeParamsCode h stateBase func.params ++
       [.block 0 0 [.loop 0 0
         (releaseWhere func.params slots (fun i => !func.body.usesFast i) ++
-          func.body.code func.modes h stateBase resultBase slots
+          func.body.codeMask func.modes h stateBase resultBase slots
             (resultBase + func.result.width) 1 0 pool)
         [] []] [] []] ++ loadCode h resultBase func.result.types
     results := func.result.types

@@ -1,0 +1,34 @@
+{
+  "id": "word-counts",
+  "goals": [
+    "(Finset.univ.filter fun w : UInt64 => P w).card",
+    "(Finset.univ.filter fun ws : Fin M → UInt64 => P ws).card",
+    "Fintype.card UInt64 = 2 ^ 64",
+    "a counting form of a Chernoff bound over sequences of words",
+    "2 ^ 1536 ≤ 3 ^ 1025 and other inequalities of large powers"
+  ],
+  "modules": [
+    "Demos.RandomChoice.Unbiased"
+  ],
+  "declarations": [
+    "FinEnum.card_eq_fintypeCard",
+    "FinEnum.card_UInt64",
+    "Finset.card_bij",
+    "Nat.count_modEq_card",
+    "Nat.count_eq_card_filter_range",
+    "Fintype.piFinset",
+    "Fintype.card_piFinset",
+    "Fintype.prod_sum",
+    "Finset.prod_ite",
+    "Finset.prod_const"
+  ],
+  "examples": [
+    "Demos.RandomChoice.card_words",
+    "Demos.RandomChoice.residue_count",
+    "Demos.RandomChoice.picks_count",
+    "Demos.RandomChoice.moment_eq",
+    "Demos.RandomChoice.short_count",
+    "Demos.RandomChoice.pow_margin_gen",
+    "Demos.RandomChoice.pow_margin"
+  ]
+}

@@ -16,7 +16,9 @@
     "the order of an engine's checks, which a probe with one fault in each case does not reveal",
     "openat against openat2 with RESOLVE_BENEATH for a host that must keep paths inside a directory",
     "a constant whose value differs between architectures, such as O_DIRECTORY on arm64 and x86-64",
-    "a call that may return fewer bytes than asked, such as getrandom with a signal pending"
+    "a call that may return fewer bytes than asked, such as getrandom with a signal pending",
+    "the bound of Linux on the strings and pointers of argv and envp",
+    "a getrandom of at most a page that returns every byte"
   ],
   "modules": [
     "LeanExe.M7.Board",
@@ -26,7 +28,8 @@
     "LeanExe.Wasi.Calls",
     "LeanExe.Wasi.CallTable",
     "LeanExe.A64.Proof.LinuxCalls",
-    "Verified.Shim"
+    "Verified.Shim",
+    "Demos.RandomHistogram.Budget"
   ],
   "declarations": [
     "LeanExe.M7.Nucleo.init",
@@ -50,7 +53,8 @@
     "Verified.Shim.openNumbers",
     "Verified.Shim.OpenFlags",
     "Verified.Shim.arm64Flags",
-    "Verified.Shim.RandomCalls"
+    "Verified.Shim.RandomCalls",
+    "Demos.RandomHistogram.argsLimit"
   ],
   "examples": []
 }

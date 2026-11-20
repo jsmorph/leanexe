@@ -10,7 +10,8 @@
     "a premise copied from a tool's configuration",
     "a conclusion modulo whole turns, or an existential that admits a second triple of coordinates",
     "a uniqueness theorem over solutions defined at every real time",
-    "a host contract whose premise admits two requests with the same core arguments"
+    "a host contract whose premise admits two requests with the same core arguments",
+    "∃ pre rest, events = pre ++ rest ∧ facts of rest, met by a later split"
   ],
   "modules": [
     "Demos.Frames.Model",
@@ -24,7 +25,8 @@
     "TestSupport.M7.ShaLoop",
     "Demos.Energy.Window",
     "LeanExe.A64.Isla.Walk",
-    "Verified.Wasi.HostTotalWith"
+    "Verified.Wasi.HostTotalWith",
+    "Demos.RandomChoice.Output"
   ],
   "declarations": [
     "LeanExe.Requests.delim_prefix",
@@ -36,7 +38,8 @@
     "Demos.Frames.Model.IsGeodetic",
     "LeanExe.ProofKit.Signed64Value.toFloat_exact",
     "Library.Numerics.Interval.le_iff_value",
-    "Verified.Wasi.sysContract"
+    "Verified.Wasi.sysContract",
+    "Demos.RandomChoice.Meets"
   ],
   "examples": [
     "Demos.Energy.Spec.admitted_exists",
@@ -45,7 +48,9 @@
     "TestSupport.M7.Gw.board_bytes",
     "Demos.Frames.range_values",
     "Demos.Frames.gmst_sound",
-    "Demos.Orbit.newton_unique"
+    "Demos.Orbit.newton_unique",
+    "Demos.RandomChoice.meets_output",
+    "Demos.RandomChoice.args_writes"
   ],
   "unimported": {
     "tools/sail/F7/Base.lean": [

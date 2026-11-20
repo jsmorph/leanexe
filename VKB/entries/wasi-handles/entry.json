@@ -69,7 +69,9 @@
     "Verified.Reflect.reflect.reflectSplit",
     "LeanExe.Wasi.ArgsResult",
     "LeanExe.Wasi.args",
-    "Verified.Expr.denote"
+    "Verified.Expr.denote",
+    "Verified.Wasi.Command.letPair",
+    "Verified.Wasi.Command.handles"
   ],
   "examples": [
     "Verified.Wasi.Command.handles",
