@@ -20,10 +20,11 @@ def TailBody.demands (targetModes : List Mode) (modes : List Mode) :
     let inner := value.mode modes :: modes
     value.demands (fun i => body.uses (i + 1)) (body.demands targetModes inner 0) k ||
       body.demands targetModes inner (k + 1)
-  | _, .letPair value body, k =>
+  | _, .letPair (s := s) (t := t) value body, k =>
     let inner := value.mode modes :: value.mode modes :: modes
     value.demands (fun i => body.uses (i + 2))
-        (body.demands targetModes inner 0 || body.demands targetModes inner 1) k ||
+        ((!t.scalar && body.demands targetModes inner 0) ||
+          (!s.scalar && body.demands targetModes inner 1)) k ||
       body.demands targetModes inner (k + 2)
   | _, .treeCase (shape := shape) x empty nodes, k =>
     let nodeDemands := fun r : Fin shape.records =>

@@ -6,7 +6,9 @@ buffer, or a tree, alone or in a tuple, is owned when the body consumes it where
 borrowed parameter would be copied: as the array of an update or an extension, at a call that
 moves it into an owned parameter, as the function's result, or through a binding, a branch, a
 pair, or a loop's state into one of these.  The reflector splits a tuple parameter at the
-function's entry, so the body consumes the tuple when it consumes one of its components.  Every
+function's entry, so the body consumes the tuple when it consumes one of its components that holds
+an array, a buffer, or a tree, and a body that returns only a word of the tuple consumes nothing
+of it.  Every
 other parameter is borrowed, so that a caller need not copy an array that the function only
 reads.  The live sets follow those of `Expr.code`. -/
 
@@ -90,10 +92,10 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
     let component := owned || first.mode [] == .owned || second.mode [] == .owned
     first.demands (fun i => live i || second.uses i) component k ||
       second.demands live component k
-  | _, _, .letPair e body, live, owned, k =>
+  | _, _, .letPair (s := s) (t := t) e body, live, owned, k =>
     let inner := shift 2 live
     e.demands (fun i => live i || body.uses (i + 2))
-        (body.demands inner owned 0 || body.demands inner owned 1) k ||
+        ((!t.scalar && body.demands inner owned 0) || (!s.scalar && body.demands inner owned 1)) k ||
       body.demands inner owned (k + 2)
   | _, _, .loop count init cond body, live, owned, k =>
     let all := fun i => live i || cond.uses (i + 1) || body.uses (i + 2)
