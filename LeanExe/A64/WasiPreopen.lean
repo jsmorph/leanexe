@@ -103,7 +103,8 @@ def dirNameStub (a tr : UInt64) (scratch : Nat) : GenM (List Instr) := do
 
 /-- The names of the flat imports whose stubs read the shim's descriptor state. -/
 def preopenNames : List String :=
-  ["path_open", "fd_close", "fd_read", "fd_write", "fd_prestat_get", "fd_prestat_dir_name"]
+  ["path_open", "fd_close", "fd_read", "fd_write", "fd_prestat_get", "fd_prestat_dir_name",
+    "fd_filestat_get"]
 
 /-- Whether the flat imports `ds` call for the check of descriptor 3. -/
 def needsCheck (ds : List ImportDecl) : Bool := ds.any fun d => preopenNames.contains d.name

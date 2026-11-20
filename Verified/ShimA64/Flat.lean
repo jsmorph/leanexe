@@ -1,7 +1,7 @@
 import Verified.ShimA64.Strings
 import Verified.ShimA64.Clocks
 import Verified.ShimA64.Preopen
-import Verified.ShimA64.Open
+import Verified.ShimA64.Filestat
 
 /-!
 The flat stubs against the shim's host environment: `flatStub_sim` states that the code of each
@@ -12,8 +12,8 @@ and the environment, whose cases `stringStub_sim` of `Verified/ShimA64/Strings.l
 those of `clock_time_get` and `random_get`, whose cases `clockStubs_sim` of
 `Verified/ShimA64/Clocks.lean` proves, the stubs of the preopened directory, whose cases
 `preopenStub_sim` of `Verified/ShimA64/Preopen.lean` proves, and the stubs of the files under it,
-whose cases `fileStub_sim` of `Verified/ShimA64/Open.lean` proves.  Each increment that adds a stub
-to `flatStubs` adds its case here.
+whose cases `fileStub_sim` of `Verified/ShimA64/Filestat.lean` proves.  Each increment that adds a
+stub to `flatStubs` adds its case here.
 -/
 
 namespace Verified.ShimA64

@@ -14,8 +14,8 @@ of the shim, or a trap of the guest after a prefix of `main`.
 whose arguments' strings, each with its zero byte, and eight-byte pointers take at most the random
 histogram's `argsLimit`, 6 MiB, at a cap whose pages hold `budget` above the heap's start.  The
 shim answers `args_sizes_get` with the count and size of the launch's arguments
-(`RandomHistogram.linux_sizes`), so the block that the reply asks for fits `argsLimit`
-(`RandomHistogram.reportedSize_le`), and `call_prefix_bound` gives the budget premise.
+(`linux_sizes`), so the block that the reply asks for fits `argsLimit` (`reportedSize_le`), and
+`call_prefix_bound` gives the budget premise.
 `budget_fits` states that `budget` fits the 4,096 pages of the native executable above the heap's
 start at byte 4,096. -/
 
@@ -68,8 +68,8 @@ theorem linux_footprint_bounded (F : OpenFlags) (L : ShimLayout) (I : Launch)
     (fun _ membership => nomatch membership) hcap
     (fun _ => ⟨by change 4096 + budget ≤ 65536 * cap; exact room,
       call_prefix_bound (fun _ _ _ step => by
-        rw [RandomHistogram.linux_sizes step]
-        exact RandomHistogram.reportedSize_le small) _⟩)
+        rw [linux_sizes step]
+        exact reportedSize_le (by decide) (by decide) small) _⟩)
   exact ⟨bound, fun fuel enough => footprint_of_result F L I R (results fuel enough)⟩
 
 #print axioms calls_supported

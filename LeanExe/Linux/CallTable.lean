@@ -33,10 +33,13 @@ def getrandomCall : Call := ⟨"getrandom", 278, 318, [.output, .value], false, 
 /-- `openat2` (`sys.txt` line 123). -/
 def openat2Call : Call := ⟨"openat2", 437, 437, [.dirfd, .path, .input], true, false⟩
 
+/-- `statx` (`sys.txt` line 180). -/
+def statxCall : Call := ⟨"statx", 291, 332, [.fd, .path, .value, .value, .record 256], false, false⟩
+
 /-- The described calls. -/
 def table : List Call :=
   [openatCall, closeCall, readCall, writeCall, exitGroupCall, clockGettimeCall, getrandomCall,
-    openat2Call]
+    openat2Call, statxCall]
 
 /-- A field of a structure: its name, its offset, and its width in bytes. -/
 structure Field where
@@ -60,6 +63,21 @@ def timespecLayout : Layout := ⟨"timespec", 16, 8, [⟨"sec", 0, 8⟩, ⟨"nse
 /-- `open_how` (`sys.txt` lines 1367 to 1371), the input record of `openat2`. -/
 def openHowLayout : Layout :=
   ⟨"open_how", 24, 8, [⟨"flags", 0, 8⟩, ⟨"mode", 8, 8⟩, ⟨"resolve", 16, 8⟩]⟩
+
+/-- `statx` (`sys.txt` lines 838 to 860), the output record of `statx`. -/
+def statxLayout : Layout :=
+  ⟨"statx", 256, 8, [⟨"mask", 0, 4⟩, ⟨"blksize", 4, 4⟩, ⟨"attributes", 8, 8⟩, ⟨"nlink", 16, 4⟩,
+    ⟨"uid", 20, 4⟩, ⟨"gid", 24, 4⟩, ⟨"mode", 28, 2⟩, ⟨"__spare0", 30, 2⟩, ⟨"ino", 32, 8⟩,
+    ⟨"size", 40, 8⟩, ⟨"blocks", 48, 8⟩, ⟨"__spare1", 56, 8⟩, ⟨"atime.sec", 64, 8⟩,
+    ⟨"atime.nsec", 72, 4⟩, ⟨"atime.__reserved", 76, 4⟩, ⟨"btime.sec", 80, 8⟩, ⟨"btime.nsec", 88, 4⟩,
+    ⟨"btime.__reserved", 92, 4⟩, ⟨"ctime.sec", 96, 8⟩, ⟨"ctime.nsec", 104, 4⟩,
+    ⟨"ctime.__reserved", 108, 4⟩, ⟨"mtime.sec", 112, 8⟩, ⟨"mtime.nsec", 120, 4⟩,
+    ⟨"mtime.__reserved", 124, 4⟩, ⟨"rdev_major", 128, 4⟩, ⟨"rdev_minor", 132, 4⟩,
+    ⟨"dev_major", 136, 4⟩, ⟨"dev_minor", 140, 4⟩, ⟨"__spare2[0]", 144, 8⟩, ⟨"__spare2[1]", 152, 8⟩,
+    ⟨"__spare2[2]", 160, 8⟩, ⟨"__spare2[3]", 168, 8⟩, ⟨"__spare2[4]", 176, 8⟩,
+    ⟨"__spare2[5]", 184, 8⟩, ⟨"__spare2[6]", 192, 8⟩, ⟨"__spare2[7]", 200, 8⟩,
+    ⟨"__spare2[8]", 208, 8⟩, ⟨"__spare2[9]", 216, 8⟩, ⟨"__spare2[10]", 224, 8⟩,
+    ⟨"__spare2[11]", 232, 8⟩, ⟨"__spare2[12]", 240, 8⟩, ⟨"__spare2[13]", 248, 8⟩]⟩
 
 /-- Whether a parameter gives an output region. -/
 def Param.writes : Param → Bool
@@ -102,5 +120,9 @@ theorem regions_openat2 {M : Type} (I : Memory M) (m : M) (x0 x1 x2 x3 : UInt64)
     inputRegions I m [x0, x1, x2, x3] 0 openat2Call.params =
         [(x1, I.pathLength m x1), (x2, x3.toNat)] ∧
       outputRegions [x0, x1, x2, x3] 0 openat2Call.params = [] := ⟨rfl, rfl⟩
+
+theorem regions_statx {M : Type} (I : Memory M) (m : M) (x0 x1 x2 x3 x4 : UInt64) :
+    inputRegions I m [x0, x1, x2, x3, x4] 0 statxCall.params = [(x1, I.pathLength m x1)] ∧
+      outputRegions [x0, x1, x2, x3, x4] 0 statxCall.params = [(x4, 256)] := ⟨rfl, rfl⟩
 
 end LeanExe.Linux

@@ -1,5 +1,6 @@
 import Demos.RandomHistogram.Native
 import Verified.Examples.WasiReadAllMessage
+import Verified.Shim.Images
 
 /-! The random-residue histogram's corollary at the shim's specification level, over the layer
 events of a run under `linuxHost`.
@@ -209,18 +210,6 @@ theorem main_trapped {World : Type} {host : Host World}
 theorem Full.sub {ls ls' : List Linux.Event} (full : Full ls) (sub : ∀ x ∈ ls', x ∈ ls) :
     Full ls' := fun e member => full e (sub e member)
 
-/-- The image of each event of a trace lies among the images of the trace. -/
-theorem images_mem {F : OpenFlags} {L : ShimLayout} {I : Launch} :
-    ∀ {events : List Linux.Event} {T : List Event} {ls : List Linux.Event},
-      Images F L I events T ls → ∀ e ∈ T,
-        ∃ before l, Image F L I before e l ∧ ∀ x ∈ l, x ∈ ls
-  | _, _, _, .nil, _, member => nomatch member
-  | _, _, _, .cons image rest, e, member => by
-    rcases List.mem_cons.mp member with rfl | member
-    · exact ⟨_, _, image, fun x m => List.mem_append_left _ m⟩
-    · obtain ⟨before, l, found, sub⟩ := images_mem rest e member
-      exact ⟨before, l, found, fun x m => List.mem_append_right _ (sub x m)⟩
-
 /-- A `random_get` of `length` bytes whose `getrandom` events return the counts that they ask for
 returns errno 0: with no event and no byte when `length` is 0, and otherwise with one event, a
 `getrandom` of `length` bytes with flags 0, and the bytes of its output region. -/
@@ -296,83 +285,6 @@ theorem image_untrapped {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
   | exitTrap => exact trapped
 
 /-! ## Runs that exit -/
-
-theorem stringsFit_of_small {strings : List (List UInt8)}
-    (small : stringsSize strings + 8 * strings.length ≤ argsLimit) :
-    stringsFit strings = true := by
-  unfold stringsFit argsLimit at *
-  simp only [decide_eq_true_eq]
-  omega
-
-/-- Under the shim's host, an `args_sizes_get` reply for arguments that fit is errno 0 with their
-count and size. -/
-theorem linux_sizes_fit {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Replies}
-    {world after : LinuxWorld} {errno : UInt64} {outputs : List LeanExe.Bytes}
-    (step : (linuxHost F L I R).sys world Call.argsSizesGet [] (.returned errno outputs) after)
-    (fit : stringsFit I.args = true) :
-    errno = 0 ∧ outputs = sizesOutputs I.args := by
-  obtain ⟨l, ⟨-, image⟩, -, -, -⟩ := step
-  rw [sysImage_argsSizes] at image
-  obtain ⟨-, -, reply⟩ := image
-  unfold sizesReply at reply
-  rw [ite_eq_left fit] at reply
-  exact ⟨(Transfer.returned.inj reply).1, (Transfer.returned.inj reply).2⟩
-
-/-- Under the shim's host, a returned `args_get` reply is errno 0 with the arguments, each followed
-by a zero byte. -/
-theorem linux_strings_any {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Replies}
-    {world after : LinuxWorld} {errno : UInt64} {got : List LeanExe.Bytes}
-    (step : (linuxHost F L I R).sys world Call.argsGet [] (.returned errno got) after) :
-    errno = 0 ∧ got = [bytesOfList (stringsBytes I.args)] := by
-  obtain ⟨l, ⟨-, image⟩, -, -, -⟩ := step
-  rw [sysImage_args] at image
-  obtain ⟨-, -, reply⟩ := image
-  unfold stringsReply at reply
-  split at reply
-  · exact ⟨(Transfer.returned.inj reply).1, (Transfer.returned.inj reply).2⟩
-  · cases reply
-
-/-- Under the shim's host, a returned `args` result for arguments whose strings and eight-byte
-pointers take at most `argsLimit` bytes holds errno 0 and the arguments, and the images of its
-events hold no layer event. -/
-theorem linux_args {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Replies}
-    {world final : LinuxWorld} {trace : List Event} {a : ArgsResult}
-    (run : Exec (linuxHost F L I R) args world trace (.returned a) final)
-    (small : stringsSize I.args + 8 * I.args.length ≤ argsLimit) :
-    a.errno = 0 ∧ a.bytes = bytesOfList (stringsBytes I.args) ∧
-      ∀ events ls, Images F L I events trace ls → ls = [] := by
-  have fit := stringsFit_of_small small
-  have reported := reportedSize_le small
-  unfold args at run
-  obtain ⟨errno, sizes, middle, rest, rfl, reporter, next⟩ := exec_sys_returned run (by decide)
-  obtain ⟨rfl, rfl⟩ := linux_sizes_fit reporter fit
-  rw [ite_eq_right (by simp [sysReply])] at next
-  have below : ¬4294967296 ≤ (sysReply 0 (sizesOutputs I.args)).word 1 +
-      4 * (sysReply 0 (sizesOutputs I.args)).word 0 + 3 := by
-    rw [UInt64.le_iff_toNat_le]
-    simp only [Resource.reportedSize, sysReply, ↓reduceIte] at reported ⊢
-    unfold argsLimit at reported
-    simp only [UInt64.reduceToNat]
-    omega
-  rw [ite_eq_right below] at next
-  obtain ⟨gotErrno, got, after, last, rfl, getter, next⟩ := exec_sys_returned next (by decide)
-  obtain ⟨rfl, rfl⟩ := linux_strings_any getter
-  rw [ite_eq_right (by simp [sysReply])] at next
-  obtain ⟨rfl, same⟩ := exec_pure next
-  cases same
-  refine ⟨rfl, rfl, fun events ls images => ?_⟩
-  cases images with
-  | cons first images =>
-    cases images with
-    | cons second images =>
-      cases images
-      obtain ⟨-, first⟩ := first
-      rw [sysImage_argsSizes] at first
-      obtain ⟨-, rfl, -⟩ := first
-      obtain ⟨-, second⟩ := second
-      rw [sysImage_args] at second
-      obtain ⟨-, rfl, -⟩ := second
-      rfl
 
 theorem randomData_append (ls ls' : List Linux.Event) :
     randomData (ls ++ ls') = randomData ls ++ randomData ls' := by
@@ -538,7 +450,7 @@ theorem linux_exec_counts {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Lin
       outcome final)
     (images : Images F L I world.events T ls) (full : Full ls) :
     ∃ c, outcome = .exited c ∧ Counts I.args ls c := by
-  have fit := stringsFit_of_small small
+  have fit := stringsFit_of_le (by decide) small
   have accepts : ∀ {world code message final}, (linuxHost F L I R).exitTrap world code message
       final → 126 ≤ code.toNat := fun rejected => rejected.1
   cases outcome with
@@ -564,11 +476,11 @@ theorem linux_exec_counts {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Lin
     obtain ⟨events, rfl, -, meets⟩ := exec_main execution
     refine ⟨c, rfl, ?_⟩
     obtain ⟨a, pre, rest, middle, rfl, argsRun, -, refused, accepted⟩ := meets
-    obtain ⟨aZero, aBytes, preEmpty⟩ := linux_args argsRun small
+    obtain ⟨aZero, aBytes, preEmpty⟩ := linux_args (by decide) (by decide) small argsRun
     obtain ⟨l, lx, rfl, front, exitImages⟩ :=
-      Verified.Examples.WasiReadAll.images_split images
+      images_split images
     obtain ⟨lp, lr, rfl, preImages, restImages⟩ :=
-      Verified.Examples.WasiReadAll.images_split front
+      images_split front
     cases preEmpty _ _ preImages
     cases exitImages with
     | cons image tail =>
@@ -585,7 +497,7 @@ theorem linux_exec_counts {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Lin
       · intro nonzero
         obtain ⟨draws, bytes, errno, writes, rfl, drawn, -, succeeded⟩ := accepted aZero nonzero
         obtain ⟨ld, lw, rfl, drawImages, writeImages⟩ :=
-          Verified.Examples.WasiReadAll.images_split restImages
+          images_split restImages
         obtain ⟨errnoZero, drawData, drawWrites, drawing⟩ :=
           draws_full drawn drawImages (full.sub fun x m => List.mem_append_left _ m)
         obtain ⟨length, sum, offeredAll, prefix_, whole, kinds⟩ := succeeded errnoZero
@@ -619,7 +531,7 @@ theorem linux_exec_counts {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Lin
           · exact .inl zero
           · exact .inr ⟨seventySeven, by rw [writeLength, passes]⟩
         · obtain ⟨lb, lf, rfl, beforeImages, lastImages⟩ :=
-            Verified.Examples.WasiReadAll.images_split writeImages
+            images_split writeImages
           cases lastImages with
           | cons image tail =>
             cases tail
@@ -752,22 +664,22 @@ theorem fullReplies_run {F : OpenFlags} {L : ShimLayout} {environ : List (List U
     (images : Images F L ⟨oneArgs, environ, granted⟩ world.events T ls)
     (carried : Carried fullReplies 0 ls) : outcome = .exited 0 ∧ Full ls := by
   have small : stringsSize oneArgs + 8 * oneArgs.length ≤ argsLimit := by decide
-  have fit := stringsFit_of_small small
+  have fit := stringsFit_of_le (by decide) small
   have parsed : parseN (bytesOfList (stringsBytes oneArgs)) = 1 := by decide
   have once : ((1 : UInt64) / 512 + 1).toNat = 1 := by decide
   have outSmall : oneOutput.data.size ≤ 210 := one_rendered ▸ render_size _
   have other : Linux.writeCall ≠ Linux.getrandomCall := by decide
   obtain ⟨after, events, middle, rest, mainRun, cont, rfl⟩ := Exec.unbind main execution
   obtain ⟨lm, lx, rfl, mainImages, exitImages⟩ :=
-    Verified.Examples.WasiReadAll.images_split images
+    images_split images
   obtain ⟨after1, pre, middle1, rest1, argsRun, cont1, rfl⟩ := Exec.unbind args mainRun
   obtain ⟨lp, lq, rfl, preImages, restImages⟩ :=
-    Verified.Examples.WasiReadAll.images_split mainImages
+    images_split mainImages
   cases middle1 with
   | exited c => exact absurd rfl ((args_returned argsRun).1 c)
   | trapped m => exact (linux_args_untrapped argsRun fit).elim
   | returned a =>
-  obtain ⟨aZero, aBytes, preEmpty⟩ := linux_args argsRun small
+  obtain ⟨aZero, aBytes, preEmpty⟩ := linux_args (by decide) (by decide) small argsRun
   cases preEmpty _ _ preImages
   simp only at aBytes
   change Exec _ (if a.errno != 0 then Action.pure a.errno else _) after1 rest1 middle after
@@ -777,7 +689,7 @@ theorem fullReplies_run {F : OpenFlags} {L : ShimLayout} {environ : List (List U
   rw [aBytes, parsed, ite_eq_right (by decide)] at cont1
   obtain ⟨loopAfter, draws, drawn, post, loopRun, cont2, rfl⟩ := Exec.unbind _ cont1
   obtain ⟨ld, lw, rfl, drawImages, postImages⟩ :=
-    Verified.Examples.WasiReadAll.images_split restImages
+    images_split restImages
   have carried' : Carried fullReplies 0 (ld ++ (lw ++ lx)) := by
     simpa [List.append_assoc] using carried
   cases loopRun with
@@ -846,7 +758,7 @@ theorem fullReplies_run {F : OpenFlags} {L : ShimLayout} {environ : List (List U
     obtain ⟨writeAfter, writes, written, tail, writeRun, cont3, rfl⟩ :=
       Exec.unbind (writeAll oneOutput 0 oneOutput.size) cont2
     obtain ⟨lws, ltl, rfl, writeImages, tailImages⟩ :=
-      Verified.Examples.WasiReadAll.images_split postImages
+      images_split postImages
     have later : Carried fullReplies 1 (lws ++ (ltl ++ lx)) := by
       have whole : Carried fullReplies 0 ([e0] ++ (lws ++ (ltl ++ lx))) := by
         simpa [List.append_assoc] using carried'

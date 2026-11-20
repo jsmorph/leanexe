@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 CALLS = ["openat", "close", "read", "write", "exit_group", "clock_gettime", "getrandom",
-         "openat2"]
+         "openat2", "statx"]
 TERMINAL = {"exit_group"}
 ARCHES = ["arm64", "amd64"]
 PTR = 8
@@ -130,10 +130,27 @@ def field_size(resources, t):
 
 
 def layout(structs, resources, name):
+    """A structure's layout, with the fields of a nested structure as `field.inner` and the
+    elements of an array of integers as `field[i]`."""
     fields, close, first, last = structs[name]
     assert close == "}", close
     off, align, out = 0, 1, []
     for fname, ft in fields:
+        tname, params = parse_type(ft)
+        if tname in structs:
+            _, size, inner_align, inner, _, _ = layout(structs, resources, tname)
+            off = (off + inner_align - 1) // inner_align * inner_align
+            out.extend((f"{fname}.{n}", off + o, w) for n, o, w in inner)
+            off += size
+            align = max(align, inner_align)
+            continue
+        if tname == "array":
+            s, count = field_size(resources, params[0]), int(params[1], 0)
+            off = (off + s - 1) // s * s
+            out.extend((f"{fname}[{i}]", off + i * s, s) for i in range(count))
+            off += count * s
+            align = max(align, s)
+            continue
         s = field_size(resources, ft)
         off = (off + s - 1) // s * s
         out.append((fname, off, s))
@@ -209,8 +226,8 @@ def camel(name):
 
 DESCRIPTION = re.compile(r'def (\w+)Call : Call :=\s*⟨"(\w+)", (\d+), (\d+), \[([^\]]*)\], '
                          r'(true|false), (true|false)⟩')
-LAYOUT = re.compile(r'def (\w+)Layout : Layout :=\s*⟨"(\w+)", (\d+), (\d+), \[(.*?)\]⟩')
-FIELD = re.compile(r'⟨"(\w+)", (\d+), (\d+)⟩')
+LAYOUT = re.compile(r'def (\w+)Layout : Layout :=\s*⟨"(\w+)", (\d+), (\d+), \[(.*?)\]⟩', re.S)
+FIELD = re.compile(r'⟨"([\w.\[\]]+)", (\d+), (\d+)⟩')
 DOC = re.compile(r"/-- `(\w+)` \(`sys.txt` lines (\d+) to (\d+)\)")
 LEMMA = re.compile(r"theorem regions_(\w+) .*?inputRegions I m \[[^\]]*\] 0 (\w+)Call\.params =\s*"
                    r"(\[.*?\]) ∧\s*outputRegions \[[^\]]*\] 0 (\w+)Call\.params =\s*(\[.*?\]) "

@@ -86,7 +86,7 @@ theorem clock_contract (before : Store (Observed LinuxWorld)) (args : List Value
         OracleSys.word_roundtrip small]
     · intro g member
       simp only [clockEvent, outputs_clock, List.mem_singleton] at member
-      exact Or.inr member
+      exact Or.inr (Or.inl member)
   · refine ⟨before.mem, [], .returned 8 [zeros 8], ?_, shimStep_none ⟨valid.accepted, ?_⟩,
       MemFrame.refl _ _, fun _ same => absurd (Transfer.returned.inj same).1 (by decide)⟩
     · simp only [clockInvoke, narrow, check, and_self, ↓reduceIte, low,

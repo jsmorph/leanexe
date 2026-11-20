@@ -28,7 +28,8 @@ module.  The flat stubs of `flatStubs` are the string stubs of `LeanExe/A64/Wasi
 those of `args_sizes_get`, `args_get`, `environ_sizes_get`, and `environ_get`, the stubs of
 `clock_time_get` and `random_get` of `LeanExe/A64/WasiClocks.lean`, the stubs of
 `fd_prestat_get` and `fd_prestat_dir_name` of `LeanExe/A64/WasiPreopen.lean`, and the stubs of
-`path_open`, `fd_close`, and `fd_read` and `fd_write` on a handle of `LeanExe/A64/WasiFiles.lean`.
+`path_open`, `fd_close`, `fd_read` and `fd_write` on a handle, and `fd_filestat_get` of
+`LeanExe/A64/WasiFiles.lean`.
 The memory's cap of `cap` pages is the program's, which `areaOk` requires to lie from the
 module's minimum below 65,536 pages.
 
@@ -70,7 +71,8 @@ def scratchSize : Nat := 5184
 /-- The shim's scratch at `base`: the initial SP at offset 0, the preopen flag at 8, which is 1
 while descriptor 3 is the preopened directory, a byte for each descriptor number below 1,024 from
 16, 1 while the shim holds the number, the timespec of `clock_gettime` at 1,040, the `open_how`
-record of `openat2` at 1,056, and the path buffer of 4,096 bytes at 1,080.  The last 8 bytes keep
+record of `openat2` at 1,056, and the path buffer of 4,096 bytes at 1,080, whose bytes from 1,088
+also hold the 256-byte record of `statx` that `fd_filestat_get` asks for.  The last 8 bytes keep
 the stack's top a multiple of 16. -/
 structure Scratch where
   base : UInt64
@@ -81,6 +83,7 @@ def Scratch.held (G : Scratch) (d : Nat) : UInt64 := G.base + UInt64.ofNat (16 +
 def Scratch.timespec (G : Scratch) : UInt64 := G.base + 1040
 def Scratch.openHow (G : Scratch) : UInt64 := G.base + 1056
 def Scratch.path (G : Scratch) : UInt64 := G.base + 1080
+def Scratch.statx (G : Scratch) : UInt64 := G.base + 1088
 
 /-- The platform on which the module's code runs: the data segment of the layout `L` without the
 scratch `G`. -/
@@ -283,8 +286,9 @@ def preopenStubs : List FlatStub :=
     { call := .fdPrestatDirName, decl := pointerLengthImport "fd_prestat_dir_name",
       size := dirNameStubSize, gen := fun a _ tr _ scratch => dirNameStub a tr scratch }]
 
-/-- The stubs of `path_open`, `fd_close`, and `fd_read` and `fd_write` on a handle of
-`LeanExe/A64/WasiFiles.lean`, which follow the shim's descriptors through the scratch's bytes. -/
+/-- The stubs of `path_open`, `fd_close`, `fd_read` and `fd_write` on a handle, and
+`fd_filestat_get` of `LeanExe/A64/WasiFiles.lean`, which follow the shim's descriptors through the
+scratch's bytes. -/
 def fileStubs : List FlatStub :=
   [{ call := .pathOpen,
       decl :=
@@ -305,7 +309,12 @@ def fileStubs : List FlatStub :=
       decl :=
         { «module» := "wasi_snapshot_preview1", name := "fd_write",
           params := [.i32, .i32, .i32, .i32], results := [.i32] },
-      size := handleStubSize, gen := handleStub 64 }]
+      size := handleStubSize, gen := handleStub 64 },
+    { call := .fdFilestatGet,
+      decl :=
+        { «module» := "wasi_snapshot_preview1", name := "fd_filestat_get", params := [.i32, .i32],
+          results := [.i32] },
+      size := filestatStubSize, gen := filestatStub }]
 
 /-- The flat calls whose stubs the generator implements: those of the arguments and the
 environment, of the clocks and random bytes, of the preopened directory, and of the

@@ -185,3 +185,71 @@ checks continued after a stalled line, of which the oracle flags 7,330 lists, no
 line written; reopening the manifest or reading a file twice before any write; the host's
 resolution of names; the relation between the bytes that the host returns and the files on disk; a
 read attempted at a size of `2^32` or more; and an engine that refuses `memory.grow` below the cap.
+
+## Review of the executable's theorems
+
+A fourth fresh agent reviewed the native statements against [the request](request.txt), by the
+method of the knowledge base's entry on independent review: `InRange`, `Opening`, and `NMeets` of
+[the specification over Linux events](NativeSpec.lean), the statements of [the corollary under the
+shim](NativeMeets.lean), `StatBounded` and `budget_fits` of [the footprints](Native.lean), the
+executable's theorems with their witness, the driver's native, QEMU, and strace checks, and a draft
+of the guide's section.  It received the paths of these files, the shim's model, and the request,
+wrote a model in Python of `InRange`, of `NMeets` with a search over every alternative of every
+constructor, of the shim's images, of a kernel with injected faults, and of the command, and ran
+no Lean code.  The right program met `NMeets` in all 33 of its scenarios, and `NMeets` detected 32
+of its 39 wrong programs.
+
+| Finding | Response |
+|---|---|
+| `Opening` accepted any errno other than 0 for an open that made no call, so a program that exits with status 1 without a call met `NMeets` for every argument list, and so did a program that writes FAILED for every line without opening a file | Adopted: `Opening held name` gives an open without a call the errno of the shim's checks, `nameCheck held name`, and an open with calls requires that the checks pass.  `NMeets` takes `held`, whether the shim holds descriptor 3, which `manifest_elf_meets` gives as the startup check's grant.  `InRange` requires an `openat2` descriptor of 4 or more, so the shim holds descriptor 3 throughout the run exactly when the check granted it (`spares3_three`) |
+| The `more` constructors of `NManifestReads` and `NFileReads` accepted a read that returned an error number, whose `toNat` is positive, so a program that retries after `EIO` and reports OK met `NMeets` | Adopted: each requires `Linux.isError e.ret = false` |
+| `StatBounded manifestLimit R` fails on correct runs: a `read` that returns 0 leaves its window's old bytes, which `Carried` records as the reply's bytes, and a file whose last 65,536 bytes hold a size above 1 MiB where a `statx` record holds `stx_size` gives such a reply | Adopted in the guide, which states the case.  A premise on the run's `statx` events alone needs a budget that follows the run's worlds, a change of `body_bounded`'s premise that this review leaves open |
+| The guide's row of `manifest_elf_meets` and the file's docstrings said "when the check grants descriptor 3", while the theorem's case also covers a check that grants nothing | Adopted: "when the check does not end the run", and `NMeets` names the grant |
+| `InRange`'s docstring called the bound of 1,024 Linux's, which is the shim's limit, and the guide cited statx(2) for nanoseconds below `10^9`, which the page does not state | Adopted: the docstring and the guide name the shim's limit, and the guide gives the bound on nanoseconds as `InRange`'s premise, under which the shim does not trap |
+| The docstrings of `linux_exec_meets`, `image_untrapped`, and `read_native` omitted premises | Adopted |
+| No driver run caused a read error, a failed `close`, `EAGAIN`, or a short write, so the driver passed 22 of the 39 wrong programs | Adopted in part: five runs under strace's injection make the first read of a file fail with `EIO`, the first three and the first four `openat2` calls return `EAGAIN`, the manifest's `close` fail with `EIO`, and every `write` return 0.  Declined: a checker of `NMeets` over the strace log, since `manifest_elf_meets` states those properties of the bytes that `manifest_elf_file` checks, and the driver's traces test the kernel's agreement with the call layer |
+| A program that gives up after fewer than four `openat2` calls that return `EAGAIN` met `Opening` | Adopted: an `EAGAIN` ends an opening only as its fourth call, as `OpenCalls` states |
+| The guide's counts were those of `RUNNERS=wasm`, and the file of 5 MiB and 17 bytes takes 82 reads, the last of which returns 0 | Adopted |
+
+The reviewer found that the other premises of `manifest_elf_meets` hold on Linux: the strings and
+pointers of `argv` and `envp` take at most 6 MiB (`bprm_stack_limits`), `read` and `write` return
+at most their counts, `close` and `statx` return 0 or a negated error number, and `Sized` follows
+from `Carried`.  It checked the witness's stack against `InitialStack` field by field and the
+witness's replies against `preopenRun`.  `NMeets` also fixes the method that the request leaves
+open: each read's count, the probe of 65,536 bytes after the manifest, and the flags and mask of
+`statx`, so a program that meets the request with other reads fails it.
+
+Classes that no statement excludes, after this review: programs that differ only in registers or
+memory that no statement constrains; runs whose replies fail `StatBounded`, of which the corollary
+states nothing; and the kernel's resolution of names, which the traces show for the names of the
+driver.
+
+## Second review of the executable's theorems
+
+A fifth fresh agent reviewed the revised statements, the responses above, the guide's sections, and
+the driver by the same method.  Its model of `InRange`, `nameCheck`, and `NMeets`, of the shim,
+and of the command ran 52 wrong programs on 904 scenarios: 15 manifests, among them line names
+that the shim's checks refuse, about 60 fault cases each, with one, three, and four `EAGAIN`
+results, failed and short reads, failed closes, short and failed writes, times before 1970,
+descriptors up to 1,023, and descriptor 3 not granted, and ten argument lists with and without
+descriptor 3.  The right program met `InRange` and `NMeets` in all 904 scenarios, and `NMeets`
+rejected 50 of the 52 wrong programs.  It found the responses above held in the Lean text, and no
+defect of a statement.
+
+| Finding | Response |
+|---|---|
+| The guide's example of a reply that fails `StatBounded` needs seconds that keep each time below `2^64` nanoseconds, since a larger time gives errno 61 | Adopted |
+| The section on confinement credited the retries after `EAGAIN` to `run_openHow`, which states the record | Adopted: it cites `run_openLoop` and `openStub_sim` and says that the stub calls `openat2` again after each `EAGAIN` of the first three |
+| The section on confinement said that the driver shows Wasmtime refusing each name that leaves the directory with errno 63, which it checks only for the manifest named with `..`; the lines give FAILED | Adopted |
+| The docstrings of `run_native` and `handled_native` and the module docstring of the corollary omitted premises, and the module docstring called each WASI event's image unique | Adopted |
+| `NFileReads`'s docstring described each read as one of `window done` bytes, where each read takes the window after the bytes of the reads before it | Adopted |
+| `NManifestBody`'s docstring and the guide said that any time of `2^64` nanoseconds or more gives status 61, where `Overflows` reads the access, modification, and reported birth times | Adopted |
+| The guide did not say that the corollary covers manifests of at most 1 MiB | Adopted |
+
+Two wrong programs met every statement and check.  A program that tests a line's name for a zero
+byte and for its length in another order makes no call and writes FAILED either way, since a
+refused line discards its errno.  A program that opens the checked files with the rights
+`manifestRights` makes the same Linux events, since the open flags depend only on `fd_write`, and
+`Confined` at WASI excludes it.  A program that reads a file in full before hashing it, with the
+same reads, meets `NMeets`, and `manifest_elf_meets` excludes it only through the guest trap of a
+file that outgrows the executable's 4,096 pages.

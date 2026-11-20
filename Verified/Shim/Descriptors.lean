@@ -6,7 +6,8 @@ The descriptors that the shim's layer events name.  The shim holds open the numb
 other number as a directory or file descriptor.  `NamesHeld I events ls` states that the layer
 events `ls`, made after `events`, name only those numbers or a standard stream: the descriptor of
 each `read` and `write` is 0, 1, or 2 or a number that the shim holds open after the events before
-it, and the descriptor of each `close` and the directory of each `openat2` is such a number.
+it, and the descriptor of each `close` and `statx` and the directory of each `openat2` is such a
+number.
 `footprint_namesHeld` proves it of every run that `Footprint` describes, for every command and
 every reply sequence, so the shim never names a descriptor above 2 that neither the launcher
 granted as 3 nor an `openat2` returned.
@@ -18,14 +19,14 @@ open Wasm LeanExe LeanExe.Wasi Verified.Wasi
 
 /-- The layer events `ls`, made after `events`, name only standard streams and the numbers that
 the shim holds open: the descriptor of each `read` and `write` is 0, 1, or 2 or a number of
-`openNumbers I` after the events before it, and the descriptor of each `close` and the directory
-of each `openat2` is a number of `openNumbers I` after the events before it. -/
+`openNumbers I` after the events before it, and the descriptor of each `close` and `statx` and the
+directory of each `openat2` is a number of `openNumbers I` after the events before it. -/
 def NamesHeld (I : Launch) (events ls : List Linux.Event) : Prop :=
   ∀ pre x post, ls = pre ++ x :: post →
     (x.call ∈ [Linux.readCall, Linux.writeCall] →
       Linux.arg x.args 0 ∈ ([0, 1, 2] : List UInt64) ∨
         Linux.arg x.args 0 ∈ openNumbers I (events ++ pre)) ∧
-    (x.call ∈ [Linux.openat2Call, Linux.closeCall] →
+    (x.call ∈ [Linux.openat2Call, Linux.closeCall, Linux.statxCall] →
       Linux.arg x.args 0 ∈ openNumbers I (events ++ pre))
 
 theorem openAfter_append (opened : List UInt64) :
@@ -101,13 +102,14 @@ theorem empty_split {x : Linux.Event} {pre post : List Linux.Event} :
     ([] : List Linux.Event) ≠ pre ++ x :: post := by
   cases pre <;> simp
 
-/-- An event of a call other than `read`, `write`, `openat2`, and `close` names no descriptor. -/
+/-- An event of a call other than `read`, `write`, `openat2`, `close`, and `statx` names no
+descriptor. -/
 theorem names_other {I : Launch} {events pre : List Linux.Event} {x : Linux.Event}
     (other : x.call ∈ [Linux.clockGettimeCall, Linux.getrandomCall]) :
     (x.call ∈ [Linux.readCall, Linux.writeCall] →
       Linux.arg x.args 0 ∈ ([0, 1, 2] : List UInt64) ∨
         Linux.arg x.args 0 ∈ openNumbers I (events ++ pre)) ∧
-    (x.call ∈ [Linux.openat2Call, Linux.closeCall] →
+    (x.call ∈ [Linux.openat2Call, Linux.closeCall, Linux.statxCall] →
       Linux.arg x.args 0 ∈ openNumbers I (events ++ pre)) := by
   simp only [List.mem_cons, List.not_mem_nil, or_false] at other
   rcases other with same | same <;> rw [same] <;>
@@ -146,7 +148,8 @@ theorem image_namesHeld {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
     obtain ⟨_, image⟩ := image
     have member := sysImage_mem image
     simp only [shimCalls, List.mem_cons, List.not_mem_nil, or_false] at member
-    rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+    rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
+      rfl
     · rw [sysImage_clock] at image
       unfold ClockImage at image
       split at image
@@ -211,7 +214,9 @@ theorem image_namesHeld {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
         · obtain ⟨_, _, _, _, rfl, _⟩ := image
           obtain ⟨rfl, rfl⟩ := single_split same
           refine ⟨fun _ => .inr ?_, fun inside => absurd
-            (show Linux.readCall ∈ [Linux.openat2Call, Linux.closeCall] from inside) (by decide)⟩
+            (show Linux.readCall ∈ [Linux.openat2Call, Linux.closeCall, Linux.statxCall] from
+              inside)
+            (by decide)⟩
           simp only [Linux.arg, List.getD_cons_zero, List.append_nil]
           assumption
         · obtain ⟨rfl, _⟩ := image
@@ -224,7 +229,9 @@ theorem image_namesHeld {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
         · obtain ⟨_, _, rfl, _⟩ := image
           obtain ⟨rfl, rfl⟩ := single_split same
           refine ⟨fun _ => .inr ?_, fun inside => absurd
-            (show Linux.writeCall ∈ [Linux.openat2Call, Linux.closeCall] from inside) (by decide)⟩
+            (show Linux.writeCall ∈ [Linux.openat2Call, Linux.closeCall, Linux.statxCall] from
+              inside)
+            (by decide)⟩
           simp only [Linux.arg, List.getD_cons_zero, List.append_nil]
           assumption
         · obtain ⟨rfl, _⟩ := image
@@ -241,6 +248,20 @@ theorem image_namesHeld {F : OpenFlags} {L : ShimLayout} {I : Launch} {events : 
       split at image
       · obtain ⟨rfl, _⟩ := image
         exact absurd same empty_split
+      · exact image.elim
+    · rw [sysImage_filestat] at image
+      unfold FilestatImage at image
+      split at image
+      · split at image
+        · obtain ⟨_, _, rfl, _⟩ := image
+          obtain ⟨rfl, rfl⟩ := single_split same
+          refine ⟨fun inside => absurd
+            (show Linux.statxCall ∈ [Linux.readCall, Linux.writeCall] from inside) (by decide),
+            fun _ => ?_⟩
+          simp only [Linux.arg, List.getD_cons_zero, List.append_nil]
+          assumption
+        · obtain ⟨rfl, _⟩ := image
+          exact absurd same empty_split
       · exact image.elim
 
 /-- The layer events of images of a WASI trace name only standard streams and the numbers that the

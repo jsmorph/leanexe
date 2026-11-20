@@ -19,14 +19,14 @@
    makes the call write must differ from the fill in one of the runs.  A correct kernel fails that
    check only where a byte that varies, a random byte or a low byte of the clock, equals the fill
    of every run, with probability 256^-4 for a uniformly random byte; the comment on FILLS
-   in tools/linux-calls.py derives a rate of about 2.6 * 10^-8 for a run of
+   in tools/linux-calls.py derives a rate of about 4.1 * 10^-8 for a run of
    tests/linux/sys-run.sh.  A terminal call runs once, in a child process, whose exit status is its
    result.  The descriptors that a step opens before its call, its files, and its output use the C
    library.
 
    Build: cc -O1 -static -o frame frame.c.  Run in an empty directory: frame [--qemu].  With
    --qemu the steps that QEMU 8.2.2 does not run as Linux does are skipped, each with its reason.
-   Exit status: 0 when every step passes, 10 * STEP + CHECK at the first check that fails, 1 when
+   Exit status: 0 when every step passes, 8 * STEP + CHECK at the first check that fails, 1 when
    the test itself fails, and 2 for a usage error. */
 #include <errno.h>
 #include <fcntl.h>
@@ -271,6 +271,16 @@ static const char *check_clock(const struct step *s, uint64_t ret, const unsigne
   return NULL;
 }
 
+/* The statx record of data: STATX_TYPE and STATX_SIZE in stx_mask, the mode of a regular file,
+   and the size of data. */
+static const char *check_statx(const struct step *s, uint64_t ret, const unsigned char *out) {
+  (void)s, (void)ret;
+  if ((le(out, 4) & 0x201) != 0x201) return "stx_mask lacks STATX_TYPE or STATX_SIZE";
+  if ((le(out + 28, 2) & 0170000) != 0100000) return "stx_mode is not a regular file's";
+  if (le(out + 40, 8) != sizeof data - 1) return "stx_size is not the size of data";
+  return NULL;
+}
+
 static const struct step steps[] = {
   /* 1: openat [dirfd, path, value, value] */
   {.label = "openat of a new file with mode 0644", .call = "openat", .number = 56, .opens = 1,
@@ -353,7 +363,14 @@ static const struct step steps[] = {
    .nregions = 1, .regions = {
      {1, 8, 0, 0, ""}},
    .expect = EXACT, .ret = 8, .fills = 8, .setup = setup_none, .check = check_none},
-  /* 12: exit_group [value] */
+  /* 12: statx [fd, path, value, value, record 256] */
+  {.label = "statx of an open file with AT_EMPTY_PATH", .call = "statx", .number = 291, .nargs = 5,
+   .args = {{DESCRIPTOR, 0}, {REGION, 0}, {CONSTANT, 0x1000ULL}, {CONSTANT, 0xfffULL}, {REGION, 1}},
+   .nregions = 2, .regions = {
+     {0, 1, 0, 1, "\000"},
+     {1, 256, 0, 0, ""}},
+   .expect = EXACT, .ret = 0, .fills = 256, .setup = setup_data, .check = check_statx, .offset = 0},
+  /* 13: exit_group [value] */
   {.label = "exit_group with 0x12A", .call = "exit_group", .number = 94, .terminal = 1, .nargs = 1,
    .args = {{CONSTANT, 0x12aULL}},
    .expect = STATUS, .ret = 42, .setup = setup_none, .check = check_none},
@@ -393,7 +410,7 @@ static void fail(int n, const struct step *s, int p, int fill, enum check c, con
   if (s->nregions) printf("region %d at the %s, ", p / 2, p % 2 ? "start" : "end");
   if (fill >= 0) printf("fill 0x%02X, ", fill);
   printf("check %d: %s\n", c, why);
-  exit(10 * n + c);
+  exit(8 * n + c);
 }
 
 static uint64_t pattern(int i) { return 0x1111111111111111ULL * (uint64_t)(i % 15 + 1) + i; }

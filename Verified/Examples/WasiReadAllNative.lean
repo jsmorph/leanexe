@@ -61,7 +61,7 @@ no flat call. -/
 theorem Steady.streams {F F' : OpenFlags} {L : ShimLayout} {I I' : Launch}
     {R : Linux.Replies} (steady : Steady F L I R) : Steady F' L I' R :=
   fun progress =>
-    steady (Prefix.streams rfl rfl progress (Prefix.streamTrace progress main_streams))
+    steady (Prefix.streams rfl rfl rfl progress (Prefix.streamTrace progress main_streams))
 
 /-- The footprint of `linux_footprint_native` without a guest trap, for a budget that fits between
 the heap's start at byte 4,096 and the end of the cap's `cap` pages and bounds the heap that every

@@ -4,13 +4,13 @@ import Verified.Wasi.CommandTotal
 /-!
 The footprint theorem at the specification level.  A run of `Exec` or `Prefix` under
 `linuxHost F L I replies` extends the world's layer events by images of its WASI events, which
-hold their replies and write within the guest's address space or into the timespec, and a trapped
-`Exec` run traps with `shimTrap` or `exitRejected`.  `footprint_of_result` carries the WASI
-command theorem's classification of a run of `_start` to `Footprint`, and `shim_footprint`
-composes `compiled_native_start_run_with`, unchanged, with `linuxEnv_satisfies`: for every reply
-sequence, every Talos run of `_start` of a command whose flat calls the shim implements, under
-`linuxEnv F L I replies calls` with enough fuel, traps with a final world whose events extend the
-initial ones by images of a WASI trace of the command's action.
+hold their replies and write within the guest's address space or into the timespec or the `statx`
+record, and a trapped `Exec` run traps with `shimTrap` or `exitRejected`.  `footprint_of_result`
+carries the WASI command theorem's classification of a run of `_start` to `Footprint`, and
+`shim_footprint` composes `compiled_native_start_run_with`, unchanged, with `linuxEnv_satisfies`:
+for every reply sequence, every Talos run of `_start` of a command whose flat calls the shim
+implements, under `linuxEnv F L I replies calls` with enough fuel, traps with a final world whose
+events extend the initial ones by images of a WASI trace of the command's action.
 -/
 
 namespace Verified.Shim
@@ -41,7 +41,7 @@ theorem Carried.append {replies : Linux.Replies} :
 
 /-- The world `w'` extends the layer events of `w` by images of the WASI events `trace`, each after
 the events before it, which hold their replies of `replies`, counted from the events of `w`, and
-write within the guest's address space or into the timespec. -/
+write within the guest's address space or into the timespec or the `statx` record. -/
 def Appended (F : OpenFlags) (L : ShimLayout) (I : Launch) (replies : Linux.Replies)
     (w w' : LinuxWorld) (trace : List Wasi.Event) : Prop :=
   ∃ ls, w'.events = w.events ++ ls ∧ Images F L I w.events trace ls ∧
@@ -137,7 +137,8 @@ theorem sysImage_trapped {F : OpenFlags} {L : ShimLayout} {I : Launch}
     message = shimTrap := by
   have member := sysImage_mem image
   simp only [shimCalls, List.mem_cons, List.not_mem_nil, or_false] at member
-  rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
+  rcases member with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
+    rfl
   · rw [sysImage_clock] at image
     unfold ClockImage at image
     split at image
@@ -232,6 +233,23 @@ theorem sysImage_trapped {F : OpenFlags} {L : ShimLayout} {I : Launch}
       unfold DirNameReply at named
       split_ifs at named
       · obtain ⟨_, _, same⟩ := named
+        cases same
+    · exact image.elim
+  · rw [sysImage_filestat] at image
+    unfold FilestatImage at image
+    split at image
+    · split at image
+      · obtain ⟨_, _, _, same⟩ := image
+        unfold filestatReply at same
+        split_ifs at same
+        · split at same
+          · split_ifs at same
+            cases same
+            rfl
+          · cases same
+        · cases same
+          rfl
+      · obtain ⟨_, same⟩ := image
         cases same
     · exact image.elim
 
@@ -337,9 +355,10 @@ theorem prefix_observed {α World : Type} {host : Host World} {action residual :
 world `initial` under the shim: the run trapped, with a final world whose layer events extend
 those of `initial` by images `ls` of a WASI trace `trace`, each after the events before it, which
 hold the replies from the reply to call `initial.world.events.length` on and write within the
-guest's address space or into the timespec, and with `trace` appended to the observed events.
-The trace is that of an accepted exit, of a rejected exit, or of a trap of the shim, or, when
-`aborts` holds, a prefix of the action after which the guest trapped at `unreachable`. -/
+guest's address space or into the timespec or the `statx` record, and with `trace` appended to the
+observed events.  The trace is that of an accepted exit, of a rejected exit, or of a trap of the
+shim, or, when `aborts` holds, a prefix of the action after which the guest trapped at
+`unreachable`. -/
 def Footprint (F : OpenFlags) (L : ShimLayout) (I : Launch) (replies : Linux.Replies)
     (action : Action Unit) (initial : Observed LinuxWorld) (aborts : Bool) :
     Result (Observed LinuxWorld) → Prop

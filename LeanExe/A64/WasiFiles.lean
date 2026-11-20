@@ -2,15 +2,16 @@ import LeanExe.A64.WasiPreopen
 import LeanExe.A64.WasiClocks
 
 /-!
-The stubs of `fd_close`, of `fd_read` and `fd_write` on a handle, and of `path_open`, which follow
-`closeInvoke`, `handleReadInvoke`, `handleWriteInvoke`, and `openInvoke` of
-`Verified/Shim/Files.lean`.  A stub receives its arguments in X0 to X8, keeps its return address
-in X19 across its calls, which it makes through the runtime's routine `SVC #0; RET` at `svc`, and
-uses no stack.  It reaches the shim's scratch at `X17 + scratch` in X20 (`scratchAddr` of
-`LeanExe/A64/WasiStrings.lean`), where the byte at offset `16 + d` is 1 while the shim holds
-descriptor `d` below 1,024 and the byte at offset 8 is 1 while descriptor 3 is the preopened
-directory.  A stub writes guest memory only where the specification's function writes, and the
-scratch's bytes from offset 8 to 1,039 only where the shim's descriptors change.
+The stubs of `fd_close`, of `fd_read` and `fd_write` on a handle, of `path_open`, and of
+`fd_filestat_get`, which follow `closeInvoke`, `handleReadInvoke`, `handleWriteInvoke`,
+`openInvoke`, and `filestatInvoke` of `Verified/Shim/Files.lean`.  A stub receives its arguments
+in X0 to X8, keeps its return address in X19 across its calls, which it makes through the
+runtime's routine `SVC #0; RET` at `svc`, and uses no stack.  It reaches the shim's scratch at
+`X17 + scratch` in X20 (`scratchAddr` of `LeanExe/A64/WasiStrings.lean`), where the byte at offset
+`16 + d` is 1 while the shim holds descriptor `d` below 1,024 and the byte at offset 8 is 1 while
+descriptor 3 is the preopened directory.  A stub writes guest memory only where the
+specification's function writes, and the scratch's bytes from offset 8 to 1,039 only where the
+shim's descriptors change.
 
 The stub of `fd_close` returns errno 8 (`badf`) for a descriptor that the shim does not hold
 (`heldTest`).  Otherwise it calls `close`, clears the descriptor's byte, and clears the preopen
@@ -39,6 +40,14 @@ at offset 1,080 (`pathCopy`), writes the `open_how` record at offset 1,056 with 
 again after `EAGAIN` while fewer than four calls were made (`openCalls`).  A result below 1,024
 sets the result's byte in the scratch, is stored at the result's pointer, and returns errno 0
 (`openResult`).
+
+The stub of `fd_filestat_get` reaches `tr` unless the record's 64 bytes lie within the memory and
+returns errno 8 for a descriptor that the shim does not hold.  Otherwise it calls `statx` on the
+descriptor with the empty path and `AT_EMPTY_PATH`, which writes the 256-byte `statx` record at
+offset 1,088 of the scratch, and converts the record's timestamps to nanoseconds: nanoseconds of
+`10^9` or more reach `tr`, and a time of `2^64` nanoseconds or more returns errno 61.  It stores
+the WASI `filestat` record's eight words at the guest's pointer and returns errno 0.  An error
+result returns its errno, and any other result reaches `tr`.
 
 `utf8Check` follows core's `ByteArray.validateUTF8`: it reads the first byte of each character,
 requires one to three continuation bytes from `0x80` to `0xBF` after a first byte from `0xC2` to
@@ -103,6 +112,68 @@ def handleStub (nr : Fin 65536) (a svc tr en : UInt64) (scratch : Nat) : GenM (L
     [.addImm 12 3 4] ++ r3 ++ scratchAddr scratch ++ held ++
     [.orrW 10 31 14, .lsrImm 11 14 32, .addReg 1 17 10, .addImm 1 1 4095, .addImm 1 1 1,
       .orrReg 2 31 11, .movz 8 nr 0, .orrReg 19 31 30, .bl (← bField (after a 39) svc)] ++ tail ++
+    [.movz 0 8 0, .ret 30]
+
+/-! ## `fd_filestat_get` -/
+
+/-- The conversion of the `statx_timestamp` `off` bytes above the scratch's address in X20 to
+nanoseconds in X`d`, placed at `a`, with the trap stub at `tr` and the return of errno 61 at
+`ov`: the seconds in X9 and the low 32 bits of the next word, the nanoseconds, in X10; `tr` for
+nanoseconds above `10^9 − 1`; `ov` for seconds above `⌊(2^64 − 1 − nsec) / 10^9⌋`, the quotient
+of `UDIV`, which a time of `2^64` nanoseconds or more and every negative second count exceed; and
+otherwise `sec · 10^9 + nsec` in X`d` at `after a 16`, with X11 to X12 changed. -/
+def stampConvert (a tr ov : UInt64) (off : Fin 4096) (d : Fin 32) : GenM (List Instr) := do
+  return [.ldr 9 20 off, .ldr 10 20 (off + 1), .orrW 10 31 10] ++ movImm 11 999999999 ++
+    [.subsReg 31 10 11, .bcond 8 (← cbField (after a 8) tr), .addImm 11 11 1, .subReg 12 31 10,
+      .subImm 12 12 1, .udiv 12 12 11, .subsReg 31 9 12, .bcond 8 (← cbField (after a 14) ov),
+      .madd d 9 11 10]
+
+/-- The 32 `STR XZR` that clear the 256 bytes of the scratch's `statx` record, 1,088 bytes above
+the scratch's address in X20. -/
+def statxClear : List Instr := (List.range 32).map fun i => .str 31 20 (Fin.ofNat 4096 (136 + i))
+
+/-- The words of the WASI file types of the 16 values of a mode's bits `S_IFMT`, four bits for
+each, as `filetypeOf` of `Verified/Shim/Replies.lean` gives them: 2 for 2, 3 for 4, 1 for 6, 4 for
+8, 7 for 10, and 0 for the others. -/
+def filetypeTable : UInt64 := 0x0000070401030200
+
+/-- The number of instructions of `filestatStub`. -/
+def filestatStubSize : Nat := 147
+
+/-- The stub of `fd_filestat_get` of the descriptor in X0 with the record's pointer in X1, placed at
+`a`, with the routine `SVC #0; RET` at `svc`, the trap stub at `tr`, the routine of errnos at `en`,
+and the scratch `scratch` bytes above the area.  It reaches `tr` unless the record's 64 bytes lie
+within the memory, and returns errno 8 for a descriptor that the shim does not hold.  Otherwise it
+keeps the return address in X19 and the record's pointer in X21, writes the empty path, a zero
+byte, at the scratch's path buffer, clears the `statx` record (`statxClear`), and calls
+`statx(fd, path, AT_EMPTY_PATH, STATX_BASIC_STATS | STATX_BTIME, record)`.  A result other than 0
+goes to `errorTail`.  On 0 it converts `stx_atime` to X22 and `stx_mtime` to X23, and `stx_btime`
+to X24 when bit `STATX_BTIME` of `stx_mask` is set and 0 otherwise (`stampConvert`); finds the file
+type in `filetypeTable` with `LSRV` by four times the bits `S_IFMT` of `stx_mode`, the high half
+of its second byte; loads `stx_ino`, `stx_nlink`, and `stx_size` into X25 to X27; and stores the
+eight words of `filestat` at the record's guest address: 1, `stx_ino`, the file type, `stx_nlink`,
+`stx_size`, and the three times.  The return of errno 61 lies at `after a 137`, the errno tail at
+`after a 139`, and the return of errno 8 at `after a 145`. -/
+def filestatStub (a svc tr en : UInt64) (scratch : Nat) : GenM (List Instr) := do
+  let range ← rangeCheck (after a 1) tr
+  let held ← heldTest (after a 10) (after a 145) 0
+  let atime ← stampConvert (after a 57) tr (after a 137) 144 22
+  let mtime ← stampConvert (after a 73) tr (after a 137) 150 23
+  let btime ← stampConvert (after a 94) tr (after a 137) 146 24
+  let tail ← errorTail (after a 139) tr en
+  return [.addImm 12 1 64] ++ range ++ scratchAddr scratch ++ held ++
+    [.orrReg 19 31 30, .orrReg 21 31 1, .strb 31 20 1080] ++ statxClear ++
+    [.addImm 1 20 1080, .movz 2 0x1000 0, .movz 3 0xFFF 0, .addImm 4 20 1088, .movz 8 291 0,
+      .bl (← bField (after a 55) svc), .cbnz 0 (← cbField (after a 56) (after a 139))] ++ atime ++
+    mtime ++
+    [.ldr 9 20 136, .movz 10 0x800 0, .andReg 9 9 10, .movz 24 0 0,
+      .cbz 9 (← cbField (after a 93) (after a 110))] ++ btime ++
+    [.ldrb 10 20 1117, .lsrImm 10 10 4, .addReg 10 10 10, .addReg 10 10 10] ++
+    movImm 11 filetypeTable ++
+    [.lsrv 11 11 10, .movz 12 0xF 0, .andReg 11 11 12, .ldr 25 20 140, .ldr 26 20 138,
+      .orrW 26 31 26, .ldr 27 20 141, .addReg 13 17 21, .movz 9 1 0, .str 9 13 512,
+      .str 25 13 513, .str 11 13 514, .str 26 13 515, .str 27 13 516, .str 22 13 517,
+      .str 23 13 518, .str 24 13 519, .movz 0 0 0, .ret 19, .movz 0 61 0, .ret 19] ++ tail ++
     [.movz 0 8 0, .ret 30]
 
 /-! ## `path_open` -/

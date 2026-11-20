@@ -2,14 +2,17 @@ import Verified.Shim.SysEnv
 
 /-!
 The shim's file functions: `path_open`, `fd_close`, `fd_read` and `fd_write` on a handle,
-`fd_prestat_get`, and `fd_prestat_dir_name`.  `path_open`, `fd_close`, and the handle forms take
-the descriptor numbers that they accept, `openNumbers I events`, from the world's layer events,
-and refuse every other number with errno 8 (`badf`) and no call.  `openInvoke` makes the checks
-of `openCheck` and then the `openat2` calls of `openLoop` with the path and the `open_how` record
-in the scratch, whose events `step_openat2` gives, and stores the descriptor on success.
-`closeInvoke` makes one `close`.  `handleReadInvoke` and `handleWriteInvoke` read the iovec
-element at the request's pointer and make one `read` or `write` of the handle's descriptor
-through the layer's rule, and store the count on success.  The prestat functions make no call:
+`fd_filestat_get`, `fd_prestat_get`, and `fd_prestat_dir_name`.  `path_open`, `fd_close`,
+`fd_filestat_get`, and the handle forms take the descriptor numbers that they accept,
+`openNumbers I events`, from the world's layer events, and refuse every other number with errno 8
+(`badf`) and no call.  `openInvoke` makes the checks of `openCheck` and then the `openat2` calls
+of `openLoop` with the path and the `open_how` record in the scratch, whose events `step_openat2`
+gives, and stores the descriptor on success.  `closeInvoke` makes one `close`.
+`handleReadInvoke` and `handleWriteInvoke` read the iovec element at the request's pointer and
+make one `read` or `write` of the handle's descriptor through the layer's rule, and store the
+count on success.  `filestatInvoke` makes one `statx` of the descriptor with the empty path into
+the scratch's `statx` record, whose event `step_statx` gives, and stores the `filestat` record of
+`filestatReply` on success.  The prestat functions make no call:
 descriptor 3 is the directory `.` while `preopened I events` holds.  Each `*_contract` proves its
 call's specification for the host `linuxHost F L I replies`.
 -/
@@ -588,6 +591,84 @@ theorem prestat_contract (before : Store (Observed LinuxWorld)) (args : List Val
     exact ⟨rfl, rfl⟩
   refine ⟨_, [], _, ?_, shimStep_none ⟨valid.accepted, image⟩, answer.1, answer.2⟩
   simp only [prestatInvoke, check, and_self, ↓reduceIte, OracleSys.word_roundtrip h0]
+
+/-! ## `fd_filestat_get` -/
+
+/-- `fd_filestat_get` of the descriptor `fd` with the record's pointer `record`: a trap when the
+record's 64 bytes leave memory, errno 8 (`badf`) with no call for a number that the shim does not
+hold, and otherwise one `statx`, whose reply `filestatReply` gives and whose record, on errno 0,
+the shim stores at `record`. -/
+def filestatInvoke (before : Store (Observed LinuxWorld)) (args : List Value) :
+    HostResult (Observed LinuxWorld) :=
+  match args with
+  | [.i32 fd, .i32 record] =>
+    if record.toNat + 64 ≤ before.mem.pages * 65536 ∧ record.toNat + 64 < 2 ^ 32 then
+      if fd.toUInt64 ∈ openNumbers I before.host.world.events then
+        let e := statxEvent L fd.toUInt64 (replies before.host.world.events.length)
+        sysAnswer before Call.fdFilestatGet [.word fd.toUInt64]
+          (placeReply before.mem (fun outputs => [(record, outputs.headD Bytes.empty)])
+            (filestatReply e.ret e.output))
+          [e] (filestatReply e.ret e.output)
+      else
+        sysAnswer before Call.fdFilestatGet [.word fd.toUInt64] before.mem []
+          (.returned 8 [zeros 64])
+    else .Trap before shimTrap
+  | _ => .Trap before shimTrap
+
+theorem statxEvent_writesWithin (fd : UInt64) (r : Linux.Reply) (size : Nat) :
+    WritesWithin L size (statxEvent L fd r) := by
+  intro g hg
+  change g ∈ Linux.outputRegions [fd, L.path, statxFlags, statxMask, L.statx] 0
+    Linux.statxCall.params at hg
+  have regions : Linux.outputRegions [fd, L.path, statxFlags, statxMask, L.statx] 0
+      Linux.statxCall.params = [(L.statx, 256)] := rfl
+  rw [regions, List.mem_singleton] at hg
+  exact .inr (.inr hg)
+
+theorem filestat_contract (before : Store (Observed LinuxWorld)) (args : List Value) :
+    sysContract (linuxHost F L I replies) Call.fdFilestatGet before args
+      (filestatInvoke L I replies before args) := by
+  apply sys_contract_of
+  intro request pointers valid
+  obtain ⟨a, r, rfl, h0, h⟩ := argsFit_takes valid.fits rfl
+  have empty : r = [] := by simpa [argsFit, Param.takesArg] using h
+  subst empty
+  cases a <;> simp only [argFits, Bool.false_eq_true, decide_eq_true_eq] at h0
+  rename_i fd
+  have regions : outputRegions Call.fdFilestatGet.params
+      (shimReported I before.host.world.reports Call.fdFilestatGet) [.word fd] pointers =
+      [⟨pointers.headD 0, 64, 8, true⟩] := rfl
+  have bounds := valid.bounds ⟨pointers.headD 0, 64, 8, true⟩
+    (by rw [regions]; exact List.mem_singleton_self _)
+  have arguments : args = [.i32 fd.toUInt32, .i32 (pointers.headD 0)] := valid.arguments
+  subst arguments
+  have check : (pointers.headD 0).toNat + 64 ≤ before.mem.pages * 65536 ∧
+      (pointers.headD 0).toNat + 64 < 2 ^ 32 := ⟨bounds.1, bounds.2.1⟩
+  dsimp only
+  rw [regions]
+  by_cases refused : fd ∉ openNumbers I before.host.world.events
+  · have image : SysImage F L I before.host.world.events Call.fdFilestatGet [.word fd]
+        (.returned 8 [zeros 64]) [] := by
+      rw [sysImage_filestat]
+      simp [FilestatImage, refused]
+    refine ⟨before.mem, [], .returned 8 [zeros 64], ?_, shimStep_none ⟨valid.accepted, image⟩,
+      MemFrame.refl _ _, fun _ same => absurd (Transfer.returned.inj same).1 (by decide)⟩
+    simp only [filestatInvoke, check, and_self, ↓reduceIte, OracleSys.word_roundtrip h0,
+      refused]
+  have isOpen : fd ∈ openNumbers I before.host.world.events := Decidable.of_not_not refused
+  have answer := placed_one (pointer := pointers.headD 0) (size := 64) (align := 8)
+    (filestatReply_shape (statxEvent L fd (replies before.host.world.events.length)).ret
+      (statxEvent L fd (replies before.host.world.events.length)).output) bounds.1 bounds.2.1
+  have image : SysImage F L I before.host.world.events Call.fdFilestatGet [.word fd]
+      (filestatReply (statxEvent L fd (replies before.host.world.events.length)).ret
+        (statxEvent L fd (replies before.host.world.events.length)).output)
+      [statxEvent L fd (replies before.host.world.events.length)] := by
+    rw [sysImage_filestat]
+    simp only [FilestatImage, isOpen, ↓reduceIte]
+    exact ⟨_, _, rfl, rfl⟩
+  refine ⟨_, _, _, ?_, shimStep_one ⟨valid.accepted, image⟩ ⟨rfl, rfl⟩
+    (statxEvent_writesWithin L fd _ _), answer.1, answer.2⟩
+  simp only [filestatInvoke, check, and_self, ↓reduceIte, OracleSys.word_roundtrip h0, isOpen]
 
 /-- `fd_prestat_dir_name` of the descriptor `fd` into the buffer of `capacity` bytes at `buffer`. -/
 def dirNameInvoke (before : Store (Observed LinuxWorld)) (args : List Value) :

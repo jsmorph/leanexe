@@ -212,7 +212,7 @@ theorem rounds_mirrors {F : OpenFlags} {L : ShimLayout} {I : Launch} {n : UInt64
     cases images with
     | cons image rest =>
       obtain ⟨lw, lr, rfl, writeImages, roundImages⟩ :=
-        Verified.Examples.WasiReadAll.images_split rest
+        images_split rest
       obtain ⟨e, rfl, mirror⟩ :=
         random_mirror image (full.sub fun x m => List.mem_append_left _ m)
       obtain ⟨writeMirrors, writeRandom⟩ := writes_mirrors writes writeImages
@@ -278,7 +278,7 @@ theorem linux_exec_choices {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Li
       outcome final)
     (images : Images F L I world.events T ls) (full : Full ls) :
     ∃ c, outcome = .exited c ∧ Choices I.args ls c := by
-  have fit := RandomHistogram.stringsFit_of_small small
+  have fit := stringsFit_of_le (by decide) small
   have accepts : ∀ {world code message final}, (linuxHost F L I R).exitTrap world code message
       final → 126 ≤ code.toNat := fun rejected => rejected.1
   cases outcome with
@@ -291,7 +291,7 @@ theorem linux_exec_choices {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Li
     | trapped m' =>
       obtain ⟨e, member, trapped⟩ := main_trapped accepts mainRun
       obtain ⟨_, l, image, sub⟩ :=
-        RandomHistogram.images_mem images e (List.mem_append_left _ member)
+        images_mem images e (List.mem_append_left _ member)
       exact RandomHistogram.image_untrapped image trapped (full.sub sub) fit
     | returned status =>
       have low := ((main_runs mainRun).1 status rfl).1
@@ -305,10 +305,10 @@ theorem linux_exec_choices {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Li
     obtain ⟨events, rfl, -, meets⟩ := exec_main execution
     refine ⟨c, rfl, ?_⟩
     obtain ⟨a, pre, rest, middle, rfl, argsRun, -, refused, accepted⟩ := meets
-    obtain ⟨aZero, aBytes, preEmpty⟩ := RandomHistogram.linux_args argsRun small
-    obtain ⟨l, lx, rfl, front, exitImages⟩ := Verified.Examples.WasiReadAll.images_split images
+    obtain ⟨aZero, aBytes, preEmpty⟩ := linux_args (by decide) (by decide) small argsRun
+    obtain ⟨l, lx, rfl, front, exitImages⟩ := images_split images
     obtain ⟨lp, lr, rfl, preImages, restImages⟩ :=
-      Verified.Examples.WasiReadAll.images_split front
+      images_split front
     cases preEmpty _ _ preImages
     cases exitImages with
     | cons image tail =>
@@ -456,7 +456,7 @@ theorem witness_step {F : OpenFlags} {L : ShimLayout} {environ : List (List UInt
     have writeRun := writeAll_run (by omega) wrun
     rw [hfilled, hW] at writeRun
     obtain ⟨lw, lk, rfl, writeImages, tailImages⟩ :=
-      Verified.Examples.WasiReadAll.images_split restImages
+      images_split restImages
     have later : Carried witnessReplies 1 (lw ++ (lk ++ rest)) := by
       have whole : Carried witnessReplies 0 ([e0] ++ (lw ++ (lk ++ rest))) := by
         simpa [List.append_assoc] using carried
@@ -544,7 +544,7 @@ theorem witness_loop {F : OpenFlags} {L : ShimLayout} {environ : List (List UInt
     cases same
   | next _ firstStep restLoop =>
     obtain ⟨ls1, ls2, rfl, stepImages, loopRestImages⟩ :=
-      Verified.Examples.WasiReadAll.images_split images
+      images_split images
     obtain ⟨draw, out, same, stepFull⟩ := witness_step (rest := ls2 ++ rest) stepped firstStep
       stepImages (by simpa [List.append_assoc] using carried)
     cases same
@@ -564,20 +564,20 @@ theorem witness_run {F : OpenFlags} {L : ShimLayout} {environ : List (List UInt8
     (carried : Carried witnessReplies 0 ls) : outcome = .exited 0 ∧ Full ls := by
   have small : stringsSize witnessArgs + 8 * witnessArgs.length ≤ RandomHistogram.argsLimit := by
     decide
-  have fit := RandomHistogram.stringsFit_of_small small
+  have fit := stringsFit_of_le (by decide) small
   have parsedN : parseArg (bytesOfList (stringsBytes witnessArgs)) 1 = 1 := by decide +kernel
   have parsedK : parseArg (bytesOfList (stringsBytes witnessArgs)) 2 = 1 := by decide +kernel
   obtain ⟨after, events, middle, rest, mainRun, cont, rfl⟩ := Exec.unbind main execution
   obtain ⟨lm, lx, rfl, mainImages, exitImages⟩ :=
-    Verified.Examples.WasiReadAll.images_split images
+    images_split images
   obtain ⟨after1, pre, middle1, rest1, argsRun, cont1, rfl⟩ := Exec.unbind args mainRun
   obtain ⟨lp, lq, rfl, preImages, restImages⟩ :=
-    Verified.Examples.WasiReadAll.images_split mainImages
+    images_split mainImages
   cases middle1 with
   | exited c => exact absurd rfl ((RandomHistogram.args_returned argsRun).1 c)
   | trapped m => exact (RandomHistogram.linux_args_untrapped argsRun fit).elim
   | returned a =>
-  obtain ⟨aZero, aBytes, preEmpty⟩ := RandomHistogram.linux_args argsRun small
+  obtain ⟨aZero, aBytes, preEmpty⟩ := linux_args (by decide) (by decide) small argsRun
   cases preEmpty _ _ preImages
   simp only at aBytes
   change Exec _ (if a.errno != 0 then Action.pure a.errno else _) after1 rest1 middle after
@@ -587,7 +587,7 @@ theorem witness_run {F : OpenFlags} {L : ShimLayout} {environ : List (List UInt8
   rw [aBytes, parsedN, parsedK, ite_eq_right (by decide)] at cont1
   obtain ⟨loopAfter, draws, drawn, post, loopRun, cont2, rfl⟩ := Exec.unbind _ cont1
   obtain ⟨ld, lw, rfl, drawImages, postImages⟩ :=
-    Verified.Examples.WasiReadAll.images_split restImages
+    images_split restImages
   have carried' : Carried witnessReplies 0 (ld ++ (lw ++ lx)) := by
     simpa [List.append_assoc] using carried
   cases loopRun with

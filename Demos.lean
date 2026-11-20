@@ -113,6 +113,9 @@ import Demos.Gpt32.HostProgram
 import Demos.ManifestCheck.Budget
 import Demos.ManifestCheck.CommandStart
 import Demos.ManifestCheck.Compiled
+import Demos.ManifestCheck.Native
+import Demos.ManifestCheck.NativeMeets
+import Demos.ManifestCheck.NativeSpec
 import Demos.Orbit.Flat
 import Demos.Orbit.Gibbs
 import Demos.Orbit.GibbsBox

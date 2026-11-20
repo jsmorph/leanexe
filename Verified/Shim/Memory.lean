@@ -4,15 +4,16 @@ import Verified.Wasi.HostMemory
 /-!
 The guest's linear memory and the shim's scratch as the Linux call layer sees them.  `ShimLayout`
 holds the address of the guest's byte 0 in the process and the addresses of the scratch's
-timespec, `open_how` record, and path buffer.  `shimMemory` reads and writes the byte at
-`base + g` as the guest's byte `g`, with a region accessible when it lies below the memory's
-size.  `shimMemory` meets the layer's laws, its byte strings are the Talos memory's, and
+timespec, `open_how` record, path buffer, and `statx` record.  `shimMemory` reads and writes the
+byte at `base + g` as the guest's byte `g`, with a region accessible when it lies below the
+memory's size.  `shimMemory` meets the layer's laws, its byte strings are the Talos memory's, and
 `step_read`, `step_write`, and `step_random` evaluate the layer's rule for the requests of `read`,
-`write`, and `getrandom` on a guest buffer.  The requests of `clock_gettime` and `openat2` name
-only the scratch, which lies outside the Talos store: `step_clock` and `step_openat2` state that
-every memory that holds the bytes that the stub writes there before the call, zeros in the
-timespec and the path with its terminating zero and the record, gives the events `clockEvent` and
-`openEvent`, and `step_close` gives `closeEvent` for every memory.
+`write`, and `getrandom` on a guest buffer.  The requests of `clock_gettime`, `openat2`, and
+`statx` name only the scratch, which lies outside the Talos store: `step_clock`, `step_openat2`,
+and `step_statx` state that every memory that holds the bytes that the stub writes there before
+the call, zeros in the timespec, the path with its terminating zero and the record, and the empty
+path and zeros in the `statx` record, gives the events `clockEvent`, `openEvent`, and
+`statxEvent`, and `step_close` gives `closeEvent` for every memory.
 -/
 
 namespace Verified.Shim
@@ -20,13 +21,14 @@ namespace Verified.Shim
 open Wasm LeanExe
 
 /-- The addresses that the shim's requests carry: `base`, the address of the guest's byte 0, and
-the addresses of the scratch's 16-byte timespec, its 24-byte `open_how` record, and its path
-buffer of 4,096 bytes. -/
+the addresses of the scratch's 16-byte timespec, its 24-byte `open_how` record, its path buffer
+of 4,096 bytes, and its 256-byte record of `statx`. -/
 structure ShimLayout where
   base : UInt64
   timespec : UInt64
   openHow : UInt64
   path : UInt64
+  statx : UInt64
 
 /-- The guest's address of the process address `a`: `a - base`, modulo 2^64. -/
 def ShimLayout.offset (L : ShimLayout) (a : UInt64) : Nat := (a - L.base).toNat
@@ -268,6 +270,40 @@ theorem step_openat2 {M : Type} (I : Linux.Memory M) (m : M) (L : ShimLayout) (d
   simp only [Linux.step, regions.1, regions.2, length, List.all_nil, List.all_cons, mappedPath,
     mappedHow, UInt64.reduceToNat, Bool.and_true, ↓reduceIte, List.map_cons,
     List.map_nil, named, record, openEvent]
+
+/-- The flags of the `statx` of `fd_filestat_get`, `AT_EMPTY_PATH` (`0x1000`), with which the
+empty path names the descriptor itself. -/
+def statxFlags : UInt64 := 0x1000
+
+/-- The mask of the `statx` of `fd_filestat_get`, `STATX_BASIC_STATS | STATX_BTIME` (`0xFFF`), the
+mask of Rust's `File::metadata`, through which Wasmtime 44 reads a file's metadata. -/
+def statxMask : UInt64 := 0xFFF
+
+/-- The event of `statx` of the descriptor `fd` with the empty path, which the scratch's path
+buffer holds as its terminating zero, into the scratch's `statx` record, which the stub clears
+before the call, with the reply `r`. -/
+def statxEvent (L : ShimLayout) (fd : UInt64) (r : Linux.Reply) : Linux.Event :=
+  ⟨Linux.statxCall, [fd, L.path, statxFlags, statxMask, L.statx], [[0]], List.replicate 256 0,
+    r.ret, (List.range 256).map r.bytes⟩
+
+/-- Every memory whose path buffer starts with a zero byte and whose `statx` record is accessible
+and holds zeros gives `statxEvent`. -/
+theorem step_statx {M : Type} (I : Linux.Memory M) (m : M) (L : ShimLayout) (fd : UInt64)
+    (r : Linux.Reply) (empty : I.read m L.path = 0) (mappedPath : I.mapped m L.path 1 = true)
+    (mapped : I.mapped m L.statx 256 = true)
+    (cleared : I.readBytes m L.statx 256 = List.replicate 256 0) :
+    Linux.step I m ⟨Linux.statxCall, [fd, L.path, statxFlags, statxMask, L.statx]⟩ r =
+      some (I.writeBytes m L.statx ((List.range 256).map r.bytes), statxEvent L fd r) := by
+  have length : I.pathLength m L.path = 1 :=
+    Linux.Memory.pathLength_eq I m L.path (n := 0) (by decide)
+      (by rw [show L.path + UInt64.ofNat 0 = L.path by simp]; exact empty)
+      (fun i hi => absurd hi (Nat.not_lt_zero i))
+  have named : I.readBytes m L.path 1 = [0] := by
+    show [I.read m L.path] = [0]
+    rw [empty]
+  have regions := Linux.regions_statx I m fd L.path statxFlags statxMask L.statx
+  simp only [Linux.step, regions.1, regions.2, length, List.all_nil, List.all_cons, mappedPath,
+    mapped, Bool.and_true, ↓reduceIte, List.map_cons, List.map_nil, named, cleared, statxEvent]
 
 /-- The event of `close` of `fd` with the reply `r`. -/
 def closeEvent (fd : UInt64) (r : Linux.Reply) : Linux.Event :=
