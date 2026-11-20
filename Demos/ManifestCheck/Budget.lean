@@ -13,9 +13,9 @@ of `fd_filestat_get` that a prefix of `main` makes reports a size of at most `M`
 bytes or more.  `StatAlong` is `Host.Along` of `StatAt`, the bound on the next request.  `main`
 makes at most one such request, of the manifest's descriptor, so the premise bounds no other
 reply.  The model charges a copy of an owned value at each use after which the value stays live,
-and it credits no release.  The charge of `main` holds the block of `args`, the
-copy of the argument that names the manifest, the read buffer of 65,536 bytes, the charge of
-`readManifest`, that of `parse`, and that of `checkLines`.
+and it credits no release.  The charge of `main` holds the block of `args`, the copy of the
+argument that names the manifest, the read buffer of 65,536 bytes, the charge of `readManifest`,
+that of `parse`, and that of `checkLines`.
 
 The charge of `readManifest` depends on the reply that the host gives at the world in which the
 command asks the size, so `body_bounded` states `BoundedAt` of the world-indexed rules of
@@ -33,10 +33,11 @@ The charge of `parse` depends on the manifest that the bracket of `main` returne
 `CommandAlong.split` and `CommandAlong.branch` take a returned run of the bracket's action apart
 with the worlds of its parts, and the run of the reflected call of `readManifest` in it is a run of
 `readManifest` that returns the same value (`command.readManifest.related`), from a world along
-which the host answers as `StatAlong` states.  With status 0 its manifest has the reported size (`readManifest_size`, from
-`readBytes_run` of `CommandProof.lean`), so `parse` charges at most `176 M + 464` bytes.
-`hashFile` charges the block of `finish`'s last words, at most `blockCost 8`, and its read passes
-charge nothing.  `writeAll` charges nothing (`writeAll_bounded`).
+which the host answers as `StatAlong` states.  With status 0 its manifest has the reported size
+(`readManifest_size`, from `readBytes_run` of `CommandProof.lean`), so `parse` charges at most
+`176 M + 464` bytes.  `hashFile` charges the block of `finish`'s last words, at most
+`blockCost 8`, and its read passes charge nothing.  `writeAll` charges nothing
+(`writeAll_bounded`).
 
 The charges read the flags of the pure program from `flags_toList`, which the kernel computes once:
 `simp` with `decide` would otherwise evaluate `Prog.flags` over the bodies of the pure functions
