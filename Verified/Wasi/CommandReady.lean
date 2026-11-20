@@ -87,14 +87,12 @@ def Command.fragmentsMask (h : Nat) (slots : List Slot) (base : Nat) (live : Nat
     (pool : Bytes.LiteralPool) : {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → List Program × Nat
   | _, _, command@.unit
-  | _, _, command@(.ret _)
-  | _, _, command@(.call _ _)
-  | _, _, command@(.read _ _ _)
-  | _, _, command@(.readAll _)
-  | _, _, command@(.write _ _ _ _)
-  | _, _, command@(.exit _)
-  | _, _, command@(.sys _ _ _ _ _) =>
+  | _, _, command@(.read _ _ _) =>
     (command.fragments h slots base live.testBit pool, command.useMask)
+  | _, _, .ret (type := type) value =>
+    ([value.codeMask h slots base live pool ++
+        coerceCode h type (value.mode (slots.map Slot.mode)) .owned base],
+      value.useMask)
   | _, _, .bind (intermediate := .unit) first next =>
     let after := next.fragmentsMask h slots base live pool
     let before := first.fragmentsMask h slots base (live ||| after.2) pool
@@ -108,30 +106,55 @@ def Command.fragmentsMask (h : Nat) (slots : List Slot) (base : Nat) (live : Nat
     let yesFragments := yes.fragmentsMask h slots (base + result.width) live pool
     let noFragments := no.fragmentsMask h slots (base + result.width) live pool
     let mid := live ||| yesFragments.2 ||| noFragments.2
-    ([condition.code (pool := pool) h slots base mid.testBit,
-        releaseWhere context slots
-          (fun i => mid.testBit i && !(live ||| yesFragments.2).testBit i),
-        releaseWhere context slots
-          (fun i => mid.testBit i && !(live ||| noFragments.2).testBit i)] ++
+    ([condition.codeMask h slots base mid pool,
+        releaseMask context slots (maskDiff mid (live ||| yesFragments.2)),
+        releaseMask context slots (maskDiff mid (live ||| noFragments.2))] ++
         yesFragments.1 ++ noFragments.1,
       condition.useMask ||| yesFragments.2 ||| noFragments.2)
+  | context, _, .call (signature := signature) _ args =>
+    let all := live ||| argsMask fun j => (args j).useMask
+    let kept := maskDiff all (argsMask fun j =>
+      maskIf (signature.callMoves slots live.testBit args j) (args j).useMask)
+    ([argsCode (fun i =>
+        if (signature.params.get i).scalar then (args i).codeMask h slots base all pool
+        else if signature.mode i = .owned then (args i).ownedCode h slots base kept.testBit
+        else (args i).placeCode h slots),
+        releaseMask context slots (maskDiff kept live)],
+      argsMask fun i => (args i).useMask)
+  | _, _, .readAll limit => ([limit.codeMask h slots base live pool], limit.useMask)
+  | context, _, .write _ buffer start count =>
+    ([releaseMask context slots
+        (maskDiff (1 <<< buffer.index ||| (1 <<< start.index ||| 1 <<< count.index)) live)],
+      1 <<< buffer.index ||| (1 <<< start.index ||| 1 <<< count.index))
+  | _, _, .exit status => ([status.codeMask h slots base live pool], status.useMask)
   | context, _, .loop (type := type) count initial test step =>
     let used := test.useMask >>> 2 ||| step.useMask >>> 2
     let all := live ||| used
     let captured := slots.map fun slot => { slot with mode := .borrowed }
     let state := base + 2
     let scratch := state + type.width
-    ([count.code (pool := pool) h slots base (all ||| initial.useMask).testBit,
-        initial.code (pool := pool) h slots (base + 1) all.testBit ++
+    ([count.codeMask h slots base (all ||| initial.useMask) pool,
+        initial.codeMask h slots (base + 1) all pool ++
           coerceCode h type (initial.mode (slots.map Slot.mode)) .owned (base + 1),
-        test.code (pool := pool) h
+        test.codeMask h
           (⟨state, .borrowed⟩ :: ⟨base + 1, .borrowed⟩ :: captured) scratch
-          (1 ||| all <<< 2).testBit,
+          (1 ||| all <<< 2) pool,
         releaseCode type state,
-        releaseWhere context slots (fun i => used.testBit i && !live.testBit i)] ++
+        releaseMask context slots (maskDiff used live)] ++
         (step.fragmentsMask h (⟨state, .owned⟩ :: ⟨base + 1, .borrowed⟩ :: captured)
           scratch (all <<< 2) pool).1,
       count.useMask ||| initial.useMask ||| test.useMask >>> 2 ||| step.useMask >>> 2)
+  | context, _, .sys _ _ args inputs buffers =>
+    (match buffers with
+      | [] => [releaseMask context slots (maskDiff (varsMask inputs) live)]
+      | buffer :: _ =>
+        [(Expr.var (S := pureSigs) buffer).code (pool := pool) h slots (base + Ty.bytes.width)
+            (sysTakeLive live.testBit args inputs) ++
+          coerceCode h .bytes ((Expr.var (S := pureSigs) buffer).mode (slots.map Slot.mode))
+            .owned (base + Ty.bytes.width),
+          releaseMask (.bytes :: context) (⟨base, .owned⟩ :: slots)
+            (maskDiff (varsMask inputs <<< 1) (live <<< 1))],
+      varsMask buffers ||| (varsMask inputs ||| varsMask args))
   | _, _, .letPair (first := first) (second := second) pair body =>
     let mode := (Expr.var (S := pureSigs) pair).mode (slots.map Slot.mode)
     let bodyFragments := body.fragmentsMask h (⟨base + first.width, mode⟩ :: ⟨base, mode⟩ :: slots)
@@ -149,7 +172,29 @@ theorem Command.fragmentsMask_eq (h : Nat) (pool : Bytes.LiteralPool)
       command.fragmentsMask h slots base live pool =
         (command.fragments h slots base live.testBit pool, command.useMask) := by
   induction command with
-  | unit | ret | call | read | readAll | write | exit | sys => intro _ _ _; rfl
+  | unit | read => intro _ _ _; rfl
+  | ret value | readAll value | exit value =>
+    intro slots base live
+    simp only [Command.fragmentsMask, Command.fragments, Command.useMask, Expr.codeMask_eq]
+  | call callee args =>
+    intro slots base live
+    simp only [Command.fragmentsMask, Command.fragments, Command.useMask, Expr.codeMask_eq,
+      releaseMask_eq, testBit_maskDiff_eq, testBit_maskIf_eq, testBit_or_eq, testBit_argsMask_eq,
+      Expr.usesFast]
+  | write output buffer start count =>
+    intro slots base live
+    simp only [Command.fragmentsMask, Command.fragments, Command.useMask, releaseMask_eq,
+      testBit_maskDiff_eq, testBit_or_eq, testBit_one_shiftLeft_eq]
+  | sys operation form args inputs buffers =>
+    intro slots base live
+    cases buffers with
+    | nil =>
+      simp only [Command.fragmentsMask, Command.fragments, Command.useMask, releaseMask_eq,
+        testBit_maskDiff_eq, testBit_varsMask_eq]
+    | cons buffer rest =>
+      simp only [Command.fragmentsMask, Command.fragments, Command.useMask, releaseMask_eq,
+        testBit_maskDiff_eq, testBit_varsMask_shiftLeft_one_eq]
+      simp only [testBit_shiftLeft_eq]
   | @bind context intermediate result first next firstIh nextIh =>
     intro slots base live
     cases intermediate <;>
@@ -159,10 +204,12 @@ theorem Command.fragmentsMask_eq (h : Nat) (pool : Bytes.LiteralPool)
   | ite condition yes no yesIh noIh =>
     intro slots base live
     simp only [Command.fragmentsMask, Command.fragments, Command.useMask, yesIh, noIh,
-      testBit_or_eq, Command.useMask_testBit]
+      Expr.codeMask_eq, releaseMask_eq, testBit_maskDiff_eq, testBit_or_eq,
+      Command.useMask_testBit]
   | loop count initial test step stepIh =>
     intro slots base live
-    simp only [Command.fragmentsMask, Command.fragments, Command.useMask, stepIh, testBit_or_eq,
+    simp only [Command.fragmentsMask, Command.fragments, Command.useMask, stepIh,
+      Expr.codeMask_eq, releaseMask_eq, testBit_maskDiff_eq, testBit_or_eq,
       testBit_shiftRight_eq, testBit_shiftLeft_eq, testBit_one_eq, Command.useMask_testBit,
       Expr.useMask_testBit, Expr.usesFast_eq]
   | letPair pair body bodyIh =>

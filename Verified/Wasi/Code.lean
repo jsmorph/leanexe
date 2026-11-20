@@ -158,24 +158,23 @@ def Command.codeWith (calls : List Call) (source : Wasm.Module) (h : Nat) (slots
         (shift 2 live)
 
 /-- `Command.codeWith` with the variables live after the command as a bitmask, together with the
-command's `useMask`, in one pass: the code of a command without subcommands is its `codeWith`
-under `live.testBit`, and a command with subcommands computes its masks from theirs.  The
-variables live after a loop's step include those that the step reads, since the step runs again,
-so the loop computes the step's mask before the step's code.  `Command.codeMask_eq` equates the
-two, and `EffectFunc.functionWith` calls this one. -/
+command's `useMask`, in one pass: a command with subcommands computes its masks from theirs, its
+expressions take their code from `Expr.codeMask`, and each release is the `releaseMask` of the
+variables that die there.  `.unit` and `.read`, which neither hold an expression nor release, are
+their `codeWith` under `live.testBit`.  The variables live after a loop's step include those that
+the step reads, since the step runs again, so the loop computes the step's mask before the step's
+code.  `Command.codeMask_eq` equates the two, and `EffectFunc.functionWith` calls this one. -/
 def Command.codeMask (calls : List Call) (source : Wasm.Module) (h : Nat) (slots : List Slot)
     (base : Nat) (live : Nat) (pool : Bytes.LiteralPool) :
     {context : List Ty} → {result : ResultTy} →
     Command pureSigs effectSigs context result → Program × Nat
   | _, _, command@.unit
-  | _, _, command@(.ret _)
-  | _, _, command@(.call _ _)
-  | _, _, command@(.read _ _ _)
-  | _, _, command@(.readAll _)
-  | _, _, command@(.write _ _ _ _)
-  | _, _, command@(.exit _)
-  | _, _, command@(.sys _ _ _ _ _) =>
+  | _, _, command@(.read _ _ _) =>
     (command.codeWith calls (pool := pool) source h slots base live.testBit, command.useMask)
+  | _, _, .ret (type := type) value =>
+    (Relocation.programWith calls (value.codeMask h slots base live pool ++
+        coerceCode h type (value.mode (slots.map Slot.mode)) .owned base),
+      value.useMask)
   | _, _, .bind (intermediate := .unit) first next =>
     let after := next.codeMask calls source h slots base live pool
     let before := first.codeMask calls source h slots base (live ||| after.2) pool
@@ -194,33 +193,63 @@ def Command.codeMask (calls : List Call) (source : Wasm.Module) (h : Nat) (slots
     let yesCode := yes.codeMask calls source h slots (base + result.width) live pool
     let noCode := no.codeMask calls source h slots (base + result.width) live pool
     let mid := live ||| yesCode.2 ||| noCode.2
-    (Relocation.programWith calls (condition.code (pool := pool) h slots base mid.testBit) ++
+    (Relocation.programWith calls (condition.codeMask h slots base mid pool) ++
         [.eqzI64, .iff 0 0
-          (Relocation.programWith calls (releaseWhere context slots
-              (fun i => mid.testBit i && !(live ||| noCode.2).testBit i)) ++
+          (Relocation.programWith calls (releaseMask context slots
+              (maskDiff mid (live ||| noCode.2))) ++
             noCode.1 ++ storeCode h base result.types)
-          (Relocation.programWith calls (releaseWhere context slots
-              (fun i => mid.testBit i && !(live ||| yesCode.2).testBit i)) ++
+          (Relocation.programWith calls (releaseMask context slots
+              (maskDiff mid (live ||| yesCode.2))) ++
             yesCode.1 ++ storeCode h base result.types) [] []] ++
         loadCode h base result.types,
       condition.useMask ||| yesCode.2 ||| noCode.2)
+  | context, _, .call (signature := signature) callee args =>
+    let all := live ||| argsMask fun j => (args j).useMask
+    let kept := maskDiff all (argsMask fun j =>
+      maskIf (signature.callMoves slots live.testBit args j) (args j).useMask)
+    ([.localGet 0, .constI64 1, .addI64] ++
+        argsCode (fun i => Relocation.programWith calls (
+          if (signature.params.get i).scalar then (args i).codeMask h slots base all pool
+          else if signature.mode i = .owned then (args i).ownedCode h slots base kept.testBit
+          else (args i).placeCode h slots)) ++
+        [.call (Wrappers.effectIndexWith calls source callee.index)] ++
+        Relocation.programWith calls (releaseMask context slots (maskDiff kept live)),
+      argsMask fun i => (args i).useMask)
+  | _, _, .readAll limit =>
+    (Relocation.programWith calls (limit.codeMask h slots base live pool) ++
+        readAllCodeWith calls base,
+      limit.useMask)
+  | context, _, .write output buffer start count =>
+    ([.localGet (slots.getD buffer.index default).loc,
+        .localGet ((slots.getD buffer.index default).loc + 1),
+        .localGet (slots.getD start.index default).loc,
+        .localGet (slots.getD count.index default).loc,
+        .call (match output with
+          | .stdout => Wrappers.stdoutIndexWith calls source
+          | .stderr => Wrappers.stderrIndexWith calls source)] ++
+        Relocation.programWith calls (releaseMask context slots
+          (maskDiff (1 <<< buffer.index ||| (1 <<< start.index ||| 1 <<< count.index)) live)),
+      1 <<< buffer.index ||| (1 <<< start.index ||| 1 <<< count.index))
+  | _, _, .exit code =>
+    (Relocation.programWith calls (code.codeMask h slots base live pool) ++
+        [.localSet base] ++ exitCode base,
+      code.useMask)
   | context, _, .loop (type := type) count initial test step =>
     let used := test.useMask >>> 2 ||| step.useMask >>> 2
     let all := live ||| used
     let captured := slots.map fun slot => { slot with mode := .borrowed }
     let state := base + 2
     let scratch := state + type.width
-    (Relocation.programWith calls (count.code (pool := pool) h slots base
-          (all ||| initial.useMask).testBit) ++
+    (Relocation.programWith calls (count.codeMask h slots base (all ||| initial.useMask) pool) ++
         [.localSet base] ++
-        Relocation.programWith calls (initial.code (pool := pool) h slots (base + 1) all.testBit ++
+        Relocation.programWith calls (initial.codeMask h slots (base + 1) all pool ++
           coerceCode h type (initial.mode (slots.map Slot.mode)) .owned (base + 1)) ++
         storeCode h state type.types ++ [.constI64 0, .localSet (base + 1),
           .block 0 0 [.loop 0 0
             ([.localGet (base + 1), .localGet base, .geUI64, .br_if 1] ++
-              Relocation.programWith calls (test.code (pool := pool) h
+              Relocation.programWith calls (test.codeMask h
                 (⟨state, .borrowed⟩ :: ⟨base + 1, .borrowed⟩ :: captured) scratch
-                (1 ||| all <<< 2).testBit) ++
+                (1 ||| all <<< 2) pool) ++
               [.eqzI64, .br_if 1] ++
               (if step.useMask.testBit 0 = false then
                 Relocation.programWith calls (releaseCode type state) else []) ++
@@ -230,10 +259,30 @@ def Command.codeMask (calls : List Call) (source : Wasm.Module) (h : Nat) (slots
               storeCode h state type.types ++
               [.localGet (base + 1), .constI64 1, .addI64, .localSet (base + 1), .br 0]) [] []]
             [] []] ++
-        Relocation.programWith calls (releaseWhere context slots
-          (fun i => used.testBit i && !live.testBit i)) ++
+        Relocation.programWith calls (releaseMask context slots (maskDiff used live)) ++
         loadCode h state type.types,
       count.useMask ||| initial.useMask ||| test.useMask >>> 2 ||| step.useMask >>> 2)
+  | context, _, .sys operation form args inputs buffers =>
+    (match buffers with
+      | [] =>
+        sysInputsCodeWith calls operation form
+            (args.map fun arg => (slots.getD arg.index default).loc)
+            (inputs.map fun input => (slots.getD input.index default).loc) [] base ++
+          Relocation.programWith calls
+            (releaseMask context slots (maskDiff (varsMask inputs) live))
+      | buffer :: _ =>
+        Relocation.programWith calls ((Expr.var (S := pureSigs) buffer).code (pool := pool) h
+            slots (base + Ty.bytes.width) (sysTakeLive live.testBit args inputs) ++
+          coerceCode h .bytes ((Expr.var (S := pureSigs) buffer).mode (slots.map Slot.mode))
+            .owned (base + Ty.bytes.width)) ++
+          storeCode h base Ty.bytes.types ++
+          sysInputsCodeWith calls operation form
+            (args.map fun arg => (slots.getD arg.index default).loc)
+            (inputs.map fun input => (slots.getD input.index default).loc) [base]
+            (base + Ty.bytes.width) ++
+          Relocation.programWith calls (releaseMask (.bytes :: context) (⟨base, .owned⟩ :: slots)
+            (maskDiff (varsMask inputs <<< 1) (live <<< 1))),
+      varsMask buffers ||| (varsMask inputs ||| varsMask args))
   | _, _, .letPair (first := first) (second := second) pair body =>
     let mode := (Expr.var (S := pureSigs) pair).mode (slots.map Slot.mode)
     let bodyCode := body.codeMask calls source h
@@ -254,7 +303,30 @@ theorem Command.codeMask_eq (calls : List Call) (source : Wasm.Module) (h : Nat)
         (command.codeWith calls (pool := pool) source h slots base live.testBit,
           command.useMask) := by
   induction command with
-  | unit | ret | call | read | readAll | write | exit | sys => intro _ _ _; rfl
+  | unit | read => intro _ _ _; rfl
+  | ret value | readAll value | exit value =>
+    intro slots base live
+    simp only [Command.codeMask, Command.codeWith, Command.useMask, Expr.codeMask_eq]
+  | call callee args =>
+    intro slots base live
+    simp only [Command.codeMask, Command.codeWith, Command.useMask, Expr.codeMask_eq,
+      releaseMask_eq, testBit_maskDiff_eq, testBit_maskIf_eq, testBit_or_eq, testBit_argsMask_eq,
+      Expr.usesFast]
+  | write output buffer start count =>
+    intro slots base live
+    cases output <;>
+      simp only [Command.codeMask, Command.codeWith, Command.useMask, releaseMask_eq,
+        testBit_maskDiff_eq, testBit_or_eq, testBit_one_shiftLeft_eq]
+  | sys operation form args inputs buffers =>
+    intro slots base live
+    cases buffers with
+    | nil =>
+      simp only [Command.codeMask, Command.codeWith, Command.useMask, releaseMask_eq,
+        testBit_maskDiff_eq, testBit_varsMask_eq]
+    | cons buffer rest =>
+      simp only [Command.codeMask, Command.codeWith, Command.useMask, releaseMask_eq,
+        testBit_maskDiff_eq, testBit_varsMask_shiftLeft_one_eq]
+      simp only [testBit_shiftLeft_eq]
   | @bind context intermediate result first next firstIh nextIh =>
     intro slots base live
     cases intermediate <;>
@@ -263,13 +335,15 @@ theorem Command.codeMask_eq (calls : List Call) (source : Wasm.Module) (h : Nat)
         testBit_shiftLeft_eq, Command.useMask_testBit]
   | ite condition yes no yesIh noIh =>
     intro slots base live
-    simp only [Command.codeMask, Command.codeWith, Command.useMask, yesIh, noIh, testBit_or_eq,
+    simp only [Command.codeMask, Command.codeWith, Command.useMask, yesIh, noIh,
+      Expr.codeMask_eq, releaseMask_eq, testBit_maskDiff_eq, testBit_or_eq,
       Command.useMask_testBit]
   | loop count initial test step stepIh =>
     intro slots base live
-    simp only [Command.codeMask, Command.codeWith, Command.useMask, stepIh, testBit_or_eq,
-      testBit_shiftRight_eq, testBit_shiftLeft_eq, testBit_one_eq, Command.useMask_testBit,
-      Expr.useMask_testBit, Expr.usesFast_eq]
+    simp only [Command.codeMask, Command.codeWith, Command.useMask, stepIh, Expr.codeMask_eq,
+      releaseMask_eq, testBit_maskDiff_eq, testBit_or_eq, testBit_shiftRight_eq,
+      testBit_shiftLeft_eq, testBit_one_eq, Command.useMask_testBit, Expr.useMask_testBit,
+      Expr.usesFast_eq]
   | letPair pair body bodyIh =>
     intro slots base live
     simp only [Command.codeMask, Command.codeWith, Command.useMask, bodyIh, testBit_or_eq,

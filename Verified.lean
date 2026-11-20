@@ -25,6 +25,7 @@ import Verified.TreeLayout
 import Verified.TreeCopyWork
 import Verified.TreeNodeLayout
 import Verified.Compile
+import Verified.CodeMask
 import Verified.State
 import Verified.Correct
 import Verified.Call
