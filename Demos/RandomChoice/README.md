@@ -254,6 +254,8 @@ reasons over its events.
 ```sh
 tests/random-choice/run.sh
 build/tools/leanexe-wasmtime-host --arg choose --arg 6 --arg 10 run build/random-choice/command.wasm
+build/tools/leanexe-wasmtime-host --random-bytes build/random-choice/fixed/largest.bytes \
+  --arg choose --arg 18446744073709551615 --arg 4 run build/random-choice/command.wasm
 build/random-choice/command.elf 6 10
 qemu-aarch64 build/random-choice/command.elf 6 10
 tests/linux/a64-wasi.sh
@@ -277,9 +279,27 @@ words of `2^64` are rejected, and `2^64 - 1`, with K up to 1,000,000, for `007 3
 writes only the value 1, and a run with standard output `/dev/full` exits with status 51, `nospc`.
 Natively and under QEMU, a run of `choose 6 1000` whose standard output appends to a file of 500
 bytes under a file size limit of 512 bytes, with `SIGXFSZ` ignored, exits with status 22, `fbig`,
-and leaves the file at 512 bytes, the last 12 of them digits and newlines.  No run writes to stderr,
-and since the runs draw their random bytes from the operating system, no run checks the values
-beyond their range.
+and leaves the file at 512 bytes, the last 12 of them digits and newlines.  No run writes to stderr.
+These runs draw their random bytes from the operating system, so they check the values only for
+their range.
+
+In the Wasmtime host, the driver also runs the module with `--random-bytes FILE`, under which each
+call of `random_get` takes the next bytes of FILE and returns errno 29, `io`, when fewer bytes
+remain than it asks for.  [The expected outputs](../../tests/random-choice/Expected.lean) evaluate
+`parseSpec`, `passPicks`, `passText`, `passes`, and `capStatus`, with the passes that `Rounds`
+states, on each case's arguments and bytes, and check the clauses of `Meets` for status 0 and for
+the cap.  Each run must write that output byte for byte and exit with that status, and `BUILD=no`
+takes the expected outputs from an earlier run.  Each pass draws 4,096 bytes.  The cases are
+`6 10`, whose first words are 0 to 3, which N of 6 rejects, and words near `2^64`;
+`9223372036854775809 300`, N of `2^63 + 1`, which rejects the words below `2^63 - 1`, with words at
+that bound and two passes; `6148914691236517206 50`, N of `⌊2^64 / 3⌋ + 1`, which rejects the words
+below `N - 2`, with words at that bound and at N and 2N; `18446744073709551615 4`, whose values
+include 1 and `2^64 - 1`; `1 600`, two passes of 512 and 88 values; `1000 2000`, four passes of
+bytes of a fixed generator; `6 1` with three passes of zero bytes, which reach the cap with status
+77 and write nothing; `6 200` with four passes of three accepted words each, which write 12 values
+and reach the cap; `6 1000` with one pass and 100 more bytes, which writes the first pass's values
+and exits with status 29; `6 1` with no bytes, status 29; and `0 5` with no bytes, a refusal with
+status 2.
 
 Natively, the driver runs the executable under strace and reads every `getrandom` and `write` with
 its undecoded arguments.  The runs of `choose 6 1000` and `choose 18446744073709551615 100000` make
@@ -298,12 +318,14 @@ and exits with status 78.  A run with `abc` makes only `exit_group`.  The driver
 `random choice axiom check passed for 34 theorems`, the module's size, 5,851 bytes, the
 executable's size, 69,632 bytes, and its SHA-256,
 ce3a19326ee50a73b738542c649d7675602b2e82a9d9683cebc1d116a270e52d, and
-`random choice: 71 runs passed`, with the elapsed time and the maximum resident set of the run with
+`random choice: 82 runs passed`, with the elapsed time and the maximum resident set of the run with
 N of `2^64 - 1` and K of 1,000,000 in each runner.
 
-The second, third, and fourth commands run the module, the executable, and the executable under
+The second, fourth, and fifth commands run the module, the executable, and the executable under
 QEMU's user-mode emulator with N of 6 and K of 10, after the driver has written them.  Each writes
-ten lines, each a value from 1 to 6 in decimal, and exits with status 0.  On the AArch64 test host,
+ten lines, each a value from 1 to 6 in decimal, and exits with status 0.  The third command runs the
+module on the bytes of the case `18446744073709551615 4` and writes `1`, `2`,
+`18446744073709551615`, and `9223372036854775808`.  On the AArch64 test host,
 three runs of the module under `/usr/bin/time -v` with N = `2^64 - 1` and standard output in a file
 took from 0.26 to 0.28 seconds for K = 1,000,000, with a maximum resident set of 16,024 to 16,752
 KiB, and from 15,680 to 16,408 KiB for K = 1,000, so the resident set does not grow with K.  The
