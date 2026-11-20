@@ -20,9 +20,26 @@
 # K up to 1,000,000, for `007 3`, and for `6 5 extra`.  The run with N of 6 and K of 1,000,000 must
 # write each of the six values, and the run with N of 1 only the value 1.  A run with standard
 # output /dev/full must exit with status 51, `nospc`, the errno of the write that failed.  No run
-# may write to stderr.  The runs draw their random bytes from the operating system, so no run
-# checks the values beyond their range.  The run with N of 2^64 - 1 and K of 1,000,000 runs under
+# may write to stderr.  These runs draw their random bytes from the operating system, so they check
+# the values only for their range.  The run with N of 2^64 - 1 and K of 1,000,000 runs under
 # `/usr/bin/time -v`, and the script prints its elapsed time and maximum resident set.
+#
+# When RUNNERS holds `wasm`, the module also runs in the Wasmtime host with `--random-bytes FILE`,
+# under which each call of `random_get` takes the next bytes of FILE and returns errno 29, `io`,
+# when fewer bytes remain than it asks for.  The driver writes each case's arguments and random
+# bytes under build/random-choice/fixed, and tests/random-choice/Expected.lean computes from
+# `Meets` of Demos/RandomChoice/CommandSpec.lean the output and the status of each run, which
+# BUILD=no takes from an earlier run.  Each run must write that output byte for byte, exit with that
+# status, and write nothing to stderr.  Each pass draws 4,096 bytes.  The cases are `6 10`, whose
+# first words are 0 to 3, which N of 6 rejects, and words near 2^64; `9223372036854775809 300`, N of
+# 2^63 + 1, which rejects the words below 2^63 - 1, with words at that bound and two passes;
+# `6148914691236517206 50`, N of floor(2^64 / 3) + 1, which rejects the words below N - 2, with
+# words at that bound and at N and 2N; `18446744073709551615 4`, whose values include 1 and
+# 2^64 - 1; `1 600`, two passes of 512 and 88 values; `1000 2000`, four passes of bytes of a fixed
+# generator; `6 1` with three passes of zero bytes, which reach the cap with status 77 and write
+# nothing; `6 200` with four passes of three accepted words each, which write 12 values and reach
+# the cap; `6 1000` with one pass and 100 more bytes, which writes the first pass's values and exits
+# with status 29; `6 1` with no bytes, status 29; and `0 5` with no bytes, a refusal with status 2.
 #
 # On the native and QEMU runners, a run of `choose 6 1000` appends its output to a file of 500
 # bytes under a file size limit, RLIMIT_FSIZE, of 512 bytes, with SIGXFSZ ignored.  Linux takes 12
@@ -140,6 +157,79 @@ esac
 [ ! -f "$elf" ] ||
   printf 'executable: %s bytes, SHA-256 %s\n' "$(wc -c < "$elf" | tr -d ' ')" \
     "$(sha256sum "$elf" | cut -d ' ' -f 1)"
+
+fixed="$out/fixed"
+fixed_names=
+mkdir -p "$fixed"
+
+# words FILE HEX...: appends to FILE the 64-bit little-endian words whose values the 16-digit
+# hexadecimal numerals HEX give.
+words() {
+  file=$1
+  shift
+  escapes=$(printf '%s\n' "$@" | awk '
+    function digit(c) { return index("0123456789abcdef", c) - 1 }
+    length($0) != 16 || /[^0-9a-f]/ { exit 1 }
+    { for (i = 15; i >= 1; i -= 2)
+        printf "\\%03o", 16 * digit(substr($0, i, 1)) + digit(substr($0, i + 1, 1)) }') ||
+    fail bytes "a word is not 16 hexadecimal digits"
+  printf "$escapes" >> "$file"
+}
+
+# noise FILE COUNT SEED: appends to FILE COUNT bytes, the high bytes of the states that follow SEED
+# under x <- (25173 x + 13849) mod 65536.
+noise() {
+  escapes=$(awk -v count="$2" -v x="$3" 'BEGIN {
+    for (i = 0; i < count; i++) { x = (25173 * x + 13849) % 65536; printf "\\%03o", int(x / 256) }
+  }')
+  printf "$escapes" >> "$1"
+}
+
+# fixed NAME ARG...: adds the case NAME, a run with the arguments ARG after the program name, whose
+# random bytes the commands after it append to $fixed/NAME.bytes.
+fixed() {
+  name=$1
+  shift
+  printf '%s\n' choose "$@" > "$fixed/$name.args"
+  : > "$fixed/$name.bytes"
+  fixed_names="$fixed_names $name"
+}
+
+fixed die 6 10
+words "$fixed/die.bytes" 0000000000000000 0000000000000001 0000000000000002 0000000000000003 \
+  0000000000000004 ffffffffffffffff fffffffffffffffb 0000000000000005 0000000000000006
+noise "$fixed/die.bytes" 4024 4
+fixed half 9223372036854775809 300
+words "$fixed/half.bytes" 7ffffffffffffffe 7fffffffffffffff 8000000000000000 ffffffffffffffff \
+  0000000000000000 8000000000000001
+noise "$fixed/half.bytes" 8144 5
+fixed third 6148914691236517206 50
+words "$fixed/third.bytes" 5555555555555553 5555555555555554 5555555555555555 5555555555555556 \
+  aaaaaaaaaaaaaaab aaaaaaaaaaaaaaac ffffffffffffffff 0000000000000000
+noise "$fixed/third.bytes" 4032 6
+fixed largest 18446744073709551615 4
+words "$fixed/largest.bytes" 0000000000000000 ffffffffffffffff 0000000000000001 \
+  fffffffffffffffe 7fffffffffffffff
+head -c 4056 /dev/zero >> "$fixed/largest.bytes"
+fixed one 1 600
+noise "$fixed/one.bytes" 8192 7
+fixed noise 1000 2000
+noise "$fixed/noise.bytes" 16384 8
+fixed cap 6 1
+head -c 12288 /dev/zero >> "$fixed/cap.bytes"
+fixed cap-values 6 200
+for pass in 1 2 3 4; do
+  words "$fixed/cap-values.bytes" 0000000000000004 0000000000000005 0000000000000006
+  head -c 4072 /dev/zero >> "$fixed/cap-values.bytes"
+done
+fixed short 6 1000
+noise "$fixed/short.bytes" 4196 9
+fixed empty 6 1
+fixed refused 0 5
+if [ "$BUILD" = yes ]; then
+  tools/leanrun --timeout 10m lake env lean --run tests/random-choice/Expected.lean "$fixed" \
+    $fixed_names
+fi
 
 # run_wasm OUT ARG...: runs the module in the Wasmtime host with the program name `choose` and the
 # arguments ARG, and returns its status.
@@ -278,6 +368,35 @@ timed() {
     s/^[[:space:]]*\(Maximum resident set size.*\)$/$runner largest-million: \1/p" \
     "$out/$runner-largest-million.time"
 }
+
+# exact NAME: the run of the case NAME in the Wasmtime host with --random-bytes writes the output
+# and exits with the status that Expected.lean computed, and writes nothing to stderr.
+exact() {
+  name=$1
+  stdout="$fixed/$name.stdout"
+  [ -f "$fixed/$name.status" ] && [ -f "$fixed/$name.expected" ] ||
+    fail "fixed $name" "no expected output and status in $fixed"
+  want=$(cat "$fixed/$name.status")
+  set --
+  while IFS= read -r value; do
+    set -- "$@" --arg "$value"
+  done < "$fixed/$name.args"
+  status=0
+  timeout 600s "$host" "$@" --random-bytes "$fixed/$name.bytes" --stdout-file "$stdout" \
+    run "$module" 2> "$stdout.stderr" || status=$?
+  [ "$status" -eq "$want" ] || fail "fixed $name" "status $status, expected $want"
+  cmp -s "$stdout" "$fixed/$name.expected" ||
+    fail "fixed $name" "the output differs from the specification's"
+  [ ! -s "$stdout.stderr" ] || fail "fixed $name" "output on stderr"
+  cases=$((cases + 1))
+}
+
+case " $RUNNERS " in
+  *" wasm "*)
+    for name in $fixed_names; do
+      exact "$name"
+    done ;;
+esac
 
 for runner in $RUNNERS; do
   full "$runner"

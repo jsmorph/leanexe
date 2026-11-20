@@ -260,6 +260,8 @@ run, and the proof reasons over its events.
 ```sh
 tests/random-histogram/run.sh
 build/tools/leanexe-wasmtime-host --arg histogram --arg 1000 run build/random-histogram/command.wasm
+build/tools/leanexe-wasmtime-host --random-bytes build/random-histogram/fixed/residues.bytes \
+  --arg histogram --arg 12 run build/random-histogram/command.wasm
 build/random-histogram/command.elf 1000
 qemu-aarch64 build/random-histogram/command.elf 1000
 tests/linux/a64-wasi.sh
@@ -290,8 +292,7 @@ answered with all of its bytes, and it exits with status 0 and ten counts that s
 first 12 words keep the buffer's initial zero bytes, so the count of residue 0 is at least 12.  The
 run under the file size limit under strace makes two writes: the first takes 12 bytes, and the
 second offers 12 bytes fewer than the first and fails with `EFBIG`.  A native run with `abc` under
-strace makes only `exit_group`.  The driver prints `random histogram axiom check passed for 14
-theorems`, the executable's size, and `random histogram: 54 runs passed`.
+strace makes only `exit_group`.
 
 strace's injection skips the call and leaves the buffer as it was, so the shim takes the buffer's
 earlier bytes as those of the short count, which `Counts` admits, since a reply may hold any bytes.
@@ -302,11 +303,28 @@ of at most 4,096 bytes.  The same injection cut the 5,000-byte `getrandom` of `c
 `tests/linux/a64-wasi.sh` to 4,096 bytes, and the shim asked for the other 904 bytes at the
 buffer's address plus 4,096.
 
-The second, third, and fourth commands run the module, the executable, and the executable under
+These runs draw their random bytes from the operating system, so they check the counts only for
+their number, form, and sum.  The driver therefore also runs the module in the Wasmtime host with
+`--random-bytes FILE`, under which each call of `random_get` takes the next bytes of FILE and
+returns errno 29, `io`, when fewer bytes remain than it asks for.  [The expected
+outputs](../../tests/random-histogram/Expected.lean) evaluate `parseSpec`, `words`,
+`histogramSpec`, and `renderSpec`, with the calls that `Draws` states, on each case's arguments and
+bytes, and each run must write that output byte for byte and exit with that status.  The cases are
+N of 12 with words chosen for the residues, among them words with the top bit set; N of 1,025 with
+8,200 bytes of a fixed generator, which calls of 4,096, 4,096, and 8 bytes take; N of 512 with 4,196
+bytes, of which one call takes 4,096; N of 513 with 4,103 bytes, whose second call finds 7 of its 8
+bytes, so the run writes nothing and exits with status 29; N of 1 with no bytes, status 29; and
+`abc` with no bytes, a refusal with status 2 before any call.  The driver prints
+`random histogram axiom check passed for 14 theorems`, the executable's size, and
+`random histogram: 60 runs passed`.
+
+The second, fourth, and fifth commands run the module, the executable, and the executable under
 QEMU's user-mode emulator with N of 1,000, after the driver has written them.  Each writes ten
 lines, the counts of the words whose residue mod 10 is 0, 1, and so on to 9, each in decimal without
 a leading zero, which sum to N, and exits with status 0.  One run of the executable wrote `97`, `97`,
-`96`, `94`, `88`, `102`, `109`, `99`, `113`, and `105`.
+`96`, `94`, `88`, `102`, `109`, `99`, `113`, and `105`.  The third command runs the module on the 12
+words of the case with chosen residues and writes `2`, `1`, `0`, `1`, `1`, `2`, `1`, `1`, `1`, and
+`2`.
 
 `tests/linux/a64-wasi.sh` writes the executable from the module that `tools/Emit.lean` emits and
 elaborates the executable's theorems beside it, which requires the three axioms of each.
