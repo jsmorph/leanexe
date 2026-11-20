@@ -31,19 +31,22 @@ action, with X0 at 2.
 `histogram_elf_counts` is the corollary for the file, for every reply sequence and every N, from
 arguments whose strings, each with its zero byte, and eight-byte pointers take at most `argsLimit`
 bytes, as Linux requires of every process.  `budget`, the bound of `body_bounded` at arguments of
-`argsLimit` bytes, fits the executable's 4,096 pages.  When every `getrandom` of the trace returned the count that it asked for and every
-`write` returned an error number or at most the count that it offered (`Full`), X0 and the trace
+`argsLimit` bytes, fits the executable's 4,096 pages.  When every `getrandom` of the trace
+returned an error number or a count of at most its length, positive for a positive length, and
+every `write` an error number or at most the count that it offered (`InRange`), X0 and the trace
 meet `Counts`.  `histogram_elf_runs` gives the run from `linux_footprint_bounded`, the footprint
 without a guest trap, through `wasiElf_footprint_with`, and `linux_exec_counts` gives the status
-and `Counts` from the `Exec` run that the footprint names.
+and `Counts` from the `Exec` run that the footprint names, with `Sized` from the replies that the
+events hold (`carried_sized`).
 
-`histogram_elf_witness` shows that the corollary's premises and `Full` hold together.  The process
-holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the initial stack of the
-arguments `oneArgs`, `h` and `1`, with no environment, as `loadedMem` of
-`tests/TestSupport/A64/ElfWitness.lean` places them.  Under the replies `fullReplies`, which
-answer the `getrandom` of the run's one word with 8 zero bytes and its `write` with every byte of
-`oneOutput`, the process reaches `exit_group` with X0 at 0 after layer events that meet `Full` and
-`Counts`.
+`histogram_elf_witness` shows that the corollary's premises and `InRange` hold together with a
+short read.  The process holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the
+initial stack of the arguments `oneArgs`, `h` and `1`, with no environment, as `loadedMem` of
+`tests/TestSupport/A64/ElfWitness.lean` places them.  Under the replies `shortReplies`, which
+answer calls 0 and 1 with the result 4 and zero bytes and every later call with the size of
+`oneOutput`, the process reaches `exit_group` with X0 at 0 after layer events that meet `InRange`
+and `Counts` and hold a `getrandom` that returned a count of at least 1 and below its length
+(`ShortRead`).
 -/
 
 namespace TestSupport.A64.ImageFilesRandomHistogram
@@ -185,16 +188,21 @@ started as for `histogram_elf` with arguments whose strings, each with its zero 
 eight-byte pointers take at most `argsLimit` bytes, 6 MiB, reaches `SVC #0` with X8 at 94,
 `exit_group`, and the UART's state as it was.  Its
 trace holds the layer events `ls`, each of which holds its reply of `R`, and when every
-`getrandom` of `ls` returned the count that it asked for and every `write` an error number or at
-most the count that it offered (`Full`), X0 and `ls` meet `Counts`.  When `parseSpec` refuses the
-arguments, no layer event precedes `exit_group`, and X0 is 2.  Otherwise the events are calls of
-`getrandom`, each of at most 4,096 bytes with flags 0, followed by calls of `write` of descriptor
-1, the bytes that `getrandom` returned hold exactly N little-endian words `w`, the counts of
-`histogramSpec w` sum to N, each write offered the bytes of `renderSpec (histogramSpec w)` that
-the writes before it did not take, and the bytes that the writes took form a prefix of that
-output.  X0 is 0 exactly when they are the whole output.  Otherwise X0 is 77 after one write for
-each of the loop's passes, each of which returned at most its count, or the errno of the error
-number that the last `write` returned, every `write` before which returned at most its count. -/
+`getrandom` of `ls` returned an error number or a count of at most its length, positive for a
+positive length, and every `write` an error number or at most the count that it offered
+(`InRange`), X0 and `ls` meet `Counts`.  When `parseSpec` refuses the arguments, no layer event
+precedes `exit_group`, and X0 is 2.  Otherwise the events start with groups of `getrandom` calls
+that mirror, one for one, the calls of `random_get` of `Draws` for N words, each for `8 · min r 512`
+bytes with `r` the words still to draw.  A group's calls ask with flags 0 for the bytes that the
+calls before them did not return, and a group whose `random_get` returned errno 0 returned that
+call's bytes.  Either the last group ended with an error number, whose errno is X0, and no `write`
+follows, or calls of `write` of descriptor 1 follow, the random bytes hold exactly N little-endian
+words `w`, the counts of `histogramSpec w` sum to N, each write offered the bytes of
+`renderSpec (histogramSpec w)` that the writes before it did not take, and the bytes that the
+writes took form a prefix of that output.  In the second case X0 is 0 exactly when they are the
+whole output, and otherwise X0 is 77 after one write for each of the loop's passes, each of which
+returned at most its count, or the errno of the error number that the last `write` returned,
+every `write` before which returned at most its count. -/
 theorem histogram_elf_counts (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
     {top : UInt64} (small : stringsSize args + 8 * args.length ≤ argsLimit)
     (hl : ElfLoaded (byteAt histogramElfBytes) p.core.mem)
@@ -205,27 +213,29 @@ theorem histogram_elf_counts (R : Linux.Replies) (p : Proc) {args environ : List
       fetchFrom p.core.mem elfEntry (elfWords histogramLayout) q.core.pc = some svcWord ∧
       q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
       ∃ ls, q.trace = ls.map A64.Event.sys ∧ Carried R 0 ls ∧
-        (Full ls → Counts args ls (q.core.x 0)) := by
+        (InRange ls → Counts args ls (q.core.x 0)) := by
   obtain ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hend⟩ :=
     histogram_elf_runs R p small hl hstack hpc htr
-  refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, fun full => ?_⟩
+  refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, fun range => ?_⟩
+  have sized := carried_sized hcar
   rcases hend with ⟨c, h, hx⟩ | h | h
-  · obtain ⟨c', exited, counts⟩ := linux_exec_counts small h himg full
+  · obtain ⟨c', exited, counts⟩ := linux_exec_counts small h himg range sized
     cases exited
     rw [hx]
     exact counts
-  · obtain ⟨_, exited, -⟩ := linux_exec_counts small h himg full
+  · obtain ⟨_, exited, -⟩ := linux_exec_counts small h himg range sized
     cases exited
-  · obtain ⟨_, exited, -⟩ := linux_exec_counts small h himg full
+  · obtain ⟨_, exited, -⟩ := linux_exec_counts small h himg range sized
     cases exited
 
 /-! ## The premises hold together -/
 
-/-- The premises of `histogram_elf_counts` and `Full` hold together.  For the replies
-`fullReplies`, the process `witnessProc`, the arguments `oneArgs`, which give N of 1, no
+/-- The premises of `histogram_elf_counts` and `InRange` hold together with a short read.  For the
+replies `shortReplies`, the process `witnessProc`, the arguments `oneArgs`, which give N of 1, no
 environment, and the stack's top `witnessTop`, every premise of the corollary holds, and the
-process reaches `exit_group` with X0 at 0 after layer events that hold their replies and meet
-`Full` and `Counts`. -/
+process reaches `exit_group` with X0 at 0 after layer events that hold their replies, meet
+`InRange` and `Counts`, and hold a short read, a `getrandom` that returned a count of at least 1
+and below its length (`ShortRead`). -/
 theorem histogram_elf_witness :
     ∃ (R : Linux.Replies) (p : Proc) (args environ : List (List UInt8)) (top : UInt64),
       parseSpec (bytesOfList (stringsBytes args)) = 1 ∧
@@ -237,7 +247,7 @@ theorem histogram_elf_witness :
           (fetchFrom p.core.mem elfEntry (elfWords histogramLayout)) p q ∧
         fetchFrom p.core.mem elfEntry (elfWords histogramLayout) q.core.pc = some svcWord ∧
         q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
-        ∃ ls, q.trace = ls.map A64.Event.sys ∧ Carried R 0 ls ∧ Full ls ∧
+        ∃ ls, q.trace = ls.map A64.Event.sys ∧ Carried R 0 ls ∧ InRange ls ∧ ShortRead ls ∧
           Counts args ls (q.core.x 0) ∧ q.core.x 0 = 0 := by
   have parsed : parseSpec (bytesOfList (stringsBytes oneArgs)) = 1 := by decide
   have small : stringsSize oneArgs + 8 * oneArgs.length ≤ argsLimit := by decide
@@ -247,21 +257,21 @@ theorem histogram_elf_witness :
   have stack : InitialStack oneArgs [] (2 ^ 32) witnessTop
       (loadedMem (byteAt histogramElfBytes) 22008 4096 witnessStack) :=
     loadedMem_stack (byteAt histogramElfBytes) 22008 4096
-  refine ⟨fullReplies, witnessProc (loadedMem (byteAt histogramElfBytes) 22008 4096 witnessStack),
+  refine ⟨shortReplies, witnessProc (loadedMem (byteAt histogramElfBytes) 22008 4096 witnessStack),
     oneArgs, [], witnessTop, parsed, small, loaded, stack, rfl, rfl, ?_⟩
   obtain ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hend⟩ :=
-    histogram_elf_runs fullReplies
+    histogram_elf_runs shortReplies
       (witnessProc (loadedMem (byteAt histogramElfBytes) 22008 4096 witnessStack)) small loaded
       stack rfl rfl
   refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, ?_⟩
   rcases hend with ⟨c, h, hx⟩ | h | h
-  · obtain ⟨exited, full⟩ := fullReplies_run h himg hcar
+  · obtain ⟨exited, range, short⟩ := short_run h himg hcar
     cases exited
-    obtain ⟨c', exited, counts⟩ := linux_exec_counts small h himg full
+    obtain ⟨c', exited, counts⟩ := linux_exec_counts small h himg range (carried_sized hcar)
     cases exited
-    exact ⟨full, by rw [hx]; exact counts, hx⟩
-  · cases (fullReplies_run h himg hcar).1
-  · cases (fullReplies_run h himg hcar).1
+    exact ⟨range, short, by rw [hx]; exact counts, hx⟩
+  · cases (short_run h himg hcar).1
+  · cases (short_run h himg hcar).1
 
 #print axioms histogram_elf_file
 #print axioms histogram_elf_segments

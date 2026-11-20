@@ -31,19 +31,20 @@ trap of the shim, with X0 at 2, or of a `Prefix` run of the action, with X0 at 2
 from arguments whose strings, each with its zero byte, and eight-byte pointers take at most the
 random histogram's `argsLimit` bytes, as Linux requires of every process.  `budget`, the bound of
 `body_bounded`, fits the executable's 4,096 pages (`budget_fits`).  When every `getrandom` of the
-trace returned the count that it asked for and every `write` returned an error number or at most
-the count that it offered (`Full`), X0 and the trace meet `Choices`.  `choice_elf_runs` gives the
-run from `linux_footprint_bounded`, the footprint without a guest trap, through
-`wasiElf_footprint_with`, and `linux_exec_choices` gives the status and `Choices` from the `Exec`
-run that the footprint names.
+trace returned an error number or a count of at most its length, positive for a positive length,
+and every `write` an error number or at most the count that it offered (`InRange`), X0 and the
+trace meet `Choices`.  `choice_elf_runs` gives the run from `linux_footprint_bounded`, the
+footprint without a guest trap, through `wasiElf_footprint_with`, and `linux_exec_choices` gives
+the status and `Choices` from the `Exec` run that the footprint names, with `Sized` from the
+replies that the events hold (`carried_sized`).
 
-`choice_elf_witness` shows that the corollary's premises and `Full` hold together.  The process
+`choice_elf_witness` shows that the corollary's premises and `InRange` hold together.  The process
 holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the initial stack of the
 arguments `witnessArgs`, `c`, `1`, and `1`, with no environment, as `loadedMem` of
 `tests/TestSupport/A64/ElfWitness.lean` places them.  Under the replies
 `witnessReplies`, which answer the `getrandom` of the run's one pass with 4,096 zero bytes and its
 `write` of the line `1` with 2, the process reaches `exit_group` with X0 at 0 after layer events
-that meet `Full` and `Choices`.
+that meet `InRange` and `Choices`.
 -/
 
 namespace TestSupport.A64.ImageFilesRandomChoice
@@ -184,16 +185,18 @@ theorem choice_elf_runs (R : Linux.Replies) (p : Proc) {args environ : List (Lis
 started as for `choice_elf` with arguments whose strings, each with its zero byte, and eight-byte
 pointers take at most `argsLimit` bytes, 6 MiB, reaches `SVC #0` with X8 at 94, `exit_group`, and
 the UART's state as it was.  Its trace holds the layer events `ls`, each of which holds its reply
-of `R`, and when every `getrandom` of `ls` returned the count that it asked for and every `write`
-an error number or at most the count that it offered (`Full`), X0 and `ls` meet `Choices`.  When
-`parseSpec` refuses N or K, no layer event precedes `exit_group`, and X0 is 2.  Otherwise the layer
-events mirror, one for one, WASI events that make the passes of `Rounds`, whose random bytes are
-those that the `getrandom` events returned and whose status is X0: each pass is a `getrandom` of
-4,096 bytes with flags 0 that returned 4,096, followed by `write` calls of descriptor 1, each of
-which offered the bytes of the pass's lines that the writes before it did not take.  X0 is 0 only
-when the writes took the lines of the picks of the first K accepted words of those bytes, and 77
-only when those bytes hold the `512 · passes K` words of the cap's passes, fewer than K of them
-accepted. -/
+of `R`, and when every `getrandom` of `ls` returned an error number or a count of at most its
+length, positive for a positive length, and every `write` an error number or at most the count
+that it offered (`InRange`), X0 and `ls` meet `Choices`.  When `parseSpec` refuses N or K, no
+layer event precedes `exit_group`, and X0 is 2.  Otherwise the layer events are groups that
+mirror, one for one, WASI events that make the passes of `Rounds`, whose status is X0 and whose
+random bytes are those that the groups of the passes' `random_get` calls that returned errno 0
+returned.  Each pass is the group of a `random_get` of 4,096 bytes, `getrandom` calls with flags 0,
+each for the bytes that the calls before it did not return, followed, when the group returned
+errno 0, by `write` calls of descriptor 1, each of which offered the bytes of the pass's lines that
+the writes before it did not take.  X0 is 0 only when the writes took the lines of the picks of the
+first K accepted words of those bytes, and 77 only when those bytes hold the `512 · passes K` words
+of the cap's passes, fewer than K of them accepted. -/
 theorem choice_elf_choices (R : Linux.Replies) (p : Proc) {args environ : List (List UInt8)}
     {top : UInt64} (small : stringsSize args + 8 * args.length ≤ Demos.RandomHistogram.argsLimit)
     (hl : ElfLoaded (byteAt choiceElfBytes) p.core.mem)
@@ -204,18 +207,19 @@ theorem choice_elf_choices (R : Linux.Replies) (p : Proc) {args environ : List (
       fetchFrom p.core.mem elfEntry (elfWords choiceLayout) q.core.pc = some svcWord ∧
       q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
       ∃ ls, q.trace = ls.map A64.Event.sys ∧ Carried R 0 ls ∧
-        (Demos.RandomHistogram.Full ls → Choices args ls (q.core.x 0)) := by
+        (Demos.RandomHistogram.InRange ls → Choices args ls (q.core.x 0)) := by
   obtain ⟨q, rq, cq, x8q, ioq, T, ls, w, trq, himg, hcar, hend⟩ :=
     choice_elf_runs R p small hl hstack hpc htr
-  refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, fun full => ?_⟩
+  refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, fun range => ?_⟩
+  have sized := Demos.RandomHistogram.carried_sized hcar
   rcases hend with ⟨c, h, hx⟩ | h | h
-  · obtain ⟨c', exited, choices⟩ := linux_exec_choices small h himg full
+  · obtain ⟨c', exited, choices⟩ := linux_exec_choices small h himg range sized
     cases exited
     rw [hx]
     exact choices
-  · obtain ⟨_, exited, -⟩ := linux_exec_choices small h himg full
+  · obtain ⟨_, exited, -⟩ := linux_exec_choices small h himg range sized
     cases exited
-  · obtain ⟨_, exited, -⟩ := linux_exec_choices small h himg full
+  · obtain ⟨_, exited, -⟩ := linux_exec_choices small h himg range sized
     cases exited
 
 /-! ## The premises hold together -/
@@ -247,11 +251,11 @@ theorem witness_stack :
   envp := fun _ h => absurd h (Nat.not_lt_zero _)
   envpEnd := by decide +kernel
 
-/-- The premises of `choice_elf_choices` and `Full` hold together.  For the replies
+/-- The premises of `choice_elf_choices` and `InRange` hold together.  For the replies
 `witnessReplies`, the process `witnessProc`, the arguments `witnessArgs`, which give N and K of 1,
 no environment, and the stack's top `witnessTop`, every premise of the corollary holds, and the
 process reaches `exit_group` with X0 at 0 after layer events that hold their replies and meet
-`Full` and `Choices`. -/
+`InRange` and `Choices`. -/
 theorem choice_elf_witness :
     ∃ (R : Linux.Replies) (p : Proc) (args environ : List (List UInt8)) (top : UInt64),
       argN args = 1 ∧ argK args = 1 ∧
@@ -264,7 +268,7 @@ theorem choice_elf_witness :
         fetchFrom p.core.mem elfEntry (elfWords choiceLayout) q.core.pc = some svcWord ∧
         q.core.x 8 = 94 ∧ q.core.io = p.core.io ∧
         ∃ ls, q.trace = ls.map A64.Event.sys ∧ Carried R 0 ls ∧
-          Demos.RandomHistogram.Full ls ∧
+          Demos.RandomHistogram.InRange ls ∧
           Choices args ls (q.core.x 0) ∧ q.core.x 0 = 0 := by
   have parsedN : argN witnessArgs = 1 := by decide +kernel
   have parsedK : argK witnessArgs = 1 := by decide +kernel
@@ -284,11 +288,12 @@ theorem choice_elf_witness :
       small loaded stack rfl rfl
   refine ⟨q, rq, cq, x8q, ioq, ls, trq, hcar, ?_⟩
   rcases hend with ⟨c, h, hx⟩ | h | h
-  · obtain ⟨exited, full⟩ := witness_run h himg hcar
+  · obtain ⟨exited, range⟩ := witness_run h himg hcar
     cases exited
-    obtain ⟨c', exited, choices⟩ := linux_exec_choices small h himg full
+    obtain ⟨c', exited, choices⟩ :=
+      linux_exec_choices small h himg range (Demos.RandomHistogram.carried_sized hcar)
     cases exited
-    exact ⟨full, by rw [hx]; exact choices, hx⟩
+    exact ⟨range, by rw [hx]; exact choices, hx⟩
   · cases (witness_run h himg hcar).1
   · cases (witness_run h himg hcar).1
 
