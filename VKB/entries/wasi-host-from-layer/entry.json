@@ -20,7 +20,11 @@
     "a binding's own bound on the output regions of the layer's events, narrower than WritesWithin",
     "a premise on the replies R : Linux.Replies of a corollary under linuxHost F L I R",
     "a class of reply sequences that a budget premise needs before any run exists",
-    "a layer event whose output region is the statx record of the shim's scratch"
+    "a layer event whose output region is the statx record of the shim's scratch",
+    "a premise that bounds the replies of linuxHost F L I R at every world, such as every size that fd_filestat_get reports",
+    "LeanExe.Wasi.Host.Along host property action world for a premise on the replies along the prefixes of a run",
+    "a premise on the one reply of R that a call at a prefix of the run takes",
+    "a premise on the replies after an executable's startup check"
   ],
   "modules": [
     "Verified.Shim",
@@ -30,7 +34,9 @@
     "Verified.Examples.WasiReadAllNative",
     "Verified.ShimA64",
     "Verified.Examples.WasiReadAllMessage",
-    "Verified.Examples.WasiReadAllSteady"
+    "Verified.Examples.WasiReadAllSteady",
+    "LeanExe.Wasi.RelatedPrefix",
+    "Demos.ManifestCheck.Native"
   ],
   "declarations": [
     "Verified.Shim.shimCalls",
@@ -147,7 +153,16 @@
     "Verified.Shim.statxEvent",
     "Verified.Shim.step_statx",
     "Verified.Shim.FilestatImage",
-    "Verified.Shim.ShimLayout.statx"
+    "Verified.Shim.ShimLayout.statx",
+    "LeanExe.Wasi.Host.Along",
+    "LeanExe.Wasi.Host.Along.after",
+    "LeanExe.Wasi.Host.Along.bind_left",
+    "LeanExe.Wasi.Host.Along.bind_right",
+    "LeanExe.Wasi.Host.Along.congr",
+    "LeanExe.Wasi.Host.Along.of_rel",
+    "LeanExe.Wasi.Host.NoTrapsAt",
+    "LeanExe.Wasi.Host.NoTrapsAt.of_bind",
+    "Verified.Shim.filestatReply"
   ],
   "examples": [
     "Verified.Shim.open_contract",
@@ -167,11 +182,21 @@
     "Verified.Examples.WasiReadAll.succeeded_of_steady",
     "Verified.Examples.WasiReadAll.Succeeded",
     "Verified.Examples.WasiReadAll.linux_exec_succeeded",
-    "Verified.Examples.WasiReadAll.linux_steady"
+    "Verified.Examples.WasiReadAll.linux_steady",
+    "Verified.Examples.WasiReadAll.SteadyAt",
+    "Demos.ManifestCheck.StatxBounded",
+    "Demos.ManifestCheck.statx_along",
+    "Demos.ManifestCheck.StatAlong",
+    "Demos.ManifestCheck.StatAt",
+    "Demos.ManifestCheck.manifestLimit"
   ],
   "unimported": {
     "tests/TestSupport/A64/ImageFilesWasiElf.lean": [
       "TestSupport.A64.ImageFilesWasiElf.readall_elf"
+    ],
+    "tests/TestSupport/A64/ImageFilesManifestCheck.lean": [
+      "TestSupport.A64.ImageFilesManifestCheck.StatxAfterCheck",
+      "TestSupport.A64.ImageFilesManifestCheck.witness_bounded"
     ]
   }
 }

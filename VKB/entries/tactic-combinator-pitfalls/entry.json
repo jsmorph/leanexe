@@ -72,7 +72,10 @@
     "rw [List.take_add_one] rewrites the take of a numeral",
     "cases on Outcome.returned of a large term reaches the maximum recursion depth",
     "generalize changes nothing inside a structure hypothesis",
-    "simp only with two equations whose left sides match one term, such as Nat.testBit (1 <<< k)"
+    "simp only with two equations whose left sides match one term, such as Nat.testBit (1 <<< k)",
+    "?next ?value unified with next.denote … (bindEnv value env) in Host.Along.bind_right against an expected type",
+    "an auto-bound implicit name that resolves to a theorem of the namespace that the declaration's name opens",
+    "unknown identifier after obtain with - on an existential witness"
   ],
   "modules": [
     "Demos.Orbit.LambertTime",
@@ -101,7 +104,7 @@
     "Verified.Shim",
     "LeanExe.A64.Proof.Constructs",
     "Verified.ShimA64",
-    "Verified.Examples.WasiReadAllSteady",
+    "Demos.ManifestCheck.Budget",
     "Demos.RandomHistogram.CommandProof",
     "Demos.ManifestCheck.CommandProof",
     "Demos.RandomChoice.CommandProof",
@@ -181,7 +184,7 @@
     "Lean.Parser.sepByIndent",
     "Lean.Parser.checkColGe",
     "Lean.Meta.whnfForall",
-    "LeanExe.Wasi.Host.NoTrapsAlong",
+    "LeanExe.Wasi.Host.Along",
     "Lean.MVarId.congrN",
     "dite_eq_left",
     "dite_eq_right",
@@ -198,7 +201,11 @@
     "Min.min",
     "Verified.testBit_shiftLeft_eq",
     "Verified.testBit_one_shiftLeft_eq",
-    "Verified.shift"
+    "Verified.shift",
+    "Verified.Wasi.Resource.CommandAlong.first",
+    "Verified.Wasi.Resource.CommandAlong.next",
+    "Verified.Wasi.Resource.CommandAlong.body",
+    "Verified.Wasi.Resource.CommandAlong.split"
   ],
   "examples": [
     "Demos.OrderBook.Bound.step_le",
@@ -233,7 +240,7 @@
     "Verified.ShimA64.readStub_sim",
     "Verified.ShimA64.wasiElf_run",
     "LeanExe.A64.run_sizesStub",
-    "Verified.Examples.WasiReadAll.SteadyAlong",
+    "Demos.ManifestCheck.body_bounded",
     "Verified.ShimA64.closeStub_sim",
     "Verified.ShimA64.run_handleChecked",
     "Demos.RandomHistogram.tally_eq",

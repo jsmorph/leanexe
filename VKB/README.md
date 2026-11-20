@@ -45,7 +45,7 @@ An entry names existing declarations instead of restating them.  When several pr
 | [Readers of line-oriented files](entries/line-readers/README.md) | Proves a reader over a byte buffer equal to a specification over `List.splitOn`, and its first error equal to a definition by line number. |
 | [Transcriptions of standards](entries/spec-transcription/README.md) | Relates a program to a transcription of a published standard, its vectors, and its test references. |
 | [Testing a statement before its proof](entries/statement-testing/README.md) | Evaluates a new theorem's statement on an executable model before proving it. |
-| [Independent review of specifications and designs](entries/independent-review/README.md) | Reviews a specification against its request with the reviewer's own model and wrong programs, and a design note against the tree. |
+| [Independent review of specifications and designs](entries/independent-review/README.md) | Reviews a specification against its request with the reviewer's own model and wrong programs, a premise on a host's replies with wrong premises, and a design note against the tree. |
 | [Satisfiable hypotheses and complete conclusions](entries/non-vacuous-statements/README.md) | Shows each hypothesis satisfiable and makes a conclusion exclude the trivial run. |
 | [Claims and the theorems that state them](entries/claims-and-theorems/README.md) | States each claim of a document as its theorem states it. |
 | [Requirements for a safety theorem](entries/requirements-for-theorems/README.md) | Writes requirements whose terms, items, and margins a theorem can state. |

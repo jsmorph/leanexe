@@ -18,7 +18,9 @@
     "a wrong request that Linux refuses with the errno of the shim's own refusal",
     "a statement of a write loop's output that wrong loops meet",
     "a restatement of a WASI specification over Linux events with alternatives that make no layer event",
-    "0 < e.ret.toNat for a result that may be a negated error number"
+    "0 < e.ret.toNat for a result that may be a negated error number",
+    "wrong premises on a host's replies, such as a bound on a reply at the wrong index",
+    "the class of runs with the host's real replies that a premise excludes"
   ],
   "modules": [
     "Library.Random.Sampling.Spec",
@@ -31,7 +33,8 @@
     "LeanExe.A64.Proof.WasiPreopen",
     "LeanExe.Wasi.WriteAll",
     "Demos.RandomHistogram.NativeCounts",
-    "Demos.ManifestCheck.NativeMeets"
+    "Demos.ManifestCheck.NativeMeets",
+    "Demos.ManifestCheck.Native"
   ],
   "declarations": [
     "Library.Random.Sampling.Shuffles",
@@ -59,7 +62,9 @@
     "Demos.ManifestCheck.nameCheck",
     "Demos.ManifestCheck.NManifestReads",
     "Demos.ManifestCheck.NFileReads",
-    "LeanExe.Linux.isError"
+    "LeanExe.Linux.isError",
+    "Demos.ManifestCheck.StatAlong",
+    "Demos.ManifestCheck.StatxBounded"
   ],
   "examples": [
     "Library.Sorting.Quicksort.quicksort_eq",
@@ -68,5 +73,10 @@
     "LeanExe.A64.run_preopenCheck",
     "Demos.RandomHistogram.OfferedLayer",
     "Demos.ManifestCheck.spares3_three"
-  ]
+  ],
+  "unimported": {
+    "tests/TestSupport/A64/ImageFilesManifestCheck.lean": [
+      "TestSupport.A64.ImageFilesManifestCheck.StatxAfterCheck"
+    ]
+  }
 }

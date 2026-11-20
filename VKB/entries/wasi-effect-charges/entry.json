@@ -22,7 +22,11 @@
     "a budget of a WASI command whose loop carries its buffers through its state",
     "rule_charge, rule_bind, and the other tactics of Verified/Wasi/BudgetTactics.lean",
     "Verified.Wasi.Resource.Bounded of a Command.letPair",
-    "a resource bound of a loop whose pass charge depends on the pass's index"
+    "a resource bound of a loop whose pass charge depends on the pass's index",
+    "Verified.Wasi.Resource.BoundedAt of a command whose charge depends on a reply at the world in which the command asks it",
+    "Verified.Wasi.Resource.CommandAlong host property pure program command env world carried to the parts of a command",
+    "a charge that depends on a value that an earlier call returned from its own world",
+    "Verified.Wasi.Resource.CallBoundedAt of a later function of the program"
   ],
   "modules": [
     "Verified.Wasi.ResourceRules",
@@ -123,7 +127,21 @@
     "Verified.Wasi.Resource.passSum_le",
     "Verified.Prog.flags",
     "Verified.Examples.WasiSys.budget",
-    "Verified.Examples.WasiSys.args_bytes_le"
+    "Verified.Examples.WasiSys.args_bytes_le",
+    "Verified.Wasi.Resource.callBoundedAt_there",
+    "Verified.Wasi.Resource.CommandAlong",
+    "Verified.Wasi.Resource.CommandAlong.first",
+    "Verified.Wasi.Resource.CommandAlong.next",
+    "Verified.Wasi.Resource.CommandAlong.no",
+    "Verified.Wasi.Resource.CommandAlong.body",
+    "Verified.Wasi.Resource.CommandAlong.split",
+    "Verified.Wasi.Resource.CommandAlong.branch",
+    "Verified.Wasi.Resource.ResourceExec.erase",
+    "LeanExe.Wasi.Host.Along",
+    "LeanExe.Wasi.Host.Along.of_rel",
+    "LeanExe.Wasi.Host.Along.bind_right",
+    "LeanExe.Wasi.Exec.unbind",
+    "Verified.Shim.along_observed"
   ],
   "examples": [
     "Demos.RunningSum.writeStep_bounded",
@@ -154,6 +172,11 @@
     "Demos.RandomChoice.total_meets_every",
     "Demos.ManifestCheck.lines_total",
     "Demos.ManifestCheck.checkLines_bounded",
-    "Demos.ManifestCheck.flags_toList"
+    "Demos.ManifestCheck.flags_toList",
+    "Demos.ManifestCheck.body_bounded",
+    "Demos.ManifestCheck.main_along",
+    "Demos.ManifestCheck.StatAlong",
+    "Demos.ManifestCheck.StatAt",
+    "Demos.ManifestCheck.StatAt.of_bind"
   ]
 }
