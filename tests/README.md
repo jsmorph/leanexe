@@ -83,17 +83,25 @@ tools that it needs.
 `tests/verified/AllAxioms.lean`, `tests/verified/run.sh` with `tests/drone/run.sh` and
 `tests/modules/chunks.py`, `tests/native/verified.sh` with and without `--aligned`, `aligned.sh`,
 `run.sh`, `bytes.sh`, `clight.sh`, and `clight-rocq.sh`, `tests/wasi/run.sh` and `sys-run.sh`, the
-drivers of the random-residue histogram, the random choice, and the manifest checker,
-`tests/linux/sys-run.sh` on an AArch64 Linux host, `tests/baremetal/run.sh`, `programs.sh`,
-`inputs.sh`, `ctl.sh`, and `verified.sh` under TCG, `tests/wgsl/run.sh`, `tests/gpt32/native.sh`
-on its default devices, `tests/talos/run.sh`, the hash functions' vector checks,
-`tests/regex/run.sh`, `tests/orderbook/run.sh`, `tests/conjunction/run.sh`, `tests/sgp4/run.sh`,
-the knowledge base's `VKB/Check.lean`, `rocq/check.sh`, `clightn/check.sh --mutations`, and the
-documentation and layout checks, with the drivers that those drivers call.  It leaves out
-`tests/native/subset.sh`, whose result is the count of modules without a translation that
-`tests/native/verified.sh` reports, `tests/native/bench.sh`, which measures time, the decoder
-test, which needs the WebAssembly testsuite converted by `wasm-tools`, and the bare-metal runs
-under KVM.  The other drivers of the table run only when a person runs them.
+drivers of the random-residue histogram, the random choice, and the manifest checker with the
+runners that the host supports, `tests/linux/sys-run.sh`, `a64-elf.sh`, `a64-wasi.sh`,
+`a64-wasi-clocks.sh`, `a64-wasi-preopen.sh`, and `a64-wasi-files.sh` on an AArch64 Linux host,
+`tests/baremetal/run.sh`, `programs.sh`, `inputs.sh`, `ctl.sh`, `verified.sh`, `a64-images.sh`,
+and `a64-uart.sh` under TCG, `tests/isla/theorems.sh` and `m7-theorems.sh`, `tests/wgsl/run.sh`,
+`tests/gpt32/native.sh` on its default devices, `tests/talos/run.sh`, the hash functions' vector
+checks, `tests/regex/run.sh`, `tests/orderbook/run.sh`, `tests/conjunction/run.sh`,
+`tests/sgp4/run.sh`, the knowledge base's `VKB/Check.lean`, `rocq/check.sh`,
+`clightn/check.sh --mutations`, and the documentation and layout checks, with the drivers that
+those drivers call.  It leaves out `tests/native/subset.sh`, whose result is the count of modules
+without a translation that `tests/native/verified.sh` reports, `tests/native/bench.sh`, which
+measures time, the decoder test, which needs the WebAssembly testsuite converted by
+`wasm-tools`, and the bare-metal runs under KVM.  It also leaves out
+`tests/baremetal/a64-rcv.sh`, which needs the RCV corpus and a memory limit of 48G, the
+regeneration of the Isla traces by `tests/isla/traces.sh`, `linux-traces.sh`, and
+`m7-traces.sh`, which needs the patched Isla, the IR of the Sail model, and Z3, and the
+Cortex-M7 drivers of the board, of Renode, and of QEMU's mps2-an500 machine,
+`tests/baremetal/m7-board.sh`, `usart3.sh`, `m7.sh`, `req.sh`, `m7-qemu.sh`, and `m7-cosim.sh`.
+The other drivers of the table run only when a person runs them.
 
 ## Documentation tests
 
