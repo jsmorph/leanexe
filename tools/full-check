@@ -52,10 +52,7 @@
 # tests/baremetal/run.sh, QEMU as for the bare-metal drivers, JOBS as for
 # tests/baremetal/verified.sh and tests/native/clight-rocq.sh, CC as for tests/linux/sys-run.sh,
 # QEMU_USER as for the drivers of tests/linux and of the demos, and ISLA_CPUS as for
-# tests/isla/theorems.sh and m7-theorems.sh.  MANIFEST_QEMU_USER, QEMU_USER unless set, passes to
-# tests/manifest-check/run.sh as its QEMU_USER: that driver needs QEMU 9.2 or later, the first
-# release that implements openat2, and tests/linux/a64-wasi-files.sh requires an emulator that
-# answers openat2 with ENOSYS, as QEMU 8.2.2 does.
+# tests/isla/theorems.sh and m7-theorems.sh.
 # COMPCERT_TREE names the CompCert tree with built proofs for rocq/check.sh,
 # tests/native/clight-rocq.sh, and clightn/check.sh, by default the directory of CCOMP when CCOMP
 # is a path; clightn/check.sh runs only on a tree configured for AArch64.  The script exits with
@@ -533,8 +530,8 @@ step_wasi_sys() {
   record "$step" "$(outcome)" "$seconds" "$cell"
 }
 
-# demo_runners NAME EMULATOR: sets runners to the runners of tests/NAME/run.sh that this host
-# supports with the user-mode emulator EMULATOR, and left and why to the others and the reasons.
+# demo_runners NAME: sets runners to the runners of tests/NAME/run.sh that this host supports, and
+# left and why to the others and the reasons.
 demo_runners() {
   runners=wasm left=() why=()
   if [ "$platform" != "Linux on AArch64" ]; then
@@ -546,10 +543,10 @@ demo_runners() {
   else
     runners+=" native"
   fi
-  if ! have "$2"; then
+  if ! have "$qemu_user"; then
     left+=(qemu)
     why+=("qemu-aarch64 absent")
-  elif [ "$1" = manifest-check ] && ! openat2_qemu "$2"; then
+  elif [ "$1" = manifest-check ] && ! openat2_qemu "$qemu_user"; then
     left+=(qemu)
     why+=("qemu-aarch64 older than 9.2")
   else
@@ -560,24 +557,20 @@ demo_runners() {
 # The demos' drivers, each with the runners of RUNNERS that this host supports.  The step names
 # RUNNERS when it leaves a runner out, and each runner left out has a row of its own, not run.
 step_demos() {
-  local name step tools emulator runners cell i left=() why=()
+  local name step tools runners cell i left=() why=()
   for name in random-histogram random-choice manifest-check; do
     step="\`tests/$name/run.sh\`"
     tools=(wasm-tools:wasm-tools)
-    emulator=$qemu_user
     case $name in
       random-choice) tools+=("GNU time:/usr/bin/time") ;;
-      manifest-check)
-        tools+=(sha256sum:sha256sum)
-        emulator=$manifest_qemu
-        ;;
+      manifest-check) tools+=(sha256sum:sha256sum) ;;
     esac
     hosted "$step" "${tools[@]}" || continue
-    demo_runners "$name" "$emulator"
+    demo_runners "$name"
     if [ "${#left[@]}" -ne 0 ]; then
       step="\`RUNNERS='$runners' tests/$name/run.sh\`"
     fi
-    run "4-$name" env RUNNERS="$runners" QEMU_USER="$emulator" "tests/$name/run.sh"
+    run "4-$name" env RUNNERS="$runners" QEMU_USER="$qemu_user" "tests/$name/run.sh"
     cell=""
     if [ "$code" -eq 0 ]; then
       case $name in
@@ -1033,7 +1026,6 @@ main() {
   clightgen=${CLIGHTGEN:-clightgen}
   qemu=${QEMU:-qemu-system-aarch64}
   qemu_user=${QEMU_USER:-/usr/bin/qemu-aarch64}
-  manifest_qemu=${MANIFEST_QEMU_USER:-$qemu_user}
   tree=${COMPCERT_TREE:-}
   if [ -z "$tree" ] && [[ $ccomp == */* ]]; then
     tree=$(dirname "$ccomp")
