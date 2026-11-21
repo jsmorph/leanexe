@@ -1,12 +1,16 @@
-# Reviews of the specification, of the executable's theorems, of the write loop, of the premise on short reads, and of the writes of no byte
+# Reviews of the random-residue histogram
+
+## Reviews of the specification
 
 Two fresh agents reviewed [the specification](Spec.lean) and [the samples](Samples.lean) against
 [the request](request.txt), as step 5 of [the verified-request
 skill](../../.claude/skills/verified-request/SKILL.md) describes.  Each received only the paths of
 the request, the specification, the samples, and the samples' outputs, wrote its own model of the
 request in Python, compared it with every output, and ran no Lean code of the repository.
+`spec.sha256` holds the hashes of the reviewed specification and samples, which the demo's driver
+checks.
 
-## First review
+### First review
 
 The first review found no disagreement.  Its model agreed with the 64 outputs of the first sample
 set, and with a transcription of the specification on 200,000 argument buffers, 200,000 count
@@ -14,15 +18,13 @@ arrays, and 10,000 word arrays.  It found three comments to correct.  The commen
 count gave memory as the reason that counts never wrap, where the reason for a run of the command
 is that N is below `2^64`.  The comments recorded two choices only by implication: that the range
 test applies to the numeral's value, whatever its number of digits, and that the program name's
-bytes are ignored.  The specification's comment now states all three.
+bytes are ignored.  The specification's comment states all three.  The review named input classes
+that no sample covered, and the samples cover each: an argument with a trailing newline or a tab,
+the bytes 127 and 255, the digit five in fullwidth form and in Arabic-Indic form, `2^64` after a
+leading zero, a 20-digit value below `2^64`, a terminated first argument followed by a last
+argument without its zero byte, and counts of 7, 8, and 11 to 18 digits.
 
-The review named input classes that no sample covered, and the samples now cover each: an argument
-with a trailing newline or a tab, the bytes 127 and 255, the digit five in fullwidth form and in
-Arabic-Indic form, `2^64` after a leading zero, a 20-digit value below `2^64`, a terminated first
-argument followed by a last argument without its zero byte, and counts of 7, 8, and 11 to 18
-digits.
-
-## Second review
+### Second review
 
 The second review, of the revised specification and its 74 samples, found no disagreement and found
 every open case recorded.  Its model agreed with all 74 outputs and with a transcription of the
@@ -36,11 +38,12 @@ covers, which step 7 of the skill records without new samples:
 | `histogram` | Counts above `2^32` |
 | `render` | The boundaries `10^k - 1` and `10^k` for `k` = 4, 6, 7, 8, and 10 to 17, and `10^18 - 1` |
 
-The program tests each digit against the bound before it adds the digit, and `parseN_eq` proves the
-program equal to the specification on every buffer, so an error of the program in the second class
-would contradict that theorem.  The review noted that the request's choices outside the three functions, the reading of the bytes as
-little-endian words, the loop of at most 512 words, the statuses, and the output's stream, belong to
-the command's theorem, which [the command's specification](CommandSpec.lean) states.
+The program tests each digit against the bound before it adds the digit, so the second class gives
+it no wrong value.  `parseN_eq` proves the program equal to the specification on every buffer of
+fewer than `2^64` bytes, so an error of the program in that class would contradict that theorem.
+The review noted that the request's choices outside the pure core, the reading of the bytes as
+little-endian words, the loop of at most 512 words, the statuses, and the output's stream, belong
+to the command's theorem, which [the command's specification](CommandSpec.lean) states.
 
 ## Review of the executable's theorems
 
@@ -50,28 +53,34 @@ It received the request and the paths of the theorems, the specifications, the s
 the guide, wrote a model in Python of the specification, the shim's images, `Full`, `Counts`,
 `Meets`, and the driver's checks, and ran no Lean code.  Its model agreed with `Counts` on 89
 argument lists within the premises, and it replayed in the model runs for N of 1, 513, and 1,000
-under replies that meet `Full`, so the premises and `Full` can hold together.  It recomputed
-`budget`, 268,427,864 bytes, the slack of 3,496 bytes below 4,096 pages, and `drawLimit`, and it
-checked the kernel's bound on the arguments in v4.13 and v6.12.
+under replies that meet `Full`, so the premises and `Full` could hold together.  It recomputed the
+budget of that version, 268,427,864 bytes, the slack of 3,496 bytes below 4,096 pages, and
+`drawLimit`, and it checked the kernel's bound on the arguments in v4.13 and v6.12.  The names
+`Full`, `Drawing`, and `drawLimit` in this section and the next are those of the statements that
+the reviews read.  `InRange` replaced the premise `Full`, which required every `getrandom` to
+return all of its bytes, the groups of `RandomMirrors` replaced `Drawing`, and `body_bounded`,
+whose budget does not depend on N, removed `drawLimit`, the largest N for that budget.
 
 | Finding | Response |
 |---|---|
-| `Counts` stated no shape of the layer events, so extra calls, one call for all words, or `GRND_NONBLOCK` met it | Adopted: `Counts` states calls of `getrandom`, each of at most 4,096 bytes with flags 0 (`Drawing`), followed by one `write` of descriptor 1 |
-| Comments called `Counts` what the request asks of a run, called `drawLimit` the largest N for the model's charge, and wrote "no call" for a refusal | Adopted: `Counts` states the run whose calls succeed, `drawLimit` is the largest N for `budget`, and a refusal has no layer event before `exit_group` |
-| `Full` requires full `getrandom` counts, where the shim completes a short count | Kept: the request states the condition, and Linux 6.12 returns every byte of a read of at most a page unless the copy faults.  A statement for short counts remains open |
-| A short write ends with status 0 and part of the output, which `Meets` admits | Adopted after the user's decision: `main` writes with `writeAll`, which follows a short write with a write of the rest, and `Written` states that status 0 holds exactly when the writes took the whole output |
-| The guide claimed constant memory without a theorem or a run | Adopted: the guide states that no theorem or run shows it.  A run with N of 50,000,000 is declined, since the runs keep N at most 1,000,000 |
+| `Counts` stated no shape of the layer events, so extra calls, one call for all words, or `GRND_NONBLOCK` met it | Adopted: `Counts` stated calls of `getrandom`, each of at most 4,096 bytes with flags 0 (`Drawing`), followed by one `write` of descriptor 1 |
+| Comments called `Counts` what the request asks of a run, called `drawLimit` the largest N for the model's charge, and wrote "no call" for a refusal | Adopted: the comments called `Counts` the run whose calls succeed and `drawLimit` the largest N for `budget`, and they state that a refusal has no layer event before `exit_group` |
+| `Full` required full `getrandom` counts, where the shim completes a short count | Kept: the request stated the condition, and Linux 6.12 returns every byte of a read of at most a page unless the copy faults.  The section "Review of the premise on short reads" records `InRange`, which covers short counts |
+| A short write ended with status 0 and part of the output, which `Meets` admitted | Adopted after the user's decision: `main` writes with `writeAll`, which follows a short write with a write of the rest, and `Written` states that status 0 holds exactly when the writes took the whole output |
+| The guide claimed constant memory without a theorem or a run | Adopted: the guide stated that no theorem or run showed it, and a run with N of 50,000,000 was declined, since the runs keep N at most 1,000,000.  `body_bounded` bounds the charge of `main` for every N |
 | The guide's conditions for `Full` omitted full disks, `RLIMIT_FSIZE`, and signals, and its reason for short `getrandom` reads did not hold for Linux 6.12 | Adopted, with the kernel's code and the manual pages cited |
 | The theorems read `histogram.elf` while the driver runs `command.elf` | Adopted in the comments and the guide, which state that both scripts write the file from the same module with the same commands |
 | Rows of the guide's table omitted premises, and comments cited `loop_kept`, `random_full`, `linux_strings_any`, and the kernel's bound loosely | Adopted |
-| No Lean theorem shows that the premises and `Full` hold together | Adopted: `histogram_elf_witness` |
+| No Lean theorem showed that the premises and `Full` held together | Adopted: `histogram_elf_witness` |
 | The driver did not check stderr, leading zeros, a plus sign, extra arguments, or the calls of a refused run | Adopted: the driver requires empty stderr, runs `007`, `+5`, and `5 extra`, and traces a refused run |
 
-Classes that no check or theorem excludes: a program that leaks each pass's buffer, which fails
-only above the runs' N, and a guest trap above `drawLimit`, which `histogram_elf` admits with X0
-at 2.  `Meets`, through `histogram_elf` and `exec_main`,
-excludes a program that ignores an errno, writes to stderr, or reads standard input, and the
-corollary excludes wrong residues, wrong word orders, and wrong parsing of an N within `drawLimit`.
+The review named classes that no check or theorem excluded: a program that leaks each pass's
+buffer, which fails only above the runs' N, and a guest trap above `drawLimit`, which
+`histogram_elf` admits with X0 at 2.  `body_bounded` excludes the first, since it bounds the charge
+of `main` by a budget that does not depend on N, and `linux_footprint_bounded` excludes the second
+for every N.  `Meets`, through `histogram_elf` and `exec_main`, excludes a program that ignores an
+errno, writes to stderr, or reads standard input, and the corollary excludes wrong residues, wrong
+word orders, and wrong parsing of N.
 
 ## Review of the write loop and the witness
 
@@ -109,10 +118,10 @@ byte, since Linux gives no reply that tells them apart from the right program, a
 exclude all three.  Its three wording findings, on the docstrings of `write_image` and
 `histogram_elf_counts` and on the description of the limited strace run, were adopted.
 
-Classes that no check or theorem excludes remain those of the earlier review, a program that leaks
-each pass's buffer and a guest trap above `drawLimit`, and one that the review named: status 2 is
-also the WASI errno `acces`, which a write that fails with `EACCES` returns, so status 2 alone does
-not tell a refused argument from that failure.  The events of `Meets` tell them apart.
+Besides the classes of the review of the executable's theorems, the review named one that no check
+or theorem excludes: status 2 is also the WASI errno `acces`, which a write that fails with
+`EACCES` returns.  Status 2 alone therefore does not tell a refused argument from that failure.
+The events of `Meets` tell them apart, since a refusal has no event after those of `args`.
 
 ## Review of the premise on short reads
 
@@ -125,11 +134,11 @@ instructions of `randomStub` against `randomInvoke` on 66,644 cases without a di
 `RandomGroup` with the groups of `RandomCalls` on 12,489,044 sequences of events and errnos without
 a difference, and ran both commands, 10 variants of the premise, and wrong programs and shims on
 24,574 cases.  `InRange` admitted 6,174 runs of the histogram and 7,401 of the random choice, each
-of which exits and meets its statement, and the other 5,002 and 5,997 runs trap.  The earlier
-`Full` excluded 5,586 and 6,690 runs whose replies getrandom(2) allows.  A premise without
-"positive for a positive length", or one that reads −4096 as an error number, admitted 1,582 and
-1,887 runs that trap, and one that bounds a count by 4,096 bytes in place of the call's length
-admitted 882 and 480.
+of which exits and meets its statement, and the other 5,002 and 5,997 runs trap.  `Full`, the
+premise that `InRange` replaced, excluded 5,586 and 6,690 runs whose replies getrandom(2) allows.  A
+premise without "positive for a positive length", or one that reads −4096 as an error number,
+admitted 1,582 and 1,887 runs that trap, and one that bounds a count by 4,096 bytes in place of the
+call's length admitted 882 and 480.
 
 | Finding | Response |
 |---|---|
@@ -144,7 +153,8 @@ admitted 882 and 480.
 The review found that the random choice's `Choices` and `Mirrors` rejected every differing run of 10
 wrong programs and 12 wrong shims, among them a short count taken as the whole buffer, a retry at
 the buffer's start or for its whole length, an address advanced twice, flags 1, a failed draw's
-bytes kept, an error taken as success, and a retry after `EINTR`.  Classes that no statement
+bytes kept, an error taken as success, and a retry after `EINTR`.  [The random choice's
+reviews](../RandomChoice/review.md) list those programs and shims.  Classes that no statement
 excludes: wrong stubs of `random_get` that differ only at results outside `InRange`, which take a
 count of 0 as the end, loop on 0, take a count above the length as the end, or read −4096 as an
 error number, and which differed on none of the in-range cases, so that only
@@ -164,15 +174,16 @@ descriptor 2, except for the classes below.
 
 | Finding | Response |
 |---|---|
-| `Counts` admits a write of no byte after the output is whole, which offers `out.drop out.length` and returns 0, and the WASI specification's `Written` admits it too, while the random choice's `Writes` requires bytes to remain.  A program that adds such a write met `Counts` on 2,002 of the 2,179 runs on which it differs | Adopted: `Written` and `Counts` state that each write offered at least one byte, as the section "Review of the writes of no byte" describes |
+| `Counts` admitted a write of no byte after the output is whole, which offers `out.drop out.length` and returns 0, and the WASI specification's `Written` admitted it too, while the random choice's `Writes` requires bytes to remain.  A program that adds such a write met `Counts` on 2,002 of the 2,179 runs on which it differs | Adopted: `Written` and `Counts` state that each write offered at least one byte, as the section "Review of the writes of no byte" describes |
 | The comments of `random_short`, of the module, and of the file theorems described the calls of the witness's run, which the statements do not state | Adopted: the comments state `ShortRead` and the replies |
 | `RandomGroup` let an error number below the bytes that remain end a group, where the shim continues, for lengths above `2^64 − 4,096`, and `ShortRead` counted such a result as a short read | Adopted: the last call of a failed group returned an error number above the bytes that remain, as the shim requires, and `ShortRead` requires a result that is no error number |
 | Comments omitted `Sized` from the bytes of `randomData`, the fit of the arguments from `image_untrapped`, and the earlier writes' counts from the last alternative, and called `loop_trapped`'s event a `random_get` | Adopted |
 | The random choice has no witness with a short read | Recorded: the histogram's witness has one, and both corollaries take the group from `random_group` |
 
-Classes that no statement excludes, besides those of the first review: calls that make no layer
-event, such as a `random_get` of 0 bytes or an extra `args_get`, whose
-layer events equal the right program's, so that only `Meets` excludes them.
+Besides the classes of the first review, no statement excludes calls that make no layer event,
+such as a `random_get` of 0 bytes or an extra `args_get`.  The shim answers both without a call of
+Linux, so their layer events equal the right program's.  Only `Meets`, which states the WASI events
+of a run, excludes them.
 
 ## Review of the writes of no byte
 
@@ -188,10 +199,10 @@ right program met `Written` and `Counts` on each of the 999 small runs that exit
 that end with 77 and 528 with a failed write, and on all 5,000 runs of the command at the WASI
 level and the 4,920 at the layer that meet `InRange` and `Sized`.  Every run outside `InRange` or
 `Sized` trapped.  The new conjuncts excluded the extra write of no byte after the whole output and a
-loop whose test is `written ≤ length`, which the earlier statements admitted on 264 and 132 small
-runs, and no run of the right program.  `Offered` and `OfferedLayer` already excluded a write of no
-byte before the output is whole, since each write offers the bytes that the writes before it did
-not take.
+loop whose test is `written ≤ length`, which the statements without them admitted on 264 and 132
+small runs, and no run of the right program.  `Offered` and `OfferedLayer` already excluded a write
+of no byte before the output is whole, since each write offers the bytes that the writes before it
+did not take.
 
 | Finding | Response |
 |---|---|
@@ -210,10 +221,10 @@ that meet `InRange` at the layer, and they admitted no run of any of the 29 wron
 them the loop of B + 2 passes and the loop without a cap.  `Counts` rejected each layer sequence of
 finding 2 and the sequences of more than B + 1 writes, and it admitted only the right program's
 sequence among the model's eleven and a `write` with a second input region.  It found that the
-guide's row of the write loop gave every theorem the bound on bytes of `writeAll_run_whole`, which
-was corrected.
+guide's row of the write loop gave every theorem the bound on bytes of `writeAll_run_whole`, and
+the row states the bound of each theorem.
 
-Classes that no statement excludes, besides those of the earlier reviews: programs whose events
-equal the right program's, such as one in which `writeAll` exits with 77 where `main` returns it,
-which no statement over events tells apart, and a `write` with a second input region, which
-`Counts` ignores and no event of `LeanExe.Linux.step` has.
+Besides the classes of the reviews above, no statement excludes programs whose events equal the
+right program's, such as one in which `writeAll` exits with 77 where `main` returns it, since every
+statement is over events.  `Counts` ignores a second input region of a `write`.  No event of
+`LeanExe.Linux.step` has a second input region, so no run gives one.

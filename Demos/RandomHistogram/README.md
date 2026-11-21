@@ -12,29 +12,29 @@ errno of a failed call is the status, and the output is ten lines of decimal cou
 follows a short write with a write of the bytes that remain, and status 0 means that every byte of
 the output reached standard output in order.
 
-The pure core has three functions, whose specifications [the specification](Spec.lean) states,
-written and reviewed by the method of [the verified-request
-skill](../../.claude/skills/verified-request/SKILL.md).  `parseSpec` reads N from the buffer that
-WASI's `args_get` fills, in which each argument follows the program name and ends with a zero byte,
-and returns 0, which no valid N equals, for a refusal.  `histogramSpec` counts the words of an
-array by their residue mod 10, each word read as an unsigned integer.  `renderSpec` writes ten
-lines from the first ten elements of an array, in Lean's decimal form of a natural number, each
-followed by the byte 10.  The specification's comment records each choice that the request leaves
-open: the program name and the arguments after the first are ignored, leading zeros are digits, the
-range test applies to the numeral's value, and a count is a word.
+[The specification](Spec.lean), written and reviewed by the method of [the verified-request
+skill](../../.claude/skills/verified-request/SKILL.md), specifies the functions of the pure core.
+`parseSpec` reads N from the buffer that WASI's `args_get` fills, in which each argument follows the
+program name and ends with a zero byte, and returns 0, which no valid N equals, for a refusal.
+`histogramSpec` counts the words of an array by their residue mod 10, each word read as an unsigned
+integer.  `renderSpec` writes ten lines from the first ten elements of an array, in Lean's decimal
+form of a natural number, each followed by the byte 10.  The specification's comment records each
+choice that the request leaves open: the program name and the arguments after the first are
+ignored, leading zeros are digits, the range test applies to the numeral's value, and a count is a
+word.
 
 Two fresh agents reviewed the specification against the request, as [the review](review.md)
 records.  Neither found a disagreement.  The first asked for three corrections of the comment and
-named inputs that no sample covered, and [the samples](Samples.lean) now cover them, 74 in all.  The
-second named four classes that no sample covers, which the review lists.
+named inputs that no sample covered, which [the samples](Samples.lean) cover, 74 in all.  The second
+named four classes that no sample covers, which the review lists.
 
-[The program](Program.lean) holds the three functions in the verified compiler's dialect.
-`parseN` reads the buffer once with a state of four parts: the zero bytes seen, the value of the
-argument's digits, whether every byte so far is a digit and the value stays below `2^64`, and
-whether the argument has a byte.  Before it adds a digit `d` to the value `v`, it tests whether
-`10 v + d` stays below `2^64` through `2^64 - 1 = 10 · 1844674407370955161 + 5`, which needs no
-wider word.  `histogram` folds `countWord` over the words from ten zero counts.  `render` pushes
-the digits of each count onto an array with `digitCount` and `digitByte` of [the library's `Int64`
+[The program](Program.lean) holds the pure core in the verified compiler's dialect.  `parseN` reads
+the buffer once with a state of four parts: the zero bytes seen, the value of the argument's
+digits, whether every byte so far is a digit and the value stays below `2^64`, and whether the
+argument has a byte.  Before it adds a digit `d` to the value `v`, it tests whether `10 v + d`
+stays below `2^64` through `2^64 - 1 = 10 · 1844674407370955161 + 5`, which needs no wider word.
+`histogram` folds `countWord` over the words from ten zero counts.  `render` pushes the digits of
+each count onto an array with `digitCount` and `digitByte` of [the library's `Int64`
 text](../../Library/Numerics/Decimal/Int64Text/README.md) and builds the output buffer from that
 array.  [The verified compilation](Compiled.lean) writes a module that exports `parseN`,
 `histogram`, and `render` as functions 3, 5, and 9.
@@ -81,7 +81,7 @@ Otherwise the status is 0.  `verified_compile_wasi` writes a module of 6,228 byt
 | Theorem | Statement |
 |---|---|
 | `exec_main` | Under every host, every run of `main` followed by its exit that ends with the status `code` has the events `events ++ [.exit code]`, where `events` meet `Meets`, and `code` is at most 77 ([the command's proof](CommandProof.lean)). |
-| `writeAll_run_whole`, `WriteAllRun.taken`, `WriteAllRun.shape`, `WriteAllRun.trapped_write` | Under every host, every run of `writeAll bytes 0 bytes.size` meets `WriteAllRun` over the bytes of `bytes`: each pass that finds bytes left offers them, and a write continues the loop, ends the run with its errno, or traps.  A run that returns `v` took the first `v` bytes in writes that returned errno 0 and offered the bytes that remained, one write for each pass when `v` falls short, and a run that exits does so with the errno of its last write after taking fewer bytes than `bytes` holds.  The writes of a run that returns or exits number at most its passes, and each offered at least one byte (`WroteSome`).  A run that traps under a host that accepts every status below 126 has a trapped write.  `writeAll_run_whole` takes fewer than `2^64 - 1` bytes, and `WriteAllRun.taken` fewer than `2^64` ([the write loop](../../LeanExe/Wasi/WriteAll.lean)). |
+| `writeAll_run_whole`, `WriteAllRun.taken`, `WriteAllRun.shape`, `WriteAllRun.trapped_write` | Under every host, every run of `writeAll bytes 0 bytes.size` meets `WriteAllRun` over the bytes of `bytes`: each pass that finds bytes left offers them, and a write continues the loop, ends the run with its errno, or traps.  A run that returns `v` took the first `v` bytes in writes that returned errno 0 and offered the bytes that remained, one write for each pass when `v` falls short, and a run that exits does so with the errno of its last write after taking fewer bytes than `bytes` holds.  The writes of a run that returns or exits number at most its passes, and each offered at least one byte (`WroteSome`).  A run that traps under a host that rejects no exit status below 126 has a trapped write.  `writeAll_run_whole` takes fewer than `2^64 - 1` bytes, and `WriteAllRun.taken` fewer than `2^64` ([the write loop](../../LeanExe/Wasi/WriteAll.lean)). |
 | `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states ([the compiled command](CommandStart.lean)). |
 | `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits the initial store's free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit after events that meet `Meets`. |
 
@@ -96,14 +96,13 @@ with that errno as the status and no write.  When every call returns errno 0, th
 hold exactly N words `w`, the counts of `histogramSpec w` sum to N, and the events after the calls
 meet `Written` for the output `renderSpec (histogramSpec w)` of B bytes.  They are at most B + 1
 writes to stdout, each of which offered at least one byte (`WroteSome`), the bytes of the output
-that the writes before it did not take (`Offered`), so no write follows the last byte's, and the
-bytes that they took, `stdoutTaken`, form a prefix of the output.  The status
-is 0 exactly when that prefix is the whole output.  Either every write returned errno 0 and the
-status is 0, or 77 after B + 1 writes, one for each of the loop's passes, or the last write
-returned the errno, from 1 to 76, that is the status and every write before it returned errno 0.
-The statement covers every reply that the host's specifications admit, errnos of
-`args_sizes_get`, `args_get`, `random_get`, and the writes included, and writes that take fewer
-bytes than they offer.
+that the writes before it did not take (`Offered`), so no write follows the one that took the last
+byte, and the bytes that they took, `stdoutTaken`, form a prefix of the output.  The status is 0
+exactly when that prefix is the whole output.  Either every write returned errno 0 and the status
+is 0, or 77 after B + 1 writes, one for each of the loop's passes, or the last write returned the
+errno, from 1 to 76, that is the status and every write before it returned errno 0.  The statement
+covers every reply that the host's specifications admit, errnos of `args_sizes_get`, `args_get`,
+`random_get`, and the writes included, and writes that take fewer bytes than they offer.
 
 `start_ends` composes `exec_main` with the generated `command.start`.  A run of `_start` ends in one
 of three ways: (a) the accepted exit, after events that meet `Meets`; (b) a trap of the host or an
@@ -113,8 +112,9 @@ exit that the host rejects, after the events of a run of `main`; or (c) a trap o
 theorem without it, `command.total`, takes a budget that bounds the heap that every prefix of
 `main` allocates, and that heap holds the block of `args`, whose size the host's replies set.
 `total_meets` takes such a budget as a premise, with a host that traps nowhere along the run, and
-excludes (b) and (c).  No theorem shows that a host meets the premises of `total_meets` together,
-and `histogram_elf_witness` shows it for the native corollary below.
+excludes (b) and (c).  No theorem exhibits a host that meets the premises of `total_meets`
+together, and `histogram_elf_witness` exhibits a process and replies that meet the premises of the
+native corollary below.
 
 The proof follows `main`.  A returned `args` result holds fewer than `2^32` bytes, the size that the
 reporter's four-byte word gives (`args_returned`), so `parseN` computes `parseSpec` on it.
@@ -125,9 +125,9 @@ which `wordAt` reads by Horner's rule (`tally_eq`, `wordAt_eq`), and a reply of 
 words to those before it (`words_append`).  The fold from ten zero counts is `histogram` of the
 words (`histogram_list`), and `histogram_eq` and `render_eq` give the specification's output, of at
 most 210 bytes (`render_size`).  `write_tail` gives `Written` from `WriteAllRun.taken` and
-`WriteAllRun.shape`: a returned count `v` is the length of the bytes taken, a prefix of the output
+`WriteAllRun.shape`.  A returned count `v` is the length of the bytes taken, a prefix of the output
 that each write extended from where the writes before it stopped, so the test `v < B` gives 77
-exactly when bytes remain, which takes one write for each pass, an exit has the errno of the write
+exactly when bytes remain, which takes one write for each pass.  An exit has the errno of the write
 that failed as its status, and the writes number at most the loop's B + 1 passes, each offering at
 least one byte, since the loop's test lets a pass write only while bytes remain.
 
@@ -135,15 +135,15 @@ least one byte, since the loop's test lets a pass write only while bytes remain.
 
 | Theorem | Statement |
 |---|---|
-| `body_bounded`, `writeAll_bounded`, `budget_fits` | Every run and every prefix of `main`'s body charges at most `budget` under a host whose replies give an argument block of at most `argsLimit` bytes, for every N, `writeAll` charges nothing under every host, and `budget` fits the executable's 4,096 pages above the heap's start ([the charge of `main`](Budget.lean)). |
+| `body_bounded`, `writeAll_bounded`, `budget_fits` | Every run and every prefix of `main`'s body charges at most `budget`, for every N, under every host whose successful `args_sizes_get` replies ask for at most `argsLimit` bytes, `writeAll` charges nothing under every host, and `budget` fits the executable's 4,096 pages above the heap's start ([the charge of `main`](Budget.lean)). |
 
 The resource model charges a copy of an owned value at each use after which the value stays live,
 and it credits no release.  `budget`, 6,312,920 bytes, holds 6,291,504 bytes for the block of
 `args`, 136 bytes for the counts, 4,144 bytes for the buffer, and at most 17,136 bytes for
 `render`, and it does not depend on N.  The compiler splits the result of `args`, the loop's state,
 and the result of `randomGet` into their components where `main` binds them, so no later use copies
-them, and `random_get` fills the buffer of the loop's state, whose variable dies at the
-call, without a copy.  `writeAll` charges nothing, since each of its passes writes a window of the
+them, and `random_get` fills the buffer of the loop's state, whose variable dies at the call,
+without a copy.  `writeAll` charges nothing, since each of its passes writes a window of the
 output in place.  Linux 4.13 and later limit the strings and pointers of `argv` and `envp` together
 to at most 6 MiB, `argsLimit` (`get_arg_page` of `fs/exec.c` in v4.13, `bprm_stack_limits` in
 v6.12), so every process that Linux starts meets the premise on the arguments.
@@ -153,8 +153,8 @@ v6.12), so every process that Linux starts meets the premise on the arguments.
 tactics](../../Verified/Wasi/BudgetTactics.lean).  `loop_bounded` bounds the draw loop with a
 charge of 0 for each pass, so the bound holds for every number of passes, and `writeAll_bounded`
 bounds `writeAll`'s passes with `loop_bounded` as well: each binds the start and the count of the
-window that remains, words, and writes the window in place.  The charge of 0 for each pass appears
-in the proof, and `body_bounded` states the bound of the whole body.
+window that remains, words, and writes the window in place.  No theorem states the charge of a
+pass: the proof shows it, and `body_bounded` states the bound of the whole body.
 
 ## The native executable writes the counts
 
@@ -169,11 +169,12 @@ next table lie in [the executable's theorems](../../tests/TestSupport/A64/ImageF
 | Theorem | Statement |
 |---|---|
 | `histogram_elf_file`, `histogram_elf_segments`, `histogram_elf_layout`, `histogram_elf_entry`, `histogram_elf_room` | The file's bytes are those that `genWasiElf` gives for the command's module, its program headers are those of the generator's layout, its entry is the shim's prefix, and the stack's room holds the module's stack bound. |
-| `histogram_elf` | For every reply sequence, a process that Linux's loader started from the file reaches `exit_group`, and its trace holds the layer events of a run of `main` and its exit under the shim's host with the process's arguments: an accepted exit, whose status X0 holds, a rejected exit, a trap of the shim, or a guest trap after a prefix. |
-| `linux_footprint_bounded` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, and at a cap of at most 65,535 pages that holds `budget` above byte 4,096, every run of `_start` with enough fuel ends without a guest trap. |
+| `histogram_elf` | For every reply sequence, a process that Linux's loader started from the file reaches `exit_group`, and its trace holds the layer events of a run of `main` and its exit under the shim's host with the process's arguments: an accepted exit, whose status X0 holds, a rejected exit, with X0 at 1, or a trap of the shim or a guest trap after a prefix, with X0 at 2. |
+| `linux_footprint_bounded` | Under the shim's host, for every N, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, and at a cap of at most 65,535 pages that holds `budget` above byte 4,096, every run of `_start` with enough fuel ends without a guest trap. |
 | `linux_exec_counts` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes, a run of `main` and its exit whose layer events meet `InRange` and `Sized` ends at the accepted exit, and its status and layer events meet `Counts`. |
 | `histogram_elf_counts` | For every reply sequence and every N, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes reaches `exit_group` with layer events that hold the replies, and when they meet `InRange`, X0 and the events meet `Counts`. |
-| `short_run`, `histogram_elf_witness` | The premises of `histogram_elf_counts` and `InRange` hold together with a short read: for the replies `shortReplies`, the arguments `h` and `1`, and a process `witnessProc` that holds the file and the initial stack, the process reaches `exit_group` with X0 at 0 after layer events that meet `InRange` and `Counts` and hold a `getrandom` that returned a count of at least 1 and below its length (`ShortRead`). |
+| `short_run` | Under the shim's host with the arguments `h` and `1`, every run of `main` and its exit whose layer events hold the replies `shortReplies` ends at the accepted exit with status 0, and its layer events meet `InRange` and hold a `getrandom` that returned a count of at least 1 and below its length (`ShortRead`). |
+| `histogram_elf_witness` | The premises of `histogram_elf_counts` and `InRange` hold together with a short read: for the replies `shortReplies`, the arguments `h` and `1`, which give N of 1, and a process `witnessProc` that holds the file and the initial stack, the process reaches `exit_group` with X0 at 0 after layer events that meet `InRange`, `ShortRead`, and `Counts`. |
 
 The shim answers a `random_get` of a buffer with `getrandom` calls with flags 0, each for the bytes
 that the calls before it did not return, at the address after them, until a call returns the bytes
@@ -182,23 +183,25 @@ that remain is followed by the next call, a negated error number ends the calls 
 and a count of 0 or a count above the bytes asked for that is no error number traps.
 `RandomGroup a length errno 0 g` states that the layer events `g` are the group of calls that the
 shim makes for a `random_get` of `length` bytes at `a` that returned `errno`, and `random_group`
-proves it of the image of every `random_get` whose results lie in Linux's range: with errno 0 the
-call's bytes are `randomData g`, the concatenation of the calls' outputs, each cut at its count.
-`RandomMirrors x g` states that `g` is the group of the `random_get` `x`, with the call's errno, and
-with the call's bytes when the errno is 0.
+proves it of the image of every `random_get` whose results lie in Linux's range.  When the errno is
+0 and each call's output holds the bytes that it asked for (`Sized`), the call's bytes are
+`randomData g`, the concatenation of the calls' outputs, each cut at its count.  `RandomMirrors x g`
+states that `g` is the group of the `random_get` `x`, with the call's errno, and with the call's
+bytes when the errno is 0.
 
 `InRange ls` holds when every `getrandom` of the layer events `ls` returned an error number or a
 count of at most its length, positive for a positive length (`LeanExe.Linux.RandomCount`), and every
-`write` returned an error number or at most its count.  The image of a
+`write` returned an error number or at most its count, its third argument.  The image of a
 `random_get` or a write meets `InRange` when the call returned (`random_inRange`, `write_inRange`)
-and fails it when the call trapped (`image_untrapped`), so `InRange` excludes exactly the results
-at which the shim traps.  A trapped `random_get` or write ends the run with X0 at 2 after the call,
-which `Counts` rejects, so a condition on the results of single calls that admits one of those
-results does not give `Counts`.  No condition is needed against a run that never fills the buffer,
-since every call that the shim follows with another returned at least one byte.  `Sized ls` holds
-when each `getrandom` holds in its output as many bytes as it asked for, which the events of every
-run give (`carried_sized`).  The image of a call leaves the length of an event's output free, and
-the corollary uses `Sized` to equate the last call's output with its bytes.
+and, for arguments that fit, fails it when the call trapped (`image_untrapped`), so `InRange`
+excludes exactly the results at which the shim traps.  A trapped `random_get` or write ends the run
+with X0 at 2 after the call, which `Counts` rejects, so a condition on the results of single calls
+that admits one of those results does not give `Counts`.  No condition is needed against a run that
+never fills the buffer, since every call that the shim follows with another returned at least one
+byte.  `Sized ls` holds when each `getrandom` holds in its output as many bytes as it asked for,
+which the events of every run give (`carried_sized`).  The image of a call leaves the length of an
+event's output free, and the corollary uses `Sized` to equate the last call's output with its
+bytes.
 
 `Counts args ls status` states the layer events and the status that the request asks of a run.
 When `parseSpec` refuses the arguments, no layer event precedes `exit_group`, and the status is 2.
@@ -223,37 +226,40 @@ returns an error number or at most the count that it was given (write(2)).  `InR
 holds for every run, short reads, failed reads, short writes, and failed writes among them.
 getrandom(2) guarantees every byte of a read of up to 256 bytes once the urandom source is
 initialized and allows a partial buffer or `EINTR` for a larger read that a signal interrupts.
-Linux 7.0's `get_random_bytes_user` tests for a pending signal only after each 4,096 bytes and only
-while bytes remain, so a signal shortens no read of at most 4,096 bytes, and such a read returns
-fewer bytes only when the copy faults.  Each of the command's reads asks for at most 4,096 bytes.
-A write to a regular file can take fewer bytes than it offers at a full disk or at `RLIMIT_FSIZE`,
-and the command then writes the bytes that remain, whose write fails with `ENOSPC` or `EFBIG` while
-the disk stays full or the limit holds.  `RLIMIT_FSIZE` and a pipe whose reader closed raise
-signals, `SIGXFSZ` and `SIGPIPE`, that end the process before `exit_group` unless it ignores them
-(write(2)), and the model of Linux's replies has no signal.
+Linux 7.0's `get_random_bytes_user` tests for a pending signal only after each page, `PAGE_SIZE`
+bytes and at least 4,096, and only while bytes remain, so a signal shortens no read of at most
+4,096 bytes, and such a read returns fewer bytes only when the copy faults.  Each of the command's
+reads asks for at most 4,096 bytes.  A write to a regular file can take fewer bytes than it offers
+at a full disk or at `RLIMIT_FSIZE`, and the command then writes the bytes that remain, whose write
+fails with `ENOSPC` or `EFBIG` while the disk stays full or the limit holds.  `RLIMIT_FSIZE` and a
+pipe whose reader closed raise signals, `SIGXFSZ` and `SIGPIPE`, that end the process before
+`exit_group` unless it ignores them (write(2), pipe(7)), and the model of Linux's replies has no
+signal.
 
 The proof composes the footprint with the command's theorems.  `linux_footprint_bounded` gives the
 budget premise of the generated `command.start` from `body_bounded` through `call_prefix_bound`,
 since the shim answers `args_sizes_get` with the count and size of the launch's arguments
 (`linux_sizes`), and the budget does not depend on N, so the corollary holds for every N.
-`linux_exec_counts` excludes the trapped runs.  Under a host that accepts every status below 126,
-as the shim does, a trapped run of `main` has a trapped `args_sizes_get`, `args_get`,
-`random_get`, or write (`main_trapped`), whose image no layer events that meet `InRange` give
-(`image_untrapped`), and the exit of a status of at most 77 is accepted.  For the accepted exit,
+`histogram_elf_runs` gives the process's run from `linux_footprint_bounded` at the executable's
+4,096 pages, which hold the budget (`budget_fits`), through `wasiElf_footprint_with`.
+`linux_exec_counts` excludes the trapped runs.  Under a host that rejects no exit status below 126,
+as the shim does, a trapped run of `main` has a trapped `args_sizes_get`, `args_get`, `random_get`,
+or write (`main_trapped`), whose image no layer events that meet `InRange` give for arguments that
+fit (`image_untrapped`), and the exit of a status of at most 77 is accepted.  For the accepted exit,
 `exec_main` gives `Meets`, and the images of its events give the groups that mirror the calls of
 `random_get` (`random_mirror` and `draws_mirrors`), and the writes, the bytes that they offered and
 took (`writes_images`), and their results (`writes_took`, `write_image`).
 
 `histogram_elf_witness` gives the premises: a memory that holds the file's two segments below
 `2^32` and the initial stack of `h` and `1` at `2^32`, which `decide` checks byte by byte, and the
-replies `shortReplies`, which answer calls 0 and 1 with 4 zero bytes and every later call with the
-size of `oneOutput`, the output for one word of residue 0.  `short_run` follows `main` under those
-replies: `args` returns the arguments, N is 1, the `random_get` of 8 bytes makes a `getrandom` of 8
-bytes that returns 4 and a `getrandom` of the other 4 that returns them (`random_short`), the call
-places the 8 bytes at the start of the loop's buffer, `oneBuffer`, and `render` gives `oneOutput`
-(`one_rendered`), the first write offers all of it and takes all of it, and the run exits with
-status 0.  The kernel evaluates no run of the executable: the footprint theorem gives the process's
-run, and the proof reasons over its events.
+replies `shortReplies`, which answer calls 0 and 1 with the result 4 and zero bytes and every later
+call with the size of `oneOutput`, the output for one word of residue 0.  `short_run` follows
+`main` under those replies: `args` returns the arguments, N is 1, the `random_get` of 8 bytes makes
+a `getrandom` of 8 bytes that returns 4 and a `getrandom` of the other 4 that returns them
+(`random_short`), the call places the 8 bytes at the start of the loop's buffer, `oneBuffer`, and
+`render` gives `oneOutput` (`one_rendered`), the first write offers all of it and takes all of it,
+and the run exits with status 0.  The kernel evaluates no run of the executable: the footprint
+theorem gives the process's run, and the proof reasons over its events.
 
 ## Building, running, and testing
 
@@ -271,37 +277,38 @@ tests/baremetal/verified.sh --module randomHistogram
 ```
 
 [The demo's driver](../../tests/random-histogram/run.sh) checks the hashes of the reviewed
-specification and samples, elaborates [the theorem statements](../../tests/random-histogram/Axioms.lean)
-and requires the three axioms, emits and validates the command's module, and writes its executable
-with `a64-wasi wasm`, which fails when `genWasiElf` rejects the module.  It then runs the command in
-the Wasmtime host, on the host's processor, which must be AArch64 Linux, and under `qemu-aarch64`.
-The runs with no argument, `0`, `abc`, `-5`, `+5`, and `99999999999999999999` write nothing and
-exit with status 2.  The runs with N of 1, 9, 10, 512, 513, 1,000, and 1,000,000, with `007`, and
-with `5` followed by `extra` exit with status 0 and write ten decimal counts that sum to N, 7 for
-`007` and 5 for `5 extra`.  A run with N of 1,000 and standard output `/dev/full` exits with status
-51, `nospc`.  Natively and under QEMU, a run with N of 1,000 whose standard output appends to a
-file of 500 bytes under a file size limit of 512 bytes, with `SIGXFSZ` ignored, exits with status
-22, `fbig`, and leaves the file at 512 bytes, the last 12 of them digits and newlines.  No run
-writes to stderr.  A native run with N of 1,000 under strace makes only `getrandom`, `write`, and
-`exit_group` calls, two of them `getrandom` with flags 0, of 4,096 and 3,904 bytes, each answered
-with all of its bytes, and one `write` of the whole output that takes all of it.  A native run with
-N of 1,000 in which strace's injection makes the first `getrandom` return 100 without filling the
-buffer, a short count, makes three `getrandom` calls: 4,096 bytes at the buffer, which returns
-100, the other 3,996 at the buffer's address plus 100, and 3,904 at the buffer, each of the last two
-answered with all of its bytes, and it exits with status 0 and ten counts that sum to 1,000.  The
-first 12 words keep the buffer's initial zero bytes, so the count of residue 0 is at least 12.  The
-run under the file size limit under strace makes two writes: the first takes 12 bytes, and the
-second offers 12 bytes fewer than the first and fails with `EFBIG`.  A native run with `abc` under
-strace makes only `exit_group`.
+specification and samples, builds the demo's modules, elaborates [the theorem
+statements](../../tests/random-histogram/Axioms.lean) and requires the three axioms, emits and
+validates the command's module, and writes its executable with `a64-wasi wasm`, which fails when
+`genWasiElf` rejects the module.  It then runs the command in the Wasmtime host, on the host's
+processor, which must be AArch64 Linux, and under `qemu-aarch64`, which `RUNNERS` selects.  The runs
+with no argument, `0`, `abc`, `-5`, `+5`, and `99999999999999999999` write nothing and exit with
+status 2.  The runs with N of 1, 9, 10, 512, 513, 1,000, and 1,000,000, with `007`, and with `5`
+followed by `extra` exit with status 0 and write ten decimal counts that sum to N, 7 for `007` and
+5 for `5 extra`.  A run with N of 1,000 and standard output `/dev/full` exits with status 51,
+`nospc`.  Natively and under QEMU, a run with N of 1,000 whose standard output appends to a file of
+500 bytes under a file size limit of 512 bytes, with `SIGXFSZ` ignored, exits with status 22,
+`fbig`, and leaves the file at 512 bytes, the last 12 of them digits and newlines.  None of these
+runs writes to stderr.  A native run with N of 1,000 under strace makes only `getrandom`, `write`,
+and `exit_group` calls, two of them `getrandom` with flags 0, of 4,096 and 3,904 bytes, each
+answered with all of its bytes, and one `write` of the whole output that takes all of it.  A native
+run with N of 1,000 in which strace's injection makes the first `getrandom` return 100 without
+filling the buffer, a short count, makes three `getrandom` calls: 4,096 bytes at the buffer, which
+returns 100, the other 3,996 at the buffer's address plus 100, and 3,904 at the buffer, each of the
+last two answered with all of its bytes, and it exits with status 0 and ten counts that sum to
+1,000.  The first 12 words keep the buffer's initial zero bytes, so the count of residue 0 is at
+least 12.  The run under the file size limit under strace makes two writes: the first takes 12
+bytes, and the second offers 12 bytes fewer than the first and fails with `EFBIG`.  A native run
+with `abc` under strace makes only `exit_group`.
 
 strace's injection skips the call and leaves the buffer as it was, so the shim takes the buffer's
 earlier bytes as those of the short count, which `Counts` admits, since a reply may hold any bytes.
-No run of the driver gets a short count from Linux: with a signal pending at each `getrandom`,
-which strace's `-e inject=getrandom:signal=SIGCONT` delivers, Linux 7.0 returned all 4,096 and
-3,904 bytes of the two calls of a run with N of 1,000, as `get_random_bytes_user` gives for reads
-of at most 4,096 bytes.  The same injection cut the 5,000-byte `getrandom` of `clockrandom.elf` of
-`tests/linux/a64-wasi.sh` to 4,096 bytes, and the shim asked for the other 904 bytes at the
-buffer's address plus 4,096.
+No run of the driver gets a short count from Linux.  In a run outside the driver with a signal
+pending at each `getrandom`, which strace's `-e inject=getrandom:signal=SIGCONT` delivers, Linux
+7.0 returned all 4,096 and 3,904 bytes of the two calls of a run with N of 1,000, as
+`get_random_bytes_user` gives for reads of at most 4,096 bytes.  The same injection cut the
+5,000-byte `getrandom` of `clockrandom.elf` of `tests/linux/a64-wasi.sh` to 4,096 bytes, and the
+shim asked for the other 904 bytes at the buffer's address plus 4,096.
 
 These runs draw their random bytes from the operating system, so they check the counts only for
 their number, form, and sum.  The driver therefore also runs the module in the Wasmtime host with
@@ -321,20 +328,21 @@ bytes, so the run writes nothing and exits with status 29; N of 1 with no bytes,
 The second, fourth, and fifth commands run the module, the executable, and the executable under
 QEMU's user-mode emulator with N of 1,000, after the driver has written them.  Each writes ten
 lines, the counts of the words whose residue mod 10 is 0, 1, and so on to 9, each in decimal without
-a leading zero, which sum to N, and exits with status 0.  One run of the executable wrote `97`, `97`,
-`96`, `94`, `88`, `102`, `109`, `99`, `113`, and `105`.  The third command runs the module on the 12
-words of the case with chosen residues and writes `2`, `1`, `0`, `1`, `1`, `2`, `1`, `1`, `1`, and
-`2`.
+a leading zero, which sum to N, and exits with status 0.  One run of the executable wrote `110`,
+`93`, `92`, `106`, `106`, `93`, `94`, `90`, `102`, and `114`.  The third command runs the module on
+the 12 words of the case with chosen residues and writes `2`, `1`, `0`, `1`, `1`, `2`, `1`, `1`,
+`1`, and `2`.
 
 `tests/linux/a64-wasi.sh` writes the executable from the module that `tools/Emit.lean` emits and
 elaborates the executable's theorems beside it, which requires the three axioms of each.
 [The verified driver](../../tests/verified/run.sh) runs the 74 samples of [the verified
 cases](../../Verified/Examples/Cases.lean) in Wasmtime against the specifications, and each case of
 `histogram` and `render` requires two blocks to stay allocated after the call, the argument's and
-the result's.  [The native driver](../../tests/native/verified.sh) runs the same cases on the
-module's translation to C, compiled with CompCert, and [the bare-metal
+the result's.  It also checks [the file theorems](File.lean), which state that the file that it
+writes holds the module.  [The native driver](../../tests/native/verified.sh) runs the same cases
+on the module's translation to C, compiled with CompCert, and [the bare-metal
 driver](../../tests/baremetal/verified.sh) runs them on that translation under QEMU without an
-operating system.  All 74 pass in each.
+operating system.  Each driver requires every case to pass.
 
 ## Related examples
 
