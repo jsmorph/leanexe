@@ -1,10 +1,13 @@
-# Reviews of the specification
+# Reviews of the specification and the statements
 
 Two fresh agents reviewed [the specification](Spec.lean) and [the samples](Samples.lean) against
 [the request](request.txt), as step 5 of [the verified-request
 skill](../../.claude/skills/verified-request/SKILL.md) describes.  Each received only the paths of
 the request, the specification, the samples, and the samples' outputs, wrote its own model of the
-three functions in Python, compared it with every output, and ran no Lean code of the repository.
+core's functions in Python, compared it with every output, and ran no Lean code of the repository.
+Further fresh agents reviewed the statements about the command, its runs that stop, the
+executable, and the premises on the manifest's `statx`, as the sections after the second review
+record.
 
 ## First review
 
@@ -17,20 +20,22 @@ leading blanks and the tagged form, skips comments, cuts a name at a zero byte, 
 that hold a backslash, a carriage return, or a newline.  The specification differs from it in
 each of these, and the comment records each choice.
 
-The review asked for three changes of the comment, which the specification now makes.  The comment
-stated the refusal of a single space or a tab only through the definition of the format, and it
-now states it.  It stated only through "the name keeps every byte" that absolute names and names
-with `..` components are in the format, and it now states that the format admits them and that the
-host's resolution confines each open to the preopened directory.  It named the names for which
-`sha256sum` writes the escaped form, and the review found a third, so the comment now says "some
-names".  The review noted that the status of a refused manifest, and the wording of the verdict for
-a manifest with no line, belong to the command's specification.
+The review asked for three changes of the comment, and the specification adopted each.  The
+comment had stated the refusal of a single space or a tab only through the definition of the
+format, and the revised comment states it.  It had stated only through "the name keeps every byte"
+that absolute names and names with `..` components are in the format, and the revised comment
+states that the format admits them and that the host's resolution confines each open to the
+preopened directory.  It had named the names for which `sha256sum` writes the escaped form, and the
+review found a third, so the revised comment says "some names".  The review noted that the status
+of a refused manifest, and the wording of the verdict for a manifest with no line, belong to the
+command's specification.
 
-The review named input classes that no sample covered, and the samples now cover each: the bytes
-`/`, `:`, `@`, `` ` ``, and `G` in the digits of a line and of a hex window, a backslash inside a
-name, binary mode with a name that starts with `*` or a space, a malformed line between two lines
-in the format, empty lines after the last line, a leading tab, a digest that differs only in its
-second or third word or in a high half after byte 0, and a name with a backslash in an output line.
+The review named input classes that no sample covered, and the revised samples cover each: the
+bytes `/`, `:`, `@`, `` ` ``, and `G` in the digits of a line and of a hex window, a backslash
+inside a name, binary mode with a name that starts with `*` or a space, a malformed line between
+two lines in the format, empty lines after the last line, a leading tab, a digest that differs
+only in its second or third word or in a high half after byte 0, and a name with a backslash in an
+output line.
 
 ## Second review
 
@@ -102,7 +107,7 @@ command's.
 
 Classes that no statement over events excludes, at the time of this review: a program that
 buffers each whole file and hashes it at the end, whose events equal those of the streaming
-program, and which the later budget excludes; a guest trap at `unreachable` outside the budget
+program, and which `body_bounded` excludes; a guest trap at `unreachable` outside the budget
 premise of `total_meets`; the host's resolution of names, which confines them to the preopened
 directory outside the theorems; and the relation between the bytes that the host returns and the
 files on disk.
@@ -124,8 +129,8 @@ and `budget_le`, and found no defect of the statements as Lean text.
 | Finding | Response |
 |---|---|
 | `Confined` and `Handled` hold only of runs that end with the accepted exit: `Ends` gives a run that traps only `Exec` or `Prefix` of `main`, so a program that opens an unlisted name and then exhausts the memory meets every statement for hosts outside the premises of `total_meets_budget` | Adopted: `SoFar` states the three properties of the events of every run that stops, and `Ends` gives it in its trap cases, as the next review records |
-| The premise on `fd_filestat_get` covers every reply, while the command asks it only of the manifest, so a host whose checked files report large sizes is excluded | Recorded in the docstrings of `body_bounded` and `total_meets_budget` |
-| No theorem showed that the premises of `total_meets_budget` hold together | Adopted: `initial_within` gives the bound on the heap for every `M` of at most 23,000,000 |
+| The premise on `fd_filestat_get` covers every reply, while the command asks it only of the manifest, so a host whose checked files report large sizes is excluded | Recorded in the docstrings of `body_bounded` and `total_meets_budget`, and resolved by `StatAlong`, which bounds only the replies to the requests that `main` makes, as [the review of the premises on the manifest's `statx`](#review-of-the-premises-on-the-manifests-statx) records |
+| No theorem showed that the premises of `total_meets_budget` hold together | Adopted: `initial_within` gives the premise `room`, that `budget M` fits between the initial heap's top and the module's cap, for every `M` of at most 23,000,000 |
 | The docstrings of `checkBudget`, `budget`, `body_bounded`, `total_meets`, `total_meets_budget`, and `ManifestBody` claimed more or less than their Lean text | Adopted |
 | A manifest whose reported size differs from its bytes, such as a FIFO, a file of `/proc` that reports size 0, or a file being appended to, gives status 1 | Recorded: the command reads a manifest of the size that the host reports, and the guide states it |
 
@@ -156,15 +161,12 @@ any, and the two transcriptions agreed on 11,144.  It ran 32 wrong programs on 3
 | The docstrings of `SoFar` and the module called `SoFar` what the request asks, while it stated two properties, and "before its exit" described runs that end with a rejected exit | Adopted: "without an accepted exit" |
 | The docstrings of `writes_soFar`, `withOpen_stops`, `stalled_stops`, `step_stops`, `checks_stops`, and `checkLines_stops` claimed more than their Lean text, and those of `LinesSoFar`, `readManifest_every`, and `hashFile_every` less; a line of `Handled`'s docstring passed the line width | Adopted.  `LinesSoFar` and `writeAll_stops` replace `writes_soFar` |
 
-`VerdictsSoFar` states that no event writes to standard output, or that the events are those of
-`args`, of a `ManifestRun` with status 0 of a manifest that the pure core accepts, and of
-`ChecksSoFar` for its lines, followed by events that write nothing to standard output.
-`ChecksSoFar` states the checks of the first lines as `Checks` states them, followed by none or by
-the `FileCheck` of the next line and writes that offer the bytes of its output line, with that
-line's verdict, after those that the writes before them took.  A check that stops before its writes
-writes nothing, so the statement needs no prefix form of the reads of a file or of the manifest.
-`writeAll_stops` of [the stopped-run lemmas](../../Verified/Wasi/Stops.lean) gives the bytes that
-each write of a run of `writeAll` that stops offers.
+`VerdictsSoFar`, the third part of `SoFar`, states the checks and the output lines of a run that
+stops through `ChecksSoFar`, as [the guide](README.md#the-command-meets-the-request) describes.  A
+check that stops before its writes writes nothing, so the statement needs no prefix form of the
+reads of a file or of the manifest.  `writeAll_stops` of [the stopped-run
+lemmas](../../Verified/Wasi/Stops.lean) gives the bytes that each write of a run of `writeAll` that
+stops offers.
 
 The reviewer's transcription with the three changes, and an oracle of the verdict property
 written apart from the Lean text, accepted all 65,122 lists of the model, and the two
@@ -191,19 +193,19 @@ read attempted at a size of `2^32` or more; and an engine that refuses `memory.g
 A fourth fresh agent reviewed the native statements against [the request](request.txt), by the
 method of the knowledge base's entry on independent review: `InRange`, `Opening`, and `NMeets` of
 [the specification over Linux events](NativeSpec.lean), the statements of [the corollary under the
-shim](NativeMeets.lean), `StatBounded` and `budget_fits` of [the footprints](Native.lean), the
-executable's theorems with their witness, the driver's native, QEMU, and strace checks, and a draft
-of the guide's section.  It received the paths of these files, the shim's model, and the request,
-wrote a model in Python of `InRange`, of `NMeets` with a search over every alternative of every
-constructor, of the shim's images, of a kernel with injected faults, and of the command, and ran
-no Lean code.  The right program met `NMeets` in all 33 of its scenarios, and `NMeets` detected 32
-of its 39 wrong programs.
+shim](NativeMeets.lean), `StatBounded`, the premise on the replies that `StatxBounded` replaces, and
+`budget_fits` of [the footprints](Native.lean), the executable's theorems with their witness, the
+driver's native, QEMU, and strace checks, and a draft of the guide's section.  It received the paths
+of these files, the shim's model, and the request, wrote a model in Python of `InRange`, of `NMeets`
+with a search over every alternative of every constructor, of the shim's images, of a kernel with
+injected faults, and of the command, and ran no Lean code.  The right program met `NMeets` in all 33
+of its scenarios, and `NMeets` detected 32 of its 39 wrong programs.
 
 | Finding | Response |
 |---|---|
 | `Opening` accepted any errno other than 0 for an open that made no call, so a program that exits with status 1 without a call met `NMeets` for every argument list, and so did a program that writes FAILED for every line without opening a file | Adopted: `Opening held name` gives an open without a call the errno of the shim's checks, `nameCheck held name`, and an open with calls requires that the checks pass.  `NMeets` takes `held`, whether the shim holds descriptor 3, which `manifest_elf_meets` gives as the startup check's grant.  `InRange` requires an `openat2` descriptor of 4 or more, so the shim holds descriptor 3 throughout the run exactly when the check granted it (`spares3_three`) |
 | The `more` constructors of `NManifestReads` and `NFileReads` accepted a read that returned an error number, whose `toNat` is positive, so a program that retries after `EIO` and reports OK met `NMeets` | Adopted: each requires `Linux.isError e.ret = false` |
-| `StatBounded manifestLimit R` fails on correct runs: a `read` that returns 0 leaves its window's old bytes, which `Carried` records as the reply's bytes, and a file whose last 65,536 bytes hold a size above 1 MiB where a `statx` record holds `stx_size` gives such a reply | Adopted in the guide, which states the case.  A premise on the run's `statx` events alone needs a budget that follows the run's worlds, a change of `body_bounded`'s premise that this review leaves open |
+| `StatBounded manifestLimit R` fails on correct runs: a `read` that returns 0 leaves its window's old bytes, which `Carried` records as the reply's bytes, and a file whose last 65,536 bytes hold a size above 1 MiB where a `statx` record holds `stx_size` gives such a reply | Adopted in the guide, which stated the case.  A premise on the run's `statx` events alone needs a budget that follows the run's worlds, a change of `body_bounded`'s premise that this review left open and that `StatAlong` and `StatxBounded` make, as [the review of the premises on the manifest's `statx`](#review-of-the-premises-on-the-manifests-statx) records |
 | The guide's row of `manifest_elf_meets` and the file's docstrings said "when the check grants descriptor 3", while the theorem's case also covers a check that grants nothing | Adopted: "when the check does not end the run", and `NMeets` names the grant |
 | `InRange`'s docstring called the bound of 1,024 Linux's, which is the shim's limit, and the guide cited statx(2) for nanoseconds below `10^9`, which the page does not state | Adopted: the docstring and the guide name the shim's limit, and the guide gives the bound on nanoseconds as `InRange`'s premise, under which the shim does not trap |
 | The docstrings of `linux_exec_meets`, `image_untrapped`, and `read_native` omitted premises | Adopted |
@@ -246,9 +248,9 @@ defect of a statement.
 | `NManifestBody`'s docstring and the guide said that any time of `2^64` nanoseconds or more gives status 61, where `Overflows` reads the access, modification, and reported birth times | Adopted |
 | The guide did not say that the corollary covers manifests of at most 1 MiB | Adopted |
 
-Two wrong programs met every statement and check.  A program that tests a line's name for a zero
-byte and for its length in another order makes no call and writes FAILED either way, since a
-refused line discards its errno.  A program that opens the checked files with the rights
+Two of the wrong programs met `NMeets` and every check of the driver.  A program that tests a line's
+name for a zero byte and for its length in another order makes no call and writes FAILED either way,
+since a refused line discards its errno.  A program that opens the checked files with the rights
 `manifestRights` makes the same Linux events, since the open flags depend only on `fd_write`, and
 `Confined` at WASI excludes it.  A program that reads a file in full before hashing it, with the
 same reads, meets `NMeets`, and `manifest_elf_meets` excludes it only through the guest trap of a
@@ -256,16 +258,15 @@ file that outgrows the executable's 4,096 pages.
 
 ## Review of the premises on the manifest's `statx`
 
-The budget's premise and the native corollary's premise bound only the reply to the manifest's
-`fd_filestat_get`.  `StatAlong host M main world` of [the budget](Budget.lean) bounds, at every
-prefix of `main` whose next request is `fd_filestat_get`, the size of every reply with errno 0
-that the host permits, and `body_bounded` carries it along the body with the world-indexed rules.
-`StatxBounded` of [the footprints](Native.lean) bounds, at every such prefix under `linuxHost` of a
-descriptor that the shim holds, the reply `R k` to the `statx` that the shim then makes, and
+`StatAlong` of [the budget](Budget.lean), `StatxBounded` of [the footprints](Native.lean), and
 `StatxAfterCheck` of [the executable's
-theorems](../../tests/TestSupport/A64/ImageFilesManifestCheck.lean) states it after the check of
-descriptor 3.  Each premise admits a size of `2^32` bytes or more, which `readManifest` answers
-with status 61 before it builds a buffer.
+theorems](../../tests/TestSupport/A64/ImageFilesManifestCheck.lean) bound only the reply to the
+manifest's `fd_filestat_get`, as [the guide's section on memory](README.md#memory) and [its section
+on the executable](README.md#the-native-executable-checks-the-manifest) describe.  `StatAlong`
+bounds the replies that the host permits at the prefixes of `main` whose next request is
+`fd_filestat_get`, and `StatxBounded` bounds the reply `R k` to the `statx` that the shim makes for
+such a request of a descriptor that it holds.  Each admits a size of `2^32` bytes or more, which
+`readManifest` answers with status 61 before it builds a buffer.
 
 A sixth fresh agent reviewed `StatWithin`, `StatAt`, `StatAlong`, `StatxAt`, `StatxBounded`,
 `StatxAfterCheck`, the statements that take them, and the guide's sentences about them, by the
@@ -281,7 +282,7 @@ Linux's replies, among them manifests of 1 MiB and one byte, 2 MiB, `2^28`, and 
 after `EAGAIN` and after a failed `close` of the check.  `StatAlong` under the shim's host gave the
 same verdict in every case.  A `statx` whose `stx_size` lies in that range and whose times give
 errno 61 meets the premise, so the class differs from one stated by `stx_size` alone in 29
-scenarios, 21 with Linux's replies.  A transcription of the earlier premise over every reply
+scenarios, 21 with Linux's replies.  A transcription of the replaced premise over every reply
 failed on 31 scenarios with Linux's replies that `StatxAfterCheck` admits, each with a file whose
 last `read` returns 0 over a window whose first 256 bytes form a `statx` record of 2 MiB.  In 58
 scenarios the reviewer replaced the window of every such `read` with that record, and
