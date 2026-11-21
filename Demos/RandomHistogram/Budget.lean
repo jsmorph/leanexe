@@ -1,6 +1,5 @@
 import Demos.RandomHistogram.CommandStart
 import Demos.RandomHistogram.Compiled
-import Verified.Examples.WasiSysTotal
 import Verified.Wasi.BudgetTactics
 
 /-! The resource model's charge of the random-residue histogram's `main`, the budget that the
@@ -79,11 +78,6 @@ theorem appendLine_cost_eq (text : Array UInt64) (c : UInt64) :
     command.pureSources.appendLine.cost (⟨text⟩, c) = compiled.appendLine.cost (⟨text⟩, c) := by
   rw [command.pureSources.appendLine.cost_eq, compiled.appendLine.cost_eq]
 
-private theorem exec_pure_value {World α : Type} {host : Host World} {result value : α}
-    {world final : World} {trace : List Event}
-    (run : Exec host (.pure result) world trace (.returned value) final) : value = result :=
-  Outcome.returned.inj (exec_pure_shape run).2.1
-
 /-- The charge of a call of `render`. -/
 theorem render_charge (counts : Array UInt64) :
     ((PureContext.ofProg command.pure.program command.pure.funs).callBounds 0).get FVar.here
@@ -140,84 +134,6 @@ theorem args_got {World : Type} {host : Host World} {values : List UInt64}
   subst zeroErrno
   rw [exec_pure_value next]
   exact ⟨_, _, _, getter, rfl⟩
-
-/-- What a run of a command with the outcome `outcome` gives about its parts: a `ret` returns the
-value of its expression, a `sys` command, a `write`, and an `exit` end as runs of their actions, a
-`bind` that returns has a first command that returns and a second command that returns the same
-value, an `ite` that returns has a branch that returns the same value, and a loop that returns has
-a run of its passes that returns the same value. -/
-def ReturnFact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
-    (host : Host World) (pure : PureContext pureSigs) (program : EffectProg pureSigs effectSigs)
-    (depth : UInt64) (modes : List Mode) (live : Nat → Bool) :
-    {context : List Ty} → {result : ResultTy} → Command pureSigs effectSigs context result →
-      Env context → Outcome result.denote → Prop
-  | _, _, .ret value, env, .returned returned => returned = value.denote pure.funs env
-  | _, _, .sys operation form args inputs buffers, env, outcome => ∃ world trace final,
-      Exec host (form.runWith operation (args.map env.get) (inputs.map env.get)
-        (buffers.map env.get)) world trace outcome final
-  | _, _, .bind (intermediate := intermediate) first next, env, outcome => ∀ returned,
-      outcome = .returned returned → ∃ value,
-        Returns host pure program depth modes (bindLive intermediate next live) first env value ∧
-          Returns host pure program depth (bindModes intermediate modes)
-            (shift intermediate.bindCount live) next (intermediate.bindEnv value env) returned
-  | _, _, .ite _ yes no, env, outcome => ∀ returned, outcome = .returned returned →
-      Returns host pure program depth modes live yes env returned ∨
-        Returns host pure program depth modes live no env returned
-  | _, _, .loop count initial test step, env, outcome => ∀ returned,
-      outcome = .returned returned → ∃ world trace final spent fits,
-        ResourceLoopExec host pure program depth modes live test step env
-          (count.denote pure.funs env).toNat 0 (initial.denote pure.funs env) world trace
-          (.returned returned) final spent fits
-  | _, _, .write output buffer start count, env, outcome => ∃ world trace final,
-      Exec host ((Command.write output buffer start count).denote pure.funs
-        (program.funs pure.funs) env) world trace outcome final
-  | _, _, .exit code, env, outcome => ∃ world trace final,
-      Exec host (Action.exit (code.denote pure.funs env)) world trace outcome final
-  | _, _, _, _, _ => True
-
-theorem returnFact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
-    {host : Host World} {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
-    {depth : UInt64} {modes : List Mode} {live : Nat → Bool} {context : List Ty}
-    {result : ResultTy} {command : Command pureSigs effectSigs context result} {env : Env context}
-    {world final : World} {trace : List Event} {outcome : Outcome result.denote} {spent : Nat}
-    {fits : Bool}
-    (run : ResourceExec host pure program depth modes live command env world trace outcome final
-      spent fits) :
-    ReturnFact host pure program depth modes live command env outcome := by
-  cases run with
-  | ret => rfl
-  | sys execution => exact ⟨_, _, _, execution⟩
-  | bind_return firstRun nextRun =>
-    intro _ same
-    subst same
-    exact ⟨_, ⟨_, _, _, _, _, firstRun⟩, ⟨_, _, _, _, _, nextRun⟩⟩
-  | bind_exit => exact fun _ same => by cases same
-  | bind_trap => exact fun _ same => by cases same
-  | ite_yes _ execution =>
-    intro _ same
-    subst same
-    exact .inl ⟨_, _, _, _, _, execution⟩
-  | ite_no _ execution =>
-    intro _ same
-    subst same
-    exact .inr ⟨_, _, _, _, _, execution⟩
-  | loop execution =>
-    intro _ same
-    subst same
-    exact ⟨_, _, _, _, _, execution⟩
-  | write execution => exact ⟨_, _, _, execution⟩
-  | exit execution => exact ⟨_, _, _, execution⟩
-  | _ => trivial
-
-theorem returns_fact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
-    {host : Host World} {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
-    {depth : UInt64} {modes : List Mode} {live : Nat → Bool} {context : List Ty}
-    {result : ResultTy} {command : Command pureSigs effectSigs context result} {env : Env context}
-    {value : result.denote}
-    (returns : Returns host pure program depth modes live command env value) :
-    ReturnFact host pure program depth modes live command env (.returned value) := by
-  obtain ⟨_, _, _, _, _, run⟩ := returns
-  exact returnFact run
 
 /-! ## The budget of `main` -/
 

@@ -27,7 +27,10 @@ private partial def envValueAt (env : Lean.Expr) (index : Nat) : MetaM (Option L
 
 open Lean Meta Simp in
 /-- Reads `Env.get env (Var.ofIndex Γ i h)` as the `i`-th value of `env` when `env` is a chain of
-`Env.cons`, a definitional step. -/
+`Env.cons`, a definitional step.  The types of the chain's `Env.cons` nodes are those of the
+commands that bound the values, such as `SysForm.reported.ty`, and the list `Γ` of the reflected
+variable states them in another form, so a rewriting lemma for `Env.get` of `Env.cons` does not
+match. -/
 dsimproc_decl envGet (Env.get _ (Var.ofIndex _ _ _)) := fun e => do
   let (``Env.get, #[_, _, env, reference]) := e.getAppFnArgs | return .continue
   let (``Var.ofIndex, #[_, _, index, _]) := reference.getAppFnArgs | return .continue

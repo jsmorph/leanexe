@@ -1,5 +1,5 @@
 import Verified.Examples.WasiSys
-import Verified.Wasi.SysRule
+import Verified.Wasi.BudgetTactics
 import Verified.Wasi.SysWords
 import Verified.Wasi.FunctionEntry
 import Verified.FieldsArgs
@@ -28,27 +28,6 @@ most `limit` bytes: the block of `args`, at most `Bytes.allocationCost limit`, t
 `wordBytes` (56 bytes each), and the buffer of 16 bytes for `randomGet` (64 bytes). -/
 def budget (limit : Nat) : Nat := Bytes.allocationCost limit + 288
 
-open Lean Meta in
-/-- The value at `index` of an environment given as a chain of `Env.cons`. -/
-private partial def envValueAt (env : Lean.Expr) (index : Nat) : MetaM (Option Lean.Expr) := do
-  match (← whnfD env).getAppFnArgs with
-  | (``Env.cons, #[_, _, value, rest]) =>
-    if index == 0 then return some value else envValueAt rest (index - 1)
-  | _ => return none
-
-open Lean Meta Simp in
-/-- Reads `Env.get env (Var.ofIndex Γ i h)` as the `i`-th value of `env` when `env` is a chain of
-`Env.cons`, a definitional step.  The types of the chain's `Env.cons` nodes are those of the
-commands that bound the values, such as `SysForm.reported.ty`, and the list `Γ` of the reflected
-variable states them in another form, so a rewriting lemma for `Env.get` of `Env.cons` does not
-match. -/
-dsimproc_decl envGet (Env.get _ (Var.ofIndex _ _ _)) := fun e => do
-  let (``Env.get, #[_, _, env, reference]) := e.getAppFnArgs | return .continue
-  let (``Var.ofIndex, #[_, _, index, _]) := reference.getAppFnArgs | return .continue
-  let some index := index.rawNatLit? <|> index.nat? | return .continue
-  let some value ← envValueAt env index | return .continue
-  return .done value
-
 private theorem wordBytes_charge (env : Env [Ty.word]) :
     ((PureContext.ofProg command.pure.program command.pure.funs).callBounds 0).get FVar.here env =
       56 := by
@@ -56,6 +35,8 @@ private theorem wordBytes_charge (env : Env [Ty.word]) :
   | cons word rest =>
     cases rest
     exact (command.pureSources.wordBytes.bound_eq word).trans rfl
+
+attribute [local charge_eqs] wordBytes_charge
 
 private theorem exec_sys_returned {World α : Type} {host : Host World} {call : Call}
     {args : List Arg} {next : Reply → Action α} {world final : World} {trace : List Event}
@@ -66,11 +47,6 @@ private theorem exec_sys_returned {World α : Type} {host : Host World} {call : 
   cases run with
   | sys_reject fits => exact absurd accepted fits
   | sys_return _ permitted next => exact ⟨_, _, _, _, permitted, next⟩
-
-private theorem exec_pure_value {World α : Type} {host : Host World} {result value : α}
-    {world final : World} {trace : List Event}
-    (run : Exec host (.pure result) world trace (.returned value) final) : value = result :=
-  Outcome.returned.inj (exec_pure_shape run).2.1
 
 /-- A returned `args` result holds at most `limit` bytes when every successful reply of the
 reporter that `host` permits asks for a block of at most `limit` bytes: the bytes are those of
@@ -119,127 +95,19 @@ theorem args_bytes_le {World : Type} {host : Host World} {limit : Nat}
     List.getElem?_cons_zero, Option.getD_some]
   omega
 
-/-- What a run of a command with outcome `outcome` implies, for the forms whose results the charge
-of `main` reads: a `ret` returns the value of its expression, a `sys` command ends as a run of its
-action, and a `bind` that returns has a first command that returns and a second command that
-returns the same value. -/
-private def ReturnFact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
-    (host : Host World) (pure : PureContext pureSigs) (program : EffectProg pureSigs effectSigs)
-    (depth : UInt64) (modes : List Mode) (live : Nat → Bool) :
-    {context : List Ty} → {result : ResultTy} → Command pureSigs effectSigs context result →
-      Env context → Outcome result.denote → Prop
-  | _, _, .ret value, env, .returned returned => returned = value.denote pure.funs env
-  | _, _, .sys operation form args inputs buffers, env, outcome => ∃ world trace final,
-      Exec host (form.runWith operation (args.map env.get) (inputs.map env.get)
-        (buffers.map env.get)) world trace outcome final
-  | _, _, .bind (intermediate := intermediate) first next, env, outcome => ∀ returned,
-      outcome = .returned returned → ∃ value,
-        Returns host pure program depth modes (bindLive intermediate next live) first env value ∧
-          Returns host pure program depth (bindModes intermediate modes)
-            (shift intermediate.bindCount live) next (intermediate.bindEnv value env) returned
-  | _, _, _, _, _ => True
-
-private theorem returnFact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
-    {host : Host World} {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
-    {depth : UInt64} {modes : List Mode} {live : Nat → Bool} {context : List Ty}
-    {result : ResultTy} {command : Command pureSigs effectSigs context result} {env : Env context}
-    {world final : World} {trace : List Event} {outcome : Outcome result.denote} {spent : Nat}
-    {fits : Bool}
-    (run : ResourceExec host pure program depth modes live command env world trace outcome final
-      spent fits) :
-    ReturnFact host pure program depth modes live command env outcome := by
-  cases run with
-  | ret => rfl
-  | sys execution => exact ⟨_, _, _, execution⟩
-  | bind_return firstRun nextRun =>
-    intro _ same
-    subst same
-    exact ⟨_, ⟨_, _, _, _, _, firstRun⟩, ⟨_, _, _, _, _, nextRun⟩⟩
-  | bind_exit => exact fun _ same => by cases same
-  | bind_trap => exact fun _ same => by cases same
-  | _ => trivial
-
-private theorem returns_fact {World : Type} {pureSigs : List Sig} {effectSigs : List EffectSig}
-    {host : Host World} {pure : PureContext pureSigs} {program : EffectProg pureSigs effectSigs}
-    {depth : UInt64} {modes : List Mode} {live : Nat → Bool} {context : List Ty}
-    {result : ResultTy} {command : Command pureSigs effectSigs context result} {env : Env context}
-    {value : result.denote}
-    (returns : Returns host pure program depth modes live command env value) :
-    ReturnFact host pure program depth modes live command env (.returned value) := by
-  obtain ⟨_, _, _, _, _, run⟩ := returns
-  exact returnFact run
-
-/-- The cost of an `if` whose branches have one budget. -/
-private theorem ite_cost {c : Prop} {decision : Decidable c} {cost branch total : Nat}
-    (bound : cost + branch ≤ total) : cost + @ite Nat c decision branch branch ≤ total := by
-  cases decision <;> exact bound
-
-/-- Proves a bound on the charge of an expression: evaluates its liveness tests, reads its
-variables, and leaves the copies to `omega`. -/
-local macro "charge" : tactic => `(tactic|
-  (simp +decide only [PureContext.ownedCost, PureContext.exprCost, Expr.allocs, Var.cost,
-      Expr.mode, coerceCost, Ty.copyCost, envGet, letPairEnv, letPairModes, modeAt, Expr.denote,
-      sysTakeLive,
-      Args.get_cons_zero', argsSum,
-      callCredits, wordBytes_charge, Nat.add_zero, Nat.zero_add, ↓reduceIte, ite_self] <;>
-   omega))
-
-/-- Proves the frames of an expression that calls no function that takes the call depth. -/
-local macro "fits" : tactic => `(tactic| exact Expr.fits_of_depthCalls _ _ _ (by decide) _)
-
-/-- Proves `Bounded` of a `ret`. -/
-local macro "ret_bound" : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   exact rule (by charge) (by fits)))
-
-/-- Proves `Bounded` of a `write`, which charges nothing. -/
-local macro "write_bound" : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   exact rule))
-
 /-- Proves `Bounded` of the bindings of a write's window, which charge nothing, and the write. -/
 local macro "window_bound" : tactic => `(tactic|
   (repeat (first
     | (apply bounded_of_rule; intro _ _ rule; refine rule 0 0 (by omega) ?_ ?_)
     | (intro _ _)
-    | ret_bound
-    | write_bound)))
+    | rule_ret
+    | rule_write)))
 
 /-- Proves `Bounded` of a flat call without an output, which charges nothing. -/
 local macro "flat_bound" : tactic => `(tactic|
   (apply bounded_of_rule
    intro _ _ rule
    exact rule (fun _ _ _ _ _ => Nat.zero_le _) (fun _ _ _ _ _ => Nat.zero_le _)))
-
-/-- Proves `Bounded` of a `sys` command whose call charges nothing and whose take moves its
-buffer or has none. -/
-local macro "sys_bound" : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   exact rule (fun _ _ _ _ _ => by simp only [sysCost, PureContext.sysTakeCost]; charge)
-     (fun _ _ _ _ _ => by simp only [sysCost, PureContext.sysTakeCost]; charge)))
-
-/-- Proves `Bounded` of a command of `bind`s, `ret`s, and `sys` commands that charge nothing. -/
-local macro "free_bound" : tactic => `(tactic|
-  (repeat (first
-    | (apply bounded_of_rule; intro _ _ rule; refine rule 0 0 (by omega) ?_ ?_)
-    | (intro _ _)
-    | ret_bound
-    | sys_bound)))
-
-/-- Reduces `Bounded` of a `bind` to its parts with the budgets `first` and `next`. -/
-local macro "bind_bound " first:term:max next:term:max : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   refine rule $first $next (by omega) ?_ ?_))
-
-/-- Reduces `Bounded` of an `ite` to its branches with the budget `branch` for each. -/
-local macro "ite_bound " branch:term:max : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   refine rule $branch $branch (ite_cost (by charge)) (by fits) (fun _ => ?_) (fun _ => ?_)))
 
 /-- Every run and every prefix of `main`'s body spends at most `budget limit`. -/
 theorem body_bounded {World : Type} {host : Host World} {limit : Nat}
@@ -252,83 +120,83 @@ theorem body_bounded {World : Type} {host : Host World} {limit : Nat}
     (inputs := []) (buffers := [])
     bound (Nat.le_refl (Bytes.allocationCost limit))
   unfold budget
-  bind_bound (Bytes.allocationCost limit) 288
+  rule_bind (Bytes.allocationCost limit) 288
   · apply bounded_of_rule
     intro _ _ rule
     exact rule reported.1 reported.2
   intro arguments _
   obtain ⟨_, _, _, bytes⟩ := arguments
   letPair_free
-  ite_bound 288
-  · ret_bound
-  bind_bound 0 288
+  rule_ite 288
+  · rule_ret
+  rule_bind 0 288
   · window_bound
   intro _ _
-  bind_bound 0 288
+  rule_bind 0 288
   · flat_bound
   intro _ _
-  ite_bound 288
-  · ret_bound
-  bind_bound 56 232
-  · bind_bound 56 0
-    · ret_bound
+  rule_ite 288
+  · rule_ret
+  rule_bind 56 232
+  · rule_bind 56 0
+    · rule_ret
     · intro _ _
       window_bound
   intro _ _
-  bind_bound 56 176
-  · bind_bound 56 0
-    · ret_bound
+  rule_bind 56 176
+  · rule_bind 56 0
+    · rule_ret
     · intro _ _
       window_bound
   intro _ _
-  bind_bound 0 176
-  · bind_bound 0 0
-    · ret_bound
+  rule_bind 0 176
+  · rule_bind 0 0
+    · rule_ret
     · intro _ _
-      bind_bound 0 0
-      · ret_bound
+      rule_bind 0 0
+      · rule_ret
       · intro _ _
         flat_bound
   intro _ _
-  ite_bound 176
-  · ret_bound
-  bind_bound 56 120
-  · bind_bound 56 0
-    · ret_bound
+  rule_ite 176
+  · rule_ret
+  rule_bind 56 120
+  · rule_bind 56 0
+    · rule_ret
     · intro _ _
       window_bound
   intro _ _
-  bind_bound 0 120
-  · bind_bound 0 0
-    · ret_bound
+  rule_bind 0 120
+  · rule_bind 0 0
+    · rule_ret
     · intro _ _
-      bind_bound 0 0
-      · ret_bound
+      rule_bind 0 0
+      · rule_ret
       · intro _ _
         flat_bound
   intro _ _
-  ite_bound 120
-  · ret_bound
-  bind_bound 56 64
-  · bind_bound 56 0
-    · ret_bound
+  rule_ite 120
+  · rule_ret
+  rule_bind 56 64
+  · rule_bind 56 0
+    · rule_ret
     · intro _ _
       window_bound
   intro _ _
-  bind_bound 64 0
-  · bind_bound 64 0
-    · ret_bound
+  rule_bind 64 0
+  · rule_bind 64 0
+    · rule_ret
     · intro _ _
-      free_bound
+      rule_free
   intro random _
   obtain ⟨_, _, randomBuffer⟩ := random
   letPair_free
-  ite_bound 0
-  · ret_bound
-  bind_bound 0 0
+  rule_ite 0
+  · rule_ret
+  rule_bind 0 0
   · window_bound
   intro _ _
-  ret_bound
+  rule_ret
 
 /-- Every prefix of a call of `main` spends at most `budget limit`. -/
 theorem call_prefix_bound {World : Type} {host : Host World} {limit : Nat}

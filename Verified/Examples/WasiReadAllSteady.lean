@@ -1,4 +1,5 @@
 import Verified.Examples.WasiReadAllMessage
+import Verified.Wasi.BudgetTactics
 import Verified.Wasi.FunctionEntry
 import Verified.FieldsArgs
 import Verified.TailExpand
@@ -197,62 +198,6 @@ theorem Steady.along {F : OpenFlags} {L : ShimLayout} {I : Launch} {R : Linux.Re
 bytes charges. -/
 def budget : Nat := 1004144
 
-open Lean Meta in
-/-- The value at `index` of an environment given as a chain of `Env.cons`. -/
-private partial def envValueAt (env : Lean.Expr) (index : Nat) : MetaM (Option Lean.Expr) := do
-  match (← whnfD env).getAppFnArgs with
-  | (``Env.cons, #[_, _, value, rest]) =>
-    if index == 0 then return some value else envValueAt rest (index - 1)
-  | _ => return none
-
-open Lean Meta Simp in
-/-- Reads `Env.get env (Var.ofIndex Γ i h)` as the `i`-th value of `env` when `env` is a chain of
-`Env.cons`, a definitional step, as `Verified.Examples.WasiSys.envGet` does. -/
-dsimproc_decl envGet (Env.get _ (Var.ofIndex _ _ _)) := fun e => do
-  let (``Env.get, #[_, _, env, reference]) := e.getAppFnArgs | return .continue
-  let (``Var.ofIndex, #[_, _, index, _]) := reference.getAppFnArgs | return .continue
-  let some index := index.rawNatLit? <|> index.nat? | return .continue
-  let some value ← envValueAt env index | return .continue
-  return .done value
-
-/-- The cost of an `if` whose branches have one budget. -/
-private theorem ite_cost {c : Prop} {decision : Decidable c} {cost branch total : Nat}
-    (bound : cost + branch ≤ total) : cost + @ite Nat c decision branch branch ≤ total := by
-  cases decision <;> exact bound
-
-/-- Proves a bound on the charge of an expression: evaluates its liveness tests, reads its
-variables, and leaves the copies to `omega`. -/
-local macro "charge" : tactic => `(tactic|
-  (simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.readAllCost,
-      PureContext.argumentCost, PureContext.loopInitCost, PureContext.loopCountCost,
-      PureContext.loopTestCost, Expr.allocs, Var.cost, Var.ownedCost, Expr.ownedCost, Expr.mode,
-      coerceCost, Ty.copyCost, envGet, Expr.denote, Args.get_cons_zero', Args.get_cons_zero,
-      Args.get_cons_succ, Env.ofFn, argsSum, callCredits, ResultTy.bindEnv, loopEnv, loopModes,
-      letPairEnv, letPairModes, modeAt, List.get_cons_zero, List.get_cons_succ', allocCost,
-      Elem.width, UInt64.reduceToNat, Nat.add_zero, Nat.zero_add, ↓reduceIte, ite_self] <;>
-   omega))
-
-/-- Proves the frames of an expression that calls no function that takes the call depth. -/
-local macro "fits" : tactic => `(tactic| exact Expr.fits_of_depthCalls _ _ _ (by decide) _)
-
-/-- Proves `Bounded` of a `ret`. -/
-local macro "ret_bound" : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   exact rule (by charge) (by fits)))
-
-/-- Reduces `Bounded` of a `bind` to its parts with the budgets `first` and `next`. -/
-local macro "bind_bound " first:term:max next:term:max : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   refine rule $first $next (by omega) ?_ ?_))
-
-/-- Reduces `Bounded` of an `ite` to its branches with the budget `branch` for each. -/
-local macro "ite_bound " branch:term:max : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   refine rule $branch $branch (ite_cost (by charge)) (by fits) (fun _ => ?_) (fun _ => ?_)))
-
 /-- `writeAll` charges nothing: it computes the window of its buffer in words, and each of its
 passes binds the window of the bytes that remain and writes it from the borrowed buffer. -/
 theorem writeAll_bounded {World : Type} {host : Host World} {depth : UInt64}
@@ -260,39 +205,37 @@ theorem writeAll_bounded {World : Type} {host : Host World} {depth : UInt64}
     Bounded host (.ofProg command.pure.program command.pure.funs) .nil depth
       (entryModes command.writeAll.func.params command.writeAll.func.modes) (fun _ => false)
       command.writeAll.func.body env 0 := by
-  bind_bound 0 0
-  · ret_bound
+  rule_bind 0 0
+  · rule_ret
   intro _ _
-  bind_bound 0 0
-  · ret_bound
+  rule_bind 0 0
+  · rule_ret
   intro _ _
   apply bounded_of_rule
   intro _ _ rule
-  refine rule 0 (by charge) ?_ ?_
+  refine rule 0 (by rule_charge) ?_ ?_
   · simp only [PureContext.loopInitFits, Bool.and_eq_true]
     exact ⟨Expr.fits_of_depthCalls _ _ _ (by decide) _,
       Expr.fits_of_depthCalls _ _ _ (by decide) _⟩
   refine LoopBounded.mono (loop_bounded (type := .word) (t := 0) (s := 0)
     (fun _ : UInt64 => True) ?_ ?_ ?_ ?_ _ _ _ trivial) ?_
   · intro index written _
-    charge
+    rule_charge
   · intro index written _
     exact Expr.fits_of_depthCalls _ _ _ (by decide) _
   · intro index written _
-    bind_bound 0 0
-    · bind_bound 0 0
-      · ret_bound
+    rule_bind 0 0
+    · rule_bind 0 0
+      · rule_ret
       · intro _ _
-        bind_bound 0 0
-        · ret_bound
+        rule_bind 0 0
+        · rule_ret
         · intro _ _
-          apply bounded_of_rule
-          intro _ _ rule
-          exact rule
+          rule_write
     · intro _ _
-      ite_bound 0
-      · ret_bound
-      · ret_bound
+      rule_ite 0
+      · rule_ret
+      · rule_ret
   · intro _ _ _ _ _
     trivial
   · simp
@@ -303,22 +246,22 @@ theorem body_bounded {World : Type} {host : Host World} :
       (.cons command.writeAll.func .nil) 0 [] (fun _ => false) command.main.func.body .nil
       budget := by
   unfold budget
-  bind_bound 1004144 0
+  rule_bind 1004144 0
   · apply bounded_of_rule
     intro _ _ rule
-    exact rule (by decide) (by fits)
+    exact rule (by decide) (by rule_fits)
   intro _ _
   letPair_free
-  ite_bound 0
-  · ret_bound
-  bind_bound 0 0
+  rule_ite 0
+  · rule_ret
+  rule_bind 0 0
   · apply bounded_of_rule
     intro _ _ rule
-    exact rule 0 (by charge) rfl (callBounded_here (by decide) (writeAll_bounded _))
+    exact rule 0 (by rule_charge) rfl (callBounded_here (by decide) (writeAll_bounded _))
   · intro _ _
-    ite_bound 0
-    · ret_bound
-    · ret_bound
+    rule_ite 0
+    · rule_ret
+    · rule_ret
 
 /-- Every prefix of a call of `main` under every host charges at most `budget` and has enough
 frames. -/

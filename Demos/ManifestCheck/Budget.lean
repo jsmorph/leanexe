@@ -1,6 +1,7 @@
 import Demos.ManifestCheck.CommandStart
 import Demos.ManifestCheck.Compiled
 import Verified.Examples.WasiSysTotal
+import Verified.Wasi.BudgetTactics
 import Verified.Wasi.ResourceRulesAt
 
 /-! The resource model's charge of the manifest checker's `main`, the budget that the generated
@@ -537,7 +538,7 @@ local macro "charge" : tactic => `(tactic|
   (simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.loopInitCost,
       PureContext.loopCountCost, PureContext.loopTestCost, PureContext.argumentCost, Expr.allocs,
       Var.cost, Var.ownedCost, Expr.ownedCost, Expr.mode, coerceCost, Ty.copyCost,
-      Verified.Examples.WasiSys.envGet, Expr.denote, Args.get_cons_zero', Args.get_cons_zero,
+      envGet, Expr.denote, Args.get_cons_zero', Args.get_cons_zero,
       Args.get_cons_succ, Env.ofFn, argsSum, callCredits, ResultTy.bindEnv, loopEnv, loopModes,
       letPairEnv, letPairModes, modeAt, sysTakeLive, List.get_cons_zero, List.get_cons_succ',
       Flags.params, Flags.result, ofProg_flags, flags_toList, FVar.index, argScan_charge,
@@ -560,12 +561,6 @@ local macro "ret_bound" : tactic => `(tactic|
    refine rule ?_ ?_
    · charge
    · fits))
-
-/-- Proves `Bounded` of a `write`, which charges nothing. -/
-local macro "write_bound" : tactic => `(tactic|
-  (apply bounded_of_rule
-   intro _ _ rule
-   exact rule))
 
 /-- Reduces `Bounded` of a `bind` to its parts with the budgets `first` and `next`. -/
 local macro "bind_bound " first:term:max next:term:max : tactic => `(tactic|
@@ -698,7 +693,7 @@ theorem hashFile_bounded {World : Type} {host : Host World} {depth : UInt64}
   intro _ _ rule
   refine rule ?_ (by fits)
   simp +decide only [PureContext.ownedCost, PureContext.exprCost, Expr.allocs, Var.cost,
-    Var.ownedCost, Expr.ownedCost, coerceCost, Ty.copyCost, Verified.Examples.WasiSys.envGet,
+    Var.ownedCost, Expr.ownedCost, coerceCost, Ty.copyCost, envGet,
     Expr.denote, Args.get_cons_zero', Args.get_cons_zero, Args.get_cons_succ, Env.ofFn, argsSum,
     callCredits, Flags.params, ofProg_flags, flags_toList, FVar.index, ResultTy.bindEnv, letPairEnv,
     letPairModes, modeAt, finishWith_charge, updateWith_charge, BinOp.apply, List.get_cons_zero,
@@ -740,7 +735,7 @@ theorem writeAll_bounded {World : Type} {host : Host World} {depth : UInt64}
         bind_bound 0 0
         · ret_bound
         · intro _ _
-          write_bound
+          rule_write
     · intro _ _
       ite_bound 0
       · ret_bound
@@ -781,7 +776,7 @@ theorem readManifest_bounded {World : Type} {host : Host World} {M : Nat}
   refine rule (Bytes.allocationCost M) (by charge) rfl
     (callBounded_here (by decide) (Bounded.mono (readBytes_bounded _ _ _ _) ?_))
   apply allocationCost_mono
-  simp only [Expr.denote, CmpOp.apply, Verified.Examples.WasiSys.envGet, ResultTy.bindEnv]
+  simp only [Expr.denote, CmpOp.apply, envGet, ResultTy.bindEnv]
     at zero small
   refine hle (by simpa [Path.get] using zero) ?_
   simp only [Path.get, decide_eq_false_iff_not, UInt64.le_iff_toNat_le, UInt64.reduceToNat]
@@ -831,7 +826,7 @@ theorem checkLines_bounded {World : Type} {host : Host World} (table : Array UIn
       intro (stop : UInt64) returnedStop
       have hstart := returns_fact returnedStart
       have hstop := returns_fact returnedStop
-      simp only [ReturnFact, Expr.denote, Verified.Examples.WasiSys.envGet, ResultTy.bindEnv,
+      simp only [ReturnFact, Expr.denote, envGet, ResultTy.bindEnv,
         letPairEnv, loopEnv, BinOp.apply] at hstart hstop
       have hlen : lineLen (parse m) index = stop - start - 66 := by
         rw [hstart, hstop]
@@ -843,7 +838,7 @@ theorem checkLines_bounded {World : Type} {host : Host World} (table : Array UIn
       · ret_bound
       intro (name : LeanExe.Bytes) returnedName
       have hname := returns_fact returnedName
-      simp only [ReturnFact, Expr.denote, Verified.Examples.WasiSys.envGet, ResultTy.bindEnv,
+      simp only [ReturnFact, Expr.denote, envGet, ResultTy.bindEnv,
         BinOp.apply, Env.ofFn, Args.get_cons_zero, Args.get_cons_succ] at hname
       replace hname := hname.trans (slice_reflected m (start + 66) (stop - start - 66))
       subst hname
@@ -891,7 +886,7 @@ theorem checkLines_bounded {World : Type} {host : Host World} (table : Array UIn
       ret_bound
     · intro _ _ _ _ _
       trivial
-    · simp only [Expr.denote, Verified.Examples.WasiSys.envGet, BinOp.apply, Nat.mul_zero,
+    · simp only [Expr.denote, envGet, BinOp.apply, Nat.mul_zero,
         Nat.add_zero]
       exact lines_charge_le m hm
   intro _ _
@@ -957,7 +952,7 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
   intro _ (scan : UInt64 × UInt64 × UInt64) _ _ _ scanRun
   replace along := along.next scanRun
   have hscan := returns_fact ⟨_, _, _, _, _, scanRun⟩
-  simp only [ReturnFact, Expr.denote, Verified.Examples.WasiSys.envGet, ResultTy.bindEnv,
+  simp only [ReturnFact, Expr.denote, envGet, ResultTy.bindEnv,
     letPairEnv, Env.ofFn, Args.get_cons_zero] at hscan
   replace hscan := hscan.trans (argScan_reflected bytes)
   subst hscan
@@ -968,7 +963,7 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
   intro accepted
   replace along := along.no accepted
   have haccept : ((argScan bytes).1 != 2 || bytes.get (bytes.size - 1) != 0) = false := by
-    simp only [Expr.denote, Verified.Examples.WasiSys.envGet, ResultTy.bindEnv, letPairEnv,
+    simp only [Expr.denote, envGet, ResultTy.bindEnv, letPairEnv,
       CmpOp.apply, BinOp.apply, Path.get] at accepted
     exact reflected_test_false accepted
   have hcopy := allocationCost_mono
@@ -1089,7 +1084,7 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
     (ite_cost (by charge)) (by fits) (fun _ => ?_) (fun ok => ?_)
   · ret_bound
   have hstatus : status = 0 := by
-    simp only [Expr.denote, Verified.Examples.WasiSys.envGet, ResultTy.bindEnv, letPairEnv,
+    simp only [Expr.denote, envGet, ResultTy.bindEnv, letPairEnv,
       CmpOp.apply] at ok
     simpa using reflected_test_false ok
   obtain ⟨hm, hm32⟩ := hsize hstatus
@@ -1100,7 +1095,7 @@ theorem body_bounded {World : Type} {host : Host World} {M : Nat}
   · ret_bound
   intro (entries : Array UInt64) returnedEntries
   have hentries := returns_fact returnedEntries
-  simp only [ReturnFact, Expr.denote, Verified.Examples.WasiSys.envGet, ResultTy.bindEnv,
+  simp only [ReturnFact, Expr.denote, envGet, ResultTy.bindEnv,
     letPairEnv, Env.ofFn, Args.get_cons_zero] at hentries
   replace hentries := hentries.trans (parse_reflected mbytes)
   ite_bound (4 * (M + 1))
