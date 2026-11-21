@@ -1,4 +1,3 @@
-import Verified.Wasi
 import Verified.Wasi.SysRule
 import Verified.Wasi.BudgetAttr
 
