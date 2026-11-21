@@ -26,13 +26,12 @@ as `-0e0`, infinities as `Infinity` or `-Infinity`, and NaN as `NaN`.  A first i
 | `Infinity`, `-Infinity`, `1` | `Infinity`, `NaN`, `NaN` |
 
 The process reads chunks of at most 4,096 bytes, each into a fresh buffer, keeps a copy of the
-bytes read, retains a partial line across reads, and finishes
-pending output before processing the next line.  Short writes retain the unwritten suffix.
-Successful zero-byte writes retry that suffix.  Each completed line produces output before the
-next blocking read.  Invalid input exits with status 28 and preserves preceding output.  A
-returned I/O error stops the Wasm module with its errno as the exit status.  The native executable
-raises the error as a Lean `IO.Error`, prints it, and exits with status 1.  Host traps preserve
-committed effects.
+bytes read, retains a partial line across reads, and finishes pending output before processing the
+next line, so each completed line produces output before the next blocking read.  Short writes
+retain the unwritten suffix, and successful zero-byte writes retry it.  Invalid input exits with
+status 28 and preserves preceding output.  A returned I/O error stops the Wasm module with its
+errno as the exit status.  The native executable raises the error as a Lean `IO.Error`, prints it,
+and exits with status 1.  Host traps preserve committed effects.
 
 ## Specification and proofs
 
@@ -49,11 +48,12 @@ signed zero, infinities, and canonical NaNs.
 | [Stream view](StreamView.lean), [kernel](Kernel.lean), and [termination](Termination.lean) | Relation between the process and [the shared stream process](../StreamFold/README.md), specification of the line kernel, and progress of each step. |
 | [Line model](Model.lean) | `ShortLines`, the line rooms that it implies, and the outputs and status of the kernel's fold over the input lines. |
 | [Line limit](Limits.lean) | `InputLimits L`, the kernel specification `limitSpec L`, the invariant `LimitInv L` of the reached states, and the sizes of every state that a step returns. |
-| [Action compilation](Wasi.lean) | Pure helper compilation and reflected effectful begin/step functions. |
+| [Action compilation](Wasi.lean) | Compilation of the pure helpers and reflection of the effectful begin and step functions. |
 | [Command module](Module.lean) | Unbounded Wasm loop, stack admission check, encoding, and validity proofs. |
 | [Process refinement](Proof.lean) | Native-process correspondence, modeled initial store, `_start` partial refinement, and byte theorem. |
 | [Printer charges](PrintCharges.lean) and [parser charges](ParseCharges.lean) | Bounds on the generated allocation bounds of the multiprecision arithmetic, the printer, and the parser, with the sizes of their arrays. |
 | [Step charges](Charges.lean) | Charges of `begin` and of each step, and their bound for states within the limit. |
+| [Control rank](TerminationTyped.lean) and [compiled termination](TerminationTarget.lean) | Well-founded process progress, an invariant of the reached states, typed allocation charges, and accepted exit. |
 | [Stream correctness](StreamCorrect.lean) | `InputValues`, sequential binary64 output of the lines before the first rejected line, and source process termination. |
 | [Compiled correctness](Correct.lean) | Charges derived from the limit, and eventual accepted exit with status 0 or 28 and sequential binary64 output from the modeled initial store. |
 | [Native executable](Native.lean) | Same process with the shared [POSIX fd 0 reader](../RunningSum/read.c) and flushed output streams. |
@@ -78,14 +78,14 @@ concerns runs that start with an empty event journal and output history and uses
 | [Exit acceptance](Correct.lean) | `ExitAccepted` excludes rejected exits with status 0 or 28 at represented worlds. |
 
 `limitCharges` derives from the limit the charges that the general theorem `terminates_fp` takes.
-The process compacts its state after `begin`, and after a step when the heap above its base
-exceeds four times the state's copy cost, so between steps the heap above its base holds at most
-four times the state's copy cost, and each step needs memory for its charge, four copies of the
-state before it, and the copy after it.  A copy of a state within the limit costs at most `8 · L + 4,305` bytes,
-and a step from such a state, which takes the state owned and copies none of it, at most
-`48 · L + 4,870,000` bytes, which include a parse of at most `8 · L + 4,404,576` bytes, plus at most
-59,112,378 bytes for one rendering.  `limitMemory L` covers the five copies and the step, as
-`limitMemory_room` proves:
+[The process entry](../../docs/wasi.md#processes-without-an-iteration-bound) keeps the heap within
+four times the state's copy cost above its base between steps, and [the total-process
+theorem](../../docs/wasi.md#process-theorems-and-applications) needs room for four copies of the
+state before a step, the step's charge, and the copy of the state after it.  A copy of a state
+within the limit costs at most `8 · L + 4,305` bytes.  A step from such a state takes the state
+owned, copies none of it, and costs at most `48 · L + 4,870,000` bytes, which include a parse of at
+most `8 · L + 4,404,576` bytes, plus at most 59,112,378 bytes for one rendering.
+`limitMemory L` covers five copies and the step, as `limitMemory_room` proves:
 `5 · (8 · L + 4,305) + 48 · L + 4,870,000 + 59,112,378 ≤ 88 · L + 64,031,000`.  Of the
 rendering's bound, 59,109,312 bytes cover `shortest`, which computes at most 62 quotients with
 `quotAt`, each at most 953,376 bytes.  `PrintFloatSteps.search_le` bounds the search for a finite
@@ -107,9 +107,8 @@ with the modeled floating-point and host semantics require external execution te
 Commands run from the repository root, and [the host
 setup](../../docs/verified-manual.md#the-wasmtime-host) provides the pinned Wasmtime host and its
 deterministic floating-point profile.  On an 8-CPU host with about 12 GiB of memory, the tested
-profile uses `LEANRUN_THREADS=3` and `LEANRUN_MEMORY_HIGH=10G`, with a 12 GiB maximum.  The initial
-WASI compilation had a captured memory peak of 4.84 GiB.  [The resource
-instructions](../../AGENTS.md#lean-process-limits) describe these settings.
+profile uses `LEANRUN_THREADS=3` and `LEANRUN_MEMORY_HIGH=10G`, with a 12 GiB maximum, which [the
+resource instructions](../../AGENTS.md#lean-process-limits) describe.
 
 ```sh
 tests/running-sumfp/run.sh
@@ -123,9 +122,9 @@ prefixes, compares native and Wasmtime output and status, checks interactive out
 and checks the exit status after read and write errors.  Its numerical cases cover parser rounding,
 sequential addition, cancellation, subnormals, overflow, signed zero, NaNs, and infinities.  The
 driver runs all groups by default.  `--native-wasm` selects numeric and native stream tests,
-native/Wasmtime comparisons, and interactive tests.  `--talos-only` selects the scripted Talos
-cases.  Both groups build and audit the proofs.  An optional case name after `--talos-only` selects
-one case from [the scripted cases](../../tests/running-sumfp/Talos.lean).
+comparisons of native and Wasmtime runs, and the interactive and I/O-error tests.  `--talos-only`
+selects the scripted Talos cases.  Both groups build and audit the proofs.  An optional case name
+after `--talos-only` selects one case from [the scripted cases](../../tests/running-sumfp/Talos.lean).
 
 | Execution backend | Coverage |
 |---|---|
@@ -139,5 +138,5 @@ one case from [the scripted cases](../../tests/running-sumfp/Talos.lean).
 represents bytes with a lookup function.  Each write wraps the previous function, so reads can
 traverse the accumulated write history.  Printing a finite nonzero value performs repeated
 multiprecision divisions and array writes.  The Talos group uses the shorter numeric paths to
-test the stream protocol within its time limit.  The native/Wasmtime corpus and universal FP
-proofs cover the finite arithmetic and printing paths.
+test the stream protocol within its time limit.  The corpus of native and Wasmtime runs and the
+binary64 proofs, which hold for every input, cover the finite arithmetic and printing paths.
