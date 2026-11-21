@@ -718,8 +718,8 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
 def entryModes (params : List Ty) (modes : List Mode) : List Mode :=
   (paramSlots params modes 0).map Slot.mode
 
-/-- The flags of a function's parameters: an owned parameter, which holds an array, is paid when
-`grows` holds, that is, when the body extends an array. -/
+/-- The flags of a function's parameters: an owned parameter, whose type holds an array, bytes, or
+a tree, is paid when `grows` holds, that is, when the body extends an array. -/
 def paramFlags (params : List Ty) (modes : List Mode) (grows : Bool) : List Bool :=
   (entryModes params modes).map fun m => m == .owned && grows
 

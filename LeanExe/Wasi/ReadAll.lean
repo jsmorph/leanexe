@@ -1,12 +1,11 @@
 import LeanExe.Wasi.Semantics
 
-/-! `readAll limit` reads the standard input into one byte string until a read returns an errno
-or no bytes, or until the string holds more than `limit` bytes.  It is a bounded loop of reads of
+/-! `readAll limit` reads the standard input into one byte string until a read returns an errno or
+no bytes, or until the string holds more than `limit` bytes.  It is a bounded loop of reads of
 capacity 4,096, each of which keeps the bytes read and ignores the rest of its range, so `Exec`,
 `Prefix`, and the native interpreter give it the meaning of those reads, and its definition unfolds
-to one `loop` node whatever the limit.  The
-verified compiler compiles it to one buffer of `limit + 4,096` bytes whose unused tail receives
-each read. -/
+to one `loop` node whatever the limit.  The verified compiler compiles it to one buffer of
+`limit + 4,096` bytes whose unused tail receives each read. -/
 
 namespace LeanExe.Wasi
 

@@ -213,7 +213,7 @@ theorem loop_trapped {World : Type} {host : Host World} {test : UInt64 → DrawS
         beta_reduce at next
         split at next <;> cases next
 
-/-- A trapped run of `main` under a host that accepts every exit status below 126 has a trapped
+/-- A trapped run of `main` under a host that rejects no exit status below 126 has a trapped
 `args_sizes_get`, `args_get`, `random_get`, or write. -/
 theorem main_trapped {World : Type} {host : Host World}
     (accepts : ∀ {world code message final}, host.exitTrap world code message final →

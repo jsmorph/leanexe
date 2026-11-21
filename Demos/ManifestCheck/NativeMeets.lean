@@ -5,24 +5,23 @@ import Verified.Shim.Images
 import Verified.Shim.Args
 
 /-! The manifest checker's specification at the Linux call layer from its specification at WASI.
-Each WASI event of the command has, under `linuxHost` with the results of `InRange`, images of
-these forms:
-`path_open` the `openat2` calls of `Opening` (`open_native`), `fd_filestat_get` one `statx`
+Each WASI event of the command has, under `linuxHost` with the results of `InRange`, images of these
+forms: `path_open` the `openat2` calls of `Opening` (`open_native`), `fd_filestat_get` one `statx`
 (`stat_native`), `fd_read` on a handle one `read` (`read_native`), `fd_close` one `close`
-(`close_native`), and a write to standard output one `write` of descriptor 1 (`write_native`).
-The calls on a descriptor make their `read`, `statx`, and `close` because the descriptor that the
+(`close_native`), and a write to standard output one `write` of descriptor 1 (`write_native`).  The
+calls on a descriptor make their `read`, `statx`, and `close` because the descriptor that the
 `openat2` of the bracket returned stays among the numbers that the shim holds until its `close`
-(`Opening.held`, `held_quiet`).  The translations of the WASI predicates follow their
-constructors, and `run_native` and `handled_native` translate `Run` and `Handled`.
+(`Opening.held`, `held_quiet`).  The translations of the WASI predicates follow their constructors,
+and `run_native` and `handled_native` translate `Run` and `Handled`.
 
-Under a host that rejects only exit statuses of 126 or more, a run of `main` and its exit that
-traps has a trapped call among its events (`exec_trapped_call`, from `TrapsInCall` of each part of
+Under a host that rejects only exit statuses of 126 or more, a run of `main` and its exit that traps
+has a trapped call among its events (`exec_trapped_call`, from `TrapsInCall` of each part of
 `main`), and for a launch whose arguments fit the shim's limit (`stringsFit`), no call of the
 command whose image has results in Linux's range traps (`image_untrapped`).  `linux_exec_meets`
-combines these with `exec_main`: every run under `linuxHost` from a world without layer events and
-a launch whose arguments have no zero byte and fit `argsLimit`, and whose layer
-events have results in Linux's range (`InRange`) and `read` outputs as long as the counts that they
-ask for (`Sized`), ends at an accepted exit whose status and layer events meet `NMeets`. -/
+combines these with `exec_main`: every run under `linuxHost` from a world without layer events and a
+launch whose arguments have no zero byte and fit `argsLimit`, and whose layer events have results in
+Linux's range (`InRange`) and `read` outputs as long as the counts that they ask for (`Sized`), ends
+at an accepted exit whose status and layer events meet `NMeets`. -/
 
 namespace Demos.ManifestCheck
 

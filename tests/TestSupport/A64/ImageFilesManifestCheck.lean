@@ -25,25 +25,24 @@ at the entry, and no event in the trace, the process reaches `SVC #0` with X8 at
 with the UART's state as it was.  When the check ends the run, the trace holds its events and X0
 holds 67.  Otherwise the launch grants descriptor 3 as the check found it, and the trace holds the
 check's events and then the layer events `ls`, the images of the WASI events `T` of a run of the
-command's action under `linuxHost` with the replies after the check's.  Each event of `ls` holds
-its reply and writes within the cap's linear memory or into the `statx` record, the events of
-`ls` name only standard streams and the descriptor numbers that the shim holds open (`NamesHeld`),
-and the writes of descriptor 1 in `ls` took the bytes that the `fd_write` events of `T` to
-standard output committed.  The run is an accepted exit, whose status X0 holds, an exit that the
-shim rejects, with X0 at 1, a trap of the shim, with X0 at 2, or a trap of the guest after a
-prefix of the action, with X0 at 2.
+command's action under `linuxHost` with the replies after the check's.  Each event of `ls` holds its
+reply and writes within the cap's linear memory or is a `clock_gettime` into the timespec or a
+`statx` into the `statx` record, the events of `ls` name only standard streams and the descriptor
+numbers that the shim holds open (`NamesHeld`), and the writes of descriptor 1 in `ls` took the
+bytes that the `fd_write` events of `T` to standard output committed.  The run is an accepted exit,
+whose status X0 holds, an exit that the shim rejects, with X0 at 1, a trap of the shim, with X0 at
+2, or a trap of the guest after a prefix of the action, with X0 at 2.
 
-`manifest_elf_meets` is the corollary for the file, from arguments whose strings, each with its
-zero byte, and eight-byte pointers take at most `argsLimit` bytes, as Linux requires of every
-process, and for replies that meet `StatxAfterCheck`: after the check, the reply to the `statx` of
-the manifest's `fd_filestat_get`, when the shim reads errno 0 from it, reports at most
-`manifestLimit` bytes, whose budget fits the executable's 4,096 pages (`budget_fits`), or `2^32`
-bytes or more.  The premise bounds no other reply.  When the check does
-not end the run and the results of the layer events `ls` lie in Linux's range (`InRange`), X0 and
-`ls` meet `NMeets` for the check's grant of descriptor 3.
-`manifest_elf_runs` gives the run from `linux_footprint_bounded`, the footprint without a guest
-trap, through `wasiElf_footprint_with`, and `linux_exec_meets` gives the status and `NMeets` from
-the `Exec` run that the footprint names.
+`manifest_elf_meets` is the corollary for the file, from arguments whose strings, each with its zero
+byte, and eight-byte pointers take at most `argsLimit` bytes, as Linux requires of every process,
+and for replies that meet `StatxAfterCheck`: after the check, the reply to the `statx` of the
+manifest's `fd_filestat_get`, when the shim reads errno 0 from it, reports at most `manifestLimit`
+bytes, whose budget fits the executable's 4,096 pages (`budget_fits`), or `2^32` bytes or more.  The
+premise bounds no other reply.  When the check does not end the run and the results of the layer
+events `ls` lie in Linux's range (`InRange`), X0 and `ls` meet `NMeets` for the check's grant of
+descriptor 3.  `manifest_elf_runs` gives the run from `linux_footprint_bounded`, the footprint
+without a guest trap, through `wasiElf_footprint_with`, and `linux_exec_meets` gives the status and
+`NMeets` from the `Exec` run that the footprint names.
 
 `manifest_elf_witness` shows that the corollary's premises and `InRange` hold together.  The
 process holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the initial stack of the

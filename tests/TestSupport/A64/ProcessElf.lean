@@ -6,7 +6,7 @@ import Verified.Wasi.ProcessFacts
 
 /-!
 The three WASI process modules whose functions have frames of 4,096 bytes or more as native
-executables for AArch64 Linux: the order book's process, with five such functions, and the running
+executables for AArch64 Linux: the order book's process, with six such functions, and the running
 sum and the floating-point running sum, with one each.  `genWasiElf` accepts each module with
 `_start` at the index that the compiler gives it, a memory's cap of `procCap` pages, and a stack's
 room of `procRoom` bytes (`orderbook_elf_ok`, `running_sum_elf_ok`, `running_sumfp_elf_ok`), and

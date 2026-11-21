@@ -20,10 +20,10 @@ halves the shifted divisor.
 
 Every form but `BX LR` takes 4 bytes, and `BX LR` takes 2.  A piece that returns and is followed by
 more code ends with a second `BX LR`, which never runs, so that every 32-bit form starts at a
-multiple of 4 from the routine's address, as in the code whose cycles were measured on the board.
-The pieces lie one after another at these byte offsets from the routine's address: `test` at 0,
-`low` at 16, `high` at 32, `compare` at 56, `count` at 68, `shift` at 92, `clear` at 128, `pass` at
-136, `done` at 192, and `small` at 212.  Each branch's offset counts from its address plus 4.
+multiple of 4 from the routine's address.  The pieces lie one after another at these byte offsets
+from the routine's address: `test` at 0, `low` at 16, `high` at 32, `compare` at 56, `count` at 68,
+`shift` at 92, `clear` at 128, `pass` at 136, `done` at 192, and `small` at 212.  Each branch's
+offset counts from its address plus 4.
 -/
 
 namespace LeanExe.M7

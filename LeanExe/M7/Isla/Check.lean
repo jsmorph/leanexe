@@ -8,24 +8,25 @@ Checks of the model's `exec` against Isla's traces of the A-profile Sail model i
 state.  `Agrees` states what the footprint of one instruction form establishes for one value of the
 form's fields and one machine, and the theorem of a form quantifies over both.
 
-The footprint's opcode, which `isla_trace%` reads from the trace's opcode file, must have the
-fields of the footprint's header and 16 or 32 bits, and its halfwords for the fields' values must
-decode to the instruction, with the opcode's length.  For every `σ` that agrees with the profile
-`π` on the registers outside the model that the trace reads, whenever `exec` gives a state `s'`,
-every outcome of the trace from the machine `m` is the machine with `s'` as its model state and
-some high words of X0 to X14, with registers `σ'` that differ from `σ` only at the registers
-`W`, and one outcome is that machine with `m`'s high words.  The traces write a register of
-AArch32 either with zeros in bits 63 to 32 or with those bits kept, a choice that the Sail model
-leaves to a fresh Boolean (`v8_base.sail` 13989-13993), so a write gives two outcomes that agree
-on the model's state.  X15 to X30 and the memory above 2^32 keep their values.  The statement
-covers the instruction's decode and execution: the model's registers, flags, program counter,
-memory, and device accesses, and the registers outside the model that they change.  `σ'` leaves
-out the effects of `__InstructionExecute` around the decode and execution, as in
-`LeanExe/A64/Isla/Check.lean`.  A trace's `assume` events, which Isla records for the
-configuration's constraints, end a path in `fail` when false, so the theorem of such a trace
-carries the constraint as a premise.  A path also ends in `fail` when the program counter would
-advance to 2^32 or beyond, so every theorem takes the premise that the program counter plus the
-opcode's length is below 2^32.
+The footprint's opcode, which `isla_trace%` reads from the trace's opcode file, must have the fields
+of the footprint's header and 16 or 32 bits, and its halfwords for the fields' values must decode to
+the instruction, with the opcode's length.  For every `σ` that agrees with the profile `π` on the
+registers outside the model that the trace reads, whenever `exec` gives a state `s'`, every outcome
+of the trace from the machine `m` is the machine with `s'` as its model state and some high words of
+X0 to X14, with registers `σ'` that differ from `σ` only at the registers `W`, and one outcome is
+that machine with `m`'s high words.  The traces write a register of AArch32 either with zeros in
+bits 63 to 32 or with those bits kept, a choice that the Sail model leaves to a fresh Boolean
+(`v8_base.sail` 13989-13993), so a write gives two outcomes that agree on the model's state.  X15 to
+X30 and the memory above 2^32 keep their values.  The statement covers the instruction's decode and
+execution: the model's registers, flags, program counter, memory, and device accesses, and the
+registers outside the model that they change.  `σ'` leaves out the effects of `__InstructionExecute`
+around the decode and execution, as in `LeanExe/A64/Isla/Check.lean`.  A trace's `assume` events,
+which Isla records for the configuration's constraints, end a path in `fail` when false, so the
+theorem of such a trace carries the constraint as a premise.  A path also ends in `fail` when the
+program counter would advance to 2^32 or beyond, so the theorem of a form whose path advances the
+program counter takes the premise that the program counter plus the opcode's length is below 2^32.
+A taken branch writes `_PC` and does not advance it, so the theorems of `B.W`, `BL`, and `BX LR`
+take no such premise, and that of `B<cond>.W` takes it for the path that does not branch.
 
 `t32_simp`, `t32_fwd`, `t32_walk`, `t32_bwd`, and `t32_gprs` are the tactics `isla_simp`,
 `isla_fwd`, `isla_walk`, `isla_bwd`, and `isla_gprs` of the A64 check with this semantics'

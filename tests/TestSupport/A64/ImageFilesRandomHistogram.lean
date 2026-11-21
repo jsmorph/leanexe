@@ -16,17 +16,17 @@ of the generator's layout, `histogram_elf_entry` that the file's entry is the pr
 and `histogram_elf_room` that the stack's room holds the module's stack bound.
 
 `histogram_elf` holds for every reply sequence.  From a process whose memory holds the file as
-Linux's loader places it, with the arguments `args` and the environment `environ` on Linux's
-initial stack at SP, the program counter at the entry, and no event in the trace, the process
-reaches `SVC #0` with X8 at 94, `exit_group`, with the UART's state as it was.  Its trace holds the
-layer events `ls`, the images of the WASI events `T` of a run of the command's action under
-`linuxHost` with the launch `⟨args, environ, false⟩`, so the arguments that the run's
-`args_sizes_get` and `args_get` report are those of `args`.  Each event of `ls` holds its reply
-and writes within the cap's linear memory or into the timespec, and the writes of descriptor 1 in
-`ls` took the bytes that the `fd_write` events of `T` to standard output committed.  `T` is the
-trace of an `Exec` run that ends at an accepted exit, whose status X0 holds, at an exit that the
-shim rejects, with X0 at 1, or at a trap of the shim, with X0 at 2, or of a `Prefix` run of the
-action, with X0 at 2.
+Linux's loader places it, with the arguments `args` and the environment `environ` on Linux's initial
+stack at SP, the program counter at the entry, and no event in the trace, the process reaches
+`SVC #0` with X8 at 94, `exit_group`, with the UART's state as it was.  Its trace holds the layer
+events `ls`, the images of the WASI events `T` of a run of the command's action under `linuxHost`
+with the launch `⟨args, environ, false⟩`, so the arguments that the run's `args_sizes_get` and
+`args_get` report are those of `args`.  Each event of `ls` holds its reply and writes within the
+cap's linear memory or is a `clock_gettime` into the timespec or a `statx` into the `statx` record,
+and the writes of descriptor 1 in `ls` took the bytes that the `fd_write` events of `T` to standard
+output committed.  `T` is the trace of an `Exec` run that ends at an accepted exit, whose status X0
+holds, at an exit that the shim rejects, with X0 at 1, or at a trap of the shim, with X0 at 2, or of
+a `Prefix` run of the action, with X0 at 2.
 
 `histogram_elf_counts` is the corollary for the file, for every reply sequence and every N, from
 arguments whose strings, each with its zero byte, and eight-byte pointers take at most `argsLimit`

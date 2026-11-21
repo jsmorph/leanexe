@@ -18,18 +18,18 @@ The command imports `path_open`, `fd_close`, and `fd_read` and `fd_write` on a h
 executable starts with the check of descriptor 3, whose events and outcome `preopenRun` gives for
 the path buffer of the scratch and the replies from the first on.  `files_elf` states, for every
 reply sequence, from a process whose memory holds the file as Linux's loader places it, whose
-initial stack holds the arguments and the environment, with the program counter at the entry and
-no event in the trace, that the process reaches `SVC #0` with X8 at 94, `exit_group`, with the
-UART's state as it was.  When the check ends the run, the trace holds its events and X0 holds 67.
+initial stack holds the arguments and the environment, with the program counter at the entry and no
+event in the trace, that the process reaches `SVC #0` with X8 at 94, `exit_group`, with the UART's
+state as it was.  When the check ends the run, the trace holds its events and X0 holds 67.
 Otherwise the launch grants descriptor 3 as the check found it, and the trace holds the check's
-events and then the layer events `ls`, the images of the WASI events `T` of a run of the
-command's action under `linuxHost` with the replies after the check's.  Each event of `ls` holds
-its reply and writes within the cap's linear memory or is a `clock_gettime` into the timespec.
-The events of `ls` name only standard streams and the descriptor numbers that the shim holds open
-(`NamesHeld`), and the writes of descriptor 1 in `ls` took the bytes that the `fd_write` events of
-`T` to standard output committed.  The run is an accepted exit, whose status X0 holds, an exit
-that the shim rejects, with X0 at 1, a trap of the shim, with X0 at 2, or a trap of the guest
-after a prefix of the action, with X0 at 2.
+events and then the layer events `ls`, the images of the WASI events `T` of a run of the command's
+action under `linuxHost` with the replies after the check's.  Each event of `ls` holds its reply and
+writes within the cap's linear memory or is a `clock_gettime` into the timespec or a `statx` into
+the `statx` record.  The events of `ls` name only standard streams and the descriptor numbers that
+the shim holds open (`NamesHeld`), and the writes of descriptor 1 in `ls` took the bytes that the
+`fd_write` events of `T` to standard output committed.  The run is an accepted exit, whose status X0
+holds, an exit that the shim rejects, with X0 at 1, a trap of the shim, with X0 at 2, or a trap of
+the guest after a prefix of the action, with X0 at 2.
 -/
 
 namespace TestSupport.A64.ImageFilesWasiFiles

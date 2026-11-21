@@ -2,17 +2,17 @@ import LeanExe.A64.Linux
 import LeanExe.A64.Startup
 
 /-!
-A program of the AArch64 back end as a static Linux executable: an ELF64 file of type `ET_EXEC`
-for `EM_AARCH64`, with no interpreter and no section headers, which the kernel maps at fixed
-addresses and enters at its entry with the process's registers at zero (Linux 7.0,
-`fs/binfmt_elf.c` lines 861 and 1380, and `arch/arm64/include/asm/processor.h` lines 302 to 342).
-Two `PT_LOAD` headers describe it.  The text segment, readable and executable, maps the file from
-offset 0 at `elfBase`: the 64-byte ELF header, the two 56-byte program headers, the runtime, the
-exit word, and the program of `genProgramWith`.  The data segment, readable and writable, maps from
-the next multiple of 64 KiB after the code the area's first `areaPrefix` bytes, and its memory
-size covers the rest of the area and the stack, which the kernel fills with zeros (`elf_load`,
-lines 411 to 460).  Both segments have an alignment of 64 KiB, which serves kernels with pages of
-4, 16, or 64 KiB.
+A program of the AArch64 back end as a static Linux executable: an ELF64 file of type `ET_EXEC` for
+`EM_AARCH64`, with no interpreter and no section headers, which the kernel maps at fixed addresses
+and enters at its entry with the process's registers at zero (Linux 7.0, `fs/binfmt_elf.c` lines
+861, 1280, and 1380, and `arch/arm64/include/asm/processor.h` lines 302 to 342).  Two `PT_LOAD`
+headers describe it.  The text segment, readable and executable, maps the file from offset 0 at
+`elfBase`: the 64-byte ELF header, the two 56-byte program headers, the runtime, the exit word, and
+the program of `genProgramWith`.  The data segment, readable and writable, maps from the next
+multiple of 64 KiB after the code the area's first `areaPrefix` bytes, and its memory size covers
+the rest of the area and the stack, which the kernel fills with zeros (`elf_load`, lines 411 to
+460).  Both segments have an alignment of 64 KiB, which serves kernels with pages of 4, 16, or
+64 KiB.
 
 The runtime of `sysRuntime` begins at the entry, `elfEntry`.  It writes `FPCR` as `fpcrValue`, sets
 X17 to the area and SP to the stack's top with `ADRP` and `ADD`, and calls `main` with `BL`.

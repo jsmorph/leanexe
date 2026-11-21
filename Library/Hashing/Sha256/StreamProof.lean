@@ -6,16 +6,16 @@ import LeanExe.Dialect.Lemmas
 /-! The block-level SHA-256 computes FIPS 180-4.  `blocksFold data q s` is the copied
 implementation's hash value after the first `q` blocks of `data` from `s`.  `update_toVec32` states
 that the 32-bit words of `update h b q` are `blocksFold` of the first `q` blocks of `b` from those
-of `h`, since `byteBlock` reads the words of a block as `SHS.SHA256.Impl.toU32s` does (`byteBlock_toVec32`)
-and `compress_toVec32` gives each compression.  `blocksFold_append` splits a fold over a
-concatenation whose first part is whole blocks, and `blocksFold_append_tail` drops the bytes after
-the blocks that a fold reads.  `finish_bytes` states that `finish` from the hash value of a prefix
-of whole blocks gives the digest bytes of `Impl.sha256` of the prefix followed by the bytes of the
-window that it hashes, through `hashFrom_toVec32` and the packing of `pack` (`pack_bytes`), and
-`finish_spec` the digest of the transcription.  `stream_spec` composes them: hashing pieces of
-whole blocks with `update` from `iv256` and the remaining bytes with `finish` gives the digest of
-FIPS 180-4 of the concatenation.
-`digestBitVec_inj` states that two digests with the same bits are equal. -/
+of `h`, since `byteBlock` reads the words of a block as `SHS.SHA256.Impl.toU32s` does
+(`byteBlock_toVec32`) and `compress_toVec32` gives each compression.  `blocksFold_append` splits a
+fold over a concatenation whose first part is whole blocks, and `blocksFold_append_tail` drops the
+bytes after the blocks that a fold reads.  `finish_bytes` states that `finish` from the hash value
+of a prefix of whole blocks gives the digest bytes of `Impl.sha256` of the prefix followed by the
+bytes of the window that it hashes, through `hashFrom_toVec32` and the packing of `pack`
+(`pack_bytes`), and `finish_spec` the digest of the transcription.  `stream_spec` composes them:
+hashing pieces of whole blocks with `update` from `iv256` and the remaining bytes with `finish`
+gives the digest of FIPS 180-4 of the concatenation.  `digestBitVec_inj` states that two digests
+with the same bits are equal. -/
 
 namespace Library.Hashing.Sha256
 

@@ -20,12 +20,12 @@ and sequences of words and assume no probability.
   words hold fewer than `K` accepted words.
 
 When the words are independent and uniform on [0, 2^64), the first two with `accepted_count` give
-the probability of each value and of each sequence of values given that the words are accepted,
-and the last bounds the probability that `M` words hold fewer than `K` accepted ones.  The
-probability of the command's output also needs the fact that the first `K` accepted words of such
-a stream are uniform on the accepted `K`-tuples, which no theorem here states.  `short_count` follows the exponential moment bound: the sum of
-`3^r` over the sequences, with `r` the number of rejected words of a sequence, is the `M`-th power
-of the sum over one word, at most `2^65`. -/
+the probability of each value and of each sequence of values given that the words are accepted, and
+the last bounds the probability that `M` words hold fewer than `K` accepted ones.  The probability
+of the command's output also needs the fact that the first `K` accepted words of such a stream are
+uniform on the accepted `K`-tuples, which no theorem here states.  `short_count` follows the
+exponential moment bound: the sum of `3^r` over the sequences, with `r` the number of rejected words
+of a sequence, is the `M`-th power of the sum over one word, at most `2^65`. -/
 
 namespace Demos.RandomChoice
 

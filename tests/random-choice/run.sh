@@ -13,8 +13,8 @@
 # executable under qemu-aarch64, QEMU's user-mode emulator, or QEMU_USER when set.  A runner is a
 # function `run_RUNNER OUT ARG...` that runs the command with the arguments ARG after the program
 # name, writes its stdout to OUT and its stderr to OUT.stderr, and returns the command's status.
-# A run with no argument, with N alone, with N or K of 0, with letters, a sign, or a 20-digit value
-# above 2^64 in either place must write nothing and exit with status 2.  A run of
+# A run with no argument, with N alone, with N or K of 0, with letters or a sign in either place,
+# with N of 2^64, or with K of 10^20 - 1 must write nothing and exit with status 2.  A run of
 # `choose N K` must exit with status 0 and write K lines, each a decimal value without a leading
 # zero in [1, N], for N of 1, 6, 2^63 + 1, which rejects 2^63 - 1 words of 2^64, and 2^64 - 1, with
 # K up to 1,000,000, for `007 3`, and for `6 5 extra`.  The run with N of 6 and K of 1,000,000 must

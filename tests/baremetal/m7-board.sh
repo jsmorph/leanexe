@@ -54,10 +54,10 @@
 # flash's size at 0x00200000, the flash's ITCM address, loads the image at both addresses, and sets
 # VTOR to 0x00200000, the address that the board's BOOT_ADD0 names.  USART3 lies on a
 # pseudo-terminal, NAME.pty, and a hook at main logs "reached main", which follows the board's
-# initialization; the script then plays the far end through the pseudo-terminal as "run" does.
-# Renode's log, NAME.renode, may hold no warning or error other than those of its translation
-# cache, of RCC_DCKCFGR2, at offset 0x90, which its RCC model lacks, and of the write of OVRDIS,
-# bit 12 of USART_CR3, which its USART model lacks and which the image of NAME delim makes.
+# initialization, and the script then plays the far end through the pseudo-terminal as "run" does.
+# Renode's log, NAME.renode, may hold no warning or error other than those of its translation cache,
+# of RCC_DCKCFGR2, at offset 0x90, which its RCC model lacks, and of the write of OVRDIS, bit 12 of
+# USART_CR3, which its USART model lacks and which the images of NAME delim and NAME bms make.
 #
 # "m7-board.sh run NAME DEVICE" writes NAME.bin to the board's flash at 0x08000000 with st-flash,
 # reads the flash back and compares its first bytes with the file, since st-flash 1.8.0 reads a
@@ -134,19 +134,18 @@
 # the board's runs need the board, so the two run where each is.
 #
 # The co-simulation of the model on the board (tests/TestSupport/M7/BoardCosim.lean) has three
-# commands, the first and the last with Lean and the second with the board.  "m7-board.sh
-# cosim-image SEED PER_FORM [seeded]" builds m7-cosim under a memory cap of MEM, 8G unless set,
-# and writes cosim.bin, the image of PER_FORM cases of each form from the seed SEED followed by the
-# fixed cases, without them when "seeded" is given, with its layout and the address and length of
-# the results in cosim.layout.  DTCM holds the results of 963 cases, so PER_FORM is at most 22 with
-# the fixed cases and 23 without them.  "m7-board.sh cosim" writes cosim.bin to the
+# commands, the first and the last with Lean and the second with the board.
+# "m7-board.sh cosim-image SEED PER_FORM [seeded]" builds m7-cosim under a memory cap of MEM, 8G
+# unless set, and writes cosim.bin, the image of PER_FORM cases of each form from the seed SEED
+# followed by the fixed cases, without them when "seeded" is given, with its layout and the address
+# and length of the results in cosim.layout.  DTCM holds the results of 963 cases, so PER_FORM is at
+# most 21 with the fixed cases and 23 without them.  "m7-board.sh cosim" writes cosim.bin to the
 # board as "run" does, waits 3 s after the reset, reads the results from DTCM over SWD into
 # cosim.results, and requires the header's word 0x600DCAFE and as many saved cases as the image
 # holds.  "m7-board.sh cosim-check SEED PER_FORM [seeded]", with the arguments of cosim-image,
-# checks every case of cosim.results against the
-# model with m7-cosim board-check, into cosim.check, and requires that all agree.  It then checks
-# them against the model with ADC's carry in replaced by 0, into cosim.mutant, and requires that
-# check to fail with at least one differing ADC case.
+# checks every case of cosim.results against the model with m7-cosim board-check, into cosim.check,
+# and requires that all agree.  It then checks them against the model with ADC's carry in replaced
+# by 0, into cosim.mutant, and requires that check to fail with at least one differing ADC case.
 #
 # The products lie in OUT, build/baremetal/m7-board unless set: the images, NAME.addr, the check's
 # output and times, st-flash's messages in IMAGE.flash, and for emulate and run the host script's

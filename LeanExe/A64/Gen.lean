@@ -80,12 +80,12 @@ before each read of the data register and ending with status 65 at a byte with a
 block from the module's allocator, calls a function over bytes, and writes the bytes of the buffer
 that it returns.
 
-`i32.load8_u` and `i32.store8` at offset `off` compare the address with the memory's size less
-8, plus 7 less `off`, branch to the stub of an access outside the memory above it, and access the
-byte `X17 + 4096 + a + off` with `LDRB` or `STRB` 4095 bytes above `X17 + a + off + 1`.  `STRB`
-writes to the UART when its address is the UART's, so the generator emits `i32.store8` only in a
-program whose `Shared.byteStores` holds, the programs of `genBytesProgram`, whose theorem assumes
-that the UART lies outside Normal memory.
+`i32.load8_u` and `i32.store8` at offset `off` compare the address with the memory's size less 8,
+plus 7 less `off`, branch to the stub of an access outside the memory above it, and access the byte
+`X17 + 4096 + a + off` with `LDRB` or `STRB` 4095 bytes above `X17 + a + off + 1`.  `STRB` writes to
+the UART when its address is the UART's, so the generator emits `i32.store8` only in a program whose
+`Shared.byteStores` holds: the programs of `genBytesProgram`, `genSysProgram`, `genStampProgram`,
+and `genWasiProgram`, whose theorems assume that the UART lies outside Normal memory.
 
 `i32.load` and `i32.store` at offset `off` compare the address with the memory's size less 8,
 plus 4 less `off`, and branch to the same stub above it.  `i32.load` reads the eight bytes from

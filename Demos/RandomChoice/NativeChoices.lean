@@ -8,7 +8,7 @@ of a run under `linuxHost`.
 The random histogram's `InRange ls` states that the result of every `getrandom` and `write` of the
 layer events `ls` lies in the range that Linux gives for its call and that the shim accepts: every
 `getrandom` returned an error number or a count of at most its length, positive for a positive
-length, and every `write` an error number or at most the count that it offered.  Its `Sized ls`
+length, and every `write` an error number or at most its count, its third argument.  Its `Sized ls`
 states that each `getrandom` holds in its output as many bytes as it asked for.  Its
 `RandomMirrors x g` states that the layer events `g` are the group of `getrandom` calls that the
 shim makes for the `random_get` `x`, each for the bytes that the calls before it did not return,

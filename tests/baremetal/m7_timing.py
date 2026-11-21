@@ -4,8 +4,9 @@
 # ///
 """Cycle estimates for the windows of the Cortex-M7 back end's generated programs, from the
 traces that `m7-windows run` writes to RUNDIR, with a cost model calibrated on the board's
-measurements of step G0 (b) for the ITCM fetch path, whose directory BENCH holds `results.txt` and
-the suites' `layout.json` (`tmp/m7/bench` of the checkout that ran them).
+measurements of the blocks of the main and hazard suites, copies of sequences of the generator's
+instructions fetched from ITCM at reset clocking, whose directory BENCH holds `results.txt` and the
+suites' `layout.json` (`tmp/m7/bench` of the checkout that ran them).
 
 The model charges each executed instruction a cost by its class and each word load a penalty that
 depends on the number k of instructions since the last store to the same word: 4 cycles for k up

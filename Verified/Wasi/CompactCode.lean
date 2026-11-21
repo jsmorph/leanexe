@@ -1,11 +1,13 @@
 import Verified.Bound
 
-/-! The compaction of a process state.  After `begin` and after each step, the process entry
-copies the state's arrays and byte strings to fresh blocks above the heap top, moves those blocks
-down to the heap base that `_start` saved, subtracts the distance of the move from each root, and
-sets the heap top just past the moved blocks with an empty free list.  The heap then holds the
-literal pool and the current state and nothing else, so its use stays within the state's copy
-cost whatever the steps allocated.  Stage 1 compacts states without trees. -/
+/-! The compaction of a process state.  After `begin`, and after each step when the heap above the
+base exceeds four times the state's copy cost (`processCompactWhen`), the process entry copies the
+state's arrays and byte strings to fresh blocks above the heap top, moves those blocks down to the
+heap base that `_start` saved, subtracts the distance of the move from each root, and sets the heap
+top just past the moved blocks with an empty free list.  The heap above the base then holds the
+current state and nothing else, so between steps it stays within four times the state's copy cost
+whatever the steps allocated.  The theorems of the process entry take a state that holds no tree
+(`Ty.compactable`). -/
 
 namespace Verified.Wasi
 

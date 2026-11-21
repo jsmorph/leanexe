@@ -16,16 +16,17 @@ layout.  `clockrandom_elf_entry` states that the file's entry is the prefix `was
 
 `clockrandom_elf` holds for every reply sequence.  From a process whose memory holds the file as
 Linux's loader places it, with the arguments `args` and the environment `environ` on Linux's initial
-stack at SP, the program counter at the entry, and no event in the trace, the process reaches `SVC
-#0` with X8 at 94, `exit_group`, with the UART's state as it was.  Its trace holds the layer events
-`ls`, the images of the WASI events `T` of a run of the command's action under `linuxHost` at
+stack at SP, the program counter at the entry, and no event in the trace, the process reaches
+`SVC #0` with X8 at 94, `exit_group`, with the UART's state as it was.  Its trace holds the layer
+events `ls`, the images of the WASI events `T` of a run of the command's action under `linuxHost` at
 arm64's open flags and the launch `⟨args, environ, false⟩`, each of which holds its reply and writes
-within the cap's linear memory or is a `clock_gettime` into the timespec, and the writes of
-descriptor 1 in `ls` took the bytes that the `fd_write` events of `T` to standard output committed.
-`T` is the trace of an `Exec` run that ends at an accepted exit, whose status X0 holds, at an exit
-that the shim rejects, with X0 at 1, or at a trap of the shim, with X0 at 2, or of a `Prefix` run of
-the action, with X0 at 2.  The command imports `clock_time_get` and `random_get`, whose stubs
-`flatStub_sim` covers, and `wasiElf_footprint` gives these facts.
+within the cap's linear memory or is a `clock_gettime` into the timespec or a `statx` into the
+`statx` record, and the writes of descriptor 1 in `ls` took the bytes that the `fd_write` events of
+`T` to standard output committed.  `T` is the trace of an `Exec` run that ends at an accepted exit,
+whose status X0 holds, at an exit that the shim rejects, with X0 at 1, or at a trap of the shim,
+with X0 at 2, or of a `Prefix` run of the action, with X0 at 2.  The command imports
+`clock_time_get` and `random_get`, whose stubs `flatStub_sim` covers, and `wasiElf_footprint` gives
+these facts.
 -/
 
 namespace TestSupport.A64.ImageFilesWasiClockElf

@@ -14,15 +14,16 @@ It rejects the variant without the final 0x01, which the cobs package on PyPI wr
 mirror does not use that package.  segments, seg_result, echo_mach, and answers mirror
 segments, segResult, echoMach, and delimAnswers.
 
-"gen SEED N FILE" writes N cases of each kind to FILE, one a line: "enc HEX" asks for
-cobsEncode of a record, "dec HEX" for cobsDecode of a byte string, and "ans HEX" for
-delimAnswers echoMach 36 0 of a byte stream.  The records have random lengths up to 600, with
-long runs of nonzero bytes so that blocks of code 0xFF occur, and the byte strings and streams
-are encodings with random corruptions: a byte changed, lost, inserted, or set to zero, a
-truncation, a zero inserted, or a run of nonzero bytes longer than 36.  "check FILE LEAN" reads
-FILE and the answers that tests/baremetal/DelimMirror.lean wrote to LEAN, one a line, HEX or
-"none", and requires each to equal this mirror's.  It prints one line and exits with status 0
-or 1.
+"gen SEED N FILE" writes N cases of each kind to FILE, one a line: "enc HEX" asks for cobsEncode of
+a record, "dec HEX" for cobsDecode of a byte string, and "ans HEX" for delimAnswers echoMach 36 0 of
+a byte stream.  The records have random lengths up to 600, with long runs of nonzero bytes so that
+blocks of code 0xFF occur.  The byte strings are encodings, about seven in ten of them with a random
+corruption, and the streams hold encodings of records of at most 39 bytes, each followed by one or
+two zero bytes, of which about one in five carries a random corruption and one in five is left out,
+which leaves an empty segment.  A corruption is a byte changed, lost, inserted, or set to zero, a
+truncation, a zero inserted, or a run of nonzero bytes longer than 36.  "check FILE LEAN" reads FILE
+and the answers that tests/baremetal/DelimMirror.lean wrote to LEAN, one a line, HEX or "none", and
+requires each to equal this mirror's.  It prints one line and exits with status 0 or 1.
 
 Usage: uv run tests/baremetal/delim_frame.py gen SEED N FILE
        uv run tests/baremetal/delim_frame.py check FILE LEAN

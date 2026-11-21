@@ -3,7 +3,7 @@
 # EL0 under an AArch64 EL1, from the Armv9.4-A snapshot of the Sail model (isla-snapshots d8b31014,
 # armv9p4.ir), Z3 4.12.6, and the patched Isla of tests/isla/traces.sh, built in
 # ~/isla-probe/isla-patched on edgexpert-18ff.  No machine-readable specification of the M-profile
-# exists, so the traces check each form against the A-profile's AArch32 pseudocode.
+# is public, so the traces check each form against the A-profile's AArch32 pseudocode.
 #
 # Two diffs make the IR of the traces.  tests/isla/armv9p4-t32.diff edits armv9p4-checked.ir so
 # that the decode of B T3 takes its condition from the opcode's cond field, as CurrentCond() of

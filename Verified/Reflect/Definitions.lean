@@ -4760,8 +4760,10 @@ def agreeProd (a b : Lean.Expr × Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) :=
 
 /-- The flattening of Lean's values of type `userT` to the meaning of `t`, and the proof that the
 instance Lean synthesizes for `userT` agrees with `Ty.leanInst t` along it: `Agree.scalar` for a
-type without arrays, `Agree.flatArray` for an array of structures, `Agree.refl` for another array,
-and `Agree.prod` for a pair that holds arrays. -/
+type without heap values, `Agree.refl` for bytes, `Agree.listTree` for a list and `Agree.encode`
+with its recursive layout's encoding for another tree, `Agree.flatArray` for an array of
+structures, `Agree.refl` for another array, `Agree.prod` for a pair, and `Agree.flat` for a record
+with heap values, which agrees as its `Flat` tuple does. -/
 partial def agreeTy (userT : Lean.Expr) (t : Ty) : MetaM (Lean.Expr × Lean.Expr) := do
   let inst ← userInst userT
   let src := (mkApp (mkConst ``Ty.denote) (tyExpr t), mkApp (mkConst ``Ty.leanInst) (tyExpr t))
