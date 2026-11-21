@@ -8,7 +8,7 @@ the program's checks define.  The program is written in the verified compiler's 
 array of binary64 values, and returns one.
 
 `verified_compile` compiles the program, with the library's `atan` and `atan2`, into a module of
-26,362 bytes.  In Wasmtime, the module's `plan` export agrees with native Lean, bit for bit, on 852
+25,315 bytes.  In Wasmtime, the module's `plan` export agrees with native Lean, bit for bit, on 852
 generated inputs, its `atan2` export on 1,225 calls, and its `edgeOk` export on 100,000 edges.
 [The theorems](#theorems) state that every plan satisfies every cone along its commanded rotations,
 that it satisfies the true cones along a flown slew when the input cones allow for the errors of the
@@ -150,9 +150,9 @@ the real values of its components.
 [The verified compiler manual](../../docs/verified-manual.md#the-implements-and-trapfree-theorems)
 defines the terms of the generated theorems.  A heap's `top` is the end of the memory that the
 allocator has allocated, the memory cap is the largest number of 64 KiB pages that the store
-allows, and the module declares a maximum of 65,535 pages.  The argument of `plan` has the type
-`Array Float` rather than `Moved`, which would mark an argument that the call consumes, so `plan`
-borrows its input, and entry 28 is the module's function for `plan`.  `segValue xs d st a b f` is
+allows, and the module declares a maximum of 65,535 pages.  `plan` borrows its input, so its
+argument has the type `Array Float`, where an argument that the call consumed would have the type
+`Moved (Array Float)`, and entry 28 is the module's function for `plan`.  `segValue xs d st a b f` is
 the value that `segmentField` writes at field `f` of the segment from node `a` to node `b`.
 
 | Theorem | File | Hypotheses | Conclusion |
@@ -302,10 +302,14 @@ When several walks share the least cost, the ties to the lowest index and the re
 strict improvement determine the one returned, and no theorem states which.
 
 `plan_bound` counts every block that a call allocates as new memory, at `8n + 56` bytes for a
-block of `n` words, and does not count the reuse of freed blocks.  The search's rounds take its
-state owned and update its four arrays in place, so the bound holds the arrays that `initial`
-builds and the output.  Its 123,464 bytes come to 2 pages of 64 KiB, far below the module's
-maximum of 65,535 pages, and the peak use of a call is not measured.  No theorem concerns the header's count of finalized nodes.
+block of `n` words, and does not count the reuse of freed blocks.  `round` and `relax` take the
+search state as an owned parameter, by [the compiler's rule for parameter
+modes](../../docs/verified-manual.md#ownership): the loop of `search` moves the state into
+`round`, which moves it into `relax`, and both update its four arrays in place, so a round
+allocates nothing (`round_bound`).  The bound therefore counts the four arrays of at most 1,026
+words that `initial` builds and an output of at most 11,294 words.  Its 123,464 bytes come to 2
+pages of 64 KiB, far below the module's maximum of 65,535 pages, and the peak use of a call is not
+measured.  No theorem concerns the header's count of finalized nodes.
 
 ## Building and testing
 
