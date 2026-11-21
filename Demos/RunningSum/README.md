@@ -2,7 +2,7 @@
 
 Running sum reads signed decimal integers from stdin and writes the cumulative total after each
 line.  Decimal magnitude is limited by guest memory and container-size bounds.  Executable
-digits, lengths, indices, counts, and statuses use `UInt64`.  The mathematical `Nat`/`Int`
+digits, lengths, indices, counts, and statuses use `UInt64`.  The mathematical `Nat` and `Int`
 values and termination ranks are proof-only.
 
 ## Input and output
@@ -14,12 +14,12 @@ output from preceding valid lines and stops before processing another line.  For
 and `20` on separate lines, output is `12`, `7`, and `27` on separate lines.
 
 The program reads chunks of at most 4,096 bytes, each into a fresh buffer, and keeps a copy of the
-bytes read.  It retains a partial line across reads and
-finishes pending output before processing the next line, so each completed line produces output
-before the next blocking read.  A short successful write retains the unwritten suffix.  A
-successful zero-byte write retries that suffix.  A returned I/O error stops the Wasm module with
-its errno as the exit status.  The native executable raises the error as a Lean `IO.Error`, prints
-it, and exits with status 1.  Host traps preserve the effects committed before the trap.
+bytes read.  It retains a partial line across reads and finishes pending output before processing
+the next line, so each completed line produces output before the next blocking read.  A short
+successful write retains the unwritten suffix, and a successful zero-byte write retries it.  A
+returned I/O error stops the Wasm module with its errno as the exit status.  The native executable
+raises the error as a Lean `IO.Error`, prints it, and exits with status 1.  Host traps preserve the
+effects committed before the trap.
 
 ## Implementation and proofs
 
@@ -27,8 +27,8 @@ it, and exits with status 1.  Host traps preserve the effects committed before t
 |---|---|
 | [Decimal arithmetic](Program.lean) | Parsing, magnitude comparison, signed addition, and decimal rendering. |
 | [Integer specification](Spec.lean) | Positional decimal value, normalization, and executable-length bounds. |
-| [Parser correctness](Parsing.lean) | Optional sign and CR syntax, acceptance, integer value, and normalization. |
-| [Addition correctness](Addition.lean) | Signed integer addition, including cancellation and negative zero. |
+| [Parser correctness](Parsing.lean), with [the digit scan](ParsingScan.lean) and [slices](ParsingSlices.lean) | Optional sign and CR syntax, acceptance, integer value, and normalization. |
+| [Addition correctness](Addition.lean), with [magnitudes](Magnitude.lean), [the digit loop](MagnitudePrefix.lean), [normalization](MagnitudeNormalize.lean), [digit combination](MagnitudeCombine.lean), and [comparison](Compare.lean) | Signed integer addition, including cancellation and negative zero. |
 | [Renderer correctness](Rendering.lean) | Canonical signed decimal encoding from `Nat.digits`, followed by LF. |
 | [Line kernel](Kernel.lean) | Line kernel and its specification for [the shared stream proofs](../StreamFold/README.md): normal totals, size room, and nonempty output. |
 | [Line model and size bounds](Model.lean) | `InputBounds`, the line rooms that it implies, and the outputs and status of the kernel's fold over the input lines. |
@@ -39,7 +39,7 @@ it, and exits with status 1.  Host traps preserve the effects committed before t
 | [Command module](Module.lean) | Unbounded Wasm loop, stack admission check, binary encoding, and validity proofs. |
 | [Process refinement](Proof.lean) | Initial-store invariants, native-process correspondence, `_start` partial refinement, and the byte theorem. |
 | [Integer process correctness](StreamCorrect.lean) | `InputValues`, native process termination, and the canonical cumulative output of the lines before the first rejected line. |
-| [Compiled termination](TerminationTarget.lean) | Well-founded process progress, an invariant of the reached states, typed allocation charges, and accepted exit. |
+| [Control rank](TerminationTyped.lean) and [compiled termination](TerminationTarget.lean) | Well-founded process progress, an invariant of the reached states, typed allocation charges, and accepted exit. |
 | [Limits and invariant](Limits.lean) | `InputLimits L D`, the kernel specification `limitSpec L D`, the invariant `LimitInv L D` of the reached states, and the sizes of every state that a step returns. |
 | [Charges](Charges.lean) | Allocation charges of `begin` and of each step, from the generated bounds of the pure functions, the bound of 4,320 bytes on the charge of `begin`, and the bound `stepCharge L D` on the charge of a step from a state within the limits. |
 | [Compiled integer correctness](Correct.lean) | Cumulative stdout and eventual accepted exit with status 0 or 28 from the modeled initial store, with an encoded-byte theorem. |
@@ -57,8 +57,8 @@ exactly those sums in canonical signed decimal form, each followed by LF.  It gi
 threshold valid for every larger Talos fuel value.  `initial_terminates_integer_9000000` fixes
 both limits at 9,000,000, for which that inequality holds.  `integer_bytes` combines the general
 theorem with encoding, exact decoding, and binary validity.  Talos represents accepted `proc_exit`
-by the designated exit trap and records the status in the final host world.  The theorem concerns runs that start
-with an empty event journal and output history and uses these premises:
+by the designated exit trap and records the status in the final host world.  The theorem concerns
+runs that start with an empty event journal and output history and uses these premises:
 
 | Premise | Requirement |
 |---|---|
@@ -68,37 +68,38 @@ with an empty event journal and output history and uses these premises:
 | [Host behavior](../StreamFold/StreamHost.lean) | `StreamHost` performs successful reads and writes, consumes input prefixes, reports empty input only at EOF, and commits output prefixes.  Each zero-byte write decreases a proof-only natural-valued counter, and a read or a write of at least one byte may set the counter to any value.  The Talos host also satisfies the WASI specification. |
 | [Final exit](Correct.lean) | `ExitAccepted` excludes rejection of status 0 or 28 at represented host worlds. |
 
-The process compacts its state after `begin`, and after a step when the heap above its base
-exceeds four times the state's copy cost: it copies the state above the heap's top and moves the
-copy down to the heap's base, the heap top when `_start` began.  Between steps the heap above its
-base holds at most four times the state's copy cost, so the memory a run needs does not grow with
-the number of lines or the total length of the input.  Each step needs memory for four copies of
-the state before it, its allocation, and the copy of the state after it.  Within the limits, a copy of a
-state costs at most `9 · D + 8 · L + 4,320` bytes, and a step at most `170 · (L + D) + 960,000`
-bytes: a step that consumes input pushes at most 4,096 bytes onto the pending line at 80 bytes
-each and completes at most one line, and the step takes the state owned, so it copies none of it.
-`limitMemory L D` covers the five copies and the step, as `limitMemory_room` proves:
+[The process entry](../../docs/wasi.md#processes-without-an-iteration-bound) compacts the state
+after `begin`, and after a step when the heap above its base exceeds four times the state's copy
+cost.  [The total-process theorem](../../docs/wasi.md#process-theorems-and-applications) needs room
+for four copies of the state before a step, the step's charge, and the copy of the state after
+it.  The memory a run needs therefore does not grow with the number of lines or the total
+length of the input.  Within the limits, a copy of a state costs at most `9 · D + 8 · L + 4,320`
+bytes.  A step takes the state owned and copies none of it, and it costs at most
+`170 · (L + D) + 960,000` bytes: a step that consumes input pays the credits of the state's arrays,
+pushes at most 4,096 bytes onto the pending line at 80 bytes each, and completes at most one line,
+and a read step allocates its buffer of 4,096 bytes and the copy of the bytes read.
+`limitMemory L D` covers five copies and the step, as `limitMemory_room` proves:
 `5 · (9 · D + 8 · L + 4,320) + 170 · (L + D) + 960,000 ≤ 220 · (L + D) + 1,010,000`.  These
 bounds concern native states and stream positions, and the invariant `LimitInv L D` preserves them
 at every step.
 
-`implements` and `run_initial` remain partial refinement theorems.  They classify every modeled
+`implements` and `run_initial` are partial refinement theorems.  They classify every modeled
 run that completes without exhausting Talos fuel.  A normally stopped native process returns
-a status, which the compiled command passes to `proc_exit`.  The theorem preserves the ordered
-effects and final world of those steps and the accepted or rejected exit request.  A permitted
-guest resource trap matches a native process prefix and residual action.  `run_initial`
+a status, which the compiled command passes to `proc_exit`.  The theorems preserve the ordered
+effects and final world of the completed steps and the accepted or rejected exit request.  A
+permitted guest resource trap matches a native process prefix and residual action.  `run_initial`
 establishes this result from the modeled initial store.  `bytes` combines the execution statement
 with encoding, exact decoding, and binary validity.
 
 The compiled refinement requires a host satisfying the WASI specification, the allocator
 invariant with an empty free list, valid static bytes, and a memory cap of at most 65,535 pages.
 [The WASI manual](../../docs/wasi.md) states the host, engine, and file-emission assumptions.  The
-generic [total-process theorem](../../Verified/Wasi/ProcessTotalCorrect.lean) uses an
-application-supplied well-founded progress relation, step charges that include the copies of the
-state, and final-exit acceptance.
+generic [total-process theorem](../../Verified/Wasi/ProcessTotalCorrect.lean) takes an
+application-supplied well-founded progress relation, the charges of `begin` and of each step with
+the room conditions above, and final-exit acceptance.
 
-The native reader returns after one successful `read` call and retries interrupted calls.  OS
-errors propagate through Lean's `IO.Error` API.  This gives the executable short reads on pipes.
+The native reader returns after one successful `read` call and retries interrupted calls, so the
+executable sees short reads on pipes.  OS errors propagate through Lean's `IO.Error` API.
 The generic `Process.runStdio` interpreter uses Lean's stream reader, whose pinned implementation
 can wait for the requested capacity or EOF.  The native adapter and OS behavior require external
 execution tests.

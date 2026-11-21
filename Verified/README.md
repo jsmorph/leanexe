@@ -12,9 +12,8 @@ their own: `Heap.Within` in [the runtime rules](RuntimeFacts.lean), the allocati
 [`Bound.lean`](Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr` for
 the initial store.  Native algorithm definitions are in
 [the library](../Library/README.md), compiler fixtures in `Verified/Examples`, and application
-compilations in [the demos](../Demos/README.md).  Separate compilation and mathematical proof
-modules import the compiler or proof rules they use.  The proofs use only the axioms `propext`, `Classical.choice`, and
-`Quot.sound`.
+compilations in [the demos](../Demos/README.md).  The proofs use only the axioms `propext`,
+`Classical.choice`, and `Quot.sound`.
 
 ## Source language and code
 
@@ -46,64 +45,67 @@ one whose body ignores the index.  A variable is numbered by its distance from t
 context: a binding's value is variable 0 of its body, parameter `i` is variable `i` of the
 function's body, a loop's condition has the state as variable 0, its body has the state as variable
 0 and the index as variable 1, and a build's element has the index as variable 0.  The size, the
-read, the update, and the extensions take array variables, and a call's argument that holds arrays
-is a place, a variable or a pair of places, and a variable at an owned parameter.
+read, the update, and the extensions take array variables, and a call's argument that holds
+arrays, buffers, or trees is a place, a variable or a pair of places, and a variable at an owned
+parameter.
 
 ### Values and ownership
 
 A value is represented as words, as `Implements` passes it: a word as itself, a `Bool` as 1 or 0, a
 float as its bit pattern in an f64 or f32 word, a tuple or a pair as its first component's words
-followed by its second's, and an array as the address of its length word and its elements' words
-in memory.  An element of `k` words occupies `k` consecutive eight-byte words, with a `Bool` as
-1 or 0 and a float as its bit pattern.  A Float32 pattern occupies the low 32 bits of its word.
-The length word counts words.  `Elem.words` gives these words, the identity for an array of
-words, as Lean's instances for `Array UInt64`, `Array Float`, `Array Float32`, and arrays of `Flat`
-types such as `Bool` store them.  Lean has no instance for an array of tuples, and `Elem.wordsInst`
-stores one in the same way.  `Elem.typed_words` states that decoding an element's words into
-typed values and extracting their bits recovers those words.  The word-store proof uses this
-equation for both float formats and tuples.  A structure whose `Flat` tuple holds arrays is represented as that tuple, by
+followed by its second's, and an array as the address of its length word and its elements' words in
+memory.  An element of `k` words occupies `k` consecutive eight-byte words, with a `Bool` as 1 or 0
+and a float as its bit pattern.  A Float32 pattern occupies the low 32 bits of its word.  The length
+word counts words.  `Elem.words` gives these words, the identity for an array of words, as Lean's
+instances for `Array UInt64`, `Array Float`, `Array Float32`, and arrays of `Flat` types such as
+`Bool` store them.  Lean has no instance for an array of tuples, and `Elem.wordsInst` stores one in
+the same way.  `Elem.typed_words` states that decoding an element's words into typed values and
+extracting their bits recovers those words.  The word-store proof uses this equation for both float
+formats and tuples.  A structure whose `Flat` tuple holds arrays is represented as that tuple, by
 the instance `instRepresentOfFlat` of [`FlatRecords.lean`](../LeanExe/Pipeline/FlatRecords.lean),
 and the reflector treats it as a pair whose components are the tuple's.  Such a record may be a
-parameter, a result, a local value, or a loop state.  A parameter of a record with array fields is
-owned when the callee consumes one of its arrays, which the callee then updates in place, and
-borrowed otherwise.  A function with a pair result returns several WebAssembly results.  Each value
-holds its arrays in a mode, borrowed or owned, which `Expr.mode` computes from the modes of the
-variables.  A function's signature gives each parameter that holds an array, a buffer, or a tree a
-mode.  The function reads a borrowed parameter and leaves it in place, and it consumes
-an owned parameter's array, releasing it at entry when the body does not use it.  A call's result, a
-function's result, and a built, updated, or extended array are owned, so a function copies a
-borrowed value that it returns.  Each expression consumes the owned variables that die in it, those
-live before it and not after: an owned variable moves into the value where it dies and is copied
-where it stays live, a reader or a call releases an owned variable that dies there, and a branch, a
-binding, and a loop release the owned variables that die without a use.  Recursive values also have
-borrowed and owned modes, with copying, release, and reuse described [below](#recursive-records).
-The code generator determines which variables each subexpression reads from the bitmask `Expr.useMask`
-through `Expr.usesFast`, and `Expr.usesFast_eq` equates it with `Expr.uses`.  The functions of a module
-call [`Expr.codeMask`](Compile.lean), which receives the variables live after an expression as a
-bitmask and releases the variables that die with `releaseMask`, a walk of the context that stops at
-the highest variable released, and `Expr.codeMask_eq` of [the mask equations](CodeMask.lean)
-equates it with `Expr.code`, which the proofs unfold.  A pair has one mode, and a
-loop's state is owned when its initial value or its body's value is owned, so a borrowed component
-or state is copied.  An array copy allocates through the runtime's `alloc` and writes the length word and
-the elements.
+parameter, a result, a local value, or a loop state.  A function with a pair result returns several
+WebAssembly results.  Each value holds its arrays in a mode, borrowed or owned, which `Expr.mode`
+computes from the modes of the variables.  A function's signature gives each parameter the mode
+`Ty.paramMode t m` of [`Source.lean`](Source.lean): borrowed for a type `t` without arrays, buffers,
+or trees, and the chosen mode `m` for any other type, a tuple or a record included, so an owned
+tuple's components are owned together.  The function reads a borrowed parameter and leaves it in
+place, and it consumes an owned parameter's arrays, buffers, and trees, releasing at entry those
+that the body does not use.  A call's result, a function's result, and a built, updated, or extended
+array are owned, so a function copies a borrowed value that it returns.  Each expression consumes
+the owned variables that die in it, those live before it and not after: an owned variable moves into
+the value where it dies and is copied where it stays live, a reader or a call releases an owned
+variable that dies there, and a branch, a binding, and a loop release the owned variables that die
+without a use.  Recursive values also have borrowed and owned modes, with copying, release, and
+reuse described [below](#recursive-records).  The code generator determines which variables each
+subexpression reads from the bitmask `Expr.useMask` through `Expr.usesFast`, and `Expr.usesFast_eq`
+equates it with `Expr.uses`.  The functions of a module call [`Expr.codeMask`](Compile.lean), which
+receives the variables live after an expression as a bitmask and releases the variables that die
+with `releaseMask`, a walk of the context that stops at the highest variable released.  The kernel
+evaluates the code generator in every byte theorem, and a set of live variables held as a function
+would cost it a walk through the closures that built the set at each variable that the code asks
+about.  `Expr.codeMask_eq` of [the mask equations](CodeMask.lean) equates `Expr.codeMask` with
+`Expr.code`, which the proofs unfold.  A pair has one mode, and a loop's state is owned when its
+initial value or its body's value is owned, so a borrowed component or state is copied.  An array
+copy allocates through the runtime's `alloc` and writes the length word and the elements.
 
-A byte value occupies two i64 words: its allocation root and logical length.  Borrowed bytes
-leave the allocation's header and full capacity unchanged.  An owned copy allocates a packed payload
+A byte value occupies two i64 words: its allocation root and logical length.  Borrowed bytes leave
+the allocation's header and full capacity unchanged.  An owned copy allocates a packed payload
 without an array-length word.  Copying empty bytes returns `(0, 0)` without allocating.  A valid
-incoming empty buffer may have a nonzero root, which cleanup releases.  The
-[byte examples](Examples/Bytes.lean) cover parameters, results, duplication, branches, cleanup,
-empty values, UInt64 lengths, and indexed reads.  An out-of-bounds read returns zero.  Length and
-index operations release an owned input at its last use.  `Expr.bytesBuild` allocates a packed
-result and stores each callback's low eight bits.  Its proof keeps live captures, callback
-allocation bounds, and separation through the loop.  Zero count skips allocation and callbacks,
-and counts of at least `2^32` trap before allocating the result.  `Expr.bytesSet`, the reflection of
+incoming empty buffer may have a nonzero root, which cleanup releases.  The [byte
+examples](Examples/Bytes.lean) cover parameters, results, duplication, branches, cleanup, empty
+values, UInt64 lengths, and indexed reads.  An out-of-bounds read returns zero.  Length and index
+operations release an owned input at its last use.  `Expr.bytesBuild` allocates a packed result and
+stores each callback's low eight bits.  Its proof keeps live captures, callback allocation bounds,
+and separation through the loop.  A zero count skips the allocation and the callbacks, and a count
+of at least `2^32` traps before allocating the result.  `Expr.bytesSet`, the reflection of
 `LeanExe.Bytes.set`, takes the buffer as owned, which moves an owned buffer that dies there and
 copies any other, and stores the value's low eight bits at the position when the position is below
 the length, so an update at the last use of an owned buffer writes into its block.  Its proof,
 `specX_bytesSet` of [the buffers under the flag](AlignedBytes.lean), writes the byte with
-`Heap.Buffer.write`, which keeps the block, and [the update examples](Examples/BytesSet.lean)
-count the allocations of updates in place and of a copy.  The [WASI compiler](../docs/wasi.md)
-uses these buffers for stdin, stdout, and stderr.
+`Heap.Buffer.write`, which keeps the block.  The cases of `tests/wasi/bytes-set.tsv` check the
+allocations and releases of [the update examples](Examples/BytesSet.lean), which update in place and
+in a copy.  The [WASI compiler](../docs/wasi.md) uses these buffers for stdin, stdout, and stderr.
 
 `bytes![65, 0, 255]` reflects to `Expr.bytesLiteral`.  The macro accepts numerals from 0 through
 255.  Each evaluation of a nonempty literal copies its static source bytes into a fresh owned
@@ -172,38 +174,41 @@ memory holds, and the bound keeps the count positive and below `2^64`.  WebAssem
 divisor, so the compiled division and remainder save their operands in scratch locals, test the
 divisor, and return Lean's result for zero.
 
-[`Source.lean`](Source.lean) defines the syntax and
-`Func.denote`, [`Compile.lean`](Compile.lean) the compiler, [`State.lean`](State.lean) the
-representation of values in the heap and the facts about variables, [`Heap.lean`](Heap.lean) the
-specifications of the allocation, copy, and release code, [`Bound.lean`](Bound.lean) the allocation
-bound, [`Potential.lean`](Potential.lean) the potential of owned arrays, and [`After.lean`](After.lean)
-the facts that the proof shares.  [The expression specification](ExprSpec.lean) defines `CodeSpec`
-and proves the shared call, budget, and operand-sequencing rules.  [The binary32 rules](AlignedFloat32.lean)
-prove arithmetic, comparisons, unary operations, and word conversions.  [The expression rules](ExprCorrect.lean) prove expression and
-ordinary-function compilation, and [the program theorem](Correct.lean) combines the function
-rules.  The compiled module holds the runtime's `alloc` and `release` at functions 0 and 1.
+[`Source.lean`](Source.lean) defines the syntax and `Func.denote`, [`Compile.lean`](Compile.lean)
+the compiler, [`State.lean`](State.lean) the representation of values in the heap and the facts
+about variables, [`Heap.lean`](Heap.lean) the specifications of the allocation, copy, and release
+code, [`Bound.lean`](Bound.lean) the allocation bound, [`Potential.lean`](Potential.lean) the
+potential of owned arrays, and [`After.lean`](After.lean) the facts that the proof shares.  [The
+expression specification](ExprSpec.lean) defines `CodeSpec` and proves the shared call, budget, and
+operand-sequencing rules.  [The binary32 rules](AlignedFloat32.lean) prove arithmetic, comparisons,
+unary operations, and word conversions.  [The expression theorem](AlignedExprCorrect.lean) assembles
+the rules of the constructs into `Expr.code_spec`, [the function theorem](AlignedFunction.lean)
+proves `bodyFunction_runs` of the function templates, and [the program theorem](Correct.lean)
+combines the function rules.  The compiled module holds the runtime's `alloc` and `release` at
+functions 0 and 1.
 
 ### Folds and checked insertion
 
-`Expr.fold` has the full `Array.foldl` meaning, with its element, accumulator, and `UInt64`
-index as variables 0, 1, and 2 of its body.  The reflector accepts whole-array folds and
-leaves the index unused.  [The fold proofs](ArrayFold.lean) equate the source operation
-with `Expr.foldExpand`, a word-counted loop that reads each element before its body.
-`Ty.Rep.array_size_lt` derives the required size bound for every represented element type
-from the flattened array's heap bound and positive element width.  `Cases.spec_fold`
-composes the existing size, read, binding, and loop rules.  The expansion has the same
-code, liveness, mode, allocation bound, frames condition, and local width as the fold.
-[The reflection lemmas](Reflect/FoldLemmas.lean) express its allocation and frames
-conditions with `foldCost` and `foldFits` on the user's array and accumulator types.
-`Expr.foldLoop` and [variable renaming](Rename.lean) also give a loop construction for a
-body that takes only the element and accumulator.
+`Expr.fold` has the full `Array.foldl` meaning, with its element, accumulator, and `UInt64` index as
+variables 0, 1, and 2 of its body.  The reflector accepts whole-array folds and leaves the index
+unused.  [The fold proofs](ArrayFold.lean) equate the source operation with `Expr.foldExpand`, a
+word-counted loop that reads each element before its body.  `Ty.Rep.array_size_lt` derives the
+required size bound for every represented element type from the flattened array's heap bound and
+positive element width.  `spec_fold` of [the corollaries](AlignedCorollaries.lean) composes the
+size, read, binding, and loop rules.  The expansion has the same code, liveness, mode, allocation
+bound, frames condition, and local width as the fold.  [The reflection
+lemmas](Reflect/FoldLemmas.lean) express its allocation and frames conditions with `foldCost` and
+`foldFits` on the user's array and accumulator types.  `Expr.foldLoop` and [variable
+renaming](Rename.lean) also give a loop construction for a body that takes only the element and
+accumulator.
 
-`Expr.insertIdx` composes a logical length comparison, the existing insertion, and an empty
+`Expr.insertIdx` composes a logical length comparison, the insertion `Expr.insertAt`, and an empty
 build to implement `Array.insertIdx!`, including its `#[]` result beyond the end.  The typed
 predicate `Expr.leSize` compares a word index with the array's full logical length.  Its
 compiled comparison uses the word-sized length, justified by `Ty.Rep.array_size_lt`.
-[The insertion equations](InsertIdx.lean) relate this comparison to the existing comparison
-rule, and `Cases.spec_leSize` reuses that rule's ownership, release, and allocation proof.
+[The insertion equations](InsertIdx.lean) relate this comparison to `Expr.leSizeExpand`, the
+comparison of the index with the array's size, and `spec_leSize` of the corollaries reuses the
+comparison rule's ownership, release, and allocation proof.
 
 ## Recursive records
 
@@ -222,20 +227,22 @@ and a store converts with `toWordCode`.  Both are empty for a `UInt64` and a `Bo
 either type needs no conversion instructions.  The model proves the conversion laws for `List
 UInt64` and uses the shared runtime's record encoding.
 
-The [copy theorem](AlignedTreeCopy.lean), `wp_copyTree`, covers every borrowed value with that layout.
-It proves termination, ownership and pairwise separation of the copied records, preservation of
-every initial heap region and the memory caps, and an allocation bound of `N * (48 + 8 * w)`
-bytes for `N` records of `w` fields.  It permits a trap at `unreachable` only when that bound
-does not fit within the memory cap.  The emitted loop uses six scratch locals.  It keeps parent
-links, source pointers, and slot indices in new headers, restoring each completed header before
-returning to its parent.  Its decreasing traversal measure and allocation count belong to the proof.
+The [copy theorem](AlignedTreeCopy.lean), `wp_copyTree`, covers every borrowed value with that
+layout.  It proves termination, ownership and pairwise separation of the copied records,
+preservation of every initial heap region and the memory caps, and the allocation bound
+`nodeCopyCost` of [the copy's work](TreeCopyWork.lean): `48 + 8 * w` bytes for each record of `w`
+slots, and the copies of the arrays and buffers that the records hold.  It permits a trap at
+`unreachable` only when that bound does not fit within the memory cap.  The emitted loop uses six
+scratch locals.  It keeps parent links, source pointers, and slot indices in new headers, restoring
+each completed header before returning to its parent.  Its decreasing traversal measure and
+allocation count belong to the proof.
 
 [Header detachment](TreeDetach.lean) and [attachment](TreeAttach.lean) preserve child ownership
 across the mask changes needed for record reuse.  The [release rules](TreeRelease.lean) apply the shared release
 runtime to a whole owned tree or a detached header and prove that `top` stays unchanged.
 [Detached-header copying](AlignedTreeHeaderCopy.lean) allocates one record, sets its kind and width,
 and retains the allocator's zero child mask.  Its arbitrary payload words represent no children.
-The bound charges `48 + 8 * w` bytes for a header of `w` fields.
+The bound charges `48 + 8 * w` bytes for a header of `w` slots.
 [Field stores](TreeFieldsStore.lean) write local values to consecutive payload slots, and
 [field loads](TreeFieldsLoad.lean) recover them in distinct locals while preserving the frame.
 [Payload writes](TreeFieldsState.lean) preserve the allocator invariant, capacity, and header words.
@@ -276,7 +283,7 @@ The source types `Ty.tree` and `Ty.treeHeader` record the layout.  The [construc
 rule](AlignedTreeBuild.lean) composes field evaluation, parent allocation or reuse, and record
 assembly.  The [matching rule](AlignedTreeCase.lean) handles null and nonempty values, loads the
 fields, detaches an owned header, releases unused bindings, and composes the branch's ownership and
-allocation bound.  Both rules are used by `Expr.code_spec` and the whole-program correctness theorems.
+allocation bound.  `Expr.code_spec` and the whole-program correctness theorems use both rules.
 Borrowed aliases retain their regions, and moving or copying a recursive value uses its exact record
 blocks at the current store.  The reflector supports `List UInt64` construction, matching, identity,
 duplication, tuples, and calls.  [Representation agreement](TreeAgree.lean) proves that borrowed and
@@ -284,8 +291,8 @@ consumed lists use the typed tree's encoding.  The [list example](Examples/Lists
 execution theorems for ordinary Lean definitions.  The [match equations](Reflect/TreeLemmas.lean)
 preserve both branch meanings and their allocation and frames conditions.  [Matcher
 normalization](Reflect/NativeList.lean) derives the equation from Lean's elaborated match to its two
-list cases, which the kernel checks with the generated theorem.  The [tail-match
-rule](AlignedTailTree.lean) is used by `TailBody.code_spec` and the whole-loop theorem.  Its branches
+list cases, which the kernel checks with the generated theorem.  `TailBody.code_spec` and
+the whole-loop theorem use the [tail-match rule](AlignedTailTree.lean).  Its branches
 preserve the enclosing loop's return and continue labels.  The [recursive-tail
 reflector](Reflect/TailBody.lean) shares the expression reflector's field context, and [its
 equations](Reflect/TailListLemmas.lean) relate the native step to the typed match.  For a
@@ -302,7 +309,7 @@ that holds an enumeration or a sum from recursive parameters.  [Native matcher
 normalization](Reflect/NativeTree.lean) abstracts the alternatives before proving their constructor
 cases.  [Generated branch equations](Reflect/RecursiveMatch.lean) preserve denotation, allocation
 bounds, and frames conditions.  The [native-type example](Examples/RecursiveTypes.lean) checks the
-existing `Words` and `KeyTree` layouts, including subtree release and header reuse.  The
+library's `Words` and `KeyTree` layouts, including subtree release and header reuse.  The
 [array-field example](Examples/ArrayTrees.lean) and the
 [buffer-field example](Examples/BufferTrees.lean) move, release, and copy the arrays and buffers
 that records hold.  Native tail
@@ -325,7 +332,7 @@ Boolean state, both float widths, nested folds, allocating steps, constructed in
 calls in a step.
 
 The [copy cases](Examples/TreeCopyCases.lean) cover lists, branching trees, null children, arbitrary
-words, and chains through 4,096 records.  They also check detached headers with 1 and 64 fields
+words, and chains through 4,096 records.  They also check detached headers with 1 and 64 slots
 and header allocation from memory reused after releasing a list.
 `tests/verified/run.sh --cases treecopy` compares the
 [copy test module](Examples/TreeCopy.lean) with native Lean and checks allocation and live-block counts.
@@ -399,7 +406,7 @@ guarded recursion.  A tail function takes a depth parameter only when its body c
 code.  Continuing iterations preserve that depth.
 
 [Tail bound reflection](Reflect/TailBounds.lean) charges the continuing call at zero in the
-existing expression builder and proves equality with the typed body's step charge.
+expression's bound builder and proves equality with the typed body's step charge.
 [Source equality](Reflect/SourceEq.lean) proves finite argument-function equalities by
 extensionality when function renaming and argument packing differ.  The public bound sums
 native step charges with `Tail.costAt`, and its frames equation uses `Tail.fitsAt`.
@@ -407,7 +414,8 @@ Zero charges give bound 0 without evaluating the rank.  [The command example](Ex
 includes owned growth, rotation, replacement, aliases, and calls between tail and guarded functions.
 [The condition examples](Examples/TailConditions.lean) cover Boolean coercions, inequality,
 proof-named conditionals, destructuring, and borrowed pair and record states.  The native step
-uses the existing field-normalization pass, so the termination proof's goals contain native record fields.
+rewrites its components of flattened records into record fields with `fieldTerms`, as the bound
+equations do, so the termination proof's goals contain native record fields.
 
 ## Theorem statement, allocation bounds, and tables
 
@@ -448,7 +456,7 @@ the body holds a `push`, `++`, `insertAt`, or a call of a function with a paid p
 body's value is paid when the state is, as `Expr.statePaid` checks.  An initial value that is not
 paid is then charged `16 (u + 1)` bytes per array of `u` words, the most potential its block can
 hold.  A loop of `n` pushes of one word onto its state is therefore charged `80 n` bytes and the
-credit.  An owned array parameter is paid when the body extends an array, and a call's result is
+credit.  An owned parameter is paid when the body extends an array, and a call's result is
 paid when the callee's result holds an array and its body's value is paid with its parameters'
 flags.  `Prog.flags` collects these flags for a program.  A recursive function's parameter flags
 count its calls of itself as extending nothing, and its result flag assumes that its calls of itself
@@ -524,7 +532,7 @@ templates, and every program suffix.  This compile-time context adds no function
 expression and program theorems take this coverage premise.  Expression rules take
 [static environment safety](Bytes/StaticEnv.lean), `LiteralPool.Safe`, which combines valid pool
 contents with separation from live owned variables.  `Safe.after` transports both facts through
-the existing `After` result.  Binding and tree-field rules extend safety to newly bound values,
+an `After` result.  Binding and tree-field rules extend safety to the values they bind,
 and callback proofs derive it from their accumulated heap steps.
 
 Function specifications use [the static input predicate](Bytes/StaticInput.lean),
@@ -612,7 +620,7 @@ implement the imports with Linux's calls.
 | Proof stage | Declaration or predicate | Result |
 |---|---|---|
 | [Pure transport](Wasi/PureTransportSpecs.lean) | `runs_transport_with` | Relocated pure code computes the same values and preserves the host world in a module with the stream imports and the flat calls `calls`. |
-| [Universal command proof](Wasi/CostCommandCorrect.lean) | `Command.cost_code_spec_with` | Every command constructor preserves ownership and caller regions outside the command's scratch bytes, with source execution or a permitted resource prefix.  Normal results retain their allocation charge, fit predicate, and heap-top bound. |
+| [Universal command proof](Wasi/CostCommandCorrect.lean) | `Command.cost_code_spec_with` | Every command constructor preserves ownership and caller regions outside the low memory `[0, 4096)`, with source execution or a permitted resource prefix.  Normal results retain their allocation charge, fit predicate, and heap-top bound. |
 | [Universal program proof](Wasi/Correct.lean) | `EffectProg.correctWith_with` | Pure correctness, effect calls, function entries, and command rules compose for the compiled effect program. |
 | [Native callable entry](Wasi/NativeEntry.lean) | `compiled_native_entry_run_with` | Each exported wrapper executes the original Lean action after supplying depth zero and hidden table addresses. |
 | [Native command entry](Wasi/NativeCommand.lean) | `compiled_native_start_run_with` | `_start` executes the selected closed action, then requests its returned status as an exit. |
@@ -621,18 +629,36 @@ implement the imports with Linux's calls.
 Each theorem of the table takes the list `calls` of the module's flat calls, which the module
 imports after `fd_read`, `fd_write`, and `proc_exit`.  The theorem of the same name without the
 suffix `_with` states it for a module with the stream imports alone.  A program without
-flat calls compiles to such a module and receives the theorems of that instance.
+flat calls compiles to such a module and receives the theorems of that instance.  The [source
+correspondence](../LeanExe/Wasi/RelatedExec.lean) and [prefix
+correspondence](../LeanExe/Wasi/RelatedPrefix.lean) preserve ordered events and worlds through
+native flattening.
+
+The functions of an effect program call `Command.codeMask` of [the command code](Wasi/Code.lean),
+which takes the variables live after a command as a bitmask, as `Expr.codeMask` does.  In the same
+pass it computes each command's `Command.useMask` from those of its parts, takes its expressions'
+code from `Expr.codeMask`, and releases the variables that die with `releaseMask`.  A loop
+computes its step's mask before the step's code, since the variables that the step reads stay live
+after it while the step runs again.  `Command.codeMask_eq` equates `Command.codeMask` with
+`Command.codeWith`, which the proofs unfold.
 
 The [resource model](Wasi/ResourcePrefix.lean) charges allocation and checks pure-call fits along
-source execution prefixes, including a read's full requested capacity before its reply.  A
-generated `total` theorem requires `Heap.Within` and `Resource.CallPrefixBound`, together with
-`Host.NoTrapsAlong` for the native action.  The host condition concerns reached operations,
-including acceptance of reached exits.  Callable totality gives a return or accepted exit.
-[Command totality](Wasi/CommandTotal.lean) gives an accepted exit.  Without those premises,
-refinement retains terminal host failures and resource prefixes with their committed effects.
-`Bounded` and `Rule` of [the resource rules](Wasi/ResourceRules.lean) bound a command's charge
-from every world, and `BoundedAt` and `RuleAt` of [the rules from one
-world](Wasi/ResourceRulesAt.lean) bound a charge that depends on the host's replies.
+source execution prefixes, including the copy of a buffer that a read or a flat call takes, which it
+charges before the reply.  A generated `total` theorem requires `Heap.Within` and
+`Resource.CallPrefixBound`, together with `Host.NoTrapsAlong` for the native action, which is
+`Host.Along` of [the prefixes](../LeanExe/Wasi/Prefix.lean) at `Host.NoTrapsAt`: a property of the
+action that remains and the world reached at every prefix of a run.  The host condition concerns
+reached operations, including acceptance of reached exits.  Callable totality gives a return or
+accepted exit.  [Command totality](Wasi/CommandTotal.lean) gives an accepted exit.  Without those
+premises, refinement retains terminal host failures and resource prefixes with their committed
+effects.  `Bounded` and `Rule` of [the resource rules](Wasi/ResourceRules.lean) bound a command's
+charge from every world, and `BoundedAt` and `RuleAt` of [the rules from one
+world](Wasi/ResourceRulesAt.lean) bound a charge that depends on the host's replies.  Such a charge
+takes its bound from a premise on the host, such as `Host.Along property`, and `CommandAlong` there
+carries that premise to the parts of a command along the path that `boundedAt_of_rule` follows.  [The budget
+tactics](Wasi/BudgetTactics.lean) apply these rules to the body of an effect function: `rule_charge`
+and `rule_fits` prove an expression's charge and frames condition, and `rule_ret`, `rule_write`,
+`rule_bind`, `rule_sys`, `rule_ite`, and `rule_free` apply the rule of each command.
 
 `readAll limit` compiles to `Command.readAll`, whose [fixed code](Wasi/ReadAllCode.lean) in the
 calling function uses six `i64` locals.  For a limit below `2^32 - 4096`, it allocates one buffer
@@ -653,39 +679,53 @@ an owned pair that dies there, the stores of its components, and the releases of
 components that the body does not use.  [The binding's rules](Wasi/CommandLetPair.lean) prove the
 code in three parts, `wp_letPair_head_with`, `wp_letPair_tail_with`, and `After.letPair`, and
 give `command_letPair_spec_with` and `cost_command_letPair_spec_with`, with the charge
-`Resource.letPairCost`, the copy of an owned pair that stays live.
+`Resource.letPairCost`, the copy of an owned pair that stays live.  `Command.paramChoice` of [the
+command modes](Wasi/ReflectModes.lean) chooses an effect function's parameter modes by the rule of
+`Expr.paramChoice`, and the reflector binds a tuple argument at an owned parameter whole before the
+call, so a step that consumes its state moves the state into the functions that it calls.
 
-The [host specification](Wasi/HostSpec.lean) reserves the command's scratch bytes `[0, 16)`.  Input read regions and
-retained caller regions must lie apart from them.  The bytes of `readAll` have an owned
-allocation root, and their logical length may be smaller than the retained capacity.  A read of
-stdin fills the window of the buffer that it takes, and [the read command](Wasi/ReadCommand.lean)
+[The ABI definitions](Wasi/ABI.lean) reserve the scratch bytes `[0, 16)` for the iovec and the
+count of a stream call, and the call area `[16, 176)` for the record of a record call and the
+subscriptions and events of a poll.  No value of a program lies in the low memory `[0, 4096)` that
+holds both.  The frames of [the host specification](Wasi/HostSpec.lean) let the host write the
+scratch bytes and a call's output regions, and the compiler's invariant, the steps of commands, and
+the entries' premises name the whole low memory: input read regions and retained caller regions lie
+apart from it.  A read of stdin and a
+write of stdout or stderr name a window of a buffer by a start and a count, which [the window
+definitions](../LeanExe/Wasi/Window.lean) clamp to the buffer.  `Command.read buffer start count`
+takes the buffer, which moves an owned buffer that dies there and copies any other, reads into the
+window, and stores zeros in the window after an errno.  [The read command](Wasi/ReadCommand.lean)
 composes the take of the buffer, `wp_take_with`, which the `sys` commands share, with the read
-into the window, `wp_read_fill_with`.
-`hostSpecWith host calls` adds to the stream functions' `hostSpec host` the host's specification
-`sysContract host call` of each flat call, whose premise `SysRequest` admits a request that fits
-the call's parameters and that `Call.reject` accepts, whose inputs lie in memory, and whose
-output regions lie in memory at multiples of their alignments, end below `2^32`, and lie apart
-from one another and from the inputs.  The [source correspondence](../LeanExe/Wasi/RelatedExec.lean) and
-[prefix correspondence](../LeanExe/Wasi/RelatedPrefix.lean) preserve ordered events and worlds
-through native flattening.
+into the window, `wp_read_fill_with`.  `Command.write output buffer start count` borrows the
+buffer, and the write wrapper computes the window's address and length from the buffer's root and
+size, so a write copies nothing.  The bytes of `readAll` have an owned allocation root, and their
+logical length may be smaller than the retained capacity.  [The runs that stop](Wasi/Stops.lean)
+take apart a run that a trap cuts short at the first step of its action, and `writeAll_stops`
+gives the events of such a run of [`writeAll`](../LeanExe/Wasi/WriteAll.lean), which writes a
+window and, after each short write, the bytes of the window that remain.
 
 [The `sys` command](Wasi/SysCommand.lean) compiles a flat call in one of the forms of
 [`SysForm`](Wasi/SysForm.lean): `.flat` for a call with at most one output buffer and two result
 words, `.record` for a call that writes a record, `.reported` for `args_get` and `environ_get`,
-`.iovecRead` and `.iovecWrite` for `fd_read`, `fd_pread`, `fd_write`, and `fd_pwrite`, and
-`.poll` for `poll_oneoff`.  A call with an output buffer writes into a window of a buffer that the
-program passes, which [the window definitions](../LeanExe/Wasi/Window.lean) clamp to the buffer,
-and [the fill proofs](Wasi/SysFill.lean) and `wp_sys_take_with` cover the take of the buffer, the
-call, and the window that the code zeroes after an errno.
-`command_sys_spec_with` and `cost_command_sys_spec_with` prove its code against `sysContract`,
-and [the rule premises](Wasi/SysRule.lean) bound its charge, a reported call's by
-`reported_rule_observed` from a bound on the sizes that its reporter's replies give.
-[The flat call host](Wasi/OracleSys.lean) builds a Talos host environment from an oracle, and
-[the totality module for calls](Wasi/HostTotalWith.lean) proves that `hostSpecWith host calls`
-has a satisfying environment when `Host.TotalFor host calls` holds and that every satisfying
-environment answers each request that the ABI lays out below `2^32`.  `tools/wasi-calls.py`
-generates [the reflection equations](Wasi/ReflectSysCalls.lean) of the typed functions with the
-call table.
+`.iovecRead` and `.iovecWrite` for `fd_read`, `fd_pread`, `fd_write`, and `fd_pwrite`, and `.poll`
+for `poll_oneoff`.  A call with an output buffer, or an `.iovecRead`, fills a window of a buffer
+that the program passes, and [the fill proofs](Wasi/SysFill.lean) and `wp_sys_take_with` cover the
+take of the buffer, the call, and the window that the code zeroes after an errno.  A record call and
+a poll place their regions in the call area, which `callFits` requires them to fit, and allocate
+nothing, as [the record loop example](Examples/WasiRecordLoop.lean) shows with a loop of record
+calls whose charge is 0.  `hostSpecWith host calls` adds to the stream functions' `hostSpec host`
+the host's specification `sysContract host call` of each flat call, whose premise `SysRequest`
+admits a request that fits the call's parameters and that `Call.reject` accepts, whose inputs lie in
+memory, and whose output regions lie in memory at multiples of their alignments, end below `2^32`,
+and lie apart from one another and from the inputs.  `command_sys_spec_with` and
+`cost_command_sys_spec_with` prove the `sys` command's code against `sysContract`, and [the rule
+premises](Wasi/SysRule.lean) bound its charge, a reported call's by `reported_rule_observed` from a
+bound on the sizes that its reporter's replies give.  [The flat call host](Wasi/OracleSys.lean)
+builds a Talos host environment from an oracle, and [the totality module for
+calls](Wasi/HostTotalWith.lean) proves that `hostSpecWith host calls` has a satisfying environment
+when `Host.TotalFor host calls` holds and that every satisfying environment answers each request
+that the ABI lays out below `2^32`.  `tools/wasi-calls.py` generates [the reflection
+equations](Wasi/ReflectSysCalls.lean) of the typed functions with the call table.
 
 [The handle check](Wasi/HandleCheck.lean) `Command.HandleCheck` refuses a call that is not a
 description of `Call.table`, a `path_open`, `fd_close`, or `fd_renumber` outside the shape that
@@ -697,7 +737,24 @@ checked.  [The handle theorems](Wasi/Handles.lean) `Command.handles_exec` and
 `p.f.handles`.  `withOpen_closes` states the events and the result of each bracket that returns
 normally.
 
-The [public command](Wasi/ReflectCommand.lean) supplies finite profile/readiness proofs and
+[The process entry](Wasi/ProcessCode.lean) `ProcessEntry` composes a begin function and a step
+function into a `_start` loop.  The step takes the state in the entry's `stepMode`, and the field
+`moved` requires that mode to make a state with heap values owned, so the loop passes the state's
+words to the step without a copy.  After begin the loop compacts the state with
+`processCompaction`, the code of [the compaction](Wasi/CompactCode.lean), which copies the state
+above the heap's top and moves the copy down to the heap's base.  After each step `processCompactWhen`
+compacts the state only when the heap above the base exceeds four times the state's copy cost,
+which `copyCostCode` pushes from the state's roots and lengths.  `ProcessStored` of [the stored
+state](Wasi/ProcessCompact.lean) holds between steps: the state's blocks and the free blocks lie
+at or above the base, and the heap's top lies at most four times the copy cost above it.
+[Process refinement](Wasi/ProcessCorrect.lean) classifies the loop's runs, and the premises
+`ProcessTotalPremises` of [the total-process theorem](Wasi/ProcessTotalCorrect.lean) require room
+above the base for begin's charge and the copy of its state, and for four copies of each running
+state, the step's charge, and the copy of the next state.  [The WASI
+manual](../docs/wasi.md#processes-without-an-iteration-bound) states the entry's API and why the
+factor four keeps the compactions' copies linear in the steps' allocations.
+
+The [public command](Wasi/ReflectCommand.lean) supplies finite profile and readiness proofs and
 constructs a scalar module-typing proof through the [validity proof generator](../LeanExe/Encoding/ValidityProof.lean).
 Each accepted module receives `Spec.Validity.Module`, checked encoding and decoding, and native
 entry refinement in its `bytes` theorem.  These proofs use Talos and the specified host relations.
@@ -709,31 +766,35 @@ the witx and run every flat call in Wasmtime.
 ### The Linux shim
 
 `Verified/Shim/` specifies, at the level of the Linux call layer, the WASI host that the native
-executables implement with Linux system calls.  Its environment `linuxEnv F L I replies calls` gives each stream
-function and each flat call of `shimCalls` a Talos host function that makes its requests of
-[the Linux call layer](../LeanExe/Linux/Call.lean) through the layer's rule `Linux.step`.  The
-parameters are the open flags `F` that differ between architectures, the layout `L` of the
-guest's memory and the shim's scratch, the launch `I` with the process's arguments, its
-environment, and whether descriptor 3 is a directory that the launcher grants, and the replies
-`replies` of the layer's calls.  The host `linuxHost F L I replies` relates a WASI request to a
-reply when the layer events that it appends are an `Image` of the WASI event, carry their replies,
-and write within the guest's `2^32` bytes or into the timespec of the shim's scratch (`WritesWithin`).  [The WASI manual's section on the shim](../docs/wasi.md#the-linux-shims-specification)
-states the specification, and [its differences from Wasmtime](../docs/wasi.md#differences-from-wasmtime)
-the replies in which the shim and the Wasmtime host differ.
+executables implement with Linux system calls.  Its environment `linuxEnv F L I replies calls` gives
+each stream function and each flat call of `shimCalls` a Talos host function that makes its requests
+of [the Linux call layer](../LeanExe/Linux/Call.lean) through the layer's rule `Linux.step`.  The
+parameters are the open flags `F` that differ between architectures, the layout `L` of the guest's
+memory and the shim's scratch, the launch `I` with the process's arguments, its environment, and
+whether descriptor 3 is a directory that the launcher grants, and the replies `replies` of the
+layer's calls.  The host `linuxHost F L I replies` relates a WASI request to a reply when the layer
+events that it appends are an `Image` of the WASI event, carry their replies, and write within the
+guest's `2^32` bytes or into the timespec or the `statx` record of the shim's scratch
+(`WritesWithin`).  [The WASI manual's section on the
+shim](../docs/wasi.md#the-linux-shims-specification) states the specification, and [its differences
+from Wasmtime](../docs/wasi.md#differences-from-wasmtime) the replies in which the shim and the
+Wasmtime host differ.
 
 | Module | Content |
 |---|---|
-| [`Memory.lean`](Shim/Memory.lean) | `ShimLayout` and `shimMemory`, the guest's linear memory and the shim's scratch as the layer sees them, and the layer events of each request: `step_read`, `step_write`, `step_random`, `step_clock`, `step_openat2`, and `step_close`. |
-| [`Replies.lean`](Shim/Replies.lean) | `errnoOf`, Wasmtime 44's table of Linux's error numbers, the WASI replies that the shim builds from results, `OpenFlags`, `Launch`, the descriptors that the shim holds, `openNumbers` and `preopened`, `openCheck`, and the `open_how` record. |
+| [`Memory.lean`](Shim/Memory.lean) | `ShimLayout` and `shimMemory`, the guest's linear memory and the shim's scratch as the layer sees them, and the layer events of each request: `step_read`, `step_write`, `step_random`, `step_clock`, `step_openat2`, `step_statx`, and `step_close`. |
+| [`Replies.lean`](Shim/Replies.lean) | `errnoOf`, Wasmtime 44's table of Linux's error numbers, the WASI replies that the shim builds from results, `OpenFlags`, `Launch`, the descriptors that the shim holds, `openNumbers` and `preopened`, `openCheck`, the `open_how` record, and `filestatReply`, the `filestat` record of a `statx` record. |
 | [`Host.lean`](Shim/Host.lean) | `Image`, `Images`, `shimCalls`, `WritesWithin`, `Carried`, `LinuxWorld`, and `linuxHost`. |
 | [`Env.lean`](Shim/Env.lean) | The stream functions as Talos host functions, with the proofs that they meet the host's specification. |
 | [`SysEnv.lean`](Shim/SysEnv.lean) | What the flat calls share: `sysAnswer`, `placeReply`, `MemFrame`, and `sys_contract_of`, which reduces the call's specification to the shim's step, the frame of its output regions, and its outputs. |
-| [`Clocks.lean`](Shim/Clocks.lean), [`Strings.lean`](Shim/Strings.lean), [`Files.lean`](Shim/Files.lean) | The functions of `clock_time_get` and `random_get`, of the arguments and the environment, and of `path_open`, `fd_close`, `fd_read` and `fd_write` on a handle, `fd_prestat_get`, and `fd_prestat_dir_name`, each with the proof that it meets the call's specification. |
+| [`Clocks.lean`](Shim/Clocks.lean), [`Strings.lean`](Shim/Strings.lean), [`Files.lean`](Shim/Files.lean) | The functions of `clock_time_get` and `random_get`, of the arguments and the environment, and of `path_open`, `fd_close`, `fd_read` and `fd_write` on a handle, `fd_filestat_get`, `fd_prestat_get`, and `fd_prestat_dir_name`, each with the proof that it meets the call's specification. |
 | [`Satisfies.lean`](Shim/Satisfies.lean) | `linuxEnv`, and `linuxEnv_satisfies`, which proves that it satisfies `hostSpecWith (linuxHost F L I replies) calls` when every call of `calls` lies in `shimCalls`. |
 | [`Footprint.lean`](Shim/Footprint.lean) | `Footprint`, and `shim_footprint`, which composes `compiled_native_start_run_with` with `linuxEnv_satisfies`: every run of `_start` with enough fuel traps with layer events that are images of a WASI trace of the command's action. |
 | [`Trace.lean`](Shim/Trace.lean) | `committedReads` and `committedWrites`, and `Images.readData` and `Images.writeData`, which equate them with the bytes that the layer's reads and writes of a descriptor moved. |
 | [`Descriptors.lean`](Shim/Descriptors.lean), [`Held.lean`](Shim/Held.lean) | `NamesHeld` and `footprint_namesHeld`, which states that the layer events of every run that `Footprint` describes name only the standard streams and the numbers that the shim holds open, and how one layer event changes `openNumbers` and `preopened`. |
 | [`Streams.lean`](Shim/Streams.lean) | Runs without flat calls, whose images and runs read neither the open flags nor the launch. |
+| [`Images.lean`](Shim/Images.lean) | `images_split` and `images_mem`, the images of a concatenation of traces and of each event of a trace. |
+| [`Args.lean`](Shim/Args.lean) | `linux_sizes`, `reportedSize_le`, and `linux_args`: under the shim's host the block that `args` asks for fits every limit that the launch's arguments fit, and a run of `args` that returns gives the launch's arguments. |
 | [`Utf8.lean`](Shim/Utf8.lean) | `verify₂_iff`, `verify₃_iff`, and `verify₄_iff`, which state core's UTF-8 checks as the conditions of Table 3-7 of the Unicode Standard. |
 
 ### The shim on AArch64
@@ -757,6 +818,7 @@ stubs, and the proofs.
 | [`Clocks.lean`](ShimA64/Clocks.lean) | `clockStub_sim` and `randomStub_sim`, from the runs `clockStub_run`, `randomLoop_run`, and `randomStub_run`. |
 | [`Preopen.lean`](ShimA64/Preopen.lean) | `prestatStub_sim` and `dirNameStub_sim`, the stubs of the preopened directory. |
 | [`Files.lean`](ShimA64/Files.lean), [`Handles.lean`](ShimA64/Handles.lean), [`Open.lean`](ShimA64/Open.lean) | `held_byte`, which relates the byte of a descriptor in the shim's scratch to `openNumbers`, and `closeStub_sim`, `handleReadStub_sim`, `handleWriteStub_sim`, and `openStub_sim`, the stubs of the files under the preopened directory. |
+| [`Filestat.lean`](ShimA64/Filestat.lean) | `filestatStub_sim`, the stub of `fd_filestat_get`, which makes one `statx` into the scratch's `statx` record, with `filestat_reply`, which relates the stub's conversions of that record to `filestatReply`, and `fileStub_sim`, the case of each stub of the files under the preopened directory. |
 | [`OpenHow.lean`](ShimA64/OpenHow.lean), [`Utf8.lean`](ShimA64/Utf8.lean) | `run_openHow`, the run of the code that writes the `open_how` record, and `utf8Scan_iff`, which equates the stub's UTF-8 check with core's. |
 | [`Flat.lean`](ShimA64/Flat.lean) | `flatStub_sim`, the simulation of each stub of `flatStubs` for its call of `shimCalls`. |
 | [`Elf.lean`](ShimA64/Elf.lean) | `nativeStore`, `wasiElf_run`, `wasiElf_footprint_with`, and `wasiElf_footprint`, the run of the executable from its entry to `exit_group`. |
@@ -765,7 +827,9 @@ The theorems of each executable that has them lie in a module of `tests/TestSupp
 test script elaborates against the written file, such as `files_elf` of
 [`ImageFilesWasiFiles.lean`](../tests/TestSupport/A64/ImageFilesWasiFiles.lean).  Each applies
 `wasiElf_footprint` or `wasiElf_footprint_with` to a footprint of the command at the executable's
-memory cap, which a module of `Verified/Examples` proves from the command's generated theorem.
+memory cap, which a module of `Verified/Examples` or of the command's demo, such as
+[the random histogram's footprint](../Demos/RandomHistogram/Native.lean), proves from the
+command's generated theorem.
 [The manual](../docs/verified-manual.md#wasi-programs-and-their-executables) lists these theorems
 with their premises.
 
@@ -849,21 +913,26 @@ function's body, and `LeanExe.repeatWhile` becomes a loop with the reflections o
 its step.  An unlisted `@[inline]` helper is unfolded when no source rule covers its application,
 and its expanded body's equation gives the equation for the application.  Listed definitions retain
 their source calls.  `setIfInBounds`, `insertIdxIfInBounds`, and `eraseIdxIfInBounds` use the
-existing set, insertion, and removal expressions through definitional equalities.  `insertIdx!`
+set, insertion, and removal expressions through definitional equalities.  `insertIdx!`
 expands to the proved conditional form, after binding its array and index when either is an
 expression.  `repeatWhile_eq_loop` states that `repeatWhile` is the loop over its fuel whose
 function applies the step to a state that satisfies the condition and keeps any other.  The
 reflector chooses the parameter modes with `Expr.paramChoice` in
-[`Reflect/Modes.lean`](Reflect/Modes.lean): an array parameter is owned when the body consumes it
-where it dies, as the array of an update or an extension, at a call that moves it into an owned
-parameter, or as the result, directly or through a binding, a branch, a pair, or a loop's state, and
-borrowed otherwise.  The choice is not trusted, since the theorem holds for every choice of modes.
+[`Reflect/Modes.lean`](Reflect/Modes.lean), by the rule that [the manual's ownership
+section](../docs/verified-manual.md#ownership) states: a parameter with arrays, buffers, or trees is
+owned when the body consumes it where it dies, and borrowed otherwise.  `Expr.demands` decides
+consumption: as the array of an update, an extension, an insertion, or a removal, the buffer of a
+`set`, at a call that moves it into an owned parameter, or as the result, directly or through a
+binding, a branch, a pair, or a loop's state.  A destructuring with `letPair` consumes a pair when its body consumes a
+component that holds heap values, and it makes no demand of a variable that stays live after it,
+which it would copy.  The choice is not trusted, since the theorem holds for every choice of modes.
 The reflector binds with `let` an array that a size or a read reads, a call's argument with arrays
-that is not a place, and an argument at an owned parameter that is not a variable.  It replaces a
-`let` of a place by its body with the place for the variable, and splits every variable of a pair
-type that holds arrays into variables for its components, so that a projection reads a component
-without a copy of the pair.  A Lean pair without arrays becomes a tuple: `(a, b)` becomes `Expr.mk`,
-a chain of `.1` and `.2` on a tuple variable becomes one `Expr.proj`, and a projection of another
+that is not a place, and an argument at an owned parameter that is not a variable, which for a
+tuple parameter `reflectLetWhole` binds whole, after the arguments before it, so that the call moves
+the variable.  It replaces a `let` of a place by its body with the place for the variable, and
+splits every other variable of a pair type that holds arrays into variables for its components, so
+that a projection reads a component without a copy of the pair.  A Lean pair without arrays becomes
+a tuple: `(a, b)` becomes `Expr.mk`, a chain of `.1` and `.2` on a tuple variable becomes one `Expr.proj`, and a projection of another
 tuple, or a `match` on it, binds the tuple with `let` first.  A structure with a `Flat` instance
 whose tuple is its fields becomes the tuple of its fields' source values, its flattening `φ`, so
 that a nested structure is flattened in turn.  The environment of each equation holds `φ x` for each
@@ -884,9 +953,14 @@ builds these proofs by recursion over the source types, as `argsInst` and `Ty.le
 source instances: `Agree.scalar` for a type without arrays, whose words are the words of its
 flattening, `Agree.flatArray` and `Agree.flatMoved` for an array of structures, borrowed or owned,
 whose elements Lean's instance stores as the words of their `Flat` tuples, `Agree.refl` for another
-array, `Agree.flat` for a record with array fields, and `Agree.prod` for a pair that holds arrays,
-each restated along the flattening of the equation's right side.  The kernel checks each step by
-unfolding, and the reflector checks it first to name the type that fails.  The reflector builds the
+array, `Agree.flat` for a record with array fields, `Agree.prod` for a pair that holds arrays, and
+`Agree.encode` and `Agree.listTree` for a tree, each restated along the flattening of the
+equation's right side.  An owned tuple, record, or sum parameter has the type `Moved α` of its
+Lean type `α`, whose instances `instRepresentMovedProd` and `instRepresentMovedFlat` of [the
+moved tuples](../LeanExe/Pipeline/MovedTuples.lean) move each component, and `agreeMoved` builds
+its proof by the same recursion over `Ty.movedInst`, with `Agree.movedScalar`, `Agree.movedProd`,
+`Agree.movedFlat`, `Agree.flatMoved`, `Agree.movedEncode`, and `Agree.movedListTree`.  The kernel
+checks each step by unfolding, and the reflector checks it first to name the type that fails.  The reflector builds the
 equations and the theorems as terms so that the kernel never unfolds a definition, because it would
 evaluate a loop over literal data pass by pass.  `p.f.denote_eq` relates `f` to its body through `f
 = fun params => body`, which the kernel checks by unfolding `f` against the lambda.  A call and
@@ -927,8 +1001,8 @@ constant tag and the tuple path of each field in its `Flat` instance.  `reflectD
 the conditional chain, projects the selected fields, and proves the chain's equation by constructor
 cases.  A wildcard may bind the original value.  Constructor translation reduces the `Flat` tuple
 while preserving its scalar terms for ordinary reflection.  The source expressions are tuples,
-projections, and conditionals, and arrays use the existing element representation and ownership
-rules.  [The sum example](Examples/Sums.lean) checks these forms with binary64 shapes and a sum
+projections, and conditionals, and arrays of sums use the element representation and the ownership
+rules of other arrays.  [The sum example](Examples/Sums.lean) checks these forms with binary64 shapes and a sum
 with binary32 and enumeration fields.
 
 A `match` with several alternatives on a structure with a `Flat` instance, whose patterns fix
@@ -1004,8 +1078,8 @@ in `p.codes_ok`.  `p.encoded` assembles these proofs into the equation for `enco
 checks every claim about them.  It checks each function's encoding in a separate theorem.
 
 For each source function of the program the reflector also adds `p.f.bound`, the function's allocation
-bound in bytes on the tuple of its arguments, with `Moved (Array α)` for an owned array and `Unit`
-for no parameters, and `p.f.trapFree`.  For a function without paid parameters whose code takes no
+bound in bytes on the tuple of its arguments, with `Moved α` for an owned parameter of type `α`
+and `Unit` for no parameters, and `p.f.trapFree`.  For a function without paid parameters whose code takes no
 call depth, `p.f.bound` is the compiler's bound, `Func.bound` of the function among the functions
 before it, which is `Prog.boundsAt` of the program at the function, composed with the flattening of
 the tuple, and `#eval` computes it by interpreting `Expr.allocs` over the reflected program.  Its
@@ -1076,10 +1150,10 @@ for an `allBelow` or a `loopFits` whose parts are `true`.
 | [compileWith_initialStaticStore](Instantiate.lean) | With the pool immediately after the tables and its aligned end within the page cap, initialization establishes `initialStaticHeap pool`, the cap, borrowed tables, and static pool contents. |
 | `Prog.correct_wrapper` | For a program with no nonempty byte literals, a wrapper computes its callee's meaning at the tables and its own arguments in the sense of `ImplementsTables`, from `wrapper_correct`: the entry's words are the tables' addresses and its arguments, the tables are borrowed arguments of the callee, `Env.withTables_moves` shows that they move no block, and `Env.withTables_reads` that the arguments' reads include their regions.  The theorem `ImplementsTables.lean` states it with Lean's instances. |
 | `Prog.calls` | By induction on the program.  Ordinary and tail functions use the specifications of the functions before them.  A guarded recursive function meets its specification at depth `d` by strong induction on `depthLimit - d`, since its self-calls happen at `d + 1` and the guard traps at the limit.  The tail-function rule uses its decreasing rank and whole-loop theorem. |
-| `bodyFunction_runs` | Function code computes the body's meaning, with or without the depth parameter, in a module whose functions at the call indices compute the functions that the code calls at the next depth.  `Env.Rep.apart` turns the callee's `Separate` into the facts of `Holds` for the parameters at entry. |
-| `Expr.code_spec` | With literal coverage and static environment safety, expression code computes its source value, consumes dying owned values, preserves live values and the local frame, and meets its allocation and call-depth bounds. |
+| [bodyFunction_runs](AlignedFunction.lean) | Function code computes the body's meaning, with or without the depth parameter, in a module whose functions at the call indices compute the functions that the code calls at the next depth.  `Env.Rep.apart` turns the callee's `Separate` into the facts of `Holds` for the parameters at entry. |
+| [Expr.code_spec](AlignedExprCorrect.lean) | With literal coverage and static environment safety, expression code computes its source value, consumes dying owned values, preserves live values and the local frame, and meets its allocation and call-depth bounds. |
 | [spec_bytesLiteral](AlignedBytes.lean) | Each nonempty literal evaluation allocates a fresh owned byte buffer with the literal contents.  Empty literals allocate nothing.  The theorem requires coverage and static environment safety. |
-| `ImplementsA.lean` | This theorem of [`Correct.lean`](Correct.lean), with `ImplementsA.transferAgree` there and `Ty.leanInst` and `argsInst` of [`State.lean`](State.lean): a function's theorem for the verified compiler's representation gives the theorem with the instances that Lean synthesizes for its argument tuple and result, in which an owned array parameter has type `Moved (Array α)`.  The instances for arrays and their `Moved` forms are those of [`Implements.lean`](../LeanExe/Pipeline/Implements.lean) for `Array UInt64`, `Array Float`, `Array Float32`, and arrays of `Flat` types, which include `Bool`.  `Ty.leanInst`, `Ty.argInst`, and `argsInst` rebuild those instances by recursion over the types and modes, so no signature needs a proof of its own. |
+| `ImplementsA.lean` | This theorem of [`Correct.lean`](Correct.lean), with `ImplementsA.transferAgree` there and `Ty.leanInst` and `argsInst` of [`State.lean`](State.lean): a function's theorem for the verified compiler's representation gives the theorem with the instances that Lean synthesizes for its argument tuple and result, in which an owned parameter of type `α` has type `Moved α`, such as `Moved (Array UInt64)` or `Moved (Array UInt64 × UInt64)`.  The instances for arrays and their `Moved` forms are those of [`Implements.lean`](../LeanExe/Pipeline/Implements.lean) for `Array UInt64`, `Array Float`, `Array Float32`, and arrays of `Flat` types, which include `Bool`, and those of moved tuples and structures are those of [`MovedTuples.lean`](../LeanExe/Pipeline/MovedTuples.lean).  `Ty.leanInst`, `Ty.movedInst`, `Ty.argInst`, and `argsInst` rebuild those instances by recursion over the types and modes, so no signature needs a proof of its own.  [The owned tuple example](Examples/OwnedTuples.lean) transfers the theorems of `pushPair` and `countPair`, whose parameter is an owned `Array UInt64 × UInt64`, along `Agree.movedProd`. |
 
 ### Expression proof
 
@@ -1128,9 +1202,9 @@ retains the potential stated by the callee's `ImplementsP` theorem.
 
 ## References
 
-- X. Leroy, "Formal Verification of a Realistic Compiler," *Communications of the ACM*
-  52(7):107–115, 2009.
-- E. Mullen, S. Pernsteiner, J. R. Wilcox, Z. Tatlock, and D. Grossman, "Œuf: Minimizing the Coq
-  Extraction TCB," *Proceedings of CPP 2018*.
+- X. Leroy, [Formal Verification of a Realistic Compiler](https://doi.org/10.1145/1538788.1538814),
+  *Communications of the ACM* 52(7):107–115, 2009.
+- E. Mullen, S. Pernsteiner, J. R. Wilcox, Z. Tatlock, and D. Grossman, [Œuf: Minimizing the Coq
+  Extraction TCB](https://doi.org/10.1145/3167089), *Proceedings of CPP 2018*, 172–185.
 - WebAssembly Core Specification,
   [Numerics](https://webassembly.github.io/spec/core/exec/numerics.html).
