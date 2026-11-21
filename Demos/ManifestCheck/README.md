@@ -2,19 +2,19 @@
 
 ## Request, specification, review, and program
 
-[The request](request.txt) asks for a SHA-256 manifest checker like `sha256sum -c`.  The approved
-plan fixes its behavior: `check MANIFEST` opens and reads MANIFEST under the preopened directory,
-and for each line in `sha256sum`'s format, `HEX  NAME`, it opens NAME read-only under the same
-directory, reads it to its end through a streaming SHA-256, closes it, and writes `NAME: OK` or
-`NAME: FAILED`.  The status is 0 when every file matches, 1 when one fails, and the errno when a
-call on the manifest fails.  This directory holds the pure core of the checker, the functions that
-parse the manifest, compare a line's digits with a digest, and render an output line, with their
-reviewed specifications and call theorems, the WASI command around them, with theorems about its
-verdicts, the files that it opens, and its descriptors, and the command's AArch64 Linux executable,
-with the same theorems over Linux's system calls.
+[The request](request.txt) asks for a SHA-256 manifest checker like `sha256sum -c`.  The plan that
+the user approved fixes its behavior: `check MANIFEST` opens and reads MANIFEST under the
+preopened directory, and for each line in `sha256sum`'s format, `HEX  NAME`, it opens NAME
+read-only under the same directory, reads it to its end through a streaming SHA-256, closes it,
+and writes `NAME: OK` or `NAME: FAILED`.  The status is 0 when every file matches, 1 when one
+fails, and the errno when a call on the manifest fails.  This directory holds the checker's pure
+core, which parses the manifest, compares a line's digits with a digest, and renders an output
+line, with reviewed specifications and call theorems.  It also holds the WASI command built on the
+core, with theorems about its verdicts, the files that it opens, and its descriptors, and the
+command's AArch64 Linux executable, with the same theorems over Linux's system calls.
 
-The pure core has three functions, whose specifications [the specification](Spec.lean) states,
-written and reviewed by the method of [the verified-request
+[The specification](Spec.lean) holds the specifications of the pure core's functions, written and
+reviewed by the method of [the verified-request
 skill](../../.claude/skills/verified-request/SKILL.md).  `parseSpec` gives the lines of a manifest
 in `sha256sum`'s format, two positions to a line, or the empty array for a manifest that it
 refuses.  `hexMatchesSpec` states whether the 64 bytes of a manifest from a position are the hex
@@ -25,17 +25,19 @@ return is a byte of its line.  A line in the format has 64 hex digits of either 
 space or `*`, and a name of at least one byte, which keeps every byte and has no escapes.  A
 manifest without a line or with a line outside the format is refused as a whole, so a command that
 uses `parse` checks every line or none.  The format admits absolute names and names with `..`,
-which the host's resolution confines to the preopened directory, as the section on confinement
-states.
+which the host's resolution confines to the preopened directory, as [the section on
+confinement](#confinement) states.
 
 Two fresh agents reviewed the specification against the request, as [the review](review.md)
 records.  Neither found a disagreement.  The first asked for three corrections of the comment and
-named inputs that no sample covered, and [the samples](Samples.lean) now cover them, 99 in all.  The
+named inputs that no sample covered, and [the samples](Samples.lean) cover them, 99 in all.  The
 second listed the choices that depart from GNU `sha256sum -c`, among them the refusal of a whole
 manifest for one malformed line, the kept carriage return, and the unescaped output names, and
-named five classes that no sample covers, which the review lists.
+named classes of input that no sample covers, which the review lists.  Further fresh agents reviewed
+the statements about the command, its runs that stop, the executable, and the premises on the
+manifest's `statx`, and the review records their findings and the responses.
 
-[The program](Program.lean) holds the three functions in the verified compiler's dialect.  `parse`
+[The program](Program.lean) holds the core's functions in the verified compiler's dialect.  `parse`
 reads the manifest once with one array as its state, which the loop moves from pass to pass and
 updates in place: the start of the current line, whether every line so far is in the format, and
 the positions found so far.  A newline, or the end after the last byte, closes a line, and
@@ -45,11 +47,6 @@ builds the output line from the name's bytes and the bytes of `: OK` or `: FAILE
 which `suffixByte` computes from their positions.  [The verified compilation](Compiled.lean) writes
 a module that exports `parse`, `hexMatches`, and `render` as functions 6, 8, and 10.
 
-[The streaming SHA-256](../../Library/Hashing/Sha256/README.md#implementation) of the library
-hashes a message that arrives in pieces: `update` compresses the whole blocks of a byte string into
-the hash value, and `finish` pads the bytes after the last whole block with the length of the whole
-message.
-
 ## The pure core computes its specification
 
 | Theorem | Statement |
@@ -57,7 +54,7 @@ message.
 | `parse_eq`, `hexMatches_eq`, `render_eq` | Each program equals its specification, for a manifest of fewer than `2^62` bytes, a manifest of fewer than `2^64` bytes, and a name of fewer than `2^64 - 9` bytes ([the proof](Proof.lean)). |
 | `parse_callSpec`, `hexMatches_callSpec`, `render_callSpec` | `Verified.CallSpec compiled.module compiled.tables K spec compiled.f.bound` for `K` = 6, 8, and 10: called with borrowed arguments from a ready store with room for the bound, the function returns the specification's value without a trap and leaves a ready store ([the compilation](Compiled.lean)). |
 | `parse_bound`, `hexMatches_bound`, `render_bound` | The generated bounds are at most `176 n + 464` bytes for a manifest of `n` bytes, 0, and at most `n + 64` bytes for a name of `n` bytes, for `n` below `2^32`. |
-| `update_toVec32`, `finish_spec`, `stream_spec` | The streaming SHA-256 computes the digest of the transcription of FIPS 180-4 for the whole message ([the library's proof](../../Library/Hashing/Sha256/StreamProof.lean)). |
+| `update_toVec32`, `finish_spec`, `stream_spec` | In the streaming SHA-256 that the command uses, `update` gives the copied implementation's compressions of the whole blocks of a byte string, and `finish` from the hash value of a prefix of whole blocks gives the digest of the transcription of FIPS 180-4 for the prefix followed by the bytes that it packs, for fewer than `2^61` bytes.  Hashing pieces of whole blocks with `update` from `iv256` and the rest with `finish` therefore gives the digest of the whole message ([the SHA-256 guide](../../Library/Hashing/Sha256/README.md#proof)). |
 
 The theorems of the table use only `propext`, `Classical.choice`, and `Quot.sound`.  `parse_eq`
 follows the lines: the step of `parse` keeps its state at a byte other than a newline, and at the
@@ -75,11 +72,15 @@ preopened directory with `withOpen`, with the rights `fd_read` and `fd_filestat_
 more, for which a read's length does not fit its 32 bits, with status 61 (`overflow`).  `readBytes`
 builds a buffer of the reported size and reads the manifest into it with `fdRead`, each read into
 the window after the bytes already read, until the buffer is full, a read returns no bytes, or a
-read returns an errno.  A last read into the read buffer tests that the manifest has no byte after
-them, so a manifest whose bytes number fewer or more than its size gives status 1, as do a FIFO, a
-file of `/proc` that reports size 0, and a file being appended to.  The bracket closes the
-manifest, and `parse` gives the positions of its lines, or none for a manifest that the pure core
-refuses, which gives status 1.
+read returns an errno.  When the buffer is full, a last read of 65,536 bytes into the read buffer
+tests that the manifest holds no further byte, so a manifest whose bytes number fewer or more than
+its reported size gives status 1, as do a FIFO, a file of `/proc` that reports size 0, and a file
+being appended to.  The bracket closes the manifest, and `parse` gives the positions of its lines,
+or none for a manifest that the pure core refuses, which gives status 1.  `verified_compile_wasi`
+compiles `main` with the pure core and [the streaming
+SHA-256](../../Library/Hashing/Sha256/README.md#implementation) into a module of 17,882 bytes that
+imports `fd_read` twice, as the stream read of the ABI and as the flat call, `fd_write`,
+`proc_exit`, `fd_filestat_get`, `path_open`, `fd_close`, `args_sizes_get`, and `args_get`.
 
 `checkLines` checks the lines in order, with the read buffer in its loop's state.  For each line it
 copies the name from the manifest with `slice`, opens it under the preopened directory with the
@@ -108,18 +109,15 @@ disagree with its size or that the pure core refuses.  After a manifest that the
 status is 0 when every line says OK and 1 when one says FAILED, 77 when the writes of an output line
 stop with bytes left, which ends the checks, and the errno of a write that fails, with which
 `writeAll` exits.  Every errno lies from 0 to 76, so 77 differs from every errno.
-`verified_compile_wasi` writes a module of 17,882 bytes that imports `fd_read` twice, as the stream
-read of the ABI and as the flat call, `fd_write`, `proc_exit`, `fd_filestat_get`, `path_open`,
-`fd_close`, `args_sizes_get`, and `args_get`.
 
 ## The command meets the request
 
 | Theorem | Statement |
 |---|---|
 | `exec_main` | Under every host, every run of `main` followed by its exit that ends with the status `code` has the events `events ++ [.exit code]`, where `events` meet `Meets`, and `code` is at most 77 ([the command's proof](CommandProof.lean)). |
-| `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states: the accepted exit after events that meet `Meets`, a trap of the host or a rejected exit after a run of `main` whose events meet `SoFar`, or a guest trap at `unreachable` after a prefix of `main` whose events meet `SoFar` ([the compiled command](CommandStart.lean)). |
+| `start_ends` | For every host, every host environment that satisfies `hostSpecWith host command.sysCalls`, and every world, every run of `_start` from the command's initial store with enough fuel ends as `Ends` states: the accepted exit, with a status of at most 77, after events that meet `Meets`, a trap of the host or a rejected exit after a run of `main` whose events meet `SoFar`, or a guest trap at `unreachable` after a prefix of `main` whose events meet `SoFar` ([the compiled command](CommandStart.lean)). |
 | `stops_soFar`, `trapped_soFar`, `prefix_soFar` | Under every host, the events of every run of `main` followed by its exit that stops without an accepted exit, a run that traps or a prefix of a run, meet `SoFar`: confinement, the use of descriptors, and the verdicts of the output lines written before the stop ([the runs that stop](CommandPrefix.lean)). |
-| `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits the initial store's free memory and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit after events that meet `Meets`. |
+| `total_meets` | Under the premises of the generated `command.total` as well, a budget that fits between the initial heap's top and the module's cap of 65,535 pages and bounds the heap of every prefix of `main`, and a host that traps nowhere along `main` and its exit, every such run ends with the accepted exit, with a status of at most 77, after events that meet `Meets`. |
 
 The theorems of the table use only `propext`, `Classical.choice`, and `Quot.sound`.  `Meets` of
 [the command's specification](CommandSpec.lean) holds three properties of a run's events, which
@@ -141,19 +139,20 @@ request leaves open.
 
 `SoFar` states the three properties of the events of a run that stops without an accepted exit:
 at a trap of the host, at an exit that the host rejects, or at a trap of the guest.
-`ConfinedSoFar` states `Confined` of the events for the buffer that `args` returned and the bytes
-of a `ManifestRun` with status 0 after the events of `args` whose manifest the pure core accepts,
-or for no bytes when the events hold no such run.  An open of a line's name therefore follows the
-whole reading of a manifest that the command checks.  `HandledSoFar` states that the events are
-those of `Handled` followed by those of `Unfinished`: none, an open that returned errno 0 followed
-by calls on its descriptor and no close, an open that trapped, or an exit that the host rejected.
-`VerdictsSoFar` states that no event writes to standard output, or that the events are those of
-`args`, of such a `ManifestRun`, and of `ChecksSoFar` for the manifest's lines, followed by events
-that write nothing to standard output.  `ChecksSoFar` states the checks of the first lines as
-`Checks` states them, followed by none or by the `FileCheck` of the next line and writes that
-offer the bytes of its output line, with that line's verdict, after those that the writes before
-them took.  Every output line written before a stop, whole or in part, therefore holds the verdict
-of its `FileCheck`, from the digest of the bytes that the host returned for its file.
+`ConfinedSoFar` states that no event is an open, or that the events start with those of a run of
+`args` and meet `Confined` for its buffer and for no bytes or the bytes of a `ManifestRun` with
+status 0 that follows those events and whose manifest the pure core accepts.  An open of a line's
+name therefore follows the whole reading of a manifest that the command checks.  `HandledSoFar`
+states that the events are those of `Handled` followed by those of `Unfinished`: none, an open that
+returned errno 0 followed by calls on its descriptor and no close, an open that trapped, or an exit
+that the host rejected.  `VerdictsSoFar` states that no event writes to standard output, or that
+the events are those of `args`, of such a `ManifestRun`, and of `ChecksSoFar` for the manifest's
+lines, followed by events that write nothing to standard output.  `ChecksSoFar` states the checks
+of the first lines as `Checks` states them, followed by none or by the `FileCheck` of the next line
+and writes that offer the bytes of its output line, with that line's verdict, after those that the
+writes before them took.  Every output line written before a stop, whole or in part, therefore
+holds the verdict of its `FileCheck`, from the digest of the bytes that the host returned for its
+file.
 
 The proof follows `main`.  `argument_cases` relates the program's test of the argument buffer to
 `OneArgument`.  `manifest_loop` follows the reads of the manifest: a read places the window's
@@ -171,74 +170,73 @@ which `hexMatchesSpec_iff` and `digestOf_iff` relate to `DigestOf`, and `line_wr
 on the lines, from the positions that `parse` gives (`parse_accepted`, `entry_get`), and
 `meets_of` assembles `Run`, `Confined`, and `Handled` from the parts.  `main` takes the table of
 SHA-256's round constants, which the module holds in its static data, as its argument, and
-`table_rep` and `table_low` give the generated theorems the table's representation.
+`table_rep` and `table_low` give the generated theorems the table's representation and its place
+apart from low memory.
 
-`stops_soFar` follows `main` again, with the lemmas of [the runs that
-stop](../../Verified/Wasi/Stops.lean): a run of `Action.bind first next` that stops is a run of
-`first` that stops, or a run of `first` that returns followed by a run of `next` that stops
-(`Stops.bind`).  The parts that return have the events that the lemmas above give, and a part that
-stops has only the events that `Every` allows of it: the calls of `args` and the calls on the
-descriptor of a bracket's body (`readManifest_every`, `hashFile_every`).  `writeAll_stops` gives
-the writes of a run of `writeAll` that stops, each of which offers the bytes of the output line
-that the writes before it did not take, with at most one rejected exit at their end.
-`withOpen_stops` gives the events of a bracket that stops, which write nothing to standard output.
-`LinesSoFar` states the opens, the use of descriptors, and `ChecksSoFar` after each pass of the
-loop of `checkLines` (`step_stops`, `checks_stops`), and `confined_of` and `soFar_of` assemble
-`ConfinedSoFar` and `VerdictsSoFar` from the run of `args`, the `ManifestRun`, and the checks of
-the lines that follow it.  A run that stops after `main` returned has the events of `Meets`, whose
-`Checks` give `ChecksSoFar` (`Checks.soFar`, `verdicts_of_meets`).
+`stops_soFar` follows `main` again, with [the stopped-run lemmas](../../Verified/Wasi/Stops.lean):
+a run of `Action.bind first next` that stops is a run of `first` that stops, or a run of `first`
+that returns followed by a run of `next` that stops (`Stops.bind`).  The parts that return have the
+events that the lemmas above give, and a part that stops has only the events that `Every` allows of
+it: the calls of `args` and the calls on the descriptor of a bracket's body (`readManifest_every`,
+`hashFile_every`).  `writeAll_stops` gives the writes of a run of `writeAll` that stops, each of
+which offers the bytes of the output line that the writes before it did not take, with at most one
+rejected exit at their end.  `withOpen_stops` gives the events of a bracket that stops, which write
+nothing to standard output.  `LinesSoFar` states the opens, the use of descriptors, and
+`ChecksSoFar` after each pass of the loop of `checkLines` (`step_stops`, `checks_stops`), and
+`confined_of` and `soFar_of` assemble `ConfinedSoFar` and `VerdictsSoFar` from the run of `args`,
+the `ManifestRun`, and the checks of the lines that follow it.  A run that stops after `main`
+returned has the events of `Meets`, whose `Checks` give `ChecksSoFar` (`Checks.soFar`,
+`verdicts_of_meets`).
 
 ## Memory
 
 | Theorem | Statement |
 |---|---|
-| `body_bounded`, `prefix_bound`, `total_meets_budget`, `initial_within` | Every run and every prefix of `main`'s body from a world charges at most `budget M` under a host whose replies give an argument block of at most `argsLimit` bytes and that meets `StatAlong host M main` from that world: every reply with errno 0 that the host permits to the manifest's `fd_filestat_get`, of which `main` makes at most one request, reports at most `M` bytes or `2^32` bytes or more.  `total_meets` holds with these two premises in place of the bound on the heap, and the budget fits the module's cap for every `M` of at most 23,000,000 ([the budget](Budget.lean)). |
+| `body_bounded`, `prefix_bound`, `total_meets_budget`, `initial_within` | Every run and every prefix of `main`'s body from a world charges at most `budget M` under a host whose successful `args_sizes_get` replies report at most `argsLimit` bytes and that meets `StatAlong host M main` from that world: every reply with errno 0 that the host permits to a request of `fd_filestat_get` that a prefix of `main` makes, the manifest's, reports at most `M` bytes or `2^32` bytes or more (`body_bounded`).  `prefix_bound` gives from this bound the budget premise of `total_meets`, and `total_meets_budget` states `total_meets` with the two premises on the host's replies in its place.  `initial_within` states that `budget M` fits between the initial heap's top and the module's cap of 65,535 pages for every `M` of at most 23,000,000 ([the budget](Budget.lean)). |
 
-The command holds the block of `args`, the read buffer of 65,536 bytes, the manifest's buffer of
-the size that `fd_filestat_get` reports, the positions that `parse` gives, and for each line the
-name's copy, the output line of `render`, and the eight words that `finish` packs.  The reads of a
-file and of the manifest fill windows of the buffers that their loops keep in their states and move, so no read
-copies a byte beyond what the host writes into the window, and the memory does not depend on the
-sizes of the files checked.  The resource model credits no release, so its charge sums the blocks
-of every line.
-
-[The budget](Budget.lean) states that charge as a function of the manifest's size.  `body_bounded`
-bounds every run and every prefix of `main`'s body from a world by `budget M` under every host whose
-successful `args_sizes_get` replies report at most `argsLimit` bytes, 6 MiB, the most that Linux
-lets the strings and pointers of `argv` and `envp` take, and that meets `StatAlong host M main`
-from that world.  `StatAlong` states that every reply with errno 0 to a request of
-`fd_filestat_get` that a prefix of `main` makes reports a size of at most `M` bytes or of `2^32`
-bytes or more.  `main` asks `fd_filestat_get` only in `readManifest`, at most once, of the
-manifest's descriptor, so the premise bounds that reply and no other.  `StatWithin` exempts a size
-of `2^32` bytes or more, which `readManifest` answers with status 61 before it builds a buffer, and
-it bounds no reply with an errno other than 0.  `total_meets_budget` states nothing of a run whose
-manifest's `fd_filestat_get` returns errno 0 and a size of more than `M` bytes and fewer than
-`2^32`, and `initial_within` admits every `M` of at most 23,000,000.  `budget M` sums the block of `args` and the copy of the
-manifest's name, at most `argsLimit` bytes each, the read buffer of 65,536 bytes, the manifest's
+The resource model charges a copy of an owned value at each use after which the value stays live,
+and it credits no release.  `budget M` sums the block of `args` and the copy of the argument that
+names the manifest, at most `argsLimit` bytes each, the read buffer of 65,536 bytes, the manifest's
 buffer of at most `M` bytes, the charge of `parse`, at most `176 M + 464` bytes, and the charge of
-`checkLines`, at most `4 (M + 1)` bytes.  The call of `fd_filestat_get` charges nothing, since a
-record call places its record in the call area of low memory.  The charge of `checkLines` follows
-the lines: a pass charges at most four bytes for each byte of its line and the newline after it
-(`loop_bounded_sum`), and the lines with their newlines hold at most one byte more than the
-manifest (`lines_total`).  A pass of the reads of a file, of the reads of the manifest, and of
-`writeAll` charges nothing.  `budget_le` states `budget M ≤ 181 M + 12,649,115`, and
-`initial_within` states that the budget fits the 65,535 pages of the module's cap for every `M` of
-at most 23,000,000.
+`checkLines`, at most `4 (M + 1)` bytes.  `argsLimit` is 6 MiB, the most that Linux 4.13 and later
+let the strings and pointers of `argv` and `envp` take together (`get_arg_page` of `fs/exec.c` in
+v4.13, `bprm_stack_limits` in v6.12).  A pass of `checkLines` charges the copy of its line's name,
+the output line of `render`, and the block of at most eight words that `finish` packs, at most 120
+bytes, which come to at most four bytes for each byte of the line and the newline after it, since a
+line has at least 67 bytes.  `loop_bounded_sum` bounds the loop by the sum of the passes' charges,
+and `lines_charge_le` bounds that sum by `4 (M + 1)`, since the lines with their newlines hold at
+most one byte more than the manifest (`lines_total`).  A pass of the reads of a file, of the reads
+of the manifest, or of `writeAll` charges nothing: the reads fill windows of buffers that their
+loops keep in their states and move, and `writeAll` writes windows of the borrowed line.  The memory
+therefore does not depend on the sizes of the files checked.  The call of `fd_filestat_get` charges
+nothing, since a record call places its record in the call area of low memory, and `budget_le`
+states `budget M ≤ 181 M + 12,649,115`.
+
+Besides the argument block, the charge depends on one reply of the host, the size that
+`fd_filestat_get` reports for the manifest, which sets the size of the manifest's buffer and bounds
+the charges of `parse` and `checkLines`.  `StatAlong host M main` is `Host.Along` of `StatAt`, the
+bound `StatWithin` on the next request when it is `fd_filestat_get`, at every prefix of
+`main`.  `main` asks `fd_filestat_get` only in `readManifest`, at most once, of the manifest's
+descriptor, so the premise bounds that reply and no other.  `StatWithin` exempts a size of `2^32`
+bytes or more, which `readManifest` answers with status 61 before it builds a buffer, and it bounds
+no reply with an errno other than 0.  `body_bounded` and `total_meets_budget` state nothing of a
+host that permits a reply with errno 0 and a size of more than `M` bytes and fewer than `2^32` to
+the manifest's `fd_filestat_get`, among them a host that permits both a small and a large reply at
+one world, even for a run that received the small one.
 
 The host gives its reply to `fd_filestat_get` at the world in which the command asks the size, so
 `body_bounded` states `BoundedAt` of [the world-indexed resource
 rules](../../Verified/Wasi/ResourceRulesAt.lean), which bound a command's runs and prefixes from
-one world.  `StatAlong` is `Host.Along` of `StatAt`, the premise's bound on the next request, and
-`main_along` carries it from `main` to its reflected body through `command.main.related`.  The
-proof follows the body from the start world to the call of `readManifest` with
-`boundedAt_of_rule`.  At each `bind` on that path the second command starts in the world in which a
-run of the first returned, and `CommandAlong.next` of the world-indexed rules carries the premise to
-it through `ResourceExec.erase` and `Prefix.bind_after`.  `readManifest_bounded` reads the reply of
+one world.  `main_along` carries `StatAlong` from `main` to its reflected body through
+`command.main.related`, and the proof follows the body from the start world to the call of
+`readManifest` with `boundedAt_of_rule`.  At each `bind` on that path the second command starts in
+the world in which a run of the first returned, and `CommandAlong.next` carries the premise to it
+through `ResourceExec.erase` and `Prefix.bind_after`.  `readManifest_bounded` reads the reply of
 its first command with `stat_le`, and the commands off the path take their bounds from `Bounded`
 through `Bounded.at`.  The charge of `parse` depends on the manifest that the bracket of `main`
 returned: `CommandAlong.split` and `CommandAlong.branch` take a returned run of the bracket's action
-apart with the worlds of its parts, and `readManifest_call_size` bounds the manifest that the call of
-`readManifest` returned, from the world in which the call started.
+apart with the worlds of its parts, and `readManifest_call_size` bounds the manifest that the call
+of `readManifest` returned, from the world in which the call started.
 
 ## Confinement
 
@@ -251,19 +249,19 @@ whose `open_how` record, `openHowBytes`, holds the resolution flags `RESOLVE_BEN
 calls `openat2` up to four times, again after each `EAGAIN` of the first three (`openCalls`), which
 `run_openHow` of [the record's proof](../../Verified/ShimA64/OpenHow.lean) and `run_openLoop` and
 `openStub_sim` of [the stub's proof](../../Verified/ShimA64/Open.lean) prove.  The shim never falls
-back to `openat`: `ENOSYS` gives errno 29 (`io`), and `errnoOf` gives `EXDEV`, Linux's refusal of a
-resolution that leaves the directory, as 63 (`perm`).  With `RESOLVE_BENEATH`, openat2(2) refuses an
-absolute name, a `..` that leaves the directory, and a symbolic link, absolute or relative, whose
-target lies outside it, and `RESOLVE_NO_MAGICLINKS` refuses the links of `/proc`.  The repository's
-Wasmtime host preopens the directory with `wasi_config_preopen_dir` of
-[`tools/wasmtime-host.c`](../../tools/wasmtime-host.c), and Wasmtime resolves names with cap-std,
-which confines them as well.  `Confined` therefore states the names that the command asks the host
-to open, relative to descriptor 3, and relies on the host's resolution for the rest, which no
-theorem of the repository states for Linux's kernel.  In the driver's runs a manifest named with a
-`..` that leaves the directory gives status 63 (`perm`), and a line that names a file through such a
-`..`, by an absolute name, or through a link out of the directory gives FAILED, where `sha256sum -c`
-reads the file.  The driver's traces of the native executable show Linux refusing the `openat2` of
-each of these names with `EXDEV`.
+back to `openat`: `ENOSYS` gives errno 29 (`io`), and `errnoOf` gives `EXDEV`, Linux's refusal of
+a resolution that leaves the directory, as 63 (`perm`).  With `RESOLVE_BENEATH`, openat2(2) refuses
+an absolute name, a `..` that leaves the directory, and a symbolic link, absolute or relative,
+whose target lies outside it, and `RESOLVE_NO_MAGICLINKS` refuses magic links such as those of
+`/proc/PID/fd`.  The repository's Wasmtime host preopens the directory with
+`wasi_config_preopen_dir` of [`tools/wasmtime-host.c`](../../tools/wasmtime-host.c), and Wasmtime
+resolves names with cap-std, which confines them as well.  `Confined` therefore states the names
+that the command asks the host to open, relative to descriptor 3, and relies on the host's
+resolution for the rest, which no theorem of the repository states for Linux's kernel.  In the
+driver's runs a manifest named with a `..` that leaves the directory gives status 63 (`perm`), and
+a line that names a file through such a `..`, by an absolute name, or through a link out of the
+directory gives FAILED, where `sha256sum -c` reads the file.  The driver's traces of the native
+executable show Linux refusing the `openat2` of each of these line names with `EXDEV`.
 
 ## The native executable checks the manifest
 
@@ -271,19 +269,16 @@ each of these names with `EXDEV`.
 the shim's stubs for the stream functions, `args_sizes_get`, `args_get`, `path_open`, `fd_close`,
 `fd_read` on a handle, and `fd_filestat_get`, and a linear memory of 4,096 pages.  The module
 imports `path_open`, so the executable first checks descriptor 3 with `openat` of `.` and closes
-the result, and a directory there becomes the preopened directory.  `tests/linux/a64-wasi.sh`
-writes the executable as `manifest.elf` and elaborates the theorems of the file beside it, and the
-demo's driver writes it from the same module with the same commands as
-`build/manifest-check/command.elf` and runs it.  The theorems of the next table lie in [the
-executable's theorems](../../tests/TestSupport/A64/ImageFilesManifestCheck.lean), [the
+the result, and a directory there becomes the preopened directory.  The theorems of the next table
+lie in [the executable's theorems](../../tests/TestSupport/A64/ImageFilesManifestCheck.lean), [the
 footprints](Native.lean), and [the corollary under the shim](NativeMeets.lean), and [the
 specification over Linux events](NativeSpec.lean) states `InRange` and `NMeets`.
 
 | Theorem | Statement |
 |---|---|
 | `manifest_elf_file`, `manifest_elf_segments`, `manifest_elf_layout`, `manifest_elf_entry`, `manifest_elf_room` | The file's bytes are those that `genWasiElf` gives for the command's module, its program headers are those of the generator's layout, its entry is the shim's prefix, and the stack's room holds the module's stack bound. |
-| `manifest_elf` | For every reply sequence, a process that Linux's loader started from the file reaches `exit_group`.  When the check of descriptor 3 ends the run, X0 is 67.  Otherwise the trace holds the check's events and then the layer events of a run of `main` and its exit under the shim's host with the process's arguments, which name only standard streams and the descriptors that the shim holds open: an accepted exit, whose status X0 holds, a rejected exit, a trap of the shim, or a guest trap after a prefix. |
-| `linux_footprint_bounded`, `budget_fits` | Under the shim's host, with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes and replies that meet `StatxBounded M`, at a cap of at most 65,535 pages that holds `budget M` above the static heap's top, every run of `_start` with enough fuel ends without a guest trap.  The budget for a manifest of `manifestLimit` bytes, 1 MiB, fits the executable's 4,096 pages. |
+| `manifest_elf` | For every reply sequence, a process that Linux's loader started from the file reaches `exit_group`.  When the check of descriptor 3 ends the run, X0 is 67.  Otherwise the trace holds the check's events and then the layer events of a run of `main` and its exit under the shim's host with the process's arguments, which name only standard streams and the descriptors that the shim holds open: an accepted exit, whose status X0 holds, a rejected exit, with X0 at 1, a trap of the shim, with X0 at 2, or a guest trap after a prefix, with X0 at 2. |
+| `linux_footprint_native`, `linux_footprint_bounded`, `budget_fits` | Under the shim's host, at a cap of at most 65,535 pages, every run of `_start` from the native store with enough fuel has the footprint of `Footprint`: its layer events are the images of its WASI events, which end at an accepted exit, a rejected exit, a trap of the shim, or a guest trap after a prefix of `main`.  With arguments whose strings and eight-byte pointers take at most `argsLimit` bytes and replies that meet `StatxBounded M`, at a cap that holds `budget M` above the static heap's top, the footprint has no guest trap.  The budget for a manifest of `manifestLimit` bytes, 1 MiB, fits the executable's 4,096 pages. |
 | `linux_exec_meets` | Under the shim's host, from a world without layer events, with arguments without a zero byte whose strings and eight-byte pointers take at most `argsLimit` bytes, a run of `main` and its exit whose layer events meet `InRange` and `Sized` ends at the accepted exit, and its status and layer events meet `NMeets` for the launch's grant of descriptor 3. |
 | `manifest_elf_meets` | For every reply sequence that meets `StatxAfterCheck`, whose reply to the manifest's `statx`, when the shim reads errno 0 from it, reports at most `manifestLimit` bytes or `2^32` bytes or more, a process started from the file with arguments whose strings and eight-byte pointers take at most `argsLimit` bytes reaches `exit_group` with layer events that hold the replies, and when the check of descriptor 3 does not end the run and the layer events meet `InRange`, X0 and the events meet `NMeets` for the check's grant. |
 | `manifest_elf_witness` | The premises of `manifest_elf_meets` and `InRange` hold together: for the replies `witnessReplies`, the arguments `h` and `1`, and a process that holds the file and the initial stack, the check grants descriptor 3, and the process reaches `exit_group` after layer events that meet `InRange` and, with X0, `NMeets`. |
@@ -302,8 +297,8 @@ as the fourth.  A read before the last of a file or of the manifest returned a c
 more.  A line's verdict is OK exactly when its opening returned a descriptor, a `read` returned 0
 before any `read` returned an error number, the `close` returned 0, and the line's digits give the
 digest of the bytes that the reads returned.  Each other errno is the shim's `errnoOf` of a negated
-error number, and a `statx` that reports an access, modification, or birth time of `2^64`
-nanoseconds or more, as each such time before 1970 does, or a size of `2^32` bytes or more gives
+error number, and a `statx` whose access time, modification time, or reported birth time reaches
+`2^64` nanoseconds, as each such time before 1970 does, or whose size is `2^32` bytes or more gives
 status 61.  `NConfined` states that every `openat2` is relative to descriptor 3 with the flags
 `O_RDONLY | O_CLOEXEC` and the resolution `RESOLVE_BENEATH | RESOLVE_NO_MAGICLINKS`, and names the
 argument or the name of a line of an accepted manifest.  `NHandled` states that the events are
@@ -312,33 +307,34 @@ argument or the name of a line of an accepted manifest.  `NHandled` states that 
 
 `InRange ls` states the results that Linux gives for the command's calls and that the shim
 accepts.  A `read` or a `write` returns an error number or at most its count (read(2), write(2)), a
-`close` 0 or an error number, and a `statx` an error number or 0 (statx(2)).  `InRange` also
-requires nanoseconds below `10^9` in each time that a `statx` reports, for which the shim traps
-otherwise.  An `openat2` returns an error number or the lowest descriptor that the process does not
-hold (open(2)).  The startup check received a descriptor of 4 or more, so the process held 0 to 3,
-and the command closes only descriptors that its `openat2` calls returned, so each such descriptor
-is 4 or more.  It lies below 1,024, the shim's limit, while the process holds fewer than 1,024
-descriptors, as the usual soft limit of `RLIMIT_NOFILE` ensures, and the shim traps for a
-descriptor of 1,024 or more.  Since no `openat2` returns 3 and no `close` names it, the shim holds
-descriptor 3 throughout the run exactly when the check granted it.  `Sized`, that each `read`'s
-output holds as many bytes as the `read` asked for, follows from `Carried`.
+`close` 0 or an error number (close(2)), and a `statx` an error number or 0 (statx(2)), with
+nanoseconds below `10^9` in each time that it reports, for which the shim traps otherwise.  An
+`openat2` returns an error number or a descriptor from 4 to 1,023.  Linux returns the lowest
+descriptor that the process does not hold (open(2)).  The startup check received a descriptor of 4
+or more, so the process held 0 to 3, and the command closes only descriptors that its `openat2`
+calls returned, so each such descriptor is 4 or more.  It lies below 1,024, the shim's limit,
+while the process holds fewer than 1,024 descriptors, as the usual soft limit of `RLIMIT_NOFILE`
+ensures, and the shim traps for a descriptor of 1,024 or more.  Since no `openat2` returns 3 and no
+`close` names it, the shim holds descriptor 3 throughout the run exactly when the check granted it
+(`spares3_three`).  `Sized`, that each `read`'s output holds as many bytes as the `read` asked
+for, follows from `Carried`.
 
 `StatxBounded F L I M R` states the premise of `body_bounded` on `fd_filestat_get` over the
 replies, as `Host.Along`: at each prefix of `main` under `linuxHost F L I R` whose next request is
 `fd_filestat_get` of a descriptor that the shim holds, the reply `R k` to the `statx` that the shim
-then makes, after the world's `k` layer events, reports a size of at most `M`
-bytes or of `2^32` bytes or more when `filestatReply` reads errno 0 from it.  `StatxAfterCheck args
-environ R` states `StatxBounded manifestLimit` for the launch with the check's grant and the
-replies after the check's.  `main` asks `fd_filestat_get` at most once, of the manifest's
-descriptor, so the premise bounds `R` only at the index of the run's one `statx`, and the earlier
-replies decide whether that `statx` happens and its index.  The reply to a `read` that returns 0,
-whose bytes are those that the window held before the call, does not enter it.  The corollary
-states nothing of exactly the runs from whose manifest's `statx` the shim reads errno 0 and a size
-of more than 1 MiB, `manifestLimit`, and fewer than `2^32` bytes: the budget of such a manifest can
-exceed the executable's 4,096 pages, and `manifest_elf` then admits a guest trap when the memory
-cannot grow.  Every other run of the executable on Linux meets the premise, among them runs in
-which the manifest's open fails, its `statx` fails, or its `statx` reports a time that gives
-status 61, whatever size the record holds.
+then makes, after the world's `k` layer events, reports a size of at most `M` bytes or of `2^32`
+bytes or more when `filestatReply` reads errno 0 from it.  `StatxAfterCheck args environ R` states
+`StatxBounded manifestLimit` for the launch with the check's grant and the replies after the
+check's.  `main` asks `fd_filestat_get` at most once, of the manifest's descriptor, so the premise
+bounds `R` only at the index of the run's one `statx`, and the earlier replies decide whether that
+`statx` happens and its index.  A `read` that returns 0 leaves its window's bytes from before the
+call, which `Carried` records as the reply's bytes, and the premise reads no such reply.  The
+corollary states nothing of exactly the runs from whose manifest's `statx` the shim reads errno 0
+and a size of more than 1 MiB, `manifestLimit`, and fewer than `2^32` bytes: the budget of such a
+manifest can exceed the executable's 4,096 pages, and `manifest_elf` then admits a guest trap when
+the memory cannot grow.  Every other run of the executable on Linux meets the premise, among them
+runs in which the manifest's open fails, its `statx` fails, or its `statx` reports a time that
+gives status 61, whatever size the record holds.
 
 The proof composes the footprint with the command's theorems.  `linux_footprint_bounded` gives the
 budget premise of the generated `command.start` from `body_bounded` through `call_prefix_bound`,
@@ -346,28 +342,28 @@ since the shim answers `args_sizes_get` with the count and size of the launch's 
 (`linux_sizes`, `reportedSize_le`), and `statx_along` gives `StatAlong` of `main` from
 `StatxBounded M`: the shim answers `fd_filestat_get` of a descriptor that it holds with one `statx`
 that holds the reply `R k`, and any other descriptor with errno 8.  `linux_exec_meets` excludes the
-trapped runs.  Under a host
-that rejects only exit statuses of 126 or more, as the shim does, a trapped run of `main` and its
-exit has a trapped call among its events (`exec_trapped_call`, from `TrapsInCall` of each part of
-`main`), and no call of the command whose image meets `InRange` traps (`image_untrapped`).  For
-the accepted exit, `exec_main` gives `Meets`, and `run_native` and `handled_native` translate `Run`
-and `Handled` through the image of each WASI event: `path_open` gives the `openat2` calls of
-`Opening` (`open_native`), `fd_filestat_get` one `statx` (`stat_native`), `fd_read` on a handle one
-`read` (`read_native`), `fd_close` one `close` (`close_native`), and a write to standard output one
-`write` of descriptor 1 (`write_native`).  A descriptor that an `openat2` returned stays among the
-numbers that the shim holds until its `close` (`Opening.held`, `held_quiet`), so the calls on it
-reach Linux, and `confined_accepted` gives the names of `NConfined` from `Confined`.
+trapped runs.  Under a host that rejects only exit statuses of 126 or more, as the shim does, a
+trapped run of `main` and its exit has a trapped call among its events (`exec_trapped_call`, from
+`TrapsInCall` of each part of `main`), and no call of the command whose image meets `InRange` traps
+(`image_untrapped`).  For the accepted exit, `exec_main` gives `Meets`, and `run_native` and
+`handled_native` translate `Run` and `Handled` through the image of each WASI event: `path_open`
+gives the `openat2` calls of `Opening` (`open_native`), `fd_filestat_get` one `statx`
+(`stat_native`), `fd_read` on a handle one `read` (`read_native`), `fd_close` one `close`
+(`close_native`), and a write to standard output one `write` of descriptor 1 (`write_native`).  A
+descriptor that an `openat2` returned stays among the numbers that the shim holds until its `close`
+(`Opening.held`, `held_quiet`), so the calls on it reach Linux, and `confined_accepted` gives the
+names of `NConfined` from `Confined`.
 
-`manifest_elf_witness` gives the premises: a memory that holds the file's two segments below
-`2^32` and the initial stack of `h` and `1` at `2^32` (`loadedMem` of [the shared
+`manifest_elf_witness` gives the premises: a memory that holds the file's two segments below `2^32`
+and the initial stack of `h` and `1` at `2^32` (`loadedMem` of [the shared
 witness](../../tests/TestSupport/A64/ElfWitness.lean)), and the replies `witnessReplies`, which
 answer the check's `openat` with descriptor 4, its `close` with 0, and every later call with
 `-ENOENT`.  Every layer event after the check returns an error number, so `InRange` holds, and
 `filestatReply` reads errno 44 (`noent`) from every reply after the check's, so `StatxAfterCheck`
 holds.  Under these replies the manifest's `openat2` returns `-ENOENT`, so the run ends before any
-`statx`, and the bound of `StatxAfterCheck` applies to no reply of that run.  The kernel evaluates
-no run of the executable: the footprint theorem gives the process's run, and the proof reasons over
-its events.
+`statx`, and the bound of `StatxAfterCheck` applies to no reply of that run.  Lean's kernel
+evaluates no run of the executable: the footprint theorem gives the process's run, and the proof
+reasons over its events.
 
 ## Building, running, and testing
 
@@ -391,23 +387,27 @@ wasm`, which fails when `genWasiElf` rejects the module.  It then runs the comma
 host over a preopened test directory, on the host's processor, which must be AArch64 Linux, with the
 directory open as descriptor 3, and under `qemu-aarch64`, QEMU's user-mode emulator, or `QEMU_USER`
 when set, which must be QEMU 9.2 or later, the first release that implements `openat2`.  `RUNNERS`
-selects among the three.  Each run's output lines must be the verdicts of GNU `sha256sum -c` on the
-same manifest, which reads every name that the manifest lists, with FAILED for each name that leaves
-the directory.  In each runner the runs cover matching files, a changed file, a missing file, an
-empty file, a file of 5 MiB and 17 bytes that takes 82 reads, a name with spaces, a binary-mode
-line, links inside and outside the directory, names with `..` inside and outside it, an absolute
-name, a malformed and an empty manifest, no argument and two arguments, a missing manifest and one
-outside the directory, and a standard output on `/dev/full`.  No run writes to stderr.
+selects among the three.  In each runner, the runs on a manifest of matching files and on a
+manifest of mixed verdicts must write the verdicts of GNU `sha256sum -c` on the same manifest and
+exit with its status, 0 and 1, except that each name that leaves the directory, which
+`sha256sum -c` reads and finds OK, must give FAILED.  The two manifests cover matching files, a
+changed file, a missing file, an empty file, a file of 5 MiB and 17 bytes that takes 82 reads, a
+name with spaces, a binary-mode line, a last line without a newline, links inside and outside the
+directory, names with `..` inside and outside it, and an absolute name.  A malformed and an empty
+manifest, no argument, and two arguments must give status 1 and no output, the status that
+`sha256sum -c --strict` gives for the two manifests, a missing manifest status 44 (`noent`), a
+manifest outside the directory status 63 (`perm`), and a standard output on `/dev/full` status 51
+(`nospc`), the errno of the write that failed.  No run writes to stderr.
 
 Natively, the driver runs the manifests of matching files and of mixed verdicts under strace.  The
 traces hold only `openat`, `openat2`, `read`, `statx`, `close`, `write`, and `exit_group`.  The one
-`openat` opens `.` beneath descriptor 3 with `O_DIRECTORY`, the startup's check, and every
-`openat2` opens a name beneath descriptor 3 with `O_RDONLY | O_CLOEXEC` and the resolution
+`openat` is the startup's check, which opens `.` relative to descriptor 3 with `O_DIRECTORY`, and
+every `openat2` opens a name beneath descriptor 3 with `O_RDONLY | O_CLOEXEC` and the resolution
 `RESOLVE_BENEATH | RESOLVE_NO_MAGICLINKS`.  Every `statx` passes the empty path with
 `AT_EMPTY_PATH` and the mask `STATX_ALL`, every `write` names descriptor 1, and every `read`,
-`statx`, and `close` names the descriptor that the last open returned, which a `close` ends before
-the next open and before the exit.  The `openat2` of `../outside/secret.txt`, of the absolute name,
-and of the link out of the directory fails in the kernel with `EXDEV`.
+`statx`, and `close` names the descriptor that the last open returned, which a `close` closes
+before the next open and before the exit.  The `openat2` of `../outside/secret.txt`, of the
+absolute name, and of the link out of the directory fails in the kernel with `EXDEV`.
 
 Five more native runs on the manifest of matching files replace results with strace's injection.
 When the first read of `a.txt` fails with `EIO`, `a.txt` gives FAILED, the other lines OK, and the
@@ -415,21 +415,23 @@ status is 1.  When the first three `openat2` calls return `EAGAIN`, the fourth o
 and the run writes the verdicts of a run without injection.  When the first four return `EAGAIN`,
 the run stops after them with status 29 (`io`), the shim's errno for `EAGAIN`.  When the manifest's
 `close` fails with `EIO`, the run writes nothing and exits with status 29.  When every `write`
-returns 0, the run makes 11 writes of the 10 bytes of `a.txt`'s line and exits with status 77.  With
-`QEMU_USER=~/qemu-9.2/bin/qemu-aarch64`, QEMU 9.2.4 built from source, the driver prints
-`manifest check axiom check passed for 23 theorems`, the module's size, 17,882 bytes, the
-executable's size, 74,248 bytes, and its SHA-256,
+returns 0, the run makes 11 writes of the 10 bytes of `a.txt`'s line and exits with status 77.  On
+AArch64 Linux, with `QEMU_USER=~/qemu-9.2/bin/qemu-aarch64`, QEMU 9.2.4 built from source, the
+driver prints `manifest check axiom check passed for 23 theorems`, the module's size, 17,882 bytes,
+the executable's size, 74,248 bytes, and its SHA-256,
 204e28743ab1d9e40136218d1da96786b265fffd8c76bdb22315c10fe02d5c12, and
 `manifest check: 34 runs passed, 39 verdicts agree with sha256sum -c`.
 
 The second command runs the module on the manifest `good.sha256` of the driver's test directory,
 after the driver has written both, and the third and fourth run the executable on it natively and
-under QEMU, with the directory open as descriptor 3.  Each writes `a.txt: OK`, `empty: OK`, `name
-with spaces: OK`, `big.bin: OK`, `sub/../a.txt: OK`, and `inside-link: OK`, one to a line, and exits
-with status 0.  The manifest's last line has no final newline, and its `big.bin` line is in binary
-mode.  `tests/linux/a64-wasi.sh` writes the executable from the module that `tools/Emit.lean` emits
-and elaborates [the executable's theorems](../../tests/TestSupport/A64/ImageFilesManifestCheck.lean)
-beside it, which requires the three axioms of each.
+under a `qemu-aarch64` of version 9.2 or later, with the directory open as descriptor 3.  Each
+writes `a.txt: OK`, `empty: OK`, `name with spaces: OK`, `big.bin: OK`, `sub/../a.txt: OK`, and
+`inside-link: OK`, one to a line, and exits with status 0.  The manifest's last line has no final
+newline, and its `big.bin` line is in binary mode.
+[`tests/linux/a64-wasi.sh`](../../tests/linux/a64-wasi.sh) writes the executable as `manifest.elf`
+from the module that `tools/Emit.lean` emits, with the commands of the demo's driver, and
+elaborates [the executable's theorems](../../tests/TestSupport/A64/ImageFilesManifestCheck.lean)
+beside it, which requires that each use only the three axioms.
 
 [The verified driver](../../tests/verified/run.sh) runs the 99 samples of [the verified
 cases](../../Verified/Examples/Cases.lean) in Wasmtime against the specifications, and each case
@@ -443,8 +445,8 @@ operating system.
 ## Related examples
 
 [The random-residue histogram](../RandomHistogram/README.md) is a run of the same method on a
-parser of the command line, and [the unbiased random choice](../RandomChoice/README.md) keeps its
-buffers in its loop's state in the same way.  [The SHA-256
+parser of the command line.  [The unbiased random choice](../RandomChoice/README.md) keeps its
+buffers in its loop's state, as the checker's read loops keep the read buffer.  [The SHA-256
 guide](../../Library/Hashing/Sha256/README.md) states the library's theorems, and [the files
 command](../../Verified/Examples/WasiFiles.lean) opens, reads, and writes files under the
 preopened directory with `withOpen`.
@@ -456,5 +458,12 @@ preopened directory with `withOpen`.
 - [`Verified.Call`](../../Verified/Call.lean)
 - [WASI Preview 1 declarations](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx)
 - [openat2(2)](https://man7.org/linux/man-pages/man2/openat2.2.html)
+- [open(2)](https://man7.org/linux/man-pages/man2/open.2.html)
+- [read(2)](https://man7.org/linux/man-pages/man2/read.2.html)
+- [write(2)](https://man7.org/linux/man-pages/man2/write.2.html)
+- [close(2)](https://man7.org/linux/man-pages/man2/close.2.html)
+- [statx(2)](https://man7.org/linux/man-pages/man2/statx.2.html)
+- [Linux `fs/exec.c`, v6.12](https://github.com/torvalds/linux/blob/v6.12/fs/exec.c)
+- [Linux `fs/exec.c`, v4.13](https://github.com/torvalds/linux/blob/v4.13/fs/exec.c)
 - [sha256sum, GNU coreutils](https://www.gnu.org/software/coreutils/manual/html_node/sha2-utilities.html)
 - [FIPS 180-4](https://csrc.nist.gov/pubs/fips/180-4/final)
