@@ -1,5 +1,6 @@
 import Demos.OrderBook.Bound
 import Demos.OrderBook.ProcessSizes
+import Verified.Wasi.BudgetTactics
 import Verified.Wasi.ResourceRules
 
 /-! The allocation charges of the compiled process's `begin` and steps.  `begin` builds the seven
@@ -190,11 +191,6 @@ simproc ↓ envGetOfIndex (Env.get _ (Var.ofIndex _ _ _)) := fun e => do
   let some v ← envValueAt env n | return .continue
   return .done { expr := v }
 
-/-- Proves that a condition of an effect body has enough frames: it calls no function that takes
-the call depth. -/
-local macro "condition_fits" : tactic =>
-  `(tactic| exact Expr.fits_of_depthCalls _ _ _ (by decide) _)
-
 /-- Rewrites the values of an effect body's destructured state to the fields of the state. -/
 local macro "read_state" : tactic =>
   `(tactic| try simp only [Expr.denote, Env.ofFn, Args.get_cons_zero, Args.get_cons_zero',
@@ -365,7 +361,7 @@ theorem step_body_bounded {World : Type} (host : Host World) {R : Nat} {s : Stat
       else restCharge R s) ≤ stepBudget R s
     simp only [stepBudget, decide_eq_true_eq, Nat.le_refl]
   · intro _
-    refine Bounded.bind_ret (nextBudget := 0) ?_ (by condition_fits) ?_
+    refine Bounded.bind_ret (nextBudget := 0) ?_ (by rule_fits) ?_
     · simp +decide only [PureContext.ownedCost, PureContext.exprCost, Expr.allocs, Var.cost,
         ↓reduceIte, Nat.add_zero, coerceCost, Nat.le_refl]
     apply bounded_of_rule
@@ -380,7 +376,7 @@ theorem step_body_bounded {World : Type} (host : Host World) {R : Nat} {s : Stat
   · intro _
     apply bounded_of_rule
     intro spent fits rule
-    refine rule 0 (readCharge R s) ?_ (by condition_fits) ?_ ?_
+    refine rule 0 (readCharge R s) ?_ (by rule_fits) ?_ ?_
     · simp +decide only [PureContext.exprCost, PureContext.ofProg, Expr.allocs,
         ↓reduceIte, Nat.add_zero, Nat.zero_add, ite_self, coerceCost]
       read_state
@@ -390,13 +386,13 @@ theorem step_body_bounded {World : Type} (host : Host World) {R : Nat} {s : Stat
     · intro _
       apply bounded_of_rule
       intro spent fits rule
-      refine rule ?_ (by condition_fits)
+      refine rule ?_ (by rule_fits)
       simp +decide only [PureContext.ownedCost, PureContext.exprCost, PureContext.ofProg,
         Expr.allocs, Var.cost, Ty.copyCost, ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost, ]
       read_state
       exact ite_le_zero (Nat.le_refl _) (Nat.le_refl _)
     · intro _
-      refine Bounded.bind_ret (nextBudget := readCharge R s) ?_ (by condition_fits) ?_
+      refine Bounded.bind_ret (nextBudget := readCharge R s) ?_ (by rule_fits) ?_
       · simp +decide only [PureContext.ownedCost, PureContext.exprCost, Expr.allocs, Var.cost,
           ↓reduceIte, Nat.add_zero, Nat.zero_add, coerceCost, Nat.le_refl]
       apply bounded_of_rule

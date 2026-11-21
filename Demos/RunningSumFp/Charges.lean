@@ -2,6 +2,7 @@ import Demos.RunningSumFp.Limits
 import Demos.RunningSumFp.Module
 import Demos.RunningSumFp.ParseCharges
 import Verified.ChargeFacts
+import Verified.Wasi.BudgetTactics
 import Verified.Wasi.ResourceRules
 
 /-! The allocation charges of the binary64 running sum's `begin` and steps, and their bounds for
@@ -166,11 +167,6 @@ theorem consumeInput_bound_le (state : State) (remaining : state.cursor < state.
 section Bodies
 
 local notation "pureContext" => Resource.PureContext.ofProg io.pure.program io.pure.funs
-
-/-- Proves that a condition of an effect body has enough frames: it calls no function that takes
-the call depth. -/
-local macro "condition_fits" : tactic =>
-  `(tactic| exact Expr.fits_of_depthCalls _ _ _ (by decide) _)
 
 theorem stepModes : entryModes io.step.func.params io.step.func.modes = [.owned] := by
   decide
@@ -352,7 +348,7 @@ theorem step_body_bounded {World : Type} (host : Host World) (state : State) :
     · intro _
       apply bounded_of_rule
       intro spent fits rule
-      refine rule (endCharge state) readCharge ?_ (by condition_fits) ?_ ?_
+      refine rule (endCharge state) readCharge ?_ (by rule_fits) ?_ ?_
       · simp +decide only [PureContext.exprCost, PureContext.ofProg, Expr.allocs,
         ↓reduceIte, Nat.add_zero, Nat.zero_add, ite_self, coerceCost]
         show (if (if state.eof = true then true else !true) = true then endCharge state
@@ -361,7 +357,7 @@ theorem step_body_bounded {World : Type} (host : Host World) (state : State) :
       · intro _
         apply bounded_of_rule
         intro spent fits rule
-        refine rule 0 (io.pureSources.completeLine.bound ⟨state⟩) ?_ (by condition_fits) ?_ ?_
+        refine rule 0 (io.pureSources.completeLine.bound ⟨state⟩) ?_ (by rule_fits) ?_ ?_
         · simp +decide only [PureContext.exprCost, PureContext.ofProg, Expr.allocs,
           ↓reduceIte, Nat.add_zero, Nat.zero_add, ite_self, coerceCost]
           show (if (if (state.line.size.toUInt64 == 0) = true then true else !true) = true then 0
