@@ -13,10 +13,14 @@
 #   3. tests/native/verified.sh without and with --aligned, tests/native/aligned.sh,
 #      tests/native/run.sh, tests/native/bytes.sh, and tests/native/clight.sh 7 300 for the
 #      platform's target;
-#   4. tests/wasi/run.sh, tests/wasi/sys-run.sh, tests/random-histogram/run.sh,
-#      tests/random-choice/run.sh, tests/manifest-check/run.sh, and, on an AArch64 Linux host,
-#      tests/linux/sys-run.sh;
-#   5. tests/baremetal/run.sh, programs.sh, inputs.sh, ctl.sh, and verified.sh under TCG;
+#   4. tests/wasi/run.sh and tests/wasi/sys-run.sh; tests/random-histogram/run.sh,
+#      tests/random-choice/run.sh, and tests/manifest-check/run.sh, each with the runners of
+#      RUNNERS that the host supports: wasm always, native on an AArch64 Linux host with strace,
+#      and qemu when the user-mode emulator is present, for the manifest checker of QEMU 9.2 or
+#      later; and, on an AArch64 Linux host, tests/linux/sys-run.sh, a64-elf.sh, a64-wasi.sh,
+#      a64-wasi-clocks.sh, a64-wasi-preopen.sh, and a64-wasi-files.sh;
+#   5. tests/baremetal/run.sh, programs.sh, inputs.sh, ctl.sh, verified.sh, a64-images.sh, and
+#      a64-uart.sh under TCG, and tests/isla/theorems.sh and m7-theorems.sh;
 #   6. VKB/Check.lean;
 #   7. rocq/check.sh, tests/native/clight-rocq.sh on the programs of step 3, and
 #      clightn/check.sh --mutations;
@@ -30,11 +34,11 @@
 #  11. tools/source-layout and tools/check-doc-links.mjs.
 # A failed build leaves every later step but tests/linux/sys-run.sh, rocq/check.sh, and
 # tests/talos/run.sh unrun, since they load the built modules.  The failure of any other step is
-# recorded, and the next step runs.  A step whose tools are absent is recorded as not run, and so
-# is the driver half of a GPU step whose emission failed.  The build fails on a `sorry` warning
-# and on an axiom report of a file of this repository that names an axiom other than propext,
-# Classical.choice, and Quot.sound.  STATUS.md lists the reports of the dependencies' files that
-# do.
+# recorded, and the next step runs.  A step whose host or tools are absent is recorded as not run,
+# and so is each runner of a demo's driver that the host lacks, in a row of its own, and the driver
+# half of a GPU step whose emission failed.  The build fails on a `sorry` warning and on an axiom
+# report of a file of this repository that names an axiom other than propext, Classical.choice,
+# and Quot.sound.  STATUS.md lists the reports of the dependencies' files that do.
 # STATUS.md holds the commit, the paths that differ from it, the dates of the commit and of the
 # run, the toolchain, the platform, and a table of the steps with each step's status, duration,
 # and the counts that its driver prints, and it ends with what did not run and why.  Before it
@@ -45,8 +49,10 @@
 # the checked configuration.  LEANRUN_THREADS and LEANRUN_MEMORY_HIGH pass to every step, the
 # latter 10G unless set, the limit that AGENTS.md sets for the verified and WASI drivers.  CCOMP,
 # CLIGHTGEN, and CCOMP_STDLIB are as for the native and bare-metal drivers, NM and DTC as for
-# tests/baremetal/run.sh, QEMU and JOBS as for tests/baremetal/verified.sh and
-# tests/native/clight-rocq.sh, and CC and QEMU_USER as for tests/linux/sys-run.sh.
+# tests/baremetal/run.sh, QEMU as for the bare-metal drivers, JOBS as for
+# tests/baremetal/verified.sh and tests/native/clight-rocq.sh, CC as for tests/linux/sys-run.sh,
+# QEMU_USER as for the drivers of tests/linux and of the demos, and ISLA_CPUS as for
+# tests/isla/theorems.sh and m7-theorems.sh.
 # COMPCERT_TREE names the CompCert tree with built proofs for rocq/check.sh,
 # tests/native/clight-rocq.sh, and clightn/check.sh, by default the directory of CCOMP when CCOMP
 # is a path; clightn/check.sh runs only on a tree configured for AArch64.  The script exits with
@@ -186,14 +192,53 @@ ready() {
   fi
 }
 
-# wasm_ready STEP: as ready, for a step that needs wasm-tools and a current Wasmtime host.
-wasm_ready() {
-  ready "$1" wasm-tools:wasm-tools || return 1
+# hosted STEP TOOL...: as ready, for a step that also needs a current Wasmtime host.
+hosted() {
+  ready "$@" || return 1
   if [ ! -x "$root/build/tools/leanexe-wasmtime-host" ] ||
       [ "$root/tools/wasmtime-host.c" -nt "$root/build/tools/leanexe-wasmtime-host" ]; then
     record "$1" "not run: Wasmtime host absent" "" ""
     return 1
   fi
+}
+
+# wasm_ready STEP: as ready, for a step that needs wasm-tools and a current Wasmtime host.
+wasm_ready() {
+  hosted "$1" wasm-tools:wasm-tools
+}
+
+# aarch64_linux STEP: succeeds on an AArch64 Linux host, and otherwise records STEP as not run.
+aarch64_linux() {
+  if [ "$platform" != "Linux on AArch64" ]; then
+    record "$1" "not run: not an AArch64 Linux host" "" ""
+    return 1
+  fi
+}
+
+# Succeeds when the user-mode emulator $1 is of QEMU 9.2 or later, as tests/manifest-check/run.sh
+# requires.
+openat2_qemu() {
+  local version
+  version=$("$1" --version | sed -n '1s/.* version \([0-9]*\)\.\([0-9]*\).*/\1 \2/p')
+  set -- $version
+  [ "$#" -eq 2 ] && { [ "$1" -gt 9 ] || { [ "$1" -eq 9 ] && [ "$2" -ge 2 ]; }; }
+}
+
+# "P checks passed, F failed" for the lines "pass: " and "fail: " of the log $1, with the number
+# of the passes that are the kernel's checks of file theorems and the number of lines "skip: ".
+checks() {
+  local kernel skipped cell
+  kernel=$(matches "^pass: the kernel's check of " "$1")
+  skipped=$(matches '^skip: ' "$1")
+  cell="$(c "$(matches '^pass: ' "$1")") checks passed"
+  if [ "$kernel" -eq 1 ]; then
+    cell+=", 1 of them a kernel check of file theorems"
+  elif [ "$kernel" -ne 0 ]; then
+    cell+=", $(c "$kernel") of them kernel checks of file theorems"
+  fi
+  cell+=", $(c "$(matches '^fail: ' "$1")") failed"
+  [ "$skipped" -eq 0 ] || cell+=", $(c "$skipped") skipped"
+  echo "$cell"
 }
 
 # "T theorems in A axiom audits" for the lines "... axiom check passed for T theorems" of the log
@@ -472,44 +517,83 @@ step_wasi() {
   audited=$(audits "$log")
   [ -z "$audited" ] || cell+="; $audited"
   record "$step" "$(outcome)" "$seconds" "${cell#; }"
-  step='`tests/wasi/sys-run.sh`'
+}
+
+step_wasi_sys() {
+  local step='`tests/wasi/sys-run.sh`' cell
+  wasm_ready "$step" || return 0
   run 4-wasi-sys tests/wasi/sys-run.sh
   cell=""
   if [ "$code" -eq 0 ]; then
     cell=$(last '^flat call Wasmtime cases passed: ([0-9]+)$' '\1 cases passed' "$log")
   fi
   record "$step" "$(outcome)" "$seconds" "$cell"
-  step='`tests/random-histogram/run.sh`'
-  run 4-random-histogram tests/random-histogram/run.sh
-  cell=""
-  if [ "$code" -eq 0 ]; then
-    cell=$(last '^random histogram: ([0-9]+) runs passed$' '\1 runs passed' "$log")
+}
+
+# demo_runners NAME: sets runners to the runners of tests/NAME/run.sh that this host supports, and
+# left and why to the others and the reasons.
+demo_runners() {
+  runners=wasm left=() why=()
+  if [ "$platform" != "Linux on AArch64" ]; then
+    left+=(native)
+    why+=("not an AArch64 Linux host")
+  elif ! have strace; then
+    left+=(native)
+    why+=("strace absent")
+  else
+    runners+=" native"
   fi
-  record "$step" "$(outcome)" "$seconds" "$cell"
-  step='`tests/random-choice/run.sh`'
-  run 4-random-choice tests/random-choice/run.sh
-  cell=""
-  if [ "$code" -eq 0 ]; then
-    cell=$(last '^random choice: ([0-9]+) runs passed$' '\1 runs passed' "$log")
+  if ! have "$qemu_user"; then
+    left+=(qemu)
+    why+=("qemu-aarch64 absent")
+  elif [ "$1" = manifest-check ] && ! openat2_qemu "$qemu_user"; then
+    left+=(qemu)
+    why+=("qemu-aarch64 older than 9.2")
+  else
+    runners+=" qemu"
   fi
-  record "$step" "$(outcome)" "$seconds" "$cell"
-  step='`tests/manifest-check/run.sh`'
-  run 4-manifest-check tests/manifest-check/run.sh
-  cell=""
-  if [ "$code" -eq 0 ]; then
-    cell=$(last '^manifest check: ([0-9]+) runs passed, ([0-9]+) verdicts agree with sha256sum -c$' \
-      '\1 runs passed, \2 verdicts' "$log")
-  fi
-  record "$step" "$(outcome)" "$seconds" "$cell"
+}
+
+# The demos' drivers, each with the runners of RUNNERS that this host supports.  The step names
+# RUNNERS when it leaves a runner out, and each runner left out has a row of its own, not run.
+step_demos() {
+  local name step tools runners cell i left=() why=()
+  for name in random-histogram random-choice manifest-check; do
+    step="\`tests/$name/run.sh\`"
+    tools=(wasm-tools:wasm-tools)
+    case $name in
+      random-choice) tools+=("GNU time:/usr/bin/time") ;;
+      manifest-check) tools+=(sha256sum:sha256sum) ;;
+    esac
+    hosted "$step" "${tools[@]}" || continue
+    demo_runners "$name"
+    if [ "${#left[@]}" -ne 0 ]; then
+      step="\`RUNNERS='$runners' tests/$name/run.sh\`"
+    fi
+    run "4-$name" env RUNNERS="$runners" QEMU_USER="$qemu_user" "tests/$name/run.sh"
+    cell=""
+    if [ "$code" -eq 0 ]; then
+      case $name in
+        random-histogram)
+          cell=$(last '^random histogram: ([0-9]+) runs passed$' '\1 runs passed' "$log") ;;
+        random-choice)
+          cell=$(last '^random choice: ([0-9]+) runs passed$' '\1 runs passed' "$log") ;;
+        manifest-check)
+          cell=$(last '^manifest check: ([0-9]+) runs passed, ([0-9]+) verdicts agree with sha256sum -c$' \
+            '\1 runs passed, \2 verdicts' "$log") ;;
+      esac
+    fi
+    record "$step" "$(outcome)" "$seconds" "$cell"
+    for i in "${!left[@]}"; do
+      record "\`RUNNERS=${left[$i]} tests/$name/run.sh\`" "not run: ${why[$i]}" "" ""
+    done
+  done
 }
 
 # The descriptions of the Linux call layer, which need no built module.
 step_linux_sys() {
   local step='`tests/linux/sys-run.sh`' cell="" tool absent=()
-  if [ "$platform" != "Linux on AArch64" ]; then
-    record "$step" "not run: not an AArch64 Linux host" "" ""
-    return 0
-  fi
+  aarch64_linux "$step" || return 0
   for tool in cc:"${CC:-cc}" qemu-aarch64:"${QEMU_USER:-qemu-aarch64}" uv:uv \
       systemd-run:systemd-run; do
     have "${tool#*:}" || absent+=("${tool%%:*}")
@@ -523,6 +607,31 @@ step_linux_sys() {
     cell=$(last '^linux frame cases passed: ([0-9]+)$' '\1 frame test runs passed' "$log")
   fi
   record "$step" "$(outcome)" "$seconds" "$cell"
+}
+
+# The AArch64 back end's Linux executables, whose files the kernel checks and which run on the
+# host's processor and under the user-mode emulator.
+step_a64_linux() {
+  local name step tools
+  for name in a64-elf a64-wasi a64-wasi-clocks a64-wasi-preopen a64-wasi-files; do
+    step="\`tests/linux/$name.sh\`"
+    aarch64_linux "$step" || continue
+    tools=(qemu-aarch64:"$qemu_user")
+    case $name in
+      a64-elf) tools+=(systemd-run:systemd-run) ;;
+      a64-wasi) tools+=(strace:strace uv:uv systemd-run:systemd-run) ;;
+      a64-wasi-clocks) tools+=(wasm-tools:wasm-tools strace:strace uv:uv systemd-run:systemd-run) ;;
+      a64-wasi-preopen) tools+=(wasm-tools:wasm-tools strace:strace) ;;
+      a64-wasi-files) tools+=(wasm-tools:wasm-tools strace:strace uv:uv) ;;
+    esac
+    if [ "$name" = a64-elf ]; then
+      ready "$step" "${tools[@]}" || continue
+    else
+      hosted "$step" "${tools[@]}" || continue
+    fi
+    run "4-$name" env QEMU_USER="$qemu_user" "tests/linux/$name.sh"
+    record "$step" "$(outcome)" "$seconds" "$(checks "$log")"
+  done
 }
 
 step_baremetal() {
@@ -563,6 +672,43 @@ step_baremetal() {
     cell+="; $(nouns "$unbuilt_count" "module that does" "modules that do") not build"
   fi
   record "$step" "$(outcome)" "$seconds" "${cell#; }"
+}
+
+# The AArch64 back end's arm64 Images, whose files the kernel checks, under TCG.
+step_a64_images() {
+  local name step
+  for name in a64-images a64-uart; do
+    step="\`tests/baremetal/$name.sh\`"
+    ready "$step" QEMU:"$qemu" || continue
+    run "5-baremetal-$name" env ACCEL=tcg "tests/baremetal/$name.sh"
+    record "$step" "$(outcome)" "$seconds" "$(checks "$log")"
+  done
+}
+
+# The theorems of the AArch64 and Cortex-M7 models' forms, which tests/isla/theorems.sh and
+# m7-theorems.sh elaborate from the committed traces of tests/isla.  Neither driver runs Isla.
+step_isla() {
+  local name step std modules reports permitted failed cell
+  std='(propext|Classical\.choice|Quot\.sound)'
+  for name in theorems m7-theorems; do
+    step="\`tests/isla/$name.sh\`"
+    if [ "$name" = theorems ]; then
+      ready "$step" || continue
+    else
+      ready "$step" "GNU time:/usr/bin/time" || continue
+    fi
+    run "5-isla-$name" "tests/isla/$name.sh"
+    modules=$(matches '^tests/TestSupport/[^ ]+\.lean: [0-9.]+ s' "$log")
+    reports=$(matches 'depends on axioms|does not depend on any axioms' "$log")
+    permitted=$(matches "does not depend on any axioms\$|depends on axioms: \\[$std(, $std)*\\]\$" \
+      "$log")
+    failed=$(matches '^fail: ' "$log")
+    cell="$(nouns "$modules" module modules) elaborated; $(c "$reports") axiom reports,"
+    cell+=" $(c "$permitted") of them with no axiom beyond \`propext\`, \`Classical.choice\`, and"
+    cell+=" \`Quot.sound\`"
+    [ "$failed" -eq 0 ] || cell+="; $(nouns "$failed" failure failures)"
+    record "$step" "$(outcome)" "$seconds" "$cell"
+  done
 }
 
 step_vkb() {
@@ -811,7 +957,7 @@ write_status() {
   {
     echo "# Status"
     echo
-    echo "[\`tools/full-check\`](tools/full-check) wrote this record of the full check of the commit below.  The record covers the tree of that commit with the paths listed as differing from it, and no later commit.  The check builds every module of every library and the test executables, runs the drivers of the verified compiler's modules, of their translations to C and to bare-metal AArch64, of the WASI modules, and of the GPU kernels, and checks the VKB, the Rocq proof, and the reference semantics N.  Each count comes from the output of the step's driver, which the checkout that ran the check keeps in \`build/full-check/\`."
+    echo "[\`tools/full-check\`](tools/full-check) wrote this record of the full check of the commit below.  The record covers the tree of that commit with the paths listed as differing from it, and no later commit.  The check builds every module of every library and the test executables, runs the drivers of the verified compiler's modules, of their translations to C and to bare-metal AArch64, of the WASI modules and the demos, of the AArch64 back end's Linux executables and arm64 Images, and of the GPU kernels, and checks the theorems of the AArch64 and Cortex-M7 forms against the Isla traces, the VKB, the Rocq proof, and the reference semantics N.  Each count comes from the output of the step's driver, which the checkout that ran the check keeps in \`build/full-check/\`."
     echo
     echo "| Item | Value |"
     echo "|---|---|"
@@ -849,7 +995,16 @@ write_status() {
     notes+=" translation that \`tests/native/verified.sh\` reports, \`tests/native/bench.sh\`, which"
     notes+=" measures time, the decoder test, which needs the WebAssembly test suite converted by"
     notes+=" \`wasm-tools\`, and the bare-metal tests under KVM, which need an AArch64 machine with"
-    notes+=" KVM, while TCG emulates the processor on any machine."
+    notes+=" KVM, while TCG emulates the processor on any machine.  It also leaves out"
+    notes+=" \`tests/baremetal/a64-rcv.sh\`, which needs the RCV corpus and a memory limit of 48G,"
+    notes+=" and the regeneration of the Isla traces by \`tests/isla/traces.sh\`,"
+    notes+=" \`linux-traces.sh\`, and \`m7-traces.sh\`, which needs Isla with the repository's"
+    notes+=" patch, the IR of the Sail model, and Z3.  The Isla steps read the committed traces."
+    notes+="  The check runs neither the Cortex-M7 drivers of the board and of Renode,"
+    notes+=" \`tests/baremetal/m7-board.sh\` and \`usart3.sh\`, nor those under QEMU's mps2-an500"
+    notes+=" machine, \`m7.sh\`, \`req.sh\`, \`m7-qemu.sh\`, and \`m7-cosim.sh\`.  The other"
+    notes+=" drivers of [the test suites](tests/README.md) that no step calls run only when a"
+    notes+=" person runs them."
     echo "$notes"
   } >"$logs/STATUS.md"
   found=$(forbidden "$logs/STATUS.md")
@@ -870,6 +1025,7 @@ main() {
   ccomp=${CCOMP:-ccomp}
   clightgen=${CLIGHTGEN:-clightgen}
   qemu=${QEMU:-qemu-system-aarch64}
+  qemu_user=${QEMU_USER:-/usr/bin/qemu-aarch64}
   tree=${COMPCERT_TREE:-}
   if [ -z "$tree" ] && [[ $ccomp == */* ]]; then
     tree=$(dirname "$ccomp")
@@ -916,8 +1072,13 @@ main() {
   step_chunks
   step_native
   step_wasi
+  step_wasi_sys
+  step_demos
   step_linux_sys
+  step_a64_linux
   step_baremetal
+  step_a64_images
+  step_isla
   step_vkb
   step_rocq
   step_clightn

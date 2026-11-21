@@ -24,12 +24,15 @@
 # closes, and openat2 calls of the scenarios of closes and handles must name only standard streams
 # and descriptors that the shim holds, which tests/linux/wasi/files-names.py checks.
 #
-# QEMU 8.2.2 answers openat2 with ENOSYS, so each run under qemu-aarch64 must equal the native run
-# with strace injecting ENOSYS into every openat2.  With 1,024 descriptors the opens without closes
-# end with errno 29 after 1,020 opens, and the close of descriptor 1,023 then returns errno 0, and
-# with 2,048 the 1,021st open returns descriptor 1,024, which ends the run with the shim's trap,
-# status 2.  Each request that the shim refuses with a
-# trap ends the run with status 2 after the open that precedes it.  strace -X raw shows the open_how
+# The script reads the release of qemu-aarch64 from its --version.  QEMU 9.2 is the first release
+# that implements openat2, and under it or a later release each run of a scenario and of files.elf
+# must have the status, output, and directory of the native run.  An earlier release, such as
+# 8.2.2, answers openat2 with ENOSYS, and under it each run of a scenario must have those of the
+# native run with strace injecting ENOSYS into every openat2, and files.elf must end with status
+# 29.  With 1,024 descriptors the opens without closes end with errno 29 after 1,020 opens, and
+# the close of descriptor 1,023 then returns errno 0, and with 2,048 the 1,021st open returns
+# descriptor 1,024, which ends the run with the shim's trap, status 2.  Each request that the shim
+# refuses with a trap ends the run with status 2 after the open that precedes it.  strace -X raw shows the open_how
 # record of every openat2 of the flag scenario, which must hold the flags of openFlagsWord, the mode
 # 0666 exactly for O_CREAT, and the resolution 0xa, and the raw arguments of each openat2 name
 # descriptor 3, the path buffer and the record in the shim's scratch, and the size 24.  strace's
@@ -45,6 +48,19 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
 qemu=${QEMU_USER:-/usr/bin/qemu-aarch64}
+if ! release=$("$qemu" --version | sed -n '1s/.* version \([0-9]*\)\.\([0-9]*\).*/\1 \2/p') ||
+    [ -z "$release" ]; then
+  echo "fail: $qemu does not give a QEMU release"
+  exit 1
+fi
+read -r major minor <<<"$release"
+if [ "$major" -gt 9 ] || { [ "$major" -eq 9 ] && [ "$minor" -ge 2 ]; }; then
+  openat2=yes
+  against="the native run"
+else
+  openat2=no
+  against="the native run with ENOSYS"
+fi
 host=${HOST:-$root/build/tools/leanexe-wasmtime-host}
 status=0
 if [ "${1:-}" = --runs ] && [ -n "${2:-}" ]; then
@@ -131,6 +147,7 @@ fixture "$runs/n-files"
 fixture "$runs/w-files"
 code=0
 limited "$out/files.elf" </dev/null >"$runs/n-files.out" 3<"$runs/n-files" || code=$?
+native=$code
 want=0
 limited "$host" --dir "$runs/w-files" --stdin-file /dev/null --stdout-file "$runs/w-files.out" \
   run "$out/files.wasm" 2>"$runs/w-files.err" || want=$?
@@ -188,7 +205,8 @@ for s in c h t; do
   want_status "scenario $s under strace" "$code" 0
   uv run "$out/files-names.py" "scenario $s" "$runs/s-$s.log" || status=1
 done
-# Under QEMU against the native run with ENOSYS injected into every openat2.
+# Under QEMU against the native run, with ENOSYS injected into every openat2 under a release
+# before 9.2.
 for s in p f c h t 1 2 3 4 5 6 7 8 9; do
   printf %s "$s" >"$runs/in-$s"
   fixture "$runs/q-$s"
@@ -196,16 +214,31 @@ for s in p f c h t 1 2 3 4 5 6 7 8 9; do
   limited "$qemu" "$out/cases.elf" <"$runs/in-$s" >"$runs/q-$s.out" 3<"$runs/q-$s" || code=$?
   fixture "$runs/e-$s"
   want=0
-  limited strace -f -o "$runs/e-$s.log" -e trace=openat2 -e inject=openat2:error=ENOSYS \
-    "$out/cases.elf" <"$runs/in-$s" >"$runs/e-$s.out" 3<"$runs/e-$s" || want=$?
-  want_status "scenario $s under qemu against the native run with ENOSYS" "$code" "$want"
-  same_file "scenario $s under qemu: the native run's output with ENOSYS" "$runs/q-$s.out" \
-    "$runs/e-$s.out"
+  if [ "$openat2" = yes ]; then
+    limited "$out/cases.elf" <"$runs/in-$s" >"$runs/e-$s.out" 3<"$runs/e-$s" || want=$?
+  else
+    limited strace -f -o "$runs/e-$s.log" -e trace=openat2 -e inject=openat2:error=ENOSYS \
+      "$out/cases.elf" <"$runs/in-$s" >"$runs/e-$s.out" 3<"$runs/e-$s" || want=$?
+  fi
+  want_status "scenario $s under qemu against $against" "$code" "$want"
+  same_file "scenario $s under qemu: the output of $against" "$runs/q-$s.out" "$runs/e-$s.out"
+  listing "$runs/q-$s" >"$runs/q-$s.list"
+  listing "$runs/e-$s" >"$runs/e-$s.list"
+  same_file "scenario $s under qemu: the directory of $against" "$runs/q-$s.list" \
+    "$runs/e-$s.list"
 done
 fixture "$runs/q-files"
 code=0
 limited "$qemu" "$out/files.elf" </dev/null >"$runs/q-files.out" 3<"$runs/q-files" || code=$?
-want_status "files under qemu, openat2 failing with ENOSYS" "$code" 29
+if [ "$openat2" = yes ]; then
+  want_status "files under qemu against the native run's status" "$code" "$native"
+  same_file "files under qemu: the native run's output" "$runs/q-files.out" "$runs/n-files.out"
+  listing "$runs/q-files" >"$runs/q-files.list"
+  same_file "files under qemu: the native run's directory" "$runs/q-files.list" \
+    "$runs/n-files.list"
+else
+  want_status "files under qemu, openat2 failing with ENOSYS" "$code" 29
+fi
 # The descriptor limit.
 fixture "$runs/n-l"
 printf l >"$runs/in-l"
