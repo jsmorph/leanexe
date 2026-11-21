@@ -12,8 +12,7 @@ and the environment, whose cases `stringStub_sim` of `Verified/ShimA64/Strings.l
 those of `clock_time_get` and `random_get`, whose cases `clockStubs_sim` of
 `Verified/ShimA64/Clocks.lean` proves, the stubs of the preopened directory, whose cases
 `preopenStub_sim` of `Verified/ShimA64/Preopen.lean` proves, and the stubs of the files under it,
-whose cases `fileStub_sim` of `Verified/ShimA64/Filestat.lean` proves.  Each increment that adds a
-stub to `flatStubs` adds its case here.
+whose cases `fileStub_sim` of `Verified/ShimA64/Filestat.lean` proves.
 -/
 
 namespace Verified.ShimA64

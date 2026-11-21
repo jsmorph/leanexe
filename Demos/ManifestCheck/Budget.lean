@@ -51,10 +51,10 @@ of a charge for each index, and `lines_charge_le` bounds that sum for the lines 
 `n` bytes by `4 (n + 1)`: the lines are disjoint pieces of the manifest, so their lengths with one
 byte each sum to at most `n + 1` (`lines_total`), and each line has at least 67 bytes.
 
-`budget_le` gives the closed form `budget M ≤ 181 M + 12,649,115`.  `prefix_bound` gives the
-budget premise of `total_meets` from `body_bounded` at the start world, and `total_meets_budget`
-states `total_meets` with the premises on the host's replies in its place.  Linux 4.13 and later limit the strings and
-pointers of `argv` and `envp` together to at most 6 MiB, `argsLimit` (`get_arg_page` of
+`budget_le` gives the closed form `budget M ≤ 181 M + 12,649,115`.  `prefix_bound` gives the budget
+premise of `total_meets` from `body_bounded` at the start world, and `total_meets_budget` states
+`total_meets` with the premises on the host's replies in its place.  Linux 4.13 and later limit the
+strings and pointers of `argv` and `envp` together to at most 6 MiB, `argsLimit` (`get_arg_page` of
 `fs/exec.c` in v4.13, `bprm_stack_limits` in v6.12). -/
 
 namespace Demos.ManifestCheck

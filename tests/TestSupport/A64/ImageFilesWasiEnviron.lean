@@ -14,18 +14,18 @@ reads from the file, `environ_elf_layout` that they are those of the generator's
 `environ_elf_entry` that the file's entry is the prefix `wasiEntry`, and `environ_elf_room` that
 the stack's room holds the module's stack bound.
 
-`environ_elf` holds for every reply sequence.  From a process whose memory holds the file as
-Linux's loader places it, with the arguments `args` and the environment `environ` on Linux's
-initial stack at SP, the program counter at the entry, and no event in the trace, the process
-reaches `SVC #0` with X8 at 94, `exit_group`, with the UART's state as it was.  Its trace holds the
-layer events `ls`, the images of the WASI events `T` of a run of the command's action under
-`linuxHost` with the launch `⟨args, environ, false⟩`, so the variables that the run's
-`environ_sizes_get` and `environ_get` report are those of `environ`, which the stubs read through
-the initial SP that `main` saved.  Each event of `ls` holds its reply and writes within the cap's
-linear memory or into the timespec, and the writes of descriptor 1 in `ls` took the bytes that the
-`fd_write` events of `T` to standard output committed.  The run is an accepted exit, whose status
-X0 holds, an exit that the shim rejects, with X0 at 1, a trap of the shim, with X0 at 2, or a trap
-of the guest after a prefix of the action, with X0 at 2.
+`environ_elf` holds for every reply sequence.  From a process whose memory holds the file as Linux's
+loader places it, with the arguments `args` and the environment `environ` on Linux's initial stack
+at SP, the program counter at the entry, and no event in the trace, the process reaches `SVC #0`
+with X8 at 94, `exit_group`, with the UART's state as it was.  Its trace holds the layer events
+`ls`, the images of the WASI events `T` of a run of the command's action under `linuxHost` with the
+launch `⟨args, environ, false⟩`, so the variables that the run's `environ_sizes_get` and
+`environ_get` report are those of `environ`, which the stubs read through the initial SP that `main`
+saved.  Each event of `ls` holds its reply and writes within the cap's linear memory or is a
+`clock_gettime` into the timespec or a `statx` into the `statx` record, and the writes of descriptor
+1 in `ls` took the bytes that the `fd_write` events of `T` to standard output committed.  The run is
+an accepted exit, whose status X0 holds, an exit that the shim rejects, with X0 at 1, a trap of the
+shim, with X0 at 2, or a trap of the guest after a prefix of the action, with X0 at 2.
 -/
 
 namespace TestSupport.A64.ImageFilesWasiEnviron

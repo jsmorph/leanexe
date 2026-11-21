@@ -148,11 +148,10 @@ inductive NManifestReads (fd : UInt64) (size : Nat) :
 at descriptor `fd`, `status` is its status, and, when the status is 0, `bytes` are the manifest's
 bytes.  The `statx` comes first: an error number ends the reading with its errno, and an access,
 modification, or reported birth time of `2^64` nanoseconds or more, or a size of `2^32` bytes or
-more, ends it with status 61
-(`overflow`).  Otherwise the reads of `NManifestReads` follow for a buffer of the size that it
-reported, and a status other than 0 ends the reading.  When the bytes fill the buffer, a last read
-of 65,536 bytes follows, and the status is its errno for an error number, 1 when it returned bytes,
-and 0 when it returned 0. -/
+more, ends it with status 61 (`overflow`).  Otherwise the reads of `NManifestReads` follow for a
+buffer of the size that it reported, and a status other than 0 ends the reading.  When the bytes
+fill the buffer, a last read of 65,536 bytes follows, and the status is its errno for an error
+number, 1 when it returned bytes, and 0 when it returned 0. -/
 inductive NManifestBody (fd : UInt64) : List Linux.Event → UInt64 → List UInt8 → Prop
   | statFailed {e : Linux.Event} (stat : StatOf fd e) (error : Linux.isError e.ret = true) :
       NManifestBody fd [e] (errnoOf (0 - e.ret)) []
@@ -198,9 +197,9 @@ inductive NManifestRun (held : Bool) (name : List UInt8) :
 /-- `NFileReads fd r done events bytes ending`: `events` are at most `r` reads of descriptor `fd`
 after the bytes `done`, each of the bytes of the read buffer of 65,536 bytes after those that the
 reads before it left in the buffer, `window` of the bytes read so far, and `bytes` are the bytes
-that they returned.  Each read but the last
-returned a count of one byte or more, which is no error number.  The last returned 0 (`eof`) or an
-error number (`failed`), or `r` reads returned bytes (`cut`). -/
+that they returned.  Each read but the last returned a count of one byte or more, which is no error
+number.  The last returned 0 (`eof`) or an error number (`failed`), or `r` reads returned bytes
+(`cut`). -/
 inductive NFileReads (fd : UInt64) : Nat → List UInt8 → List Linux.Event → List UInt8 → Ending →
     Prop
   | cut {done : List UInt8} : NFileReads fd 0 done [] [] .cut
@@ -330,9 +329,9 @@ inductive NHandled : List Linux.Event → Prop
 
 /-- What the request asks of a native run with the arguments `args`, in which the shim holds
 descriptor 3 exactly when `held`, whose layer events before `exit_group` are `events` and whose
-status is `code`: the verdicts and statuses of `NRun` for the
-manifest's bytes `manifest`, confinement, every `openat2` beneath descriptor 3 naming the argument
-or the name of a line of an accepted manifest, and the use of descriptors of `NHandled`. -/
+status is `code`: the verdicts and statuses of `NRun` for the manifest's bytes `manifest`,
+confinement, every `openat2` beneath descriptor 3 naming the argument or the name of a line of an
+accepted manifest, and the use of descriptors of `NHandled`. -/
 def NMeets (held : Bool) (args : List (List UInt8)) (events : List Linux.Event) (code : UInt64) :
     Prop :=
   ∃ manifest, NRun held args manifest events code ∧ NConfined args manifest events ∧

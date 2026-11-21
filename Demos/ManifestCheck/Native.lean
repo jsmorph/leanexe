@@ -14,21 +14,20 @@ fuel has the footprint of `Footprint`: the layer events are images of the run's 
 ends at an accepted exit, a rejected exit, a trap of the shim, or a trap of the guest after a
 prefix of `main`.
 
-`linux_footprint_bounded` states the footprint without a guest trap at a cap of at most 65,535
-pages that hold `budget M` above the static heap's top, for a launch whose arguments' strings, each
-with its zero
-byte, and eight-byte pointers take at most `argsLimit` bytes, and for replies `R` that meet
-`StatxBounded F L I M R`.  `StatxBounded` states the premise of `body_bounded` on
-`fd_filestat_get` in terms of the replies, as `LeanExe.Wasi.Host.Along`: at each prefix of
-`main` under `linuxHost F L I R` whose next request is `fd_filestat_get` of a descriptor that the
-shim holds, the reply `R k` of the `statx` that the shim then makes after the
-world's `k` layer events, when the shim's `filestatReply` reads errno 0 from it, reports a size of
-at most `M` bytes or of `2^32` bytes or more.  `main` makes at most one such request, of the
-manifest's descriptor, so the premise bounds the reply to the run's `statx` and no other reply of
-`R`.  The earlier replies decide whether that `statx` happens and its index.
-`statx_along` gives `StatAlong` of `main` from it, since the image of `fd_filestat_get` of a held
-descriptor is one `statx` that holds the reply `R k`.  `budget_fits` states that the budget of a
-manifest of `manifestLimit` bytes, 1 MiB, fits the 4,096 pages of the native executable. -/
+`linux_footprint_bounded` states the footprint without a guest trap at a cap of at most 65,535 pages
+that hold `budget M` above the static heap's top, for a launch whose arguments' strings, each with
+its zero byte, and eight-byte pointers take at most `argsLimit` bytes, and for replies `R` that meet
+`StatxBounded F L I M R`.  `StatxBounded` states the premise of `body_bounded` on `fd_filestat_get`
+in terms of the replies, as `LeanExe.Wasi.Host.Along`: at each prefix of `main` under
+`linuxHost F L I R` whose next request is `fd_filestat_get` of a descriptor that the shim holds, the
+reply `R k` of the `statx` that the shim then makes after the world's `k` layer events, when the
+shim's `filestatReply` reads errno 0 from it, reports a size of at most `M` bytes or of `2^32` bytes
+or more.  `main` makes at most one such request, of the manifest's descriptor, so the premise bounds
+the reply to the run's `statx` and no other reply of `R`.  The earlier replies decide whether that
+`statx` happens and its index.  `statx_along` gives `StatAlong` of `main` from it, since the image
+of `fd_filestat_get` of a held descriptor is one `statx` that holds the reply `R k`.  `budget_fits`
+states that the budget of a manifest of `manifestLimit` bytes, 1 MiB, fits the 4,096 pages of the
+native executable. -/
 
 namespace Demos.ManifestCheck
 

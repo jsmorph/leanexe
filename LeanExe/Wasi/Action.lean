@@ -131,9 +131,10 @@ def FillResult.of (buffer : Bytes) (start count errno used : UInt64) (bytes : By
   if errno = 0 then ⟨0, used, buffer.splice (buffer.window start count).1 bytes⟩
   else ⟨errno, 0, buffer.clear start count⟩
 
-/-- Calls `fd_read` once for stdin into the window of `buffer` that `start` and `count` name, or
-returns errno 61 without a call for a window of `2^32` bytes or more.  On errno 0 the result holds the number of bytes read and `buffer` with the window's bytes replaced by
-the read's range, whose first bytes are those read, and after an errno the count 0 and `buffer`
+/-- Calls `fd_read` once for stdin into the window of `buffer` that `start` and `count` name.  For a
+window of `2^32` bytes or more, `Exec`'s rule `read_reject` gives the read errno 61 without a call.
+On errno 0 the result holds the number of bytes read and `buffer` with the window's bytes replaced
+by the read's range, whose first bytes are those read, and after an errno the count 0 and `buffer`
 with the window's bytes set to 0. -/
 def readStdin (buffer : Bytes) (start count : UInt64) : Action FillResult :=
   .read (buffer.windowLength start count) fun reply =>

@@ -75,11 +75,11 @@
 # histogram.elf from it with a64-wasi wasm, and Lean elaborates
 # tests/TestSupport/A64/ImageFilesRandomHistogram.lean beside them, so that the kernel checks that
 # histogram.elf holds the bytes that genWasiElf gives for the command's module and proves the
-# executable's theorems, among them a process and replies for which the premises of the
-# executable's corollary hold.  tests/random-histogram/run.sh writes the executable from the same module
-# with the same commands and runs it.  In the same way it writes choice.wasm, the command of
+# executable's theorems, among them a process and replies for which the premises of the executable's
+# corollary hold.  tests/random-histogram/run.sh writes the executable from the same module with the
+# same commands and runs it.  In the same way it writes choice.wasm, the command of
 # Demos/RandomChoice/Command.lean, and choice.elf, and Lean elaborates
-# tests/TestSupport/A64/ImageFilesRandomChoice.lean beside them; tests/random-choice/run.sh
+# tests/TestSupport/A64/ImageFilesRandomChoice.lean beside them, and tests/random-choice/run.sh
 # writes and runs the same executable.  It also writes manifest.wasm, the command of
 # Demos/ManifestCheck/Command.lean, and manifest.elf, and Lean elaborates
 # tests/TestSupport/A64/ImageFilesManifestCheck.lean beside them, whose theorems include the

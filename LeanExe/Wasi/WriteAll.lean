@@ -26,7 +26,7 @@ the passes.  `WriteAllRun.taken` states, for fewer than `2^64` bytes, that a run
 bytes from `written` up to `value`, one write for each pass when `value` falls short of the bytes.
 A run that exits does so with the errno, from 1 to 76, of its last write, after taking fewer than
 the bytes from `written` on.  `WriteAllRun.trapped_write` states that a run that traps under a
-host that accepts every status below 126 has a trapped write. -/
+host that rejects no exit status below 126 has a trapped write. -/
 
 namespace LeanExe.Wasi
 
@@ -392,8 +392,8 @@ theorem WriteAllRun.shape {World : Type} {host : Host World} {bytes : List UInt8
         exact some
   | trapped _ _ => exact ⟨(fun _ e => nomatch e), fun _ e => nomatch e⟩
 
-/-- A run of the loop of `writeAll` that traps under a host that accepts every exit status below
-126 has a trapped write to standard output. -/
+/-- A run of the loop of `writeAll` that traps under a host that rejects no exit status below 126
+has a trapped write to standard output. -/
 theorem WriteAllRun.trapped_write {World : Type} {host : Host World}
     (accepts : ∀ {world code message final}, host.exitTrap world code message final →
       126 ≤ code.toNat)

@@ -10,17 +10,17 @@ layout of an image in its flash, and the initialization of `board_init` in
 The flash of 2 MiB lies at `0x08000000` on the AXIM interface and at `0x00200000` on the ITCM
 interface, and DTCM's 128 KiB at `0x20000000` (RM0410 Rev 4, section 2.2.2, Figure 2, and section
 2.3).  `st-flash write` puts an image's bytes at `0x08000000`, so the code map holds them from both
-addresses.  With BOOT0 low, the processor reads the vector table at reset from the address that
-the option byte BOOT_ADD0 names, and this board's BOOT_ADD0, 0x0080, names `0x00200000` (RM0410
-Rev 4, section 2.5 and Table 2; OPTCR1 reads `0x00400080`).  The image's table therefore lies at
-`0x00200000`, and its reset entry names the initialization there, so the program runs from the
-ITCM alias.  SP starts at the top of DTCM, and the stack's limit is DTCM's base.  A program whose
+addresses.  With BOOT0 low, the processor reads the vector table at reset from the address that the
+option byte BOOT_ADD0 names, and this board's BOOT_ADD0, 0x0080, names `0x00200000` (RM0410 Rev 4,
+section 2.5 and Table 2, and OPTCR1's value `0x00400080`).  The image's table therefore lies at
+`0x00200000`, and its reset entry names the initialization there, so the program runs from the ITCM
+alias.  SP starts at the top of DTCM, and the stack's limit is DTCM's base.  A program whose
 functions access linear memory or globals keeps the module's store in the generator's area from
 `areaHeader`, DTCM's base, below the stack, whose limit is then the area's end `areaEnd`, and its
 image runs the setup of `LeanExe/M7/Setup.lean` before the initialization.
 
 `platform` names DTCM as Normal memory and the 65,536 words from `0x40000000` that requests address
-as devices; RCC at `0x40023800`, GPIOD at `0x40020C00`, and USART3 at `0x40004800` lie among them
+as devices.  RCC at `0x40023800`, GPIOD at `0x40020C00`, and USART3 at `0x40004800` lie among them
 (ST's `stm32f767xx.h`).  Every other address, flash among them, stops the model on a load or a
 store, so the program never changes its code.
 

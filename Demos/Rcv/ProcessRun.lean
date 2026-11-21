@@ -16,17 +16,18 @@ entry is `processEntry` of its `begin` and `step`, with the facts that `compiled
 `compiled_process_total_run` take about it and the relations of its `begin` and `step` to the
 native `start` and `step`.
 
-`Compiled.implements` states that every modeled run of the module that completes without
-exhausting Talos fuel matches the native process.  A control ghost pairs the native step result
-with the host's ghost, and its rank orders the running flag before the rank of
-`ProcessControl`.  `Compiled.target_terminates` applies `compiled_process_total_run`: the module
-exits with the status `code` when the host makes progress, the native `start` returns a state that
-stops with `code` or runs under an invariant that each step keeps, and the charges of `begin` and
-of every reached step bound their typed resource prefixes and fit the memory with the copies of
-the state.  `Compiled.terminates_of_room` and `Compiled.exits_long_of_room` state, for a process
-whose `start` is `beginWith tab`, that the module exits with status 0 after writing exactly the
-output of an input of at most `limit` bytes, or with status `tooLong` after writing nothing for a
-longer input, from a store with room for the charge of `begin` and a copy of a state. -/
+`Compiled.implements` states that every modeled run of the module that completes without exhausting
+Talos fuel matches the native process.  A control ghost pairs the native step result with the host's
+ghost, and its rank orders the running flag before the rank of `ProcessControl`.
+`Compiled.target_terminates` applies `compiled_process_total_run`: the module exits with the status
+`code` when the host makes progress, the native `start` returns a state that stops with `code` or
+runs under an invariant that each step keeps, and the charges of `begin` and of every reached step
+bound their typed resource prefixes and fit the memory with the copies of the state.
+`Compiled.terminates_of_room` and `Compiled.exits_long_of_room` state, for a process whose `start`
+is `beginWith tab`, that the module exits with status 0 after writing exactly the output of an input
+of at most `limit` bytes, from a store with room for the charge of `begin` and a copy of a state,
+with the charge of `begin` at least four times the copy, or with status `tooLong` after writing
+nothing for a longer input, from a store with room for the charge of `begin`. -/
 
 namespace Demos.Rcv.Process
 
@@ -554,11 +555,13 @@ theorem result_output {World : Type} {host : Host World} {rep : StreamPosition �
 /-! ## Runs from a store with room -/
 
 /-- For a process whose `start` is `beginWith tab`, from a store with an allocator at `heap`, the
-literal pool, and room above `heap.top` for `beginCharge` and `copyLimit` bytes, the module's
-`_start` exits with status 0 after writing exactly the bytes of `expected` of an input of at most
-`limit` bytes.  `report` states the invariant `Writes` of the state of `tab b`, `copy` bounds the
-copy of a state of at most `maxOutput` bytes of output by `copyLimit`, and `beginBound` and
-`stepBound` are the prefix bounds of `begin` and of a step from such a state. -/
+literal pool, and room above `heap.top` for `beginCharge` and `copyLimit` bytes, with `beginCharge`
+at least `4 * copyLimit` (`chargeLe`), which leaves each step room for the heap of at most four
+copies of a state that the process entry keeps between compactions, the module's `_start` exits with
+status 0 after writing exactly the bytes of `expected` of an input of at most `limit` bytes.
+`report` states the invariant `Writes` of the state of `tab b`, `copy` bounds the copy of a state of
+at most `maxOutput` bytes of output by `copyLimit`, and `beginBound` and `stepBound` are the prefix
+bounds of `begin` and of a step from such a state. -/
 theorem Compiled.terminates_of_room {tab : LeanExe.Bytes → LeanExe.Bytes}
     (c : Compiled (beginWith tab))
     {expected : List UInt64 → List UInt64} {maxOutput copyLimit beginCharge : Nat}

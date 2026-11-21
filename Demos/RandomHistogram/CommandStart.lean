@@ -16,12 +16,12 @@ world, every run of `_start` from the command's initial store with enough fuel t
   its exit;
 - a trap of the guest at `unreachable`, after the events of a prefix of `main` and its exit.
 
-The generated `command.start` theorem admits the guest's trap because its resource premise, a
-budget that bounds the heap that every prefix of `main` allocates, has no bound for every N: the
-resource model charges each pass of the loop for its buffer and credits no release, so the charge
-grows with the number of passes.  `total_meets` takes that premise, with a host that traps nowhere
-along `main` and its exit, the premises of the generated `command.total`, and states that every run
-then ends with the accepted exit after events that meet `Meets`. -/
+The generated `command.start` theorem admits the guest's trap because it takes no bound on the
+heap that `main` allocates, which holds the block of `args`, whose size the host's replies set.
+`total_meets` takes such a bound, a budget that bounds every prefix of `main` and fits the free
+memory of the initial store, with a host that traps nowhere along `main` and its exit and the
+premises of the generated `command.total`, and states that every run then ends with the accepted
+exit after events that meet `Meets`. -/
 
 namespace Demos.RandomHistogram
 

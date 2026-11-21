@@ -17,14 +17,14 @@ manifest, and `main` parses it with `parse`.
 opens the line's name under the preopened directory, hashes the file with `hashFile`, closes it,
 compares the digest with the line's digits with `hexMatches`, and writes `render` of the name and
 the verdict with `writeAll` over the whole line, which writes the window that remains after a short
-write and exits with the errno of a write that fails.  `hashFile` reads the file with `fdRead` into the window of the read buffer after
-the bytes that it holds, and when a read fills the buffer it compresses the buffer's 1,024 blocks
-into the hash value with `update` and starts again at its first byte.  When a read returns no
-bytes, it compresses the whole blocks that the buffer holds and passes the bytes after them to
-`finish` with the length of the file.  Its loop makes at most `fileReads`, `2^45 - 1`, reads of at
-most 65,536 bytes, so the bytes that it hashes number fewer than `2^61`, the limit of SHA-256's
-length field.  The read buffer moves from pass to pass, into each bracket and out of it, and no
-pass of a read loop builds a buffer.
+write and exits with the errno of a write that fails.  `hashFile` reads the file with `fdRead` into
+the window of the read buffer after the bytes that it holds, and when a read fills the buffer it
+compresses the buffer's 1,024 blocks into the hash value with `update` and starts again at its first
+byte.  When a read returns no bytes, it compresses the whole blocks that the buffer holds and passes
+the bytes after them to `finish` with the length of the file.  Its loop makes at most `fileReads`,
+`2^45 - 1`, reads of at most 65,536 bytes, so the bytes that it hashes number fewer than `2^61`, the
+limit of SHA-256's length field.  The read buffer moves from pass to pass, into each bracket and out
+of it, and no pass of a read loop builds a buffer.
 
 The manifest opens with the right `fd_read` and the right `fd_filestat_get`, and each file with
 the right `fd_read` alone, each under descriptor 3 with the flag `symlink_follow`, no open flags,
@@ -34,10 +34,10 @@ errno 0, and the line's digits give the digest of the bytes read.
 
 The status is the errno of `args`, 1 for an argument buffer without exactly one argument after the
 program name, the errno of the manifest's open, of `fdFilestatGet`, of one of its reads, or of its
-close, 61 (`overflow`) for a reported size of `2^32` bytes or more, for which a read's length
-does not fit its 32 bits, 1 for a manifest whose bytes number fewer or more than its size, and 1
-for a manifest that `parse` refuses.  Otherwise it is 77 when the writes of an output line end with bytes left, which
-ends the checks, and else 0 when every line says OK and 1 when one says FAILED. -/
+close, 61 (`overflow`) for a reported size of `2^32` bytes or more, for which a read's length does
+not fit its 32 bits, 1 for a manifest whose bytes number fewer or more than its size, and 1 for a
+manifest that `parse` refuses.  Otherwise it is 77 when the writes of an output line end with bytes
+left, which ends the checks, and else 0 when every line says OK and 1 when one says FAILED. -/
 
 namespace Demos.ManifestCheck
 

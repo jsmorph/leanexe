@@ -36,7 +36,10 @@ import Verified.Bytes.LiteralCode
 import Verified.Bytes.LiteralFrame
 import Verified.Bytes.Copy
 
-/-! Correctness of expression code and ordinary function templates. -/
+/-! Lemmas for the correctness proofs of expression code: the regions that the code of a value
+keeps, the bounds of pairs, the paid states and potentials of loops, the room of an array's
+allocation, copy, and move, the weakening of a run's allowed traps, and the frames at a call
+depth. -/
 
 namespace Verified
 

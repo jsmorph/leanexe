@@ -3,34 +3,32 @@ import LeanExe.A64.Proof.WasiProgram
 
 /-!
 The executable of `genWasiElf` from its entry to `exit_group`.  Linux enters the executable at the
-prefix `wasiEntry` with SP at the initial stack (`InitialStack`), and the prefix keeps that SP in
-X2 and branches to the runtime of `genElfEntry`, which reaches `main` (`elfEntry_main`) with X2
-and the memory unchanged.  `main` stores X2 in the scratch's first word, calls the startup
-routine, and calls `_start` (`run_wasiFront`, `run_wasiStart`) with the module's initial store at
-the native cap in the area, `nativeStore`.  The startup routine is a return when no flat import of
-the module reads the shim's descriptor state, and the check of descriptor 3 otherwise
-(`run_preopenCheck`), whose layer events and outcome `startup` gives.  An outcome of `none` ends
-the run at the exit word with status 67.  After every other outcome the startup routine returns
-with the preopen flag and the byte of descriptor 3 set exactly when the check granted the
-directory, and the launch grants descriptor 3 accordingly.  At `_start` the shim's machine holds
-the store, with the startup's events before the world's in the trace and the replies after them:
-the loader's zeros and the startup's writes give the scratch's preopen flag and held bytes, and
-the initial stack lies from `2^32` up, where no instruction before `_start` stores.
-The simulation of `_start` over `shimMachine`, whose code map `wasiCode` holds the routine
-`SVC #0; RET` and the program after `main`, none of whose instructions writes X17 or X18, follows
-Talos's run of `_start` under the shim's environment.  When
-that run traps at an accepted exit or a rejected one, the process stands at the exit word with
-the status in X0, and when it traps in the shim or the guest, the process stands at the trap stub,
-which sets status 2 and branches to the exit word.  From there the runtime makes `exit_group`.
-`wasiElf_run` states this for every reply sequence and every fuel at which Talos's run of `_start`
-traps: the process's trace holds the startup's events and the layer events of the final world,
-each of which writes within the native cap's linear memory or is a `clock_gettime` into the
-timespec, and X0 holds the status.  `wasiElf_footprint_with` takes the trap from a footprint
-premise for the reply sequence after the startup's and the launch that the startup grants, which
-excludes a return of `_start` and every run that does not finish, and `wasiElf_footprint` takes
-it from a premise for every reply sequence and launch.  The module's flat imports
-are those of calls of `shimCalls` whose stubs `flatStubs` lists, and `flatStub_sim` gives the
-simulation of each.
+prefix `wasiEntry` with SP at the initial stack (`InitialStack`), and the prefix keeps that SP in X2
+and branches to the runtime of `genElfEntry`, which reaches `main` (`elfEntry_main`) with X2 and the
+memory unchanged.  `main` stores X2 in the scratch's first word, calls the startup routine, and
+calls `_start` (`run_wasiFront`, `run_wasiStart`) with the module's initial store at the native cap
+in the area, `nativeStore`.  The startup routine is a return when no flat import of the module reads
+the shim's descriptor state, and the check of descriptor 3 otherwise (`run_preopenCheck`), whose
+layer events and outcome `startup` gives.  An outcome of `none` ends the run at the exit word with
+status 67.  After every other outcome the startup routine returns with the preopen flag and the byte
+of descriptor 3 set exactly when the check granted the directory, and the launch grants descriptor 3
+accordingly.  At `_start` the shim's machine holds the store, with the startup's events before the
+world's in the trace and the replies after them: the loader's zeros and the startup's writes give
+the scratch's preopen flag and held bytes, and the initial stack lies from `2^32` up, where no
+instruction before `_start` stores.  The simulation of `_start` over `shimMachine`, whose code map
+`wasiCode` holds the routine `SVC #0; RET` and the program after `main`, none of whose instructions
+writes X17 or X18, follows Talos's run of `_start` under the shim's environment.  When that run
+traps at an accepted exit or a rejected one, the process stands at the exit word with the status in
+X0, and when it traps in the shim or the guest, the process stands at the trap stub, which sets
+status 2 and branches to the exit word.  From there the runtime makes `exit_group`.  `wasiElf_run`
+states this for every reply sequence and every fuel at which Talos's run of `_start` traps: the
+process's trace holds the startup's events and the layer events of the final world, each of which
+writes within the native cap's linear memory or is a `clock_gettime` into the timespec or a `statx`
+into the `statx` record, and X0 holds the status.  `wasiElf_footprint_with` takes the trap from a
+footprint premise for the reply sequence after the startup's and the launch that the startup grants,
+which excludes a return of `_start` and every run that does not finish, and `wasiElf_footprint`
+takes it from a premise for every reply sequence and launch.  The module's flat imports are those of
+calls of `shimCalls` whose stubs `flatStubs` lists, and `flatStub_sim` gives the simulation of each.
 -/
 
 namespace Verified.ShimA64
@@ -133,15 +131,15 @@ theorem elf_zero {nb : Nat} {L : ElfLayout} {mem : UInt64 → UInt8}
 The run of `ProcReachWith` over `LeanExe.Linux.table` on the platform of the data segment and the
 initial stack reaches `SVC #0` with X8 at 94.  When the startup routine's outcome is `none`, its
 trace holds the startup's events and X0 holds 67.  After every other outcome, for a fuel at which
-Talos's run of `_start` from `nativeStore` traps with the store `final` and the message `msg`
-under the shim's environment of the launch that the outcome grants and of the replies after the
-startup's, the trace holds the startup's events and the layer events of the final world, each of
-which writes within the `cap` pages of linear memory or is a `clock_gettime` into the timespec,
-and X0 holds the accepted exit's status, 1 for a rejected exit, or 2 for a trap of the shim or of
-the guest.  The premises are the kernel's check of the file, its program headers, the module's
-imports, whose flat calls `calls` lie in `shimCalls`, a stack's room that is a multiple of 16 and
-holds `wasiStackBound`, the loader's placement of the file, Linux's initial stack of the arguments
-`args` and the environment `environ` at SP, the program counter at the entry, and an empty
+Talos's run of `_start` from `nativeStore` traps with the store `final` and the message `msg` under
+the shim's environment of the launch that the outcome grants and of the replies after the startup's,
+the trace holds the startup's events and the layer events of the final world, each of which writes
+within the `cap` pages of linear memory or is a `clock_gettime` into the timespec or a `statx` into
+the `statx` record, and X0 holds the accepted exit's status, 1 for a rejected exit, or 2 for a trap
+of the shim or of the guest.  The premises are the kernel's check of the file, its program headers,
+the module's imports, whose flat calls `calls` lie in `shimCalls`, a stack's room that is a multiple
+of 16 and holds `wasiStackBound`, the loader's placement of the file, Linux's initial stack of the
+arguments `args` and the environment `environ` at SP, the program counter at the entry, and an empty
 trace. -/
 theorem wasiElf_run {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len : Nat}
     {calls : List LeanExe.Wasi.Call} (hk : bytesOk (genWasiElf m k room cap) nb len = true)
@@ -895,20 +893,20 @@ theorem wasiElf_footprint_with {m : Module} {k : Nat} {room : UInt64} {cap : Nat
       · exact .inr (.inr (.inr ⟨hab, hpre, hx0⟩))
   | _ => rw [hr] at hf; exact hf.elim
 
-/-- The executable of `genWasiElf` reaches `exit_group` for every reply sequence `R`, when
-Talos's runs of `_start` from `nativeStore` under the shim's environment with the module's flat
-calls `calls`, which lie in `shimCalls`, have the footprint of the action `action` with enough
-fuel, for arm64's open flags and every launch.  Linux starts the process with the arguments
-`args` and the environment `environ` on its initial stack.  When the startup routine's outcome is
-`none`, the trace holds the startup's events `l₀` and X0 holds 67.  Otherwise the outcome
-`granted` gives the launch `⟨args, environ, granted⟩`, and the trace holds `l₀` and then the
-layer events `ls`, the images of the WASI events `T` of a run of `action` under `linuxHost` with
-the replies after the startup's, from a world with no events: each event holds its reply of `R`
-from call `l₀.length` on, and each writes within the `cap` pages of linear memory or is a
-`clock_gettime` into the timespec.  The run is an accepted exit whose status X0 holds, an exit
-whose status the shim rejects, with X0 at 1, a trap of the shim at a request that it refuses or a
-result outside Linux's range, with X0 at 2, or, when `aborts` is true, a guest trap after a prefix
-of `action`, with X0 at 2. -/
+/-- The executable of `genWasiElf` reaches `exit_group` for every reply sequence `R`, when Talos's
+runs of `_start` from `nativeStore` under the shim's environment with the module's flat calls
+`calls`, which lie in `shimCalls`, have the footprint of the action `action` with enough fuel, for
+arm64's open flags and every launch.  Linux starts the process with the arguments `args` and the
+environment `environ` on its initial stack.  When the startup routine's outcome is `none`, the trace
+holds the startup's events `l₀` and X0 holds 67.  Otherwise the outcome `granted` gives the launch
+`⟨args, environ, granted⟩`, and the trace holds `l₀` and then the layer events `ls`, the images of
+the WASI events `T` of a run of `action` under `linuxHost` with the replies after the startup's,
+from a world with no events: each event holds its reply of `R` from call `l₀.length` on, and each
+writes within the `cap` pages of linear memory or is a `clock_gettime` into the timespec or a
+`statx` into the `statx` record.  The run is an accepted exit whose status X0 holds, an exit whose
+status the shim rejects, with X0 at 1, a trap of the shim at a request that it refuses or a result
+outside Linux's range, with X0 at 2, or, when `aborts` is true, a guest trap after a prefix of
+`action`, with X0 at 2. -/
 theorem wasiElf_footprint {m : Module} {k : Nat} {room : UInt64} {cap : Nat} {nb len : Nat}
     {calls : List LeanExe.Wasi.Call} (hk : bytesOk (genWasiElf m k room cap) nb len = true)
     (hseg : elfSegments (byteAt nb) = elfSegmentsOf (wasiLayout m k room cap))

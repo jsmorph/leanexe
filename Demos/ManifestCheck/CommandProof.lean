@@ -14,16 +14,18 @@ The proof follows `main`.  `argument_cases` relates the program's test of the ar
 size: the buffer's first bytes are those that the reads returned (`splice_take`), so a buffer that
 the reads fill holds the manifest's bytes.  `readManifest_run` adds the call of `fd_filestat_get`
 and the last read.  `Hashed` relates the state of `hashFile`'s loop to the bytes that the reads
-returned: the hash value after their whole buffers of 65,536 bytes, and the bytes after those,
-which the read buffer holds at its start.  `hashed_step` keeps it across a read, through
-`update_toVec32` and `blocksFold_append`, and `hashed_finish` gives the digest bytes of
-`SHS.SHA256.Impl.sha256` of the bytes through `finish_bytes`.  `hash_loop` follows the loop of
-`hashFile` by induction on its passes and gives the reads of `FileReads`.  `withOpen_run` gives the
-events of a bracket whose body never exits, and `entry_check` the events of `FileCheck` for a line
-and the program's verdict, which `hexMatchesSpec_iff` and `digestOf_iff` relate to `DigestOf`.
-`line_writes` gives `LineWrites` from `WriteAllRun.taken`, and `checks_loop` follows the loop of
-`checkLines` by induction on the lines and gives `Checks`.  `Handled.append` and the confinement of
-each part give `Handled` and `Confined` of the whole run. -/
+returned: the hash value after their whole buffers of 65,536 bytes, and the bytes after those, which
+the read buffer holds at its start.  `Hashed.keep` keeps it across a splice into the window after
+the bytes that the buffer holds, `Hashed.part` across a read that leaves room in the buffer, and
+`Hashed.full`, through `update_toVec32` and `blocksFold_append`, across a read that fills the
+buffer.  `hashed_finish` gives the digest bytes of `SHS.SHA256.Impl.sha256` of the bytes through
+`finish_bytes`.  `hash_loop` follows the loop of `hashFile` by induction on its passes and gives the
+reads of `FileReads`.  `withOpen_run` gives the events of a bracket whose body never exits, and
+`entry_check` the events of `FileCheck` for a line and the program's verdict, which
+`hexMatchesSpec_iff` and `digestOf_iff` relate to `DigestOf`.  `line_writes` gives `LineWrites` from
+`WriteAllRun.taken`, and `checks_loop` follows the loop of `checkLines` by induction on the lines
+and gives `Checks`.  `Handled.append` and the confinement of each part give `Handled` and `Confined`
+of the whole run. -/
 
 namespace Demos.ManifestCheck
 

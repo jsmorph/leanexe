@@ -22,29 +22,30 @@ with X8 at 94, `exit_group`, with the UART's state as it was.  Its trace holds t
 `ls`, the images of the WASI events `T` of a run of the command's action under `linuxHost` with the
 launch `⟨args, environ, false⟩`, so the arguments that the run's `args_sizes_get` and `args_get`
 report are those of `args`.  Each event of `ls` holds its reply and writes within the cap's linear
-memory or into the timespec, and the writes of descriptor 1 in `ls` took the bytes that the
-`fd_write` events of `T` to standard output committed.  `T` is the trace of an `Exec` run that ends
-at an accepted exit, whose status X0 holds, at an exit that the shim rejects, with X0 at 1, or at a
-trap of the shim, with X0 at 2, or of a `Prefix` run of the action, with X0 at 2.
+memory or is a `clock_gettime` into the timespec or a `statx` into the `statx` record, and the
+writes of descriptor 1 in `ls` took the bytes that the `fd_write` events of `T` to standard output
+committed.  `T` is the trace of an `Exec` run that ends at an accepted exit, whose status X0 holds,
+at an exit that the shim rejects, with X0 at 1, or at a trap of the shim, with X0 at 2, or of a
+`Prefix` run of the action, with X0 at 2.
 
-`choice_elf_choices` is the corollary for the file, for every reply sequence and every N and K,
-from arguments whose strings, each with its zero byte, and eight-byte pointers take at most the
-random histogram's `argsLimit` bytes, as Linux requires of every process.  `budget`, the bound of
+`choice_elf_choices` is the corollary for the file, for every reply sequence and every N and K, from
+arguments whose strings, each with its zero byte, and eight-byte pointers take at most the random
+histogram's `argsLimit` bytes, as Linux requires of every process.  `budget`, the bound of
 `body_bounded`, fits the executable's 4,096 pages (`budget_fits`).  When every `getrandom` of the
-trace returned an error number or a count of at most its length, positive for a positive length,
-and every `write` an error number or at most the count that it offered (`InRange`), X0 and the
-trace meet `Choices`.  `choice_elf_runs` gives the run from `linux_footprint_bounded`, the
-footprint without a guest trap, through `wasiElf_footprint_with`, and `linux_exec_choices` gives
-the status and `Choices` from the `Exec` run that the footprint names, with `Sized` from the
-replies that the events hold (`carried_sized`).
+trace returned an error number or a count of at most its length, positive for a positive length, and
+every `write` an error number or at most its count, its third argument (`InRange`), X0 and the trace
+meet `Choices`.  `choice_elf_runs` gives the run from `linux_footprint_bounded`, the footprint
+without a guest trap, through `wasiElf_footprint_with`, and `linux_exec_choices` gives the status
+and `Choices` from the `Exec` run that the footprint names, with `Sized` from the replies that the
+events hold (`carried_sized`).
 
 `choice_elf_witness` shows that the corollary's premises and `InRange` hold together.  The process
-holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the initial stack of the
-arguments `witnessArgs`, `c`, `1`, and `1`, with no environment, as `loadedMem` of
-`tests/TestSupport/A64/ElfWitness.lean` places them.  Under the replies
-`witnessReplies`, which answer the `getrandom` of the run's one pass with 4,096 zero bytes and its
-`write` of the line `1` with 2, the process reaches `exit_group` with X0 at 0 after layer events
-that meet `InRange` and `Choices`.
+holds the file in memory as `ElfLoaded` states and, at SP `2^32`, the initial stack of the arguments
+`witnessArgs`, `c`, `1`, and `1`, with no environment, as `loadedMem` of
+`tests/TestSupport/A64/ElfWitness.lean` places them.  Under the replies `witnessReplies`, which
+answer the `getrandom` of the run's one pass with 4,096 zero bytes and its `write` of the line `1`
+with 2, the process reaches `exit_group` with X0 at 0 after layer events that meet `InRange` and
+`Choices`.
 -/
 
 namespace TestSupport.A64.ImageFilesRandomChoice
@@ -186,8 +187,8 @@ started as for `choice_elf` with arguments whose strings, each with its zero byt
 pointers take at most `argsLimit` bytes, 6 MiB, reaches `SVC #0` with X8 at 94, `exit_group`, and
 the UART's state as it was.  Its trace holds the layer events `ls`, each of which holds its reply
 of `R`, and when every `getrandom` of `ls` returned an error number or a count of at most its
-length, positive for a positive length, and every `write` an error number or at most the count
-that it offered (`InRange`), X0 and `ls` meet `Choices`.  When `parseSpec` refuses N or K, no
+length, positive for a positive length, and every `write` an error number or at most its count,
+its third argument (`InRange`), X0 and `ls` meet `Choices`.  When `parseSpec` refuses N or K, no
 layer event precedes `exit_group`, and X0 is 2.  Otherwise the layer events are groups that
 mirror, one for one, WASI events that make the passes of `Rounds`, whose status is X0 and whose
 random bytes are those that the groups of the passes' `random_get` calls that returned errno 0

@@ -17,12 +17,10 @@ window that receives a `0x00` after a non-empty segment calls `bmsDelim`, and ev
 calls `bmsPoll`, which only stores bytes, reads the status, and writes the answer's bytes.
 `bmsDelim` decodes the segment with `decodeWords`, reads the record's fields from the decoder's
 buffer with `decodeRec`, computes the CRC of `LINK` and bytes 0 to 30 with `crc32Word` from
-`linkCrc`, the CRC-32 of `LINK`, runs the checks in the order of the requirements' table
-(`failW`), the transitions (`nextW`), and the state update (`updW`), and encodes the 17 bytes of
-the answer, laid out by `answerSrc` with their CRC, with `encAll` and `encFinish`.  No function
-has a loop or a recursive call, and every function that `bmsDelim` calls takes a call's result
-only through a `let`, since `verified_compile` timed out at `whnf` when a call took another
-call as its argument.
+`linkCrc`, the CRC-32 of `LINK`, runs the checks in the order of the requirements' table (`failW`),
+the transitions (`nextW`), and the state update (`updW`), and encodes the 17 bytes of the answer,
+laid out by `answerSrc` with their CRC, with `encAll` and `encFinish`.  No function has a loop or a
+recursive call, and every function that `bmsDelim` calls takes a call's result only through a `let`.
 
 Signed fields enter the checks through `bias16` and `bias32`, which add `2 ^ 15` or `2 ^ 31`
 modulo `2 ^ 16` or `2 ^ 32`, so that the order of the biased words is the order of the readings,

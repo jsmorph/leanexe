@@ -3,14 +3,15 @@ import Verified.Wasi.BudgetAttr
 
 /-! Tactics for the budget proofs of WASI commands, which bound the charge of a command's body by
 the rules of `Verified/Wasi/ResourceRules.lean`.  `envGet` reads a variable of an environment
-given as a chain of `Env.cons`, and `ite_cost` bounds the charge of an `if` whose branches charge
-the same.  `rule_charge` proves a bound on the charge of an expression: it evaluates the
-liveness tests, reads the variables, rewrites the charges of the command's pure functions, which
-the budget proof gives the simp attribute `charge_eqs`, and leaves the copies to `omega`.
-`rule_init_charge` does the same for a loop's initial state and sums the constant charge of a
-built buffer with `sumBelow_const`.  `rule_ret`, `rule_write`, `rule_bind`, `rule_sys`,
-`rule_ite`, and `rule_free` apply the rules of a `ret`, a `write`, a `bind`, a `sys` command,
-an `if`, and of a command of `bind`s, `ret`s, and `sys` commands that charge nothing. -/
+given as a chain of `Env.cons`.  `rule_charge` proves a bound on the charge of an expression: it
+evaluates the liveness tests, reads the variables, rewrites the charges of the command's pure
+functions, which the budget proof gives the simp attribute `charge_eqs`, and leaves the copies to
+`omega`.  `rule_init_charge` does the same for a loop's initial state and sums the constant charge
+of a built buffer with `sumBelow_const`.  `rule_fits` proves the frames of an expression that calls
+no function that takes the call depth.  `rule_ret`, `rule_write`, `rule_bind`, `rule_sys`,
+`rule_ite`, and `rule_free` apply the rules of a `ret`, a `write`, a `bind`, a `sys` command, an
+`if`, whose branches take the same budget through `ite_cost` of `ResourceRules.lean`, and a command
+of `bind`s, `ret`s, and `sys` commands that charge nothing. -/
 
 namespace Verified.Wasi.Resource
 

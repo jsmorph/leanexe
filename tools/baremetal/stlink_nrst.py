@@ -28,15 +28,15 @@ and drives NRST high.  SB111, ON by default, connects the board's NRST to the ST
 (UM1974 Rev 7, Table 12), and the script reads and writes no target register after DEBUG_EXIT.
 A failed check ends the script after DEBUG_EXIT without the pulse.
 
-RM0410 section 44.10 states that DHCSR and DEMCR are reset only by a power-on reset, and
-sections 44.16.4 and 44.16.5 that DBGMCU_CR and DBGMCU_APB1_FZ are not reset by a system reset,
-so the values that the script writes persist through the NRST reset.  DFSR keeps its status bits,
-since the script does not write it, and the comparators of the FPB and the DWT keep their values,
-which act only while FP_CTRL.ENABLE or, for the DWT's, DEMCR.TRCENA is set.
+RM0410 section 44.10 states that DHCSR and DEMCR are reset only by a power-on reset, and sections
+44.16.4 to 44.16.6 that DBGMCU_CR, DBGMCU_APB1_FZ, and DBGMCU_APB2_FZ are not reset by a system
+reset, so the values that the script writes persist through the NRST reset.  DFSR keeps its status
+bits, since the script does not write it, and the comparators of the FPB and the DWT keep their
+values, which act only while FP_CTRL.ENABLE or, for the DWT's, DEMCR.TRCENA is set.
 
-With --dry-run the script prints the commands and opens no device.  It prints each command with
-its bytes and each value that it reads, then one line, a summary or the cause of the failure, and exits with
-status 0 or 1.
+With --dry-run the script prints the commands and opens no device.  It prints each command with its
+bytes and each value that it reads, then one line, a summary or the cause of the failure, and exits
+with status 0 or 1.
 
 Usage: uv run tools/baremetal/stlink_nrst.py [--dry-run]
 """

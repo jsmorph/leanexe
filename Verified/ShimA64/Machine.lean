@@ -99,7 +99,7 @@ theorem writeEvent_writesLinear (L : ShimLayout) (mem : Mem) (fd : UInt64)
 
 /-- The trace `tr` holds the startup's events `l₀` and then the layer events of the world of `h`,
 each of which writes within the `size` bytes from the guest's byte 0 or is a `clock_gettime` into
-the timespec. -/
+the timespec or a `statx` into the `statx` record. -/
 def TraceRel (l₀ : List Linux.Event) (L : ShimLayout) (size : Nat) (h : Observed LinuxWorld)
     (tr : List A64.Event) : Prop :=
   tr = (l₀ ++ h.world.events).map A64.Event.sys ∧ ∀ e ∈ h.world.events, WritesNative L size e

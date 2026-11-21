@@ -9,8 +9,9 @@ def readCallCode (pointer capacity : Nat) : Program :=
   metadataCode pointer capacity ++
     [.const 0, .const 0, .const 1, .const 8, .call 0]
 
-/-- Releases the read buffer at `root` with the release function of a module that imports
-`calls`. -/
+/-- Releases the byte string whose root local `root` holds, unless the root is 0, with the release
+function of a module that imports `calls`, and sets the local to 0: the block of a reported request
+that returned an errno. -/
 def discardReadCodeWith (calls : List Call) (root : Nat) : Program :=
   [.localGet root, .eqzI64,
    .iff 0 0 [] [.localGet root, .call (3 + calls.length + 1)] [] [],
