@@ -17,7 +17,7 @@ Floating-Point Arithmetic"](https://dl.acm.org/doi/10.1145/103162.103163).  We a
 
 These days rewriting a large codebase in a different source language is almost automatic (given appropriate stern oversight).  So inventing a new language today doesn't necessarily impose the classic high hurdles to adoption.  However, AI is of course trained on existing corpora.  Lean in particular continues to receive a lot of investment by AI companies.  So we decided to proceed from a [strict subset of Lean](https://github.com/jsmorph/leanexe/tree/main/docs).  A major benefit is being able to use fancy Lean (including Mathlib) to prove things about executable artifacts themselves.
 
-## What the theorems cover
+## Targets and theorems
 
 The compiler has one correctness theorem for every typed source program that it accepts.  The WebAssembly theorems hold in [Talos](https://github.com/cajal-technologies/talos)'s semantics.  An execution theorem may allow a trap at `unreachable`, which the theorem `p.f.trapFree` excludes under its allocation and call-depth premises.  Lean actions that read and write the standard streams, call other functions of WASI Preview 1, and exit compile to WASI Preview 1 modules.  Array builds compile to WGSL and PTX kernels, with theorems under statements of the Vulkan and PTX memory models.
 
