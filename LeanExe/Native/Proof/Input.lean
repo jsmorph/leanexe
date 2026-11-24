@@ -492,6 +492,23 @@ theorem needOf_toNat {n : Nat} (hn : n ≤ inMax) : 8 + 8 * wordsOf n ≤ (needO
     (by rw [toNat_ofNat64 (by unfold wordsOf inMax at *; omega)]; unfold wordsOf inMax at *; omega)
   rwa [toNat_ofNat64 (by unfold wordsOf inMax at *; omega)] at h
 
+/-- `needOf n` is the length word and the words: their count of bytes is a multiple of 8 and at
+least 8, which `allocSize` keeps. -/
+theorem needOf_toNat_eq {n : Nat} (hn : n ≤ inMax) : (needOf n).toNat = 8 + 8 * wordsOf n := by
+  have hx : (UInt64.ofNat (8 + 8 * wordsOf n)).toNat = 8 + 8 * wordsOf n :=
+    toNat_ofNat64 (by unfold wordsOf inMax at *; omega)
+  have hRound : ((UInt64.ofNat (8 + 8 * wordsOf n) + 7) / 8 * 8).toNat = 8 + 8 * wordsOf n := by
+    simp only [UInt64.toNat_mul, UInt64.toNat_div, UInt64.toNat_add, UInt64.reduceToNat, hx]
+    unfold wordsOf inMax at *
+    omega
+  unfold needOf allocSize
+  split
+  · rename_i hs
+    rw [UInt64.lt_iff_toNat_lt, hRound] at hs
+    simp only [UInt64.reduceToNat] at hs
+    omega
+  · exact hRound
+
 /-- After the allocation of `needOf n` bytes and the writes of `main`, the allocator invariant
 holds, the block holds an owned array of `wordsOf n` words, the writes lie inside the block,
 and byte `i` of the array is `b i` for each `i < n`. -/
@@ -697,6 +714,71 @@ theorem nTemp_ne_ptrTemp : nTemp ≠ ptrTemp := by decide
 theorem nTemp_ne_allocTemp : nTemp ≠ allocTemp := by decide
 theorem ptrTemp_ne_jTemp : ptrTemp ≠ jTemp := by decide
 
+/-- `alloc_native` with the trap of `alloc` only when `traps`: the C call of `alloc` on `bytes`
+returns the address of the new block with `lx_status` 0, in a memory related to the store after
+the allocation, or, when `traps`, ends with `lx_status` holding the code of `unreachable`.  When
+not `traps`, the heap has room for the allocation. -/
+theorem alloc_native_with (traps : Bool) {A : Archi} {X : ExtSem} {mod : Module} {cap : Nat}
+    {T : Translation} (hT : translate cap mod = some T)
+    {typeIdx : Nat} (hFunc : mod.funcs[0]? = some (allocFunction typeIdx)) (h0 : 0 ∈ T.funcs)
+    {E : Env} (hE : EnvOk E) (hG : E.globals.length = mod.globals.length) (hcap : E.cap = cap)
+    (hnres : T.nres ≤ E.nres)
+    (hF : ∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
+      ∃ b, Genv.find_symbol E.ge (funId k) = some b ∧
+        Genv.find_funct_ptr E.ge b = some (.Internal fd))
+    (heap : Heap) (store : Store Unit) (bytes : UInt64) (hHeap : heap.At store)
+    (hBytes : bytes.toNat ≤ 4294967296) (hCapS : store.memoryCap mod 0 ≤ 65535)
+    (hRoom : traps = false → heap.Room store mod (allocSize bytes)) (m : mem)
+    (hst : StoreRel A E store m) (hs : StatusRel A E m 0) :
+    ∃ fd, (funId 0, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
+      ∃ t m' vres st', eval_funcall A X E.ge m (.Internal fd) [.Vlong bytes] t m' vres ∧
+        StoreRel A E st' m' ∧
+        ((StatusRel A E m' 0 ∧ heap.Fits (allocSize bytes) ∧
+            st' = heap.allocateStore store (allocSize bytes) 1 ∧
+            vres = .Vlong (FixedArrayAllocate.root heap.top (allocSize bytes) heap.free)) ∨
+          (traps = true ∧ StatusRel A E m' trapUnreachable)) := by
+  obtain ⟨himp, h64, -⟩ := translate_spec hT
+  obtain ⟨fd, ps, rs, hfd, hsig⟩ := translate_sig hT h0
+  have hpr : signatureOf (allocFunction typeIdx) = some (ps, rs) := hsig _ hFunc
+  obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hpr)
+  obtain ⟨t, m', vres, st', hcall, hst', hres⟩ := Runs.native (A := A) (X := X) hT hE hG hcap
+    hnres hF hfd hsig (alloc_spec_runs traps h64 himp hFunc {} heap store bytes hHeap hBytes
+      hCapS hRoom) ⟨by simp, by simp [AllHas, VT.has]⟩ hst hs
+  refine ⟨fd, hfd, t, m', vres, st', hcall, hst', ?_⟩
+  rcases hres with ⟨hs', vs, ⟨hfits, rfl, rfl⟩, hr⟩ | ⟨habs, htrap⟩
+  · obtain ⟨v, hv, -, rfl⟩ := hr
+    simp only [List.cons.injEq] at hv
+    obtain ⟨rfl, -⟩ := hv
+    exact .inl ⟨hs', hfits, rfl, rfl⟩
+  · exact .inr ⟨habs, htrap⟩
+
+/-- The runtime's `alloc` in a translated module, from a heap with room for the allocation: the C
+call of `alloc` on `bytes` returns the address of the new block with `lx_status` 0, in a memory
+related to the store after the allocation. -/
+theorem alloc_native_room {A : Archi} {X : ExtSem} {mod : Module} {cap : Nat} {T : Translation}
+    (hT : translate cap mod = some T)
+    {typeIdx : Nat} (hFunc : mod.funcs[0]? = some (allocFunction typeIdx)) (h0 : 0 ∈ T.funcs)
+    {E : Env} (hE : EnvOk E) (hG : E.globals.length = mod.globals.length) (hcap : E.cap = cap)
+    (hnres : T.nres ≤ E.nres)
+    (hF : ∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
+      ∃ b, Genv.find_symbol E.ge (funId k) = some b ∧
+        Genv.find_funct_ptr E.ge b = some (.Internal fd))
+    (heap : Heap) (store : Store Unit) (bytes : UInt64) (hHeap : heap.At store)
+    (hBytes : bytes.toNat ≤ 4294967296) (hCapS : store.memoryCap mod 0 ≤ 65535)
+    (hRoom : heap.Room store mod (allocSize bytes)) (m : mem)
+    (hst : StoreRel A E store m) (hs : StatusRel A E m 0) :
+    ∃ fd, (funId 0, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
+      ∃ t m' vres st', eval_funcall A X E.ge m (.Internal fd) [.Vlong bytes] t m' vres ∧
+        StoreRel A E st' m' ∧ StatusRel A E m' 0 ∧ heap.Fits (allocSize bytes) ∧
+        st' = heap.allocateStore store (allocSize bytes) 1 ∧
+        vres = .Vlong (FixedArrayAllocate.root heap.top (allocSize bytes) heap.free) := by
+  obtain ⟨fd, hfd, t, m', vres, st', hcall, hst', hres⟩ := alloc_native_with false (A := A)
+    (X := X) hT hFunc h0 hE hG hcap hnres hF heap store bytes hHeap hBytes hCapS (fun _ => hRoom)
+    m hst hs
+  rcases hres with hok | ⟨habs, -⟩
+  · exact ⟨fd, hfd, t, m', vres, st', hcall, hst', hok⟩
+  · cases habs
+
 /-- The trace and the result of the program with input for the input `σ`: the eight loads of
 the length and the result 64 for a length above `inMax`; the eight loads and the code of
 `unreachable` when `alloc` traps; the loads of the length and of the message and the code of
@@ -711,6 +793,41 @@ def InResult (σ : Nat → int) (aborts : Bool) (out : Nat → (Nat → UInt8) �
         t = inTrace σ 0 (8 + (inLen σ).toNat)) ∨
       (r = 0 ∧ t = inTrace σ 0 (8 + (inLen σ).toNat) ++
         outTrace (out (inLen σ).toNat (inMsgByte σ)))))
+
+/-- `InResult` with the trap of `alloc` only when `allocTraps`. -/
+def InResultWith (σ : Nat → int) (allocTraps aborts : Bool)
+    (out : Nat → (Nat → UInt8) → List UInt8) (t : trace) (r : int) : Prop :=
+  (inMax < (inLen σ).toNat ∧ r = UInt32.ofNat inTooLong ∧ t = inTrace σ 0 8) ∨
+  ((inLen σ).toNat ≤ inMax ∧
+    ((allocTraps = true ∧ r = UInt32.ofNat trapUnreachable ∧ t = inTrace σ 0 8) ∨
+      (aborts = true ∧ r = UInt32.ofNat trapUnreachable ∧
+        t = inTrace σ 0 (8 + (inLen σ).toNat)) ∨
+      (r = 0 ∧ t = inTrace σ 0 (8 + (inLen σ).toNat) ++
+        outTrace (out (inLen σ).toNat (inMsgByte σ)))))
+
+theorem InResultWith.inResult {σ : Nat → int} {allocTraps aborts : Bool}
+    {out : Nat → (Nat → UInt8) → List UInt8} {t : trace} {r : int}
+    (h : InResultWith σ allocTraps aborts out t r) : InResult σ aborts out t r := by
+  rcases h with h | ⟨hl, ⟨-, h⟩ | h⟩
+  · exact .inl h
+  · exact .inr ⟨hl, .inl h⟩
+  · exact .inr ⟨hl, .inr h⟩
+
+/-- The trace and the result of the program with input for the input `σ` when neither `alloc`
+nor the entry can trap: the eight loads of the length and the result 64 for a length above
+`inMax`, and otherwise the loads, the stores of `out n b` for the length `n` and the bytes `b` of
+the message, and the result 0. -/
+def InResultRoom (σ : Nat → int) (out : Nat → (Nat → UInt8) → List UInt8) (t : trace)
+    (r : int) : Prop :=
+  (inMax < (inLen σ).toNat ∧ r = UInt32.ofNat inTooLong ∧ t = inTrace σ 0 8) ∨
+  ((inLen σ).toNat ≤ inMax ∧ r = 0 ∧
+    t = inTrace σ 0 (8 + (inLen σ).toNat) ++ outTrace (out (inLen σ).toNat (inMsgByte σ)))
+
+theorem InResultRoom.inResult {σ : Nat → int} {out : Nat → (Nat → UInt8) → List UInt8}
+    {t : trace} {r : int} (h : InResultRoom σ out t r) : InResult σ false out t r := by
+  rcases h with h | ⟨hl, h⟩
+  · exact .inl h
+  · exact .inr ⟨hl, .inr (.inr h)⟩
 
 /-- The call of the entry `fd` on the array that `main` builds from the heap `heap` for each
 length `n` and bytes `b`, in every environment that satisfies the hypotheses of `NativeA`, from
@@ -738,10 +855,11 @@ def EntryInRuns (A : Archi) (X : ExtSem) (cap : Nat) (m : Wasm.Module) (T : Tran
             (aborts = true ∧ StatusRel A E m' trapUnreachable))
 
 /-- The program with input of a translation, for every input `σ`, terminates with a trace and a
-result that `InResult` describes, given the run of the entry that `EntryInRuns` states.  The
-module's function 0 is `alloc`, and `heap` is the heap of the store in which the translation
-starts. -/
-theorem input_program {m : Wasm.Module} {cap : Nat} {T : Translation}
+result that `InResultWith` describes, given the run of the entry that `EntryInRuns` states.
+`alloc` traps only when `allocTraps`, and when not `allocTraps` the heap has room for the
+allocation of `main` at every length up to `inMax`.  The module's function 0 is `alloc`, and
+`heap` is the heap of the store in which the translation starts. -/
+theorem input_program_with {m : Wasm.Module} {cap : Nat} {T : Translation}
     (h : translate cap m = some T) {pre : List (ident × globdef (fundef function) type)}
     (hpre : PrefixOk pre) {typeIdx : Nat} (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
     (h0 : 0 ∈ T.funcs) {k : Nat} {fd : function}
@@ -749,10 +867,12 @@ theorem input_program {m : Wasm.Module} {cap : Nat} {T : Translation}
     (hty : type_of_function fd = .Tfunction [tulong, tulong] (outRet kind) cc_default)
     (A : Archi) (X : ExtSem) {aborts : Bool} {heap : Heap}
     (hheap : heap.At (nativeStore m cap)) (hcapS : (nativeStore m cap).memoryCap m 0 ≤ 65535)
+    (allocTraps : Bool)
+    (hroom : allocTraps = false → ∀ n, n ≤ inMax → heap.Room (nativeStore m cap) m (needOf n))
     {out : Nat → (Nat → UInt8) → List UInt8}
     (hruns : EntryInRuns A X cap m T fd kind aborts heap out) (σ : Nat → int) :
     ∃ t r, bigstep_program_terminates A X (inProgram pre T (inMain cap k kind)) t r ∧
-      InResult σ aborts out t r := by
+      InResultWith σ allocTraps aborts out t r := by
   have hw := wholeOk_in h hpre.sqrt hpre.funs hpre.nodup hpre.ids (inMain cap k kind)
   obtain ⟨decl, m0, m1, -, hinit, hmemi, hcalli, hst1, hs1, hE, hG, hcap, hnres, hF⟩ :=
     start_whole h hw A X
@@ -844,9 +964,10 @@ theorem input_program {m : Wasm.Module} {cap : Nat} {T : Translation}
   have hbytes : (UInt64.ofNat (8 + 8 * wordsOf n.toNat)).toNat ≤ 4294967296 := by
     rw [toNat_ofNat64 (by omega)]
     omega
-  obtain ⟨fA, hfA, tA, mA, vA, stA, hcallA, hstA, hresA⟩ := alloc_native (A := A) (X := X) h
-    hFunc h0 hE hG hcap hnres hF heap (nativeStore m cap)
-    (UInt64.ofNat (8 + 8 * wordsOf n.toNat)) hheap hbytes hcapS m1 hst1 hs1
+  obtain ⟨fA, hfA, tA, mA, vA, stA, hcallA, hstA, hresA⟩ := alloc_native_with allocTraps
+    (A := A) (X := X) h hFunc h0 hE hG hcap hnres hF heap (nativeStore m cap)
+    (UInt64.ofNat (8 + 8 * wordsOf n.toNat)) hheap hbytes hcapS (fun hf => hroom hf n.toNat hlen)
+    m1 hst1 hs1
   obtain ⟨bA, hsA, hfA'⟩ := hF 0 fA hfA
   have htA : tA = E0 := funcall_quiet hq hcallA (translation_fun_quiet h hfA (by decide))
   subst htA
@@ -858,13 +979,13 @@ theorem input_program {m : Wasm.Module} {cap : Nat} {T : Translation}
     rw [e]
     exact funType_i64 [0]
   have hallocX := exec_allocCall (X := X) (le := le1) hsA hfA' htyA hn1 hlen hcallA
-  rcases hresA with ⟨hsA0, hFits, rfl, rfl⟩ | hsAtrap
+  rcases hresA with ⟨hsA0, hFits, rfl, rfl⟩ | ⟨hab, hsAtrap⟩
   swap
   · -- `alloc` traps.
     refine ⟨_, _, hret _ (exec_seqList_append L1 L2 hpre1 (exec_seqList_cons (by simp) hntl
       (exec_seqList_cons (by simp) hallocX (exec_seqList_stop
         (exec_statusTest_trap (A := A) (X := X) hE hsAtrap (by decide) (by decide)) (by simp))))),
-      .inr ⟨hlen, .inl ⟨rfl, by simp [E0]⟩⟩⟩
+      .inr ⟨hlen, .inl ⟨hab, rfl, by simp [E0]⟩⟩⟩
   -- The allocation succeeds: the length word and the copy of the message.
   have hFits' : heap.Fits (needOf n.toNat) := hFits
   let p := FixedArrayAllocate.root heap.top (needOf n.toNat) heap.free
@@ -966,6 +1087,53 @@ theorem input_program {m : Wasm.Module} {cap : Nat} {T : Translation}
       .inr ⟨hlen, .inr (.inl ⟨hab, rfl, ?_⟩)⟩⟩
     rw [← hn]
     simp [E0, inTrace_add]
+
+/-- The program with input of a translation, for every input `σ`, terminates with a trace and a
+result that `InResult` describes, given the run of the entry that `EntryInRuns` states.  The
+module's function 0 is `alloc`, and `heap` is the heap of the store in which the translation
+starts. -/
+theorem input_program {m : Wasm.Module} {cap : Nat} {T : Translation}
+    (h : translate cap m = some T) {pre : List (ident × globdef (fundef function) type)}
+    (hpre : PrefixOk pre) {typeIdx : Nat} (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
+    (h0 : 0 ∈ T.funcs) {k : Nat} {fd : function}
+    (hfd : (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs) (kind : OutKind)
+    (hty : type_of_function fd = .Tfunction [tulong, tulong] (outRet kind) cc_default)
+    (A : Archi) (X : ExtSem) {aborts : Bool} {heap : Heap}
+    (hheap : heap.At (nativeStore m cap)) (hcapS : (nativeStore m cap).memoryCap m 0 ≤ 65535)
+    {out : Nat → (Nat → UInt8) → List UInt8}
+    (hruns : EntryInRuns A X cap m T fd kind aborts heap out) (σ : Nat → int) :
+    ∃ t r, bigstep_program_terminates A X (inProgram pre T (inMain cap k kind)) t r ∧
+      InResult σ aborts out t r := by
+  obtain ⟨t, r, hb, hres⟩ := input_program_with h hpre hFunc h0 hfd kind hty A X hheap hcapS true
+    (fun h => nomatch h) hruns σ
+  exact ⟨t, r, hb, hres.inResult⟩
+
+/-- The program with input of a translation whose entry cannot trap, from a heap with room for
+the allocation of `main` at every length up to `inMax`: for every input `σ`, it terminates with
+the trace and the result that `InResultRoom` describes, given the run of the entry that
+`EntryInRuns` states.  The module's function 0 is `alloc`, and `heap` is the heap of the store in
+which the translation starts. -/
+theorem input_program_room {m : Wasm.Module} {cap : Nat} {T : Translation}
+    (h : translate cap m = some T) {pre : List (ident × globdef (fundef function) type)}
+    (hpre : PrefixOk pre) {typeIdx : Nat} (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
+    (h0 : 0 ∈ T.funcs) {k : Nat} {fd : function}
+    (hfd : (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs) (kind : OutKind)
+    (hty : type_of_function fd = .Tfunction [tulong, tulong] (outRet kind) cc_default)
+    (A : Archi) (X : ExtSem) {heap : Heap}
+    (hheap : heap.At (nativeStore m cap)) (hcapS : (nativeStore m cap).memoryCap m 0 ≤ 65535)
+    (hroom : ∀ n, n ≤ inMax → heap.Room (nativeStore m cap) m (needOf n))
+    {out : Nat → (Nat → UInt8) → List UInt8}
+    (hruns : EntryInRuns A X cap m T fd kind false heap out) (σ : Nat → int) :
+    ∃ t r, bigstep_program_terminates A X (inProgram pre T (inMain cap k kind)) t r ∧
+      InResultRoom σ out t r := by
+  obtain ⟨t, r, hb, hres⟩ := input_program_with h hpre hFunc h0 hfd kind hty A X hheap hcapS
+    false (fun _ => hroom) hruns σ
+  refine ⟨t, r, hb, ?_⟩
+  rcases hres with hl | ⟨hl, ⟨habs, -⟩ | ⟨habs, -⟩ | hok⟩
+  · exact .inl hl
+  · cases habs
+  · cases habs
+  · exact .inr ⟨hl, hok⟩
 
 end
 
