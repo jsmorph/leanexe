@@ -47,6 +47,13 @@ builds the output line from the name's bytes and the bytes of `: OK` or `: FAILE
 which `suffixByte` computes from their positions.  [The verified compilation](Compiled.lean) writes
 a module that exports `parse`, `hexMatches`, and `render` as functions 6, 8, and 10.
 
+![The stages of the command from the host's bytes to the output lines and the status, with the theorem and the specification of each stage, the parts trusted without proof, and an example with a changed file](coverage.svg)
+
+`uv run tests/manifest-check/diagram.py Demos/ManifestCheck/coverage.svg` draws the figure, which
+shows the stages of the command with the theorem and the specification of each, the host's inputs
+and the other parts trusted without proof, and the verdicts of the first two lines of the driver's
+manifest of mixed verdicts.
+
 ## The pure core computes its specification
 
 | Theorem | Statement |

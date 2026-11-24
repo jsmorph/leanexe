@@ -1,0 +1,30 @@
+rcv-report 1
+rule oakland-1105 revision 1, Oakland City Charter sections 1103 and 1105 (February 2007), Cal. Elec. Code sections 15341 (updated 1999-01-01) and 15342(d) (updated 2012-01-01), texts read 2026-11-09
+contest Oakland_20221108_SchoolBoardD4
+positions 5
+candidates 4
+candidate 1 listed MIKE HUTCHINSON
+candidate 2 listed PECOLIA MANIGO
+candidate 3 listed NICK RESNICK
+candidate 4 aggregate-writein Write-in
+order 1 2 3 4
+ballots 30983
+round 1
+continuing 26432
+votes 1 8227
+votes 2 8190
+votes 3 10015
+inactive blank 4269
+inactive uncounted 134
+inactive overvote 148
+inactive exhausted 0
+eliminate lowest 2
+round 2
+continuing 24586
+votes 1 12421
+votes 3 12165
+inactive blank 4269
+inactive uncounted 134
+inactive overvote 173
+inactive exhausted 1821
+winner 1
