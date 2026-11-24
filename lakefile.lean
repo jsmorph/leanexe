@@ -14,10 +14,17 @@ package leanexe where
   buildDir := if fast then ".lake/build-fast" else defaultBuildDir
   leanOptions := if fast then #[⟨`debug.skipKernelTC, true⟩] else #[]
 
-require Verifier from ".lake/packages/CodeLib/verifier"
--- Lake loads requirements in reverse order, so CodeLib must follow Verifier.
+/-- The revision of Talos that supplies both CodeLib and WasmInterpreterLean. -/
+def talosRev : String := "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47"
+
+-- CodeLib requires WasmInterpreterLean by the path `../interpreter`.  Lake would record that
+-- package in this manifest at `.lake/packages/CodeLib/codelib/../interpreter`, and a workspace
+-- that requires leanexe would look for it under `.lake/packages/leanexe`, where it does not exist.
+-- Lake resolves leanexe's requirements before CodeLib's, so this requirement takes precedence.
+require WasmInterpreterLean from git "https://github.com/jsmorph/talos"
+  @ talosRev / "interpreter"
 require CodeLib from git "https://github.com/jsmorph/talos"
-  @ "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47" / "codelib"
+  @ talosRev / "codelib"
 
 @[default_target] lean_lib LeanExe
 @[default_target] lean_lib Examples
