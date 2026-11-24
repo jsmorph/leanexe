@@ -32,6 +32,24 @@ theorem loop_congr {α : Type} {n : UInt64} {init : α} {f g : UInt64 → α →
   funext k hk s
   exact h k hk s
 
+/-- A loop from `true` whose step conjoins its state with a test of the index returns `true`
+exactly when the test holds at every index below the count. -/
+theorem loop_and_iff {n : UInt64} {P : UInt64 → Bool} :
+    LeanExe.loop n true (fun i ok => ok && P i) = true ↔
+      ∀ k, k < n.toNat → P (UInt64.ofNat k) = true :=
+  loop_induction (n := n) (init := true) (f := fun i ok => ok && P i)
+    (fun m s => (s = true ↔ ∀ k, k < m → P (UInt64.ofNat k) = true))
+    (by simp)
+    (fun m s _ ih => by
+      rw [Bool.and_eq_true, ih]
+      constructor
+      · rintro ⟨h1, h2⟩ k hk
+        rcases Nat.lt_succ_iff_lt_or_eq.mp hk with hk | rfl
+        · exact h1 k hk
+        · exact h2
+      · intro h
+        exact ⟨fun k hk => h k (Nat.lt_succ_of_lt hk), h m (Nat.lt_succ_self m)⟩)
+
 theorem build_size {α : Type} (n : UInt64) (f : UInt64 → α) :
     (LeanExe.build n f).size = n.toNat := by
   simp [LeanExe.build]
