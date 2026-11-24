@@ -62,7 +62,7 @@ least `y` and that one below it has a value of at most `y`, and `position_nextUp
 
 ## Further operations
 
-[The further operations](Functions.lean) serve programs that evaluate a formula on intervals, and [their proofs](FunctionsProof.lean) state each result with `Encloses i x`: the interval `i` contains `x` when it is accepted.  A theorem `encloses_f` derives the relation for a result from the relation for the operands, so a proof about a chain of operations applies one theorem for each operation and needs no case analysis on acceptance.
+[The further operations](Functions.lean) serve programs that evaluate a formula on intervals, and [their proofs](FunctionsProof.lean) state each result with `Encloses i x`: the interval `i` contains `x` when it is accepted.  A theorem `encloses_f` derives the relation for a result from the relation for the operands, so a proof about a chain of operations applies one theorem for each operation and needs no case analysis on acceptance.  [The arithmetic enclosures](Encloses.lean), the module `Library.Numerics.Interval.Encloses`, declare `Encloses` with its theorems for `add`, `sub`, `mul`, `div`, `neg`, `abs`, and `sqrt`, the values of the literals 0 and 1, and the sign lemmas of the last paragraph.  That module imports the soundness proofs and no trigonometric module, so a proof that states only arithmetic enclosures does not depend on the trigonometric proofs or on the compilation of the trigonometric library, which the proofs of `sinI` and `cosI` import.
 
 | Operation | Result | Rejects |
 |---|---|---|

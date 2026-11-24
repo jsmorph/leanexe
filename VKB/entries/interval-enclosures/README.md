@@ -25,7 +25,14 @@ and `Library.Numerics.Interval.Steps.two_down` give the real bounds, from
 the nonnegative reference.  For a loop that adds panels, apply `LeanExe.Dialect.loop_induction`
 with the invariant that an accepted sum of the first `k` panels contains the integral from the
 first partition point to point `k`, and bound each panel with
-`Demos.Conjunction.Model.integral_eq_width_mul`.
+`Demos.Conjunction.Model.integral_eq_width_mul`.  For a chain of arithmetic operations,
+`Library.Numerics.Interval.Encloses` states the inclusion under the hypothesis of acceptance, and
+`Library.Numerics.Interval.encloses_add` and its siblings for `sub`, `mul`, `div`, `neg`, `abs`,
+and `sqrt` compose it without the `obtain` steps.  The module `Library.Numerics.Interval.Encloses`
+declares them and imports `Library.Numerics.Interval.Proof` and no trigonometric module, so a
+proof that needs only these theorems imports it in place of
+`Library.Numerics.Interval.FunctionsProof`, which imports the accuracy proofs of `sin` and `cos`
+and the compiled trigonometric library.
 
 An accuracy hypothesis stated for every endpoint cannot be discharged, since the finiteness of an
 interval's endpoints follows only from a contained point, so
