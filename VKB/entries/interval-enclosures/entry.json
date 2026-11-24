@@ -16,7 +16,7 @@
     "Library.Numerics.Bounds.Program",
     "Library.Numerics.Interval.Functions",
     "Library.Numerics.Interval.Proof",
-    "Library.Numerics.Interval.Encloses",
+    "Library.Numerics.Interval.ArithEncloses",
     "Library.Numerics.Interval.Steps",
     "LeanExe.Dialect.Lemmas",
     "Demos.Conjunction.Model",

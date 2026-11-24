@@ -1,5 +1,5 @@
 import Library.Numerics.Interval.Functions
-import Library.Numerics.Interval.Encloses
+import Library.Numerics.Interval.ArithEncloses
 import Library.Numerics.Float64.Trig.TrigSinCos
 import LeanExe.ProofKit.Signed64Value
 import Mathlib.Analysis.SpecialFunctions.Pow.Real
@@ -7,7 +7,7 @@ import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
 import Mathlib.Analysis.Real.Pi.Bounds
 
 /-!
-Soundness of the operations of `Functions.lean`, stated with `Encloses i x` of `Encloses.lean`,
+Soundness of the operations of `Functions.lean`, stated with `Encloses i x` of `ArithEncloses.lean`,
 which holds the theorems of the operations of `Program.lean`.  Each `encloses_*` theorem derives
 the relation for a result from the relation for the operands, so a proof about a chain of
 operations applies one theorem for each operation and needs no case analysis on acceptance.

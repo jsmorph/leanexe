@@ -28,8 +28,8 @@ first partition point to point `k`, and bound each panel with
 `Demos.Conjunction.Model.integral_eq_width_mul`.  For a chain of arithmetic operations,
 `Library.Numerics.Interval.Encloses` states the inclusion under the hypothesis of acceptance, and
 `Library.Numerics.Interval.encloses_add` and its siblings for `sub`, `mul`, `div`, `neg`, `abs`,
-and `sqrt` compose it without the `obtain` steps.  The module `Library.Numerics.Interval.Encloses`
-declares them and imports `Library.Numerics.Interval.Proof` and no trigonometric module, so a
+and `sqrt` compose it without the `obtain` steps.  The module
+`Library.Numerics.Interval.ArithEncloses` declares them and imports `Library.Numerics.Interval.Proof` and no trigonometric module, so a
 proof that needs only these theorems imports it in place of
 `Library.Numerics.Interval.FunctionsProof`, which imports the accuracy proofs of `sin` and `cos`
 and the compiled trigonometric library.
