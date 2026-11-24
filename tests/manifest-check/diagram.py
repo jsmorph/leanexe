@@ -24,7 +24,7 @@ from matplotlib.patches import FancyArrowPatch, Rectangle
 matplotlib.rcParams["svg.hashsalt"] = "manifest-check-diagram"
 matplotlib.rcParams["hatch.linewidth"] = 0.6
 
-INK, MUTED, EDGE, SPEC, HATCH = "#111111", "#444444", "#222222", "#dedede", "#9a9a9a"
+INK, MUTED, EDGE, SPEC, HATCH = "#111111", "#444444", "#1f4e79", "#dbe9f6", "#d55e00"
 W, MARGIN = 7.3, 0.1
 SIZE, LINE, PAD, GAP = 8.0, 0.139, 0.07, 0.17
 STAGE_X, STAGE_W = 2.5, 4.4

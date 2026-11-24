@@ -27,7 +27,14 @@ from matplotlib.patches import Patch
 matplotlib.rcParams["svg.hashsalt"] = "report_figure"
 
 INK, MUTED, GRID = "#111111", "#555555", "#dddddd"
-HELD, GAINED = "#3a3a3a", "#a8a8a8"
+PALETTE = ["#0072b2", "#e69f00", "#009e73", "#cc79a7", "#56b4e9", "#d55e00", "#f0e442", "#999999"]
+INACTIVE, MAJORITY = "#6b6b6b", "#c0392b"
+
+
+def tint(color, share=0.55):
+    """The color mixed with white, `share` of the way to white."""
+    r, g, b = (int(color[i:i + 2], 16) for i in (1, 3, 5))
+    return "#" + "".join(f"{round(c + (255 - c) * share):02x}" for c in (r, g, b))
 ELIMINATION = {"lowest": "eliminated, fewest votes", "batch": "eliminated in a batch",
                "order": "eliminated by the tie-break order"}
 
@@ -156,18 +163,19 @@ def draw(report, path):
                  color=INK, va="baseline")
         for k, (name, held, gained, note) in enumerate(rows):
             if k == inactive:
-                ax.barh(k, held, height=0.62, facecolor="white", edgecolor=HELD, hatch="////",
+                ax.barh(k, held, height=0.62, facecolor="white", edgecolor=INACTIVE, hatch="////",
                         linewidth=0)
-                ax.barh(k, gained, left=held, height=0.62, facecolor="white", edgecolor=GAINED,
-                        hatch="////", linewidth=0)
+                ax.barh(k, gained, left=held, height=0.62, facecolor="white",
+                        edgecolor=tint(INACTIVE), hatch="////", linewidth=0)
             else:
-                ax.barh(k, held, height=0.62, color=HELD, linewidth=0)
-                ax.barh(k, gained, left=held, height=0.62, color=GAINED, linewidth=0)
+                color = PALETTE[k % len(PALETTE)]
+                ax.barh(k, held, height=0.62, color=color, linewidth=0)
+                ax.barh(k, gained, left=held, height=0.62, color=tint(color), linewidth=0)
             ax.text(held + gained + most * 0.012, k, note, va="center", fontsize=8.5,
                     color=MUTED if held + gained == 0 else INK, zorder=4,
                     bbox={"facecolor": "white", "edgecolor": "none", "pad": 0.4})
-        ax.axvline(half, color=INK, linewidth=1.0, linestyle=(0, (4, 2)), zorder=3)
-        ax.text(half, -0.62, label, ha="center", va="bottom", fontsize=8, color=INK,
+        ax.axvline(half, color=MAJORITY, linewidth=1.2, linestyle=(0, (4, 2)), zorder=3)
+        ax.text(half, -0.62, label, ha="center", va="bottom", fontsize=8, color=MAJORITY,
                 bbox={"facecolor": "white", "edgecolor": "none", "pad": 0.6})
         ax.set_ylim(len(rows) - 0.5, -0.5)
         ax.set_yticks(range(len(rows)), [name for name, _, _, _ in rows], fontsize=8.5)
@@ -186,9 +194,9 @@ def draw(report, path):
     axes[-1].set_xlabel("Ballots", fontsize=9, color=INK)
     fig.text(LEFT / W, 1 - 0.24 / H, f"{report['contest']}: {number(report['ballots'])} ballots",
              fontsize=9, color=MUTED, va="baseline")
-    fig.legend(handles=[Patch(color=HELD, label="Votes"),
-                        Patch(color=GAINED, label="Gained in the round"),
-                        Patch(facecolor="white", edgecolor=HELD, hatch="////", linewidth=0,
+    fig.legend(handles=[Patch(color=PALETTE[0], label="Votes"),
+                        Patch(color=tint(PALETTE[0]), label="Gained in the round"),
+                        Patch(facecolor="white", edgecolor=INACTIVE, hatch="////", linewidth=0,
                               label="Inactive ballots")],
                loc="upper left", bbox_to_anchor=(LEFT / W - 0.01, 1 - 0.3 / H), ncol=3,
                frameon=False, fontsize=8.5, handlelength=1.6, columnspacing=1.4)
