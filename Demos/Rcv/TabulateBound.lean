@@ -722,21 +722,6 @@ theorem reportFile_length_le (b : List UInt8) : (reportFile b).length ≤ 130103
 
 /-! ## The C call in the size of the file -/
 
-/-- A native call theorem holds under a precondition that, together with the relation of the C
-memory to the store, gives the precondition of the theorem. -/
-theorem nativeA_weaken {α β : Type} [Represent α] [Represent β] {A : LClight.Archi}
-    {X : LClight.ExtSem} {cap : Nat} {mod : Wasm.Module} {T : LeanExe.Native.Translation}
-    {ps rs : List LeanExe.Native.VT} {fd : LClight.function} {aborts : Bool} {f : α → β}
-    {Pre Pre' : α → Heap → Wasm.Store Unit → Prop}
-    {Post : α → Heap → Wasm.Store Unit → Heap → Wasm.Store Unit → Prop}
-    (h : LeanExe.Native.NativeA A X cap mod T ps rs fd aborts f Pre Post)
-    (hpre : ∀ (E : LeanExe.Native.Env) store heap x m, E.cap = cap →
-      LeanExe.Native.StoreRel A E store m → Pre' x heap store → Pre x heap store) :
-    LeanExe.Native.NativeA A X cap mod T ps rs fd aborts f Pre' Post := by
-  intro E hE hG hcap hnres hF store heap params x hHeap hPre hArgs hSep hCapS htyped m hst hs
-  exact h E hE hG hcap hnres hF store heap params x hHeap (hpre E store heap x m hcap hst hPre)
-    hArgs hSep hCapS htyped m hst hs
-
 /-- `tabulate_native` in the size of the file: the C function of function 63 returns the report
 without a trap for a file of at most `L` bytes, when `top` and `80 L + 33,702,909` bytes fit in the
 720 MiB of `lx_mem`. -/
@@ -750,7 +735,7 @@ theorem tabulate_native_size (A : LClight.Archi) (X : LClight.ExtSem) (L : Nat) 
         (fun b heap _ => b.data.size ≤ L ∧ heap.top.toNat + 80 * L + 33702909 ≤ 65536 * 11520)
         (fun b heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.tabulate.bound b) := by
   obtain ⟨fd, ps, rs, hfd, hsig, h⟩ := tabulate_native A X
-  refine ⟨fd, ps, rs, hfd, hsig, nativeA_weaken h ?_⟩
+  refine ⟨fd, ps, rs, hfd, hsig, LeanExe.Native.NativeA.weaken h ?_⟩
   intro E store heap b m hcap hst hpre
   obtain ⟨hsize, hroom⟩ := hpre
   have hb := tabulate_bound b (by omega)
@@ -771,7 +756,7 @@ theorem tabulate_native_8800000 (A : LClight.Archi) (X : LClight.ExtSem) :
         (fun b heap _ => b.data.size ≤ 8800000 ∧ heap.top.toNat ≤ 16777216)
         (fun b heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.tabulate.bound b) := by
   obtain ⟨fd, ps, rs, hfd, hsig, h⟩ := tabulate_native_size A X 8800000
-  refine ⟨fd, ps, rs, hfd, hsig, nativeA_weaken h ?_⟩
+  refine ⟨fd, ps, rs, hfd, hsig, LeanExe.Native.NativeA.weaken h ?_⟩
   intro E store heap b m _ _ hpre
   exact ⟨hpre.1, by omega⟩
 
