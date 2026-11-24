@@ -15,15 +15,15 @@ package leanexe where
   leanOptions := if fast then #[⟨`debug.skipKernelTC, true⟩] else #[]
 
 /-- The revision of Talos that supplies both CodeLib and WasmInterpreterLean. -/
-def talosRev : String := "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47"
+def talosRev : String := "282181b7721d53e9e789ab3e79755a2436fc05f9"
 
 -- CodeLib requires WasmInterpreterLean by the path `../interpreter`.  Lake would record that
 -- package in this manifest at `.lake/packages/CodeLib/codelib/../interpreter`, and a workspace
 -- that requires leanexe would look for it under `.lake/packages/leanexe`, where it does not exist.
 -- Lake resolves leanexe's requirements before CodeLib's, so this requirement takes precedence.
-require WasmInterpreterLean from git "https://github.com/jsmorph/talos"
+require WasmInterpreterLean from git "/home/somebody/exaspec/leanexe-dev/toolchain/talos"
   @ talosRev / "interpreter"
-require CodeLib from git "https://github.com/jsmorph/talos"
+require CodeLib from git "/home/somebody/exaspec/leanexe-dev/toolchain/talos"
   @ talosRev / "codelib"
 
 @[default_target] lean_lib LeanExe
