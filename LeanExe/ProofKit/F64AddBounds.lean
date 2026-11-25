@@ -2,6 +2,8 @@ import LeanExe.ProofKit.F64PackRelative
 
 /-! The relative error of rounded binary64 addition and subtraction. -/
 
+set_option maxRecDepth 40000
+
 namespace LeanExe.ProofKit.F64AddBounds
 open CodeLib.IEEE64
 
