@@ -164,14 +164,8 @@ theorem toNat_min (a b : UInt64) : (min a b).toNat = min a.toNat b.toNat := by
     omega
 
 theorem ofNatClamp_toNat (q : Nat) :
-    (UInt64.ofNatClamp q).toNat = min q 18446744073709551615 := by
-  have hs : UInt64.size = 18446744073709551616 := rfl
-  unfold UInt64.ofNatClamp
-  split
-  · rw [UInt64.toNat_ofNatLT]
-    omega
-  · rw [UInt64.toNat_ofNatLT]
-    omega
+    (UInt64.ofNatClamp q).toNat = min q 18446744073709551615 :=
+  BitVec.toNat_ofNatClamp
 
 /-- Lean's clamp of a natural number into `Int64`, on words: the clamp into `UInt64` saturated at
 `2 ^ 63 - 1`. -/
