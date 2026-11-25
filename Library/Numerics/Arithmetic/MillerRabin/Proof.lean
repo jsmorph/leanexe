@@ -17,6 +17,20 @@ namespace Library.Numerics.Arithmetic.MillerRabin
 
 open LeanExe.Dialect
 
+/-! Mathlib v4.36.0 states these facts about `multiplicity`, which `Nat.padicValNat_def` equates
+with `padicValNat`. -/
+
+private theorem pow_padicValNat_dvd' {p n : ℕ} : p ^ padicValNat p n ∣ n := by
+  rw [Nat.padicValNat_def]; exact pow_multiplicity_dvd p n
+
+private theorem pow_succ_padicValNat_not_dvd' {p n : ℕ} [Fact p.Prime] (hn : n ≠ 0) :
+    ¬p ^ (padicValNat p n + 1) ∣ n := by
+  rw [Nat.padicValNat_def]; exact pow_succ_multiplicity_not_dvd hn
+
+private theorem one_le_padicValNat_of_dvd' {p n : ℕ} [Fact p.Prime] (hn : n ≠ 0) (div : p ∣ n) :
+    1 ≤ padicValNat p n := by
+  rw [Nat.padicValNat_def]; exact one_le_multiplicity_of_dvd hn div
+
 /-! ### Residues -/
 
 theorem addMod_spec {a b m : UInt64} (ha : a.toNat < m.toNat) (hb : b.toNat < m.toNat) :
@@ -137,13 +151,13 @@ theorem bit_val (x : UInt64) (i : Nat) (hi : i < 64) :
 theorem bits_below_two {x : Nat} {i : Nat} (hi : i < padicValNat 2 x) :
     x / 2 ^ i % 2 = 0 := by
   obtain ⟨c, hc⟩ := (pow_dvd_pow 2 (show i + 1 ≤ padicValNat 2 x by omega)).trans
-    (pow_padicValNat_dvd (p := 2) (n := x))
+    (pow_padicValNat_dvd' (p := 2) (n := x))
   rw [hc, pow_succ, Nat.mul_assoc, Nat.mul_div_cancel_left _ (by positivity)]
   simp
 
 theorem bit_at_two {x : Nat} (hx : 0 < x) : x / 2 ^ padicValNat 2 x % 2 = 1 := by
-  obtain ⟨c, hc⟩ := pow_padicValNat_dvd (p := 2) (n := x)
-  have hnd := pow_succ_padicValNat_not_dvd (p := 2) (n := x) (by omega)
+  obtain ⟨c, hc⟩ := pow_padicValNat_dvd' (p := 2) (n := x)
+  have hnd := pow_succ_padicValNat_not_dvd' (p := 2) (n := x) (by omega)
   generalize padicValNat 2 x = v at hc hnd ⊢
   rw [hc, Nat.mul_div_cancel_left _ (by positivity)]
   rcases Nat.mod_two_eq_zero_or_one c with h | h
@@ -153,7 +167,7 @@ theorem bit_at_two {x : Nat} (hx : 0 < x) : x / 2 ^ padicValNat 2 x % 2 = 1 := b
   · exact h
 
 theorem two_val_lt {x : UInt64} (hx : 0 < x.toNat) : padicValNat 2 x.toNat < 64 := by
-  have h1 := Nat.le_of_dvd hx (pow_padicValNat_dvd (p := 2) (n := x.toNat))
+  have h1 := Nat.le_of_dvd hx (pow_padicValNat_dvd' (p := 2) (n := x.toNat))
   have h2 := UInt64.toNat_lt x
   by_contra h
   have : 2 ^ 64 ≤ 2 ^ padicValNat 2 x.toNat := Nat.pow_le_pow_right (by norm_num) (by omega)
@@ -308,7 +322,7 @@ theorem test_eq (n x : UInt64) : test n x = testSpec (n, x) := by
     have hv64 := two_val_lt hpos
     rw [hn1] at hk hv64
     have hv1 : 1 ≤ padicValNat 2 (n.toNat - 1) :=
-      one_le_padicValNat_of_dvd (by omega) (Nat.dvd_of_mod_eq_zero (by omega))
+      one_le_padicValNat_of_dvd' (by omega) (Nat.dvd_of_mod_eq_zero (by omega))
     have hq : ((n - 1) >>> twos (n - 1)).toNat = (n.toNat - 1) / 2 ^ padicValNat 2 (n.toNat - 1) := by
       rw [UInt64.toNat_shiftRight, hk, Nat.mod_eq_of_lt hv64, hn1, Nat.shiftRight_eq_div_pow]
     have hy := powMod_spec x ((n - 1) >>> twos (n - 1)) n (by omega)
@@ -363,7 +377,7 @@ theorem prime_passes (n x : Nat) (hp : n.Prime) (hn : 3 ≤ n) (hx : x % n ≠ 0
   have : Fact (1 < n) := ⟨by omega⟩
   unfold StrongProbablePrime
   have hq : 2 ^ padicValNat 2 (n - 1) * ((n - 1) / 2 ^ padicValNat 2 (n - 1)) = n - 1 :=
-    Nat.mul_div_cancel' pow_padicValNat_dvd
+    Nat.mul_div_cancel' pow_padicValNat_dvd'
   generalize padicValNat 2 (n - 1) = v at hq ⊢
   generalize (n - 1) / 2 ^ v = q at hq ⊢
   have ha : (x : ZMod n) ≠ 0 := by
