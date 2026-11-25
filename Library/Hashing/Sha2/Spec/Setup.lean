@@ -1,7 +1,7 @@
 --#--
 import Mathlib.Data.Nat.Find
 import Mathlib.Data.Nat.ModEq
-import Mathlib.Logic.Basic
+import Mathlib.Basic.Logic.Basic
 import Batteries.Data.List.Basic
 
 -- TODO: input preconditions are not yet encoded in the Lean signatures.
