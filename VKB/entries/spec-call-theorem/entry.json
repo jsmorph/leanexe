@@ -20,7 +20,8 @@
     "∃ x : Trajectory, x.AdmittedUntil p q c t",
     "Verified.Master compiled.module compiled.tables name B D R",
     "command.start at the initial store with a native executable's cap",
-    "a size premise of an equation over LeanExe.Bytes in a call theorem"
+    "a size premise of an equation over LeanExe.Bytes in a call theorem",
+    "Verified.CallSpec compiled.module compiled.tables k f B for f : Float → β, with an f64 argument that is a NaN other than 0x7FF8000000000000"
   ],
   "modules": [
     "Library.Numerics.Float64.Bessel.BesselBytes",
@@ -56,7 +57,9 @@
     "Verified.Examples.WasiReadAllNative",
     "Demos.RandomHistogram.Compiled",
     "Demos.ManifestCheck.Compiled",
-    "Demos.RandomChoice.Compiled"
+    "Demos.RandomChoice.Compiled",
+    "Verified.Examples.Floats",
+    "Verified.Examples.Floats32"
   ],
   "declarations": [
     "Verified.tables_at",
@@ -81,7 +84,15 @@
     "Verified.Master.of_trapFree",
     "Verified.ImplementsTables.ofA",
     "Verified.ShimA64.nativeStore",
-    "LeanExe.Pipeline.Bytes.size_lt_of_borrowed"
+    "LeanExe.Pipeline.Bytes.size_lt_of_borrowed",
+    "LeanExe.Pipeline.Scalar",
+    "LeanExe.Pipeline.Represent",
+    "Float.Model.valid",
+    "Float32.Model.valid",
+    "Verified.ToFloat.code",
+    "Verified.ToFloat32.code",
+    "LeanExe.ProofKit.F64Bits.toBits_ofBits",
+    "LeanExe.ProofKit.F32Bits.toBits_ofBits"
   ],
   "examples": [
     "Library.Numerics.Float64.Bessel.BesselBytes.y0_entry_call",
@@ -131,7 +142,11 @@
     "Verified.Examples.WasiReadAll.linux_footprint_native",
     "Demos.RandomHistogram.parseN_callSpec",
     "Demos.ManifestCheck.hexMatches_callSpec",
-    "Demos.RandomChoice.parseArg_callSpec"
+    "Demos.RandomChoice.parseArg_callSpec",
+    "Verified.Examples.Floats.ofBits",
+    "Verified.Examples.Floats32.ofBits",
+    "Verified.Examples.Floats.compiled.ofBits.pure",
+    "Verified.Examples.Floats32.compiled.ofBits.pure"
   ],
   "unimported": {
     "Demos/Screening/Call.lean": [
