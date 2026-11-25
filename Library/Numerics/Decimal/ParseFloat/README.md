@@ -107,7 +107,7 @@ Every theorem in the table reports only the axioms `propext`, `Classical.choice`
 | `parse64_bytes_accuracy`, `parse32_bytes_accuracy` | `ParseFloatBytes` | The compiled entries 35 and 36 return the words of the parsers' results, or trap when memory runs out, and keep the caller's heap. |
 | `parse_file`, `parse_file_decode` | `ParseFloatFile` | `build/verified/parsefloat.wasm` holds the encoding of the module and decodes to it. |
 
-`ofScientific_spec` concerns Lean's own `Float.ofScientific` at `v4.34.0-rc2` [8], which Lean uses for the decimal literals of a program, so every decimal literal of type `Float` or `Float32` in a verified program means the correctly rounded value.
+`ofScientific_spec` concerns Lean's own `Float.ofScientific` at `v4.34.1` [8], which Lean uses for the decimal literals of a program, so every decimal literal of type `Float` or `Float32` in a verified program means the correctly rounded value.
 
 ## Proof
 
@@ -134,7 +134,7 @@ The theorems trust Talos's semantics of WebAssembly and its decoder, as every th
 5. ISO/IEC JTC1/SC22/WG14, [N1570](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf), committee draft of ISO/IEC 9899:2011, 12 April 2011, 7.22.1.3.
 6. Ecma International, ECMA-262, *ECMAScript 2027 Language Specification*, draft of 9 October 2026, [tc39.es/ecma262](https://tc39.es/ecma262/), 7.1.4.1.1 and 7.1.4.1.3.
 7. D. Lemire, "Number Parsing at a Gigabyte per Second", *Software: Practice and Experience* 51(8):1700–1727, 2021, [doi:10.1002/spe.2984](https://doi.org/10.1002/spe.2984); arXiv version [arXiv:2101.11408v9](https://arxiv.org/abs/2101.11408), section 3.
-8. Lean FRO, Lean 4 at tag `v4.34.0-rc2`, `src/Init/Data/OfScientific.lean` (`Float.ofScientific`, `Float32.ofScientific`) and `src/Init/Data/Float/Model/Unpacked/Operations/OfScientific.lean`.
+8. Lean FRO, Lean 4 at tag `v4.34.1`, `src/Init/Data/OfScientific.lean` (`Float.ofScientific`, `Float32.ofScientific`) and `src/Init/Data/Float/Model/Unpacked/Operations/OfScientific.lean`.
 9. S. Boldo, C.-P. Jeannerod, G. Melquiond, and J.-M. Muller, "Floating-point arithmetic", *Acta Numerica* 32:203–290, 2023, [doi:10.1017/S0962492922000101](https://doi.org/10.1017/S0962492922000101), section 2.11.2.
 10. ISO/IEC JTC1/SC22/WG14, [N3220](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3220.pdf), working draft of ISO/IEC 9899:2024, 22 February 2024, F.5.
 11. N. Tao, [parse-number-fxx-test-data](https://github.com/nigeltao/parse-number-fxx-test-data/tree/55d79b184b7d8fac2e143e89dc19b766ec4e54b8).
