@@ -109,18 +109,6 @@ theorem toBits_abs (x : Float) : x.abs.toBits = Wasm.IEEE64.abs x.toBits := by
     decide
   · rfl
 
-theorem toBits_min (a b : Float) :
-    (min a b).toBits = if Wasm.IEEE64.le a.toBits b.toBits then a.toBits else b.toBits := by
-  rw [← decide_le]
-  show (if a ≤ b then a else b).toBits = _
-  split <;> simp_all
-
-theorem toBits_max (a b : Float) :
-    (max a b).toBits = if Wasm.IEEE64.le a.toBits b.toBits then b.toBits else a.toBits := by
-  rw [← decide_le]
-  show (if a ≤ b then b else a).toBits = _
-  split <;> simp_all
-
 /-- Lean's model replaces every NaN with the canonical NaN, so a float built from
 bits keeps them unless they are a NaN pattern. -/
 theorem toBits_ofBits (w : UInt64) :
