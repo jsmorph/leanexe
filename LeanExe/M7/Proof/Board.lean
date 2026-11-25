@@ -128,6 +128,10 @@ theorem confined_of_addrs {ops : List InitOp} {as : List UInt32}
     (σ : Nat → UInt32) : ∀ e ∈ initTrace ops σ, InitBlock e.addr :=
   fun _ he => has _ (haddrs σ ▸ List.mem_map_of_mem he)
 
+/- Instance search tries `UInt32.instDecidableForall`, which enumerates every `UInt32`, before
+`List.decidableBAll` for `∀ a ∈ as, P a`. -/
+attribute [local instance high] List.decidableBAll
+
 /-- Every access of the initialization lies in RCC, GPIOD, or USART3. -/
 theorem init_confined (σ : Nat → UInt32) : ∀ e ∈ initTrace init σ, InitBlock e.addr :=
   confined_of_addrs init_addrs (by decide) σ
