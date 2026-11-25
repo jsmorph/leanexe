@@ -3,8 +3,6 @@ import CodeLib.IEEE64.Operations
 
 /-! Error bounds of rounded binary64 multiplication, relative and mixed absolute-relative. -/
 
-set_option maxRecDepth 40000
-
 namespace LeanExe.ProofKit.F64MulBounds
 open CodeLib.IEEE64
 

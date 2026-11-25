@@ -13,7 +13,7 @@ using only Talos's integer IEEE-754 model.  It never evaluates a native Lean
 namespace LeanExe.ProofKit.F64Bounds
 
 set_option exponentiation.threshold 4096
-set_option maxRecDepth 40000
+set_option maxRecDepth 8192
 
 /-- Clear the sign bit of a raw binary64 word. -/
 def f64AbsBits (bits : UInt64) : UInt64 :=

@@ -1,7 +1,5 @@
 import LeanExe.ProofKit.F64Order
 
-set_option maxRecDepth 40000
-
 namespace LeanExe.ProofKit.F64ExponentBounds
 open CodeLib.IEEE64 F64Order
 
