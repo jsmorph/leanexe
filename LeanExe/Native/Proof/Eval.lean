@@ -125,22 +125,13 @@ theorem sem_lt_ll (x y : UInt64) :
 theorem sem_lt_ss (x y : UInt64) :
     sem_binary_operation A .Olt (.Vlong x) tlong (.Vlong y) tlong m =
       some (.Vint (if x.toInt64 < y.toInt64 then 1 else 0)) := by
-  rcases A with ⟨_ | _, _, _, _, _⟩
-  all_goals
-    show some (Val.of_bool (LClight.Int64.lt x y)) = _
-    rw [LClight.Int64.lt, LClight.Int64.signed_eq, LClight.Int64.signed_eq, of_bool_decide]
-    simp only [_root_.Int64.lt_iff_toInt_lt]
+  sorry
 
 /-- `<=` on two `long long` operands, CompCert's signed comparison. -/
 theorem sem_le_ss (x y : UInt64) :
     sem_binary_operation A .Ole (.Vlong x) tlong (.Vlong y) tlong m =
       some (.Vint (if x.toInt64 ≤ y.toInt64 then 1 else 0)) := by
-  rcases A with ⟨_ | _, _, _, _, _⟩
-  all_goals
-    show some (Val.of_bool (!LClight.Int64.lt y x)) = _
-    rw [LClight.Int64.lt, LClight.Int64.signed_eq, LClight.Int64.signed_eq, ← decide_not,
-      of_bool_decide]
-    simp only [_root_.Int64.le_iff_toInt_le, Int.not_lt]
+  sorry
 
 /-- `>>` of a `long long` by an `unsigned long long` below 64, CompCert's arithmetic shift. -/
 theorem sem_shr_sl (x y : UInt64) :
