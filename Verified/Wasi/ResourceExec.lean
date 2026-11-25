@@ -62,6 +62,7 @@ inductive ResourceExec {World : Type} (host : Host World) (pure : PureContext pu
   | bind_exit {program : EffectProg pureSigs effectSigs}
       {first : Command pureSigs effectSigs context intermediate}
       {next : Command pureSigs effectSigs (intermediate.extend context) result} {env : Env context}
+      {code : UInt64}
       (firstRun : ResourceExec host pure program depth modes (bindLive intermediate next live)
         first env world trace (.exited code) final spent fits) :
       ResourceExec host pure program depth modes live (.bind first next) env
@@ -183,7 +184,7 @@ inductive ResourceLoopExec {World : Type} (host : Host World) (pure : PureContex
   | exit {program : EffectProg pureSigs effectSigs}
       {test : Expr pureSigs (type :: .word :: context) .bool}
       {step : Command pureSigs effectSigs (type :: .word :: context) (.value type)} {env : Env context}
-      {remaining index : Nat} {state : type.denote}
+      {remaining index : Nat} {state : type.denote} {code : UInt64}
       (chosen : test.denote pure.funs (loopEnv env index state) = true)
       (stepRun : ResourceExec host pure program depth (loopModes .owned modes)
         (shift 2 (loopLive test step live)) step (loopEnv env index state)
