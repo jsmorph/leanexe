@@ -17,6 +17,8 @@ with `Γ (1/2) = √π` gives `-8/5 ≤ Γ x - 1/x ≤ 0` for nonzero `x` in `[-
 from the integers, as every non-integer double below -128 is, `|Γ x| < 2 ^ -1078`.
 -/
 
+set_option maxRecDepth 40000
+
 namespace LeanExe.ProofKit.GammaBasic
 
 open Real Finset
