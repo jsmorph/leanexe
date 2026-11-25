@@ -1,7 +1,37 @@
 module
 
-public import LeanExe.ProofKit.PolyChecks
-public import LeanExe.ProofKit.TaylorRemainder
+public import Mathlib.Topology.Algebra.Module.ModuleTopology
+public import Mathlib.Analysis.Calculus.Deriv.Basic
+public import LeanExe.ProofKit.PolyBound
+import LeanExe.ProofKit.PolyChecks
+import LeanExe.ProofKit.TaylorRemainder
+import Mathlib.MeasureTheory.Covering.Besicovitch
+import Mathlib.Analysis.Calculus.Deriv.Comp
+import Mathlib.Analysis.Calculus.Deriv.Mul
+import Mathlib.Analysis.Calculus.Deriv.Add
+import Mathlib.Tactic.ReduceModChar
+import Mathlib.Tactic.Polynomial.Basic
+import Mathlib.Tactic.NormNum.RealSqrt
+import Mathlib.Tactic.NormNum.Prime
+import Mathlib.Tactic.NormNum.Parity
+import Mathlib.Tactic.NormNum.Ordinal
+import Mathlib.Tactic.NormNum.NatSqrt
+import Mathlib.Tactic.NormNum.NatLog
+import Mathlib.Tactic.NormNum.NatFib
+import Mathlib.Tactic.NormNum.ModEq
+import Mathlib.Tactic.NormNum.LegendreSymbol
+import Mathlib.Tactic.NormNum.IsSquare
+import Mathlib.Tactic.NormNum.IsCoprime
+import Mathlib.Tactic.NormNum.Irrational
+import Mathlib.Tactic.Inclusion.Extension.IntervalInt.Hypotheses
+import Mathlib.Tactic.Inclusion.Extension.IntervalInt.Basic
+import Mathlib.Tactic.Inclusion.Extension.IntervalDyadicReal.Hypotheses
+import Mathlib.Tactic.Inclusion.Extension.IntervalDyadicReal.Exp
+import Mathlib.Tactic.Inclusion.Extension.Interval.BinarySplit
+import Mathlib.Tactic.Inclusion.Extension.Core.Core
+import Mathlib.Tactic.Echelon.Zsqrtd
+import Mathlib.Tactic.ENatToNat
+import Mathlib.Tactic.Basify
 
 public section
 

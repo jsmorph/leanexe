@@ -1,7 +1,7 @@
 module
 
 public import LeanExe.ProofKit.FloatSqrtRounding
-public import LeanExe.ProofKit.FloatShift
+import LeanExe.ProofKit.FloatShift
 
 public section
 

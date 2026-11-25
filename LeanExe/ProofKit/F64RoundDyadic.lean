@@ -1,6 +1,11 @@
 module
 
 public import LeanExe.ProofKit.F64RoundFinish
+import LeanExe.ProofKit.F64Normalize
+import LeanExe.ProofKit.F64RoundScaled
+import LeanExe.ProofKit.F64Encoding
+import LeanExe.ProofKit.FloatRounding
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

@@ -1,9 +1,14 @@
 module
 
-public import LeanExe.ProofKit.F32Decoded
-public import LeanExe.ProofKit.F32Nearest
-
+public import LeanExe.Dialect.Float32
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE32
+import LeanExe.ProofKit.F32Decoded
+import LeanExe.ProofKit.F32Nearest
 import all Init.Data.SInt.Float32
+import LeanExe.ProofKit.F32Packing
+import LeanExe.ProofKit.FloatRounding
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

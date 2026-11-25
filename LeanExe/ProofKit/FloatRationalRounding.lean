@@ -1,6 +1,8 @@
 module
 
-public import LeanExe.ProofKit.FloatRounding
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE32
+import LeanExe.ProofKit.FloatRounding
 
 public section
 

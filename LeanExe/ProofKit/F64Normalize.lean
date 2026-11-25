@@ -1,7 +1,11 @@
 module
 
-public import LeanExe.ProofKit.F64RoundScaled
-public import LeanExe.ProofKit.FloatShift
+public import LeanExe.ProofKit.FloatCommon
+public import Interpreter.Wasm.IEEE64
+import LeanExe.ProofKit.F64RoundScaled
+import LeanExe.ProofKit.FloatShift
+import LeanExe.ProofKit.F64Packing
+import LeanExe.ProofKit.FloatRounding
 
 public section
 

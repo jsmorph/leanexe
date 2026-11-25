@@ -1,13 +1,19 @@
 module
 
-public import LeanExe.ProofKit.F64ArithmeticBounds
-public import LeanExe.ProofKit.F64SqrtBounds
 public import LeanExe.ProofKit.F64SignedRounding
-public import LeanExe.ProofKit.F64FullStep
-public import LeanExe.ProofKit.F64Magnitude
-public import LeanExe.ProofKit.F64PositiveSpacing
-public import LeanExe.ProofKit.F64Bits
 public import LeanExe.ProofKit.PolyBound
+public import Mathlib.Analysis.Real.Sqrt
+import LeanExe.ProofKit.F64ArithmeticBounds
+import LeanExe.ProofKit.F64SqrtBounds
+import LeanExe.ProofKit.F64FullStep
+import LeanExe.ProofKit.F64Magnitude
+import LeanExe.ProofKit.F64PositiveSpacing
+import LeanExe.ProofKit.F64Bits
+import LeanExe.ProofKit.F64DivBounds
+import LeanExe.ProofKit.F64MulBounds
+import LeanExe.ProofKit.F64Sign
+import LeanExe.ProofKit.F64PositiveOrder
+import LeanExe.ProofKit.F64AddBounds
 
 public section
 

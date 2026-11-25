@@ -1,11 +1,17 @@
 module
 
-public import LeanExe.ProofKit.F32Mul
-public import LeanExe.ProofKit.F32Sub
-public import LeanExe.ProofKit.F32Div
-public import LeanExe.ProofKit.F32Sqrt
-public import LeanExe.ProofKit.F32Compare
-public import LeanExe.ProofKit.F32Sign
+public import LeanExe.Dialect.Float32
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE32
+import LeanExe.ProofKit.F32Mul
+import LeanExe.ProofKit.F32Sub
+import LeanExe.ProofKit.F32Div
+import LeanExe.ProofKit.F32Sqrt
+import LeanExe.ProofKit.F32Compare
+import LeanExe.ProofKit.F32Sign
+import LeanExe.ProofKit.F32Add
+import LeanExe.ProofKit.F32Packing
+import LeanExe.ProofKit.F32Encoding
 
 public section
 

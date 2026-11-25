@@ -1,6 +1,12 @@
 module
 
-public import LeanExe.ProofKit.F32Decoded
+public import LeanExe.ProofKit.F32Encoding
+public import LeanExe.Dialect.Float32
+import LeanExe.ProofKit.F32Decoded
+import LeanExe.ProofKit.F32Packing
+import CodeLib.IEEE32.SpecialValues
+import LeanExe.ProofKit.F32AddFinite
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

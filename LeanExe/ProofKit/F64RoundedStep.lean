@@ -1,8 +1,17 @@
 module
 
-public import LeanExe.ProofKit.F64RelativeStepWide
-public import LeanExe.ProofKit.F64AddEnclosure
-public import LeanExe.ProofKit.F64AddBounds
+public import LeanExe.ProofKit.F64SignedRounding
+import LeanExe.ProofKit.F64RelativeStepWide
+import LeanExe.ProofKit.F64AddEnclosure
+import LeanExe.ProofKit.F64AddBounds
+import LeanExe.ProofKit.F64RelativeStep
+import LeanExe.ProofKit.F64Sign
+import LeanExe.ProofKit.F64Magnitude
+import LeanExe.ProofKit.F64FullStep
+import LeanExe.ProofKit.F64PositiveOrder
+import LeanExe.ProofKit.F64RoundingScale
+import LeanExe.ProofKit.F64PackingFinite
+import LeanExe.ProofKit.F64NearestNonnegative
 
 public section
 

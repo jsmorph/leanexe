@@ -1,6 +1,11 @@
 module
 
 public import LeanExe.ProofKit.F32RoundFinish
+import LeanExe.ProofKit.F32Normalize
+import LeanExe.ProofKit.F32RoundScaled
+import LeanExe.ProofKit.F32Encoding
+import LeanExe.ProofKit.FloatRounding
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

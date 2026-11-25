@@ -1,6 +1,9 @@
 module
 
-public import LeanExe.ProofKit.F32Normalize
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE32
+import LeanExe.ProofKit.F32Normalize
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

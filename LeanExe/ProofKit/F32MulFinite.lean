@@ -1,7 +1,10 @@
 module
 
 public import LeanExe.ProofKit.F32Decoded
-public import LeanExe.ProofKit.F32RoundDyadic
+import LeanExe.ProofKit.F32RoundDyadic
+import LeanExe.ProofKit.F32Packing
+import LeanExe.ProofKit.F32Encoding
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

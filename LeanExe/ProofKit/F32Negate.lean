@@ -1,7 +1,9 @@
 module
 
-public import CodeLib.IEEE32.Roundoff
-public import CodeLib.IEEE32.SpecialValues
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE32
+import CodeLib.IEEE32.Roundoff
+import CodeLib.IEEE32.SpecialValues
 
 public section
 

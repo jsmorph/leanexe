@@ -1,8 +1,9 @@
 module
 
 public import LeanExe.Source.Syntax
-public import LeanExe.ProofKit.F32Bits
-public import LeanExe.ProofKit.F32Nearest
+import LeanExe.ProofKit.F32Bits
+import LeanExe.ProofKit.F32Nearest
+import LeanExe.ProofKit.F32Sign
 
 public section
 

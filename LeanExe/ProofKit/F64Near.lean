@@ -1,7 +1,12 @@
 module
 
-public import LeanExe.ProofKit.F64TwoSteps
 public import LeanExe.ProofKit.F64RoundNearest
+import LeanExe.ProofKit.F64TwoSteps
+import LeanExe.ProofKit.F64Exact
+import LeanExe.ProofKit.F64Bits
+import LeanExe.ProofKit.F64Magnitude
+import LeanExe.ProofKit.F64PositiveSpacing
+import LeanExe.ProofKit.F64Approx
 
 public section
 

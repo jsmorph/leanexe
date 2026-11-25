@@ -1,6 +1,13 @@
 module
 
-public import LeanExe.ProofKit.F64RelativeStep
+public import LeanExe.ProofKit.F64SignedRounding
+import LeanExe.ProofKit.F64RelativeStep
+import LeanExe.ProofKit.F64Sign
+import LeanExe.ProofKit.F64Magnitude
+import LeanExe.ProofKit.F64FullStep
+import LeanExe.ProofKit.F64NearestStep
+import LeanExe.ProofKit.F64PositiveOrder
+import LeanExe.ProofKit.F64NearestNonnegative
 
 public section
 

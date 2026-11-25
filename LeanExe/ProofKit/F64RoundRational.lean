@@ -1,8 +1,12 @@
 module
 
 public import LeanExe.ProofKit.F64RoundFinish
-public import LeanExe.ProofKit.FloatRationalRounding
-public import CodeLib.IEEE32.Rounders
+import LeanExe.ProofKit.FloatRationalRounding
+import CodeLib.IEEE32.Rounders
+import LeanExe.ProofKit.F64RoundScaled
+import LeanExe.ProofKit.F64Packing
+import LeanExe.ProofKit.F64Encoding
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

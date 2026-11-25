@@ -1,9 +1,10 @@
 module
 
-public import LeanExe.ProofKit.F64PositiveOrder
-public import LeanExe.ProofKit.F64Sign
-public import LeanExe.ProofKit.F64Magnitude
-public import LeanExe.ProofKit.F64Bits
+public import CodeLib.IEEE64.Roundoff
+import LeanExe.ProofKit.F64PositiveOrder
+import LeanExe.ProofKit.F64Sign
+import LeanExe.ProofKit.F64Magnitude
+import LeanExe.ProofKit.F64Bits
 
 public section
 

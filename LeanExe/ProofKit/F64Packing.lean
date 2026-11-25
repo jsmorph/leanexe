@@ -1,7 +1,10 @@
 module
 
 public import LeanExe.ProofKit.F64Encoding
-public import CodeLib.IEEE32.Roundoff
+public import LeanExe.ProofKit.Float64
+import CodeLib.IEEE32.Roundoff
+import LeanExe.ProofKit.F64Source
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

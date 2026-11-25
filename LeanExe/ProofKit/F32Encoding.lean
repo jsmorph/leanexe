@@ -1,7 +1,7 @@
 module
 
-public import LeanExe.ProofKit.F32Source
 public import LeanExe.ProofKit.FloatCommon
+import LeanExe.ProofKit.F32Source
 
 public section
 

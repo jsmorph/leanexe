@@ -1,6 +1,11 @@
 module
 
-public import LeanExe.ProofKit.F64RationalScale
+public import LeanExe.ProofKit.FloatCommon
+public import Interpreter.Wasm.IEEE64
+import LeanExe.ProofKit.F64RationalScale
+import LeanExe.ProofKit.F64RoundRational
+import LeanExe.ProofKit.F64RoundScaled
+import LeanExe.ProofKit.F64Encoding
 
 public section
 

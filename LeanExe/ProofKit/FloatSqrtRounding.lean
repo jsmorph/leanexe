@@ -1,7 +1,9 @@
 module
 
-public import LeanExe.ProofKit.FloatRationalRounding
 public import Mathlib.Data.Nat.Sqrt
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE32
+import LeanExe.ProofKit.FloatRationalRounding
 
 public section
 

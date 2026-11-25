@@ -1,7 +1,12 @@
 module
 
-public import LeanExe.ProofKit.F32Convert
-public import LeanExe.ProofKit.F32Bits
+public import LeanExe.Dialect.Float32
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE32
+import LeanExe.ProofKit.F32Convert
+import LeanExe.ProofKit.F32Bits
+import LeanExe.ProofKit.F32Packing
+import CodeLib.IEEE32.SpecialValues
 
 public section
 

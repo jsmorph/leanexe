@@ -1,7 +1,14 @@
 module
 
-public import LeanExe.ProofKit.F64MulFinite
-public import LeanExe.ProofKit.F64Add
+public import LeanExe.ProofKit.Float64
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE64
+import LeanExe.ProofKit.F64MulFinite
+import LeanExe.ProofKit.F64Add
+import LeanExe.ProofKit.F64Packing
+import LeanExe.ProofKit.F64Encoding
+import LeanExe.ProofKit.F64Decoded
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

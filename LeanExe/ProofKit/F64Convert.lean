@@ -1,8 +1,14 @@
 module
 
-public import LeanExe.ProofKit.F64Bits
-public import LeanExe.ProofKit.F64Normalize
-public import LeanExe.ProofKit.F32TruncSat
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE64
+import LeanExe.ProofKit.F64Bits
+import LeanExe.ProofKit.F64Normalize
+import LeanExe.ProofKit.F32TruncSat
+import LeanExe.ProofKit.F64Decoded
+import LeanExe.ProofKit.F64Packing
+import LeanExe.ProofKit.FloatCommon
+import LeanExe.ProofKit.F64Encoding
 
 public section
 

@@ -1,7 +1,8 @@
 module
 
-public import LeanExe.ProofKit.F64Source
 public import LeanExe.ProofKit.FloatCommon
+public import Interpreter.Wasm.IEEE64
+import LeanExe.ProofKit.F64Source
 
 public section
 

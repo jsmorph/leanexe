@@ -1,7 +1,13 @@
 module
 
-public import LeanExe.ProofKit.F32SqrtCore
-public import LeanExe.ProofKit.F32RoundFinish
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE32
+import LeanExe.ProofKit.F32SqrtCore
+import LeanExe.ProofKit.F32RoundFinish
+import LeanExe.ProofKit.F32RoundScaled
+import LeanExe.ProofKit.FloatRounding
+import LeanExe.ProofKit.FloatSqrtRounding
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

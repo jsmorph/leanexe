@@ -1,7 +1,11 @@
 module
 
-public import LeanExe.ProofKit.F32RoundRational
-public import LeanExe.ProofKit.FloatShift
+public import Mathlib.Tactic
+import LeanExe.ProofKit.F32RoundRational
+import LeanExe.ProofKit.FloatShift
+import LeanExe.ProofKit.FloatRationalRounding
+import LeanExe.ProofKit.FloatCommon
+import LeanExe.ProofKit.F32RoundScaled
 
 public section
 

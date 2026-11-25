@@ -1,6 +1,11 @@
 module
 
-public import LeanExe.ProofKit.F32Add
+public import LeanExe.ProofKit.F32Encoding
+import LeanExe.ProofKit.F32Add
+import LeanExe.ProofKit.F32Decoded
+import LeanExe.ProofKit.F32Packing
+import CodeLib.IEEE32.Roundoff
+import LeanExe.ProofKit.F32AddFinite
 
 public section
 

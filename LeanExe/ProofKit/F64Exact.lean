@@ -1,10 +1,12 @@
 module
 
-public import LeanExe.ProofKit.F64GridExact
-public import LeanExe.ProofKit.F64PowerScale
-public import LeanExe.ProofKit.F64Magnitude
-public import LeanExe.ProofKit.F64ExponentBounds
-public import LeanExe.ProofKit.F64Source
+public import CodeLib.IEEE64.Roundoff
+import LeanExe.ProofKit.F64GridExact
+import LeanExe.ProofKit.F64PowerScale
+import LeanExe.ProofKit.F64Magnitude
+import LeanExe.ProofKit.F64ExponentBounds
+import LeanExe.ProofKit.F64Source
+import LeanExe.ProofKit.F64PositiveSpacing
 
 public section
 

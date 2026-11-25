@@ -1,9 +1,15 @@
 module
 
-public import LeanExe.ProofKit.F64NearestSteps
-public import LeanExe.ProofKit.F64Source
-public import LeanExe.ProofKit.F64NearestSum
-public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64NearestNonnegative
+import LeanExe.ProofKit.F64NearestSteps
+import LeanExe.ProofKit.F64Source
+import LeanExe.ProofKit.F64NearestSum
+import LeanExe.ProofKit.F64PowerScale
+import LeanExe.ProofKit.F64Magnitude
+import LeanExe.ProofKit.F64FullStep
+import LeanExe.ProofKit.F64PositiveSpacing
+import LeanExe.ProofKit.F64PositiveOrder
+import CodeLib.IEEE64.Operations
 
 public section
 

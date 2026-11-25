@@ -1,6 +1,8 @@
 module
 
-public import LeanExe.ProofKit.F64DyadicBounds
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE64
+import LeanExe.ProofKit.F64DyadicBounds
 
 public section
 

@@ -1,6 +1,10 @@
 module
 
-public import LeanExe.ProofKit.F32RationalScale
+public import LeanExe.ProofKit.FloatCommon
+import LeanExe.ProofKit.F32RationalScale
+import LeanExe.ProofKit.F32RoundRational
+import LeanExe.ProofKit.F32RoundScaled
+import LeanExe.ProofKit.F32Encoding
 
 public section
 

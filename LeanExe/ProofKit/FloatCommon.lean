@@ -1,7 +1,10 @@
 module
 
-public import LeanExe.ProofKit.FloatShift
-public import CodeLib.IEEE32.Roundoff
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE32
+import LeanExe.ProofKit.FloatShift
+import CodeLib.IEEE32.Roundoff
+import LeanExe.ProofKit.FloatRounding
 
 public section
 

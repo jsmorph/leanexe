@@ -1,8 +1,12 @@
 module
 
-public import LeanExe.ProofKit.F32Normalize
-public import LeanExe.ProofKit.QuantizedInt32
+public import LeanExe.Dialect.Float32
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE32
+import LeanExe.ProofKit.F32Normalize
+import LeanExe.ProofKit.QuantizedInt32
 import all Init.Data.SInt.Float32
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

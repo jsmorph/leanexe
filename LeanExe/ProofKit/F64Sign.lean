@@ -1,6 +1,11 @@
 module
 
-public import LeanExe.ProofKit.F64Sub
+public import LeanExe.ProofKit.F64Encoding
+import LeanExe.ProofKit.F64Sub
+import LeanExe.ProofKit.F64Add
+import LeanExe.ProofKit.F64Packing
+import LeanExe.ProofKit.F64Source
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

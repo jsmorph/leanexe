@@ -1,7 +1,10 @@
 module
 
 public import LeanExe.ProofKit.F64Approx
-public import LeanExe.ProofKit.F64RoundingScale
+import LeanExe.ProofKit.F64RoundingScale
+import LeanExe.ProofKit.F64Bits
+import LeanExe.ProofKit.F64Magnitude
+import LeanExe.ProofKit.F64AddBounds
 
 public section
 

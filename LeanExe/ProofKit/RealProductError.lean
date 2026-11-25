@@ -1,7 +1,9 @@
 module
 
-public import Mathlib.Data.Real.Basic
-public import Mathlib.Tactic.Ring
+public import Mathlib.Basic.Real.Basic
+import Mathlib.Data.Real.Basic
+import Mathlib.Tactic.Ring
+import Mathlib.Tactic.Ring.RingNF
 
 public section
 

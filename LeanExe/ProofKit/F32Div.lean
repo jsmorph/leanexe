@@ -1,7 +1,14 @@
 module
 
-public import LeanExe.ProofKit.F32DivCore
-public import LeanExe.ProofKit.F32Add
+public import LeanExe.Dialect.Float32
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE32
+import LeanExe.ProofKit.F32DivCore
+import LeanExe.ProofKit.F32Add
+import LeanExe.ProofKit.F32Decoded
+import LeanExe.ProofKit.F32Packing
+import LeanExe.ProofKit.F32Encoding
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

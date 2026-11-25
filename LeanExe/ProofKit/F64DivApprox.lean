@@ -1,10 +1,18 @@
 module
 
-public import LeanExe.ProofKit.F64ErrorTrack
-public import LeanExe.ProofKit.F64DivBounds
 public import LeanExe.ProofKit.PolyCalculus
-public import LeanExe.ProofKit.F64PowerScale
-public import LeanExe.ProofKit.F64Source
+public import LeanExe.ProofKit.F64Approx
+public import CodeLib.IEEE64.Operations
+import LeanExe.ProofKit.F64ErrorTrack
+import LeanExe.ProofKit.F64DivBounds
+import LeanExe.ProofKit.F64PowerScale
+import LeanExe.ProofKit.F64Source
+import Mathlib.MeasureTheory.Covering.Besicovitch
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Analysis.Calculus.MeanValue
+import Mathlib.Analysis.Calculus.Deriv.Inv
+import LeanExe.ProofKit.PolyBound
 
 public section
 

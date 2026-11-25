@@ -1,7 +1,10 @@
 module
 
-public import LeanExe.ProofKit.F32RoundScaled
-public import LeanExe.ProofKit.FloatShift
+public import LeanExe.ProofKit.FloatCommon
+import LeanExe.ProofKit.F32RoundScaled
+import LeanExe.ProofKit.FloatShift
+import LeanExe.ProofKit.F32Packing
+import LeanExe.ProofKit.FloatRounding
 
 public section
 

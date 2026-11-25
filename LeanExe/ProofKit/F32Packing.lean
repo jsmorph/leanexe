@@ -1,7 +1,9 @@
 module
 
 public import LeanExe.ProofKit.F32Encoding
-public import CodeLib.IEEE32.SpecialValues
+public import LeanExe.Dialect.Float32
+import CodeLib.IEEE32.SpecialValues
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

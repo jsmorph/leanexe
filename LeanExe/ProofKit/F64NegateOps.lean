@@ -1,7 +1,10 @@
 module
 
-public import LeanExe.ProofKit.F64RelativeStep
-public import LeanExe.ProofKit.F64Add
+public import CodeLib.IEEE64.Roundoff
+import LeanExe.ProofKit.F64RelativeStep
+import LeanExe.ProofKit.F64Add
+import LeanExe.ProofKit.F64Sign
+import LeanExe.ProofKit.F64Source
 
 public section
 

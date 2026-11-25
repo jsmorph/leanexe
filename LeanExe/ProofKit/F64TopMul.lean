@@ -1,7 +1,36 @@
 module
 
-public import LeanExe.ProofKit.F64TopPack
-public import LeanExe.ProofKit.F64MulBounds
+public import LeanExe.ProofKit.F64Approx
+public import CodeLib.IEEE64.Operations
+import LeanExe.ProofKit.F64TopPack
+import LeanExe.ProofKit.F64MulBounds
+import LeanExe.ProofKit.F64DyadicBounds
+import LeanExe.ProofKit.F64AddNearest
+import CodeLib.IEEE32.Roundoff
+import Mathlib.Tactic.ReduceModChar
+import Mathlib.Tactic.NormNum.RealSqrt
+import Mathlib.Tactic.NormNum.Prime
+import Mathlib.Tactic.NormNum.Parity
+import Mathlib.Tactic.NormNum.Ordinal
+import Mathlib.Tactic.NormNum.NatSqrt
+import Mathlib.Tactic.NormNum.NatLog
+import Mathlib.Tactic.NormNum.NatFib
+import Mathlib.Tactic.NormNum.ModEq
+import Mathlib.Tactic.NormNum.LegendreSymbol
+import Mathlib.Tactic.NormNum.IsSquare
+import Mathlib.Tactic.NormNum.IsCoprime
+import Mathlib.Tactic.NormNum.Irrational
+import Mathlib.Tactic.Measurability.Init
+import Mathlib.Tactic.Inclusion.Extension.IntervalInt.Hypotheses
+import Mathlib.Tactic.Inclusion.Extension.IntervalInt.Basic
+import Mathlib.Tactic.Inclusion.Extension.IntervalDyadicReal.Hypotheses
+import Mathlib.Tactic.Inclusion.Extension.IntervalDyadicReal.Exp
+import Mathlib.Tactic.Inclusion.Extension.Interval.BinarySplit
+import Mathlib.Tactic.Inclusion.Extension.Core.Core
+import Mathlib.Tactic.Echelon.Zsqrtd
+import Mathlib.Analysis.SpecialFunctions.Pow.NNReal
+import Mathlib.Tactic.ENatToNat
+import Mathlib.Tactic.Basify
 
 public section
 

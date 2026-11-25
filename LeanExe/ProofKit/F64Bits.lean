@@ -1,11 +1,17 @@
 module
 
-public import LeanExe.ProofKit.F64Mul
-public import LeanExe.ProofKit.F64Sub
-public import LeanExe.ProofKit.F64Div
-public import LeanExe.ProofKit.F64Sqrt
-public import LeanExe.ProofKit.F64Compare
-public import LeanExe.ProofKit.F64Sign
+public import LeanExe.ProofKit.Float64
+public import Mathlib.Tactic
+public import Interpreter.Wasm.IEEE64
+import LeanExe.ProofKit.F64Mul
+import LeanExe.ProofKit.F64Sub
+import LeanExe.ProofKit.F64Div
+import LeanExe.ProofKit.F64Sqrt
+import LeanExe.ProofKit.F64Compare
+import LeanExe.ProofKit.F64Sign
+import LeanExe.ProofKit.F64Add
+import LeanExe.ProofKit.F64Packing
+import LeanExe.ProofKit.F64Encoding
 
 public section
 

@@ -1,8 +1,10 @@
 module
 
-public import LeanExe.ProofKit.F64ErrorTrack
 public import LeanExe.ProofKit.PolyBound
-public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64Approx
+public import CodeLib.IEEE64.Operations
+import LeanExe.ProofKit.F64ErrorTrack
+import LeanExe.ProofKit.F64Bits
 
 public section
 

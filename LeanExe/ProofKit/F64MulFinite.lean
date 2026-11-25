@@ -1,7 +1,10 @@
 module
 
 public import LeanExe.ProofKit.F64Decoded
-public import LeanExe.ProofKit.F64RoundDyadic
+import LeanExe.ProofKit.F64RoundDyadic
+import LeanExe.ProofKit.F64Packing
+import LeanExe.ProofKit.F64Encoding
+import LeanExe.ProofKit.FloatCommon
 
 public section
 

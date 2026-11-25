@@ -1,6 +1,8 @@
 module
 
-public import LeanExe.ProofKit.F32RationalNormalize
+public import LeanExe.ProofKit.FloatCommon
+import LeanExe.ProofKit.F32RationalNormalize
+import LeanExe.ProofKit.F32Encoding
 
 public section
 

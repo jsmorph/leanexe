@@ -1,7 +1,8 @@
 module
 
 public import Interpreter.Wasm.Syntax
-public import Interpreter.Wasm.IEEE64
+public import Interpreter.Wasm.IEEE32
+import Interpreter.Wasm.IEEE64
 
 public section
 

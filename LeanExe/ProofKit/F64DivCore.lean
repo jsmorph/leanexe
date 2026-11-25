@@ -1,6 +1,9 @@
 module
 
-public import LeanExe.ProofKit.F64RationalNormalize
+public import LeanExe.ProofKit.FloatCommon
+public import Interpreter.Wasm.IEEE64
+import LeanExe.ProofKit.F64RationalNormalize
+import LeanExe.ProofKit.F64Encoding
 
 public section
 

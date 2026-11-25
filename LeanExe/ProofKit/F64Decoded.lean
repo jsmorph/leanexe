@@ -1,6 +1,13 @@
 module
 
 public import LeanExe.ProofKit.F64AddFinite
+public import LeanExe.ProofKit.F64Encoding
+public import LeanExe.ProofKit.Float64
+import LeanExe.ProofKit.F64Normalize
+import LeanExe.ProofKit.F64RoundScaled
+import LeanExe.ProofKit.F64Packing
+import LeanExe.ProofKit.F64Source
+import LeanExe.ProofKit.FloatCommon
 
 public section
 
