@@ -90,4 +90,8 @@ abbrev Contest.WellFormed (c : Contest) : Prop :=
   ∀ b ∈ c.ballots, b.ident.all identOk = true ∧ b.positions.length = c.positions ∧
     ∀ w ∈ b.positions, ValidWord c.candidates.length w
 
+/- Instance search tries `UInt64.instDecidableForall`, which enumerates every `UInt64`, before
+`List.decidableBAll` for a bounded quantifier `∀ w ∈ ws, P w` over words. -/
+attribute [instance high] List.decidableBAll
+
 end Demos.Rcv
