@@ -905,7 +905,7 @@ def elabVerifiedCompile : CommandElab
     let bytesListTy := mkApp (Lean.mkConst ``List [.zero]) bytesTy
     -- A literal of `n` bytes is a term nested `n` deep, which the kernel checks recursively.
     let literalOptions := maxRecDepth.set (← getOptions) 100000
-    liftCoreM <| withReader (fun ctx => { ctx with maxRecDepth := 100000, options := literalOptions }) do
+    liftCoreM <| withReader (fun ctx => { ctx.setOptions literalOptions with maxRecDepth := 100000 }) do
       addLiteral (base ++ `sections) bytesListTy (toExpr secs)
       addLiteral (base ++ `bodies) bytesListTy (toExpr bodies)
       addLiteral (base ++ `data) bytesTy (toExpr data)

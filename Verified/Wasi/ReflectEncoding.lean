@@ -22,7 +22,7 @@ def emitEncoding (target : Name) (moduleName : Name) (refinements : Array Name :
   let bytesListTy := mkApp (mkConst ``List [.zero]) bytesTy
   let literalOptions := maxRecDepth.set (← getOptions) 100000
   liftCoreM <| withReader (fun context =>
-      { context with maxRecDepth := 100000, options := literalOptions }) do
+      { context.setOptions literalOptions with maxRecDepth := 100000 }) do
     addLiteral (base ++ `sections) bytesListTy (toExpr sections)
     addLiteral (base ++ `bodies) bytesListTy (toExpr bodies)
     addLiteral (base ++ `data) bytesTy (toExpr data)
