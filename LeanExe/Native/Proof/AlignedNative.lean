@@ -1,7 +1,11 @@
-import LeanExe.Native.Proof.Native
-import LeanExe.Pipeline.AlignedAlloc
-import LeanExe.Pipeline.AlignedFreeList
-import LeanExe.Pipeline.ImplementsAligned
+module
+
+public import LeanExe.Native.Proof.Native
+public import LeanExe.Pipeline.AlignedAlloc
+public import LeanExe.Pipeline.AlignedFreeList
+public import LeanExe.Pipeline.ImplementsAligned
+
+public section
 
 /-!
 The step from Talos's theorems to the translation without the test of alignment, the translation

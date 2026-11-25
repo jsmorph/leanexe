@@ -1,7 +1,11 @@
-import Verified.Reflect.Definitions
-import Verified.ScalarNumeric
-import Verified.ScalarCalls
-import Verified.ScalarControl
+module
+
+public import Verified.Reflect.Definitions
+public import Verified.ScalarNumeric
+public import Verified.ScalarCalls
+public import Verified.ScalarControl
+
+public section
 
 namespace Verified.Reflect
 

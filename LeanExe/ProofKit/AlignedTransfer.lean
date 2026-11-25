@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.AlignedExec
-import LeanExe.ProofKit.Sequencing
-import LeanExe.ProofKit.AlignedSimpAttr
-import LeanExe.ProofKit.AlignedFlag
+module
+
+public import LeanExe.ProofKit.AlignedExec
+public import LeanExe.ProofKit.Sequencing
+public import LeanExe.ProofKit.AlignedSimpAttr
+public import LeanExe.ProofKit.AlignedFlag
+
+public section
 
 /-!
 Transfer of Talos's `wp` to `wpA` for code without 64-bit accesses.  `Instruction.accessFree`

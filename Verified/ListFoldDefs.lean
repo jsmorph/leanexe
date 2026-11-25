@@ -1,4 +1,8 @@
-import Verified.Rename
+module
+
+public import Verified.Rename
+
+public section
 
 universe u
 

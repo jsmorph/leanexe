@@ -1,5 +1,9 @@
-import LeanExe.Native.Proof.Native
-import Verified.Correct
+module
+
+public import LeanExe.Native.Proof.Native
+public import Verified.Correct
+
+public section
 
 /-!
 What `verified_compile` uses to state `p.f.native` for a wrapper and for a module with literals:

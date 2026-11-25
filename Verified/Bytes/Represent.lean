@@ -1,4 +1,8 @@
-import Verified.Bytes.Step
+module
+
+public import Verified.Bytes.Step
+
+public section
 
 namespace Verified.Bytes
 

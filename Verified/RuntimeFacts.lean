@@ -1,5 +1,9 @@
-import Verified.AllocCost
-import LeanExe.Pipeline.RuntimeSpec
+module
+
+public import Verified.AllocCost
+public import LeanExe.Pipeline.RuntimeSpec
+
+public section
 
 namespace Verified
 

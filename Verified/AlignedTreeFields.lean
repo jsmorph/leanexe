@@ -1,6 +1,10 @@
-import Verified.AlignedSpec
-import Verified.TreeMatchMemory
-import Verified.TreeMatchBlocks
+module
+
+public import Verified.AlignedSpec
+public import Verified.TreeMatchMemory
+public import Verified.TreeMatchBlocks
+
+public section
 
 /-!
 The split of a tree's regions when code descends into a child.  A record's regions, its slots

@@ -1,5 +1,9 @@
-import Verified.Instantiate
-import LeanExe.Pipeline.Implements
+module
+
+public import Verified.Instantiate
+public import LeanExe.Pipeline.Implements
+
+public section
 
 namespace Wasm
 

@@ -1,7 +1,11 @@
-import Verified.AlignedEnv
-import Verified.AlignedLoops
-import Verified.AlignedCopy
-import Verified.TailCorrect
+module
+
+public import Verified.AlignedEnv
+public import Verified.AlignedLoops
+public import Verified.AlignedCopy
+public import Verified.TailCorrect
+
+public section
 
 /-!
 The tail loop's body under the flag.  `TailAligned` is the alignment of a tail body's outcome: the

@@ -10,7 +10,11 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
 that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import LeanExe.Native.Clight.AST
+module
+
+public import LeanExe.Native.Clight.AST
+
+public section
 
 /-!
 The values of CompCert 3.18's `common/Values.v` and the few operations on them that the memory
@@ -33,17 +37,17 @@ inductive val where
   deriving Repr, DecidableEq, Inhabited
 
 def Vzero : val := .Vint Int.zero
-def Vone : val := .Vint Int.one
-def Vtrue : val := .Vint Int.one
-def Vfalse : val := .Vint Int.zero
+@[expose] def Vone : val := .Vint Int.one
+@[expose] def Vtrue : val := .Vint Int.one
+@[expose] def Vfalse : val := .Vint Int.zero
 
 /-- `Vptrofs`. -/
-def Vptrofs (A : Archi) (n : ptrofs) : val :=
+@[expose] def Vptrofs (A : Archi) (n : ptrofs) : val :=
   if A.ptr64 then .Vlong (Ptrofs.to_int64 n) else .Vint (Ptrofs.to_int n)
 
 namespace Val
 
-def of_bool (b : Bool) : val := if b then Vtrue else Vfalse
+@[expose] def of_bool (b : Bool) : val := if b then Vtrue else Vfalse
 
 def is_bool (v : val) : Bool := v == Vtrue || v == Vfalse
 

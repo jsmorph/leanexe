@@ -1,8 +1,12 @@
-import Verified.Source
-import LeanExe.ProofKit.F32Bits
-import LeanExe.ProofKit.F32Convert
-import LeanExe.ProofKit.F32TruncSat
-import LeanExe.ProofKit.F64Convert
+module
+
+public import Verified.Source
+public import LeanExe.ProofKit.F32Bits
+public import LeanExe.ProofKit.F32Convert
+public import LeanExe.ProofKit.F32TruncSat
+public import LeanExe.ProofKit.F64Convert
+
+public section
 
 namespace Verified.Float32Facts
 

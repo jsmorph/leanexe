@@ -1,3 +1,7 @@
+module
+
+public section
+
 /-! The element types of the verified compiler's source language: the values that hold no
 arrays and that an array, a tuple, or a word slot of a record may hold. -/
 
@@ -34,10 +38,10 @@ def Elem.width : Elem → Nat
   | .word | .bool | .float | .float32 => 1
   | .prod a b => a.width + b.width
 
-@[simp] theorem Elem.width_word : Elem.width .word = 1 := rfl
-@[simp] theorem Elem.width_bool : Elem.width .bool = 1 := rfl
-@[simp] theorem Elem.width_float : Elem.width .float = 1 := rfl
-@[simp] theorem Elem.width_float32 : Elem.width .float32 = 1 := rfl
+@[simp] theorem Elem.width_word : Elem.width .word = 1 := by rfl
+@[simp] theorem Elem.width_bool : Elem.width .bool = 1 := by rfl
+@[simp] theorem Elem.width_float : Elem.width .float = 1 := by rfl
+@[simp] theorem Elem.width_float32 : Elem.width .float32 = 1 := by rfl
 
 /-- The words that hold an element in an array, in order: a word as itself, a `Bool` as 1 or 0,
 a float as its bit pattern, and a tuple as its first part's words followed by its second's. -/

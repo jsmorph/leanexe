@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.Allocation
-import LeanExe.ProofKit.FixedArrayFold
-import LeanExe.ProofKit.Frame
+module
+
+public import LeanExe.ProofKit.Allocation
+public import LeanExe.ProofKit.FixedArrayFold
+public import LeanExe.ProofKit.Frame
+
+public section
 
 namespace LeanExe.ProofKit.FixedArrayBump
 open Wasm FixedArrayFold
@@ -11,7 +15,7 @@ def prefixProgram (needLocal topLocal pagesLocal : Nat) : Wasm.Program :=
     .localGet topLocal, .constI64 1, .subI64, .constI64 65536, .divUI64,
     .constI64 1, .addI64, .localSet pagesLocal]
 
-def prefixFrame (frame : Locals) (topLocal pagesLocal : Nat) (base need : UInt64) : Locals :=
+@[expose] def prefixFrame (frame : Locals) (topLocal pagesLocal : Nat) (base need : UInt64) : Locals :=
   resultFrame (resultFrame frame topLocal (base + 48 + need)) pagesLocal
     ((base + 48 + need - 1) / 65536 + 1)
 

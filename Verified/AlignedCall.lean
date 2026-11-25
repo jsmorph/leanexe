@@ -1,4 +1,8 @@
-import Verified.AlignedArgs
+module
+
+public import Verified.AlignedArgs
+
+public section
 
 /-!
 Calls under the flag.  `FunSpecX strict` is `FunSpec` together, under `strict = true`, with

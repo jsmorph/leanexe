@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Init
+module
+
+public import LeanExe.Native.Proof.Init
+
+public section
 
 /-!
 The theorems `p.inSubset` and `p.translation_funcs` of `verified_compile` from one part per

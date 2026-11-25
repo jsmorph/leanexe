@@ -1,5 +1,9 @@
-import Verified.AlignedArrayCopy
-import Verified.TreeRelease
+module
+
+public import Verified.AlignedArrayCopy
+public import Verified.TreeRelease
+
+public section
 
 /-!
 The interface of the second stage for `release`.  The verified compiler's proof calls `release`

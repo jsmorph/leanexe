@@ -1,9 +1,13 @@
-import Verified.AlignedTreeCopyInv
-import LeanExe.ProofKit.AlignedTransfer
-import Verified.TreeSlotCode
-import Verified.TreeCopyInvariant
-import Verified.TreeAdvance
-import Verified.TreeCopyLocals
+module
+
+public import Verified.AlignedTreeCopyInv
+public import LeanExe.ProofKit.AlignedTransfer
+public import Verified.TreeSlotCode
+public import Verified.TreeCopyInvariant
+public import Verified.TreeAdvance
+public import Verified.TreeCopyLocals
+
+public section
 
 /-!
 The reads and the word steps of the tree copy under the flag: the ports of

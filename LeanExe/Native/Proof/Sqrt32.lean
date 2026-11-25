@@ -1,7 +1,11 @@
-import LeanExe.Native.Proof.Nearest32
-import LeanExe.ProofKit.F64Decoded
-import CodeLib.IEEE64.Roundoff
-import Mathlib.Data.Nat.Sqrt
+module
+
+public import LeanExe.Native.Proof.Nearest32
+public import LeanExe.ProofKit.F64Decoded
+public import CodeLib.IEEE64.Roundoff
+public import Mathlib.Data.Nat.Sqrt
+
+public section
 
 /-!
 The simulation of `f32.sqrt`, which `sqrt32Stmt` computes as `(float) __builtin_fsqrt ((double) t)`.

@@ -1,4 +1,8 @@
-import Interpreter.Wasm.Wp.Loop
+module
+
+public import Interpreter.Wasm.Wp.Loop
+
+public section
 
 namespace Verified.Tail
 

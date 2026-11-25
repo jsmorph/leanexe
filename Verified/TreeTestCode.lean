@@ -1,5 +1,9 @@
-import Verified.TreeCopyState
-import Verified.TreeSelect
+module
+
+public import Verified.TreeCopyState
+public import Verified.TreeSelect
+
+public section
 
 namespace Verified
 

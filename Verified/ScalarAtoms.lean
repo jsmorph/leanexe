@@ -1,4 +1,8 @@
-import Verified.ScalarTransport
+module
+
+public import Verified.ScalarTransport
+
+public section
 
 namespace Wasm
 

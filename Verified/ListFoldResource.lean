@@ -1,4 +1,8 @@
-import Verified.ListFoldBound
+module
+
+public import Verified.ListFoldBound
+
+public section
 
 namespace Verified.ListFold
 

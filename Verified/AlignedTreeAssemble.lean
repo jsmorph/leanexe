@@ -1,5 +1,9 @@
-import Verified.AlignedTreeNode
-import Verified.TreeAssembleTyped
+module
+
+public import Verified.AlignedTreeNode
+public import Verified.TreeAssembleTyped
+
+public section
 
 /-!
 The stores that assemble a record under the flag.  Every store of the assembly writes a slot of

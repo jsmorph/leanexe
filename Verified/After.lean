@@ -1,9 +1,13 @@
-import Verified.Heap
-import Verified.WordCode
-import LeanExe.Pipeline.FlatRecords
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64Decoded
+module
+
+public import Verified.Heap
+public import Verified.WordCode
+public import LeanExe.Pipeline.FlatRecords
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64Decoded
+
+public section
 
 /-! The facts that the correctness proof of `Correct.lean` shares: `After`, which states what holds
 after the code of an expression, the facts about the variables that stay live, the liveness and

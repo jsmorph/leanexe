@@ -1,12 +1,16 @@
-import LeanExe.Common
-import LeanExe.ProofKit.Memory
-import LeanExe.ProofKit.Allocation
+module
+
+public import LeanExe.Common
+public import LeanExe.ProofKit.Memory
+public import LeanExe.ProofKit.Allocation
+
+public section
 
 namespace LeanExe.ProofKit
 
 open Wasm
 
-def FreshFixedArrayAt (st : Store Unit) (ptr capacity stride : UInt64) : Prop :=
+@[expose] def FreshFixedArrayAt (st : Store Unit) (ptr capacity stride : UInt64) : Prop :=
   st.mem.read64 ((ptr - 48).toUInt32) = 5501223100278326855 ∧
   st.mem.read64 ((ptr - 40).toUInt32) = 1 ∧
   st.mem.read64 ((ptr - 32).toUInt32) = capacity ∧
@@ -40,7 +44,7 @@ theorem FreshFixedArrayAt.frame {st st' : Store Unit}
     (hRead 16 (by decide) (by decide)).trans h16,
     (hRead 8 (by decide) (by decide)).trans h8⟩
 
-def fixedArrayHeaderMem (mem : Mem) (base capacity stride : UInt64) : Mem :=
+@[expose] def fixedArrayHeaderMem (mem : Mem) (base capacity stride : UInt64) : Mem :=
   (((((mem.write64
     (UInt32.ofNat (base.toNat % 4294967296)) 5501223100278326855).write64
     (UInt32.ofNat ((base.toNat + 8) % 4294967296)) 1).write64
@@ -49,7 +53,7 @@ def fixedArrayHeaderMem (mem : Mem) (base capacity stride : UInt64) : Mem :=
     (UInt32.ofNat ((base.toNat + 32) % 4294967296)) stride).write64
     (UInt32.ofNat ((base.toNat + 40) % 4294967296)) 0
 
-def fixedArrayAllocBumpStore (st : Store Unit) (base capacity stride : UInt64) :
+@[expose] def fixedArrayAllocBumpStore (st : Store Unit) (base capacity stride : UInt64) :
     Store Unit :=
   { st with
     globals := { globals :=

@@ -1,5 +1,9 @@
-import Verified.AlignedArrayCopy
-import Verified.ExprCorrect
+module
+
+public import Verified.AlignedArrayCopy
+public import Verified.ExprCorrect
+
+public section
 
 /-!
 The flag at the level of expressions.  `HoldsA` is the alignment invariant: the heap is aligned,

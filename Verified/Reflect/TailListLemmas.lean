@@ -1,5 +1,9 @@
-import Verified.Reflect.TailLemmas
-import Verified.TreeAgree
+module
+
+public import Verified.Reflect.TailLemmas
+public import Verified.TreeAgree
+
+public section
 
 namespace Verified.Reflect
 

@@ -1,4 +1,8 @@
-import LeanExe.Pipeline.Records
+module
+
+public import LeanExe.Pipeline.Records
+
+public section
 
 namespace LeanExe.Pipeline
 

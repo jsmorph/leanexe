@@ -1,5 +1,9 @@
-import LeanExe.Encoding.Completeness.Modules
-import LeanExe.Encoding.RoundTrip
+module
+
+public import LeanExe.Encoding.Completeness.Modules
+public import LeanExe.Encoding.RoundTrip
+
+public section
 
 /-! `Writes result bytes` states that an encoder's result is `bytes`.  The lemmas compose the bytes
 of a module from the bytes of its parts, so that the kernel checks each part, such as one function

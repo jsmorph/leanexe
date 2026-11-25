@@ -1,6 +1,10 @@
-import Verified.Native
-import Verified.AlignedEntries
-import LeanExe.Native.Proof.AlignedNative
+module
+
+public import Verified.Native
+public import Verified.AlignedEntries
+public import LeanExe.Native.Proof.AlignedNative
+
+public section
 
 /-!
 The translation without the test of alignment for a wrapper.  `NativeTablesAlignedA` is

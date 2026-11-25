@@ -1,6 +1,10 @@
-import Verified.TreeCopyState
-import Verified.HeapStep
-import LeanExe.Pipeline.Rebuilt
+module
+
+public import Verified.TreeCopyState
+public import Verified.HeapStep
+public import LeanExe.Pipeline.Rebuilt
+
+public section
 
 namespace Verified
 

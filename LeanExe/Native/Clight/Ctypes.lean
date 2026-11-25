@@ -10,7 +10,11 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
 that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import LeanExe.Native.Clight.Memory
+module
+
+public import LeanExe.Native.Clight.Memory
+
+public section
 
 /-!
 The C types of CompCert 3.18's `cfrontend/Ctypes.v`, the operations on them that the semantics
@@ -41,7 +45,7 @@ structure attr where
   attr_alignas : Option Nat
   deriving Repr, DecidableEq
 
-def noattr : attr := { attr_volatile := false, attr_alignas := none }
+@[expose] def noattr : attr := { attr_volatile := false, attr_alignas := none }
 
 inductive type where
   | Tvoid
@@ -144,7 +148,7 @@ def attr_of_type : type → attr
   | .Tstruct _ a => a
   | .Tunion _ a => a
 
-def change_attributes (f : attr → attr) (ty : type) : type :=
+@[expose] def change_attributes (f : attr → attr) (ty : type) : type :=
   match ty with
   | .Tvoid => ty
   | .Tint sz si a => .Tint sz si (f a)
@@ -156,10 +160,10 @@ def change_attributes (f : attr → attr) (ty : type) : type :=
   | .Tstruct id a => .Tstruct id (f a)
   | .Tunion id a => .Tunion id (f a)
 
-def remove_attributes (ty : type) : type := change_attributes (fun _ => noattr) ty
+@[expose] def remove_attributes (ty : type) : type := change_attributes (fun _ => noattr) ty
 
 /-- The usual unary conversion. -/
-def typeconv (ty : type) : type :=
+@[expose] def typeconv (ty : type) : type :=
   match ty with
   | .Tint .I8 _ _ | .Tint .I16 _ _ | .Tint .IBool _ _ => .Tint .I32 .Signed noattr
   | .Tarray t _ _ => .Tpointer t noattr
@@ -167,7 +171,7 @@ def typeconv (ty : type) : type :=
   | _ => remove_attributes ty
 
 /-- `sizeof` with an empty composite environment. -/
-def sizeof (A : Archi) : type → _root_.Int
+@[expose] def sizeof (A : Archi) : type → _root_.Int
   | .Tvoid => 1
   | .Tint .I8 _ _ => 1
   | .Tint .I16 _ _ => 2

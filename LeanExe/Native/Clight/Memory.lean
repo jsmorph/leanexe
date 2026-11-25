@@ -10,8 +10,12 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
 that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import Std.Data.TreeMap
-import LeanExe.Native.Clight.Memdata
+module
+
+public import Std.Data.TreeMap
+public import LeanExe.Native.Clight.Memdata
+
+public section
 
 /-!
 CompCert 3.18's memory model, from `common/Memtype.v` and `common/Memory.v`, without its proof
@@ -82,8 +86,8 @@ abbrev contents := Std.TreeMap _root_.Int memval
 namespace ZMap
 
 def init : contents := ∅
-def get (i : _root_.Int) (c : contents) : memval := c.getD i .Undef
-def set (i : _root_.Int) (v : memval) (c : contents) : contents := c.insert i v
+@[expose] def get (i : _root_.Int) (c : contents) : memval := c.getD i .Undef
+@[expose] def set (i : _root_.Int) (v : memval) (c : contents) : contents := c.insert i v
 
 end ZMap
 
@@ -96,9 +100,9 @@ structure mem where
 namespace Mem
 
 /-- `m.(mem_contents)#b`. -/
-def contents_of (m : mem) (b : block) : contents := m.mem_contents.getD b ZMap.init
+@[expose] def contents_of (m : mem) (b : block) : contents := m.mem_contents.getD b ZMap.init
 
-def perm_order' (po : Option permission) (p : permission) : Prop :=
+@[expose] def perm_order' (po : Option permission) (p : permission) : Prop :=
   match po with
   | some p' => perm_order p' p
   | none => False
@@ -108,19 +112,19 @@ instance (po : Option permission) (p : permission) : Decidable (perm_order' po p
   | some p' => inferInstanceAs (Decidable (perm_order p' p))
   | none => isFalse id
 
-def perm (m : mem) (b : block) (ofs : _root_.Int) (k : perm_kind) (p : permission) : Prop :=
+@[expose] def perm (m : mem) (b : block) (ofs : _root_.Int) (k : perm_kind) (p : permission) : Prop :=
   perm_order' (m.mem_access b ofs k) p
 
 instance (m : mem) (b : block) (ofs : _root_.Int) (k : perm_kind) (p : permission) :
     Decidable (perm m b ofs k p) :=
   inferInstanceAs (Decidable (perm_order' (m.mem_access b ofs k) p))
 
-def range_perm (m : mem) (b : block) (lo hi : _root_.Int) (k : perm_kind) (p : permission) :
+@[expose] def range_perm (m : mem) (b : block) (lo hi : _root_.Int) (k : perm_kind) (p : permission) :
     Prop :=
   ∀ ofs, lo ≤ ofs → ofs < hi → perm m b ofs k p
 
 /-- The decision procedure of `range_perm_dec`: the offsets `lo` to `hi - 1` in turn. -/
-def range_perm_b (m : mem) (b : block) (lo hi : _root_.Int) (k : perm_kind) (p : permission) :
+@[expose] def range_perm_b (m : mem) (b : block) (lo hi : _root_.Int) (k : perm_kind) (p : permission) :
     Bool :=
   (List.range (hi - lo).toNat).all fun i => decide (perm m b (lo + i) k p)
 
@@ -140,7 +144,7 @@ instance (m : mem) (b : block) (lo hi : _root_.Int) (k : perm_kind) (p : permiss
     Decidable (range_perm m b lo hi k p) :=
   decidable_of_iff _ (range_perm_b_iff m b lo hi k p)
 
-def valid_access (m : mem) (chunk : memory_chunk) (b : block) (ofs : _root_.Int)
+@[expose] def valid_access (m : mem) (chunk : memory_chunk) (b : block) (ofs : _root_.Int)
     (p : permission) : Prop :=
   range_perm m b ofs (ofs + size_chunk chunk) .Cur p ∧ align_chunk chunk ∣ ofs
 
@@ -181,15 +185,15 @@ def free_list (m : mem) : List (block × _root_.Int × _root_.Int) → Option me
       | none => none
       | some m' => free_list m' l
 
-def getN : Nat → _root_.Int → contents → List memval
+@[expose] def getN : Nat → _root_.Int → contents → List memval
   | 0, _, _ => []
   | n + 1, p, c => ZMap.get p c :: getN n (p + 1) c
 
-def setN : List memval → _root_.Int → contents → contents
+@[expose] def setN : List memval → _root_.Int → contents → contents
   | [], _, c => c
   | v :: vl, p, c => setN vl (p + 1) (ZMap.set p v c)
 
-def load (A : Archi) (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int) :
+@[expose] def load (A : Archi) (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int) :
     Option val :=
   if valid_access m chunk b ofs .Readable then
     some (decode_val A chunk (getN (size_chunk_nat chunk) ofs (contents_of m b)))
@@ -203,7 +207,7 @@ def loadv (A : Archi) (chunk : memory_chunk) (m : mem) (addr : val) : Option val
       else none
   | _ => none
 
-def store (A : Archi) (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int) (v : val) :
+@[expose] def store (A : Archi) (chunk : memory_chunk) (m : mem) (b : block) (ofs : _root_.Int) (v : val) :
     Option mem :=
   if valid_access m chunk b ofs .Writable then
     some { m with

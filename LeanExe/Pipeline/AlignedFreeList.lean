@@ -1,6 +1,10 @@
-import LeanExe.Pipeline.AlignedHeap
-import LeanExe.Pipeline.AlignedRuns
-import LeanExe.ProofKit.AlignedTransfer
+module
+
+public import LeanExe.Pipeline.AlignedHeap
+public import LeanExe.Pipeline.AlignedRuns
+public import LeanExe.ProofKit.AlignedTransfer
+
+public section
 
 /-!
 The return of a block to the free list by `release`, under `wpA`: the ports of

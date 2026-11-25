@@ -10,8 +10,12 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
 that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import Interpreter.Wasm.IEEE64
-import LeanExe.Native.Clight.Integers
+module
+
+public import Interpreter.Wasm.IEEE64
+public import LeanExe.Native.Clight.Integers
+
+public section
 
 /-!
 The floating-point numbers of CompCert 3.18's `lib/Floats.v`.
@@ -36,19 +40,19 @@ abbrev float := UInt64
 abbrev float32 := UInt32
 
 /-- `quiet_nan_64_payload`: the payload with its quiet bit set, reduced to 52 bits. -/
-def quiet_nan_64_payload (p : Nat) : Nat := (p ||| 2 ^ 51) % 2 ^ 52
+@[expose] def quiet_nan_64_payload (p : Nat) : Nat := (p ||| 2 ^ 51) % 2 ^ 52
 
 /-- `quiet_nan_64`: the NaN of sign `s` and the quiet payload of `p`. -/
-def quiet_nan_64 (sp : Bool × Nat) : float :=
+@[expose] def quiet_nan_64 (sp : Bool × Nat) : float :=
   UInt64.ofNat ((if sp.1 then 2 ^ 63 else 0) + 0x7FF * 2 ^ 52 + quiet_nan_64_payload sp.2)
 
-def quiet_nan_32_payload (p : Nat) : Nat := (p ||| 2 ^ 22) % 2 ^ 23
+@[expose] def quiet_nan_32_payload (p : Nat) : Nat := (p ||| 2 ^ 22) % 2 ^ 23
 
-def quiet_nan_32 (sp : Bool × Nat) : float32 :=
+@[expose] def quiet_nan_32 (sp : Bool × Nat) : float32 :=
   UInt32.ofNat ((if sp.1 then 2 ^ 31 else 0) + 0xFF * 2 ^ 23 + quiet_nan_32_payload sp.2)
 
 /-- `cmp_of_comparison`. -/
-def cmp_of_comparison (c : comparison) (x : Option Ordering) : Bool :=
+@[expose] def cmp_of_comparison (c : comparison) (x : Option Ordering) : Bool :=
   match c, x with
   | .Ceq, some .eq => true
   | .Ceq, _ => false
@@ -110,21 +114,21 @@ def compare (f1 f2 : float) : Option Ordering :=
 def cmp (c : comparison) (f1 f2 : float) : Bool := cmp_of_comparison c (compare f1 f2)
 
 /-- `expand_nan_payload`. -/
-def expand_nan_payload (p : Nat) : Nat := p * 2 ^ 29
+@[expose] def expand_nan_payload (p : Nat) : Nat := p * 2 ^ 29
 
 /-- `reduce_nan_payload`. -/
-def reduce_nan_payload (p : Nat) : Nat := quiet_nan_64_payload p / 2 ^ 29
+@[expose] def reduce_nan_payload (p : Nat) : Nat := quiet_nan_64_payload p / 2 ^ 29
 
 /-- `Float.of_single`, exact for numbers; a NaN keeps its sign and its payload shifted into the
 binary64 fraction, then quieted (`of_single_nan` with both architecture flags false). -/
-def of_single (f : float32) : float :=
+@[expose] def of_single (f : float32) : float :=
   if IEEE32.isNaN f then quiet_nan_64 (IEEE32.sign f, expand_nan_payload (IEEE32.fraction f))
   else if IEEE32.isInfinite f then IEEE64.infinity (IEEE32.sign f)
   else IEEE64.roundScaledMagnitude (IEEE32.sign f) (IEEE32.scaledMagnitude f * 2 ^ 925)
 
 /-- `Float.to_single`, rounding to nearest, ties to even; a NaN keeps its sign and the top of its
 quieted payload (`to_single_nan`). -/
-def to_single (f : float) : float32 :=
+@[expose] def to_single (f : float) : float32 :=
   if IEEE64.isNaN f then quiet_nan_32 (IEEE64.sign f, reduce_nan_payload (IEEE64.fraction f))
   else if IEEE64.isInfinite f then IEEE32.infinity (IEEE64.sign f)
   else IEEE32.roundDyadicMagnitude (IEEE64.sign f) (IEEE64.scaledMagnitude f) 925
@@ -151,8 +155,8 @@ def of_intu (n : int) : float := IEEE64.fromInt (Int.unsigned n)
 def of_long (n : int64) : float := IEEE64.fromInt (Int64.signed n)
 def of_longu (n : int64) : float := IEEE64.fromInt (Int64.unsigned n)
 
-def to_bits (f : float) : int64 := f
-def of_bits (b : int64) : float := b
+@[expose] def to_bits (f : float) : int64 := f
+@[expose] def of_bits (b : int64) : float := b
 
 end Float
 
@@ -160,54 +164,54 @@ namespace Float32
 
 open Wasm
 
-def cons_pl (x : float32) (l : List (Bool × Nat)) : List (Bool × Nat) :=
+@[expose] def cons_pl (x : float32) (l : List (Bool × Nat)) : List (Bool × Nat) :=
   if IEEE32.isNaN x then (IEEE32.sign x, IEEE32.fraction x) :: l else l
 
-def binop_nan (A : Archi) (x y : float32) : float32 :=
+@[expose] def binop_nan (A : Archi) (x y : float32) : float32 :=
   quiet_nan_32 (A.choose_nan_32 (cons_pl x (cons_pl y [])))
 
-def binop (A : Archi) (r x y : float32) : float32 :=
+@[expose] def binop (A : Archi) (r x y : float32) : float32 :=
   if IEEE32.isNaN r then binop_nan A x y else r
 
-def zero : float32 := 0
+@[expose] def zero : float32 := 0
 
-def add (A : Archi) (x y : float32) : float32 := binop A (IEEE32.add x y) x y
-def sub (A : Archi) (x y : float32) : float32 := binop A (IEEE32.sub x y) x y
-def mul (A : Archi) (x y : float32) : float32 := binop A (IEEE32.mul x y) x y
-def div (A : Archi) (x y : float32) : float32 := binop A (IEEE32.div x y) x y
+@[expose] def add (A : Archi) (x y : float32) : float32 := binop A (IEEE32.add x y) x y
+@[expose] def sub (A : Archi) (x y : float32) : float32 := binop A (IEEE32.sub x y) x y
+@[expose] def mul (A : Archi) (x y : float32) : float32 := binop A (IEEE32.mul x y) x y
+@[expose] def div (A : Archi) (x y : float32) : float32 := binop A (IEEE32.div x y) x y
 
-def neg (x : float32) : float32 := IEEE32.negate x
-def abs (x : float32) : float32 := IEEE32.abs x
+@[expose] def neg (x : float32) : float32 := IEEE32.negate x
+@[expose] def abs (x : float32) : float32 := IEEE32.abs x
 
-def compare (f1 f2 : float32) : Option Ordering :=
+@[expose] def compare (f1 f2 : float32) : Option Ordering :=
   if IEEE32.isNaN f1 || IEEE32.isNaN f2 then none
   else if IEEE32.eq f1 f2 then some .eq
   else if IEEE32.lt f1 f2 then some .lt
   else some .gt
 
-def cmp (c : comparison) (f1 f2 : float32) : Bool := cmp_of_comparison c (compare f1 f2)
+@[expose] def cmp (c : comparison) (f1 f2 : float32) : Bool := cmp_of_comparison c (compare f1 f2)
 
-def ZofB_range (f : float32) (zmin zmax : _root_.Int) : Option _root_.Int :=
+@[expose] def ZofB_range (f : float32) (zmin zmax : _root_.Int) : Option _root_.Int :=
   match IEEE32.truncatedInt f with
   | some z => if zmin ≤ z ∧ z ≤ zmax then some z else none
   | none => none
 
-def to_int (f : float32) : Option int :=
+@[expose] def to_int (f : float32) : Option int :=
   (ZofB_range f Int.min_signed Int.max_signed).map Int.repr
-def to_intu (f : float32) : Option int :=
+@[expose] def to_intu (f : float32) : Option int :=
   (ZofB_range f 0 Int.max_unsigned).map Int.repr
-def to_long (f : float32) : Option int64 :=
+@[expose] def to_long (f : float32) : Option int64 :=
   (ZofB_range f Int64.min_signed Int64.max_signed).map Int64.repr
-def to_longu (f : float32) : Option int64 :=
+@[expose] def to_longu (f : float32) : Option int64 :=
   (ZofB_range f 0 Int64.max_unsigned).map Int64.repr
 
-def of_int (n : int) : float32 := IEEE32.fromInt (Int.signed n)
-def of_intu (n : int) : float32 := IEEE32.fromInt (Int.unsigned n)
-def of_long (n : int64) : float32 := IEEE32.fromInt (Int64.signed n)
-def of_longu (n : int64) : float32 := IEEE32.fromInt (Int64.unsigned n)
+@[expose] def of_int (n : int) : float32 := IEEE32.fromInt (Int.signed n)
+@[expose] def of_intu (n : int) : float32 := IEEE32.fromInt (Int.unsigned n)
+@[expose] def of_long (n : int64) : float32 := IEEE32.fromInt (Int64.signed n)
+@[expose] def of_longu (n : int64) : float32 := IEEE32.fromInt (Int64.unsigned n)
 
-def to_bits (f : float32) : int := f
-def of_bits (b : int) : float32 := b
+@[expose] def to_bits (f : float32) : int := f
+@[expose] def of_bits (b : int) : float32 := b
 
 end Float32
 

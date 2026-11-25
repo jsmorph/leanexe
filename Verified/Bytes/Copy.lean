@@ -1,5 +1,9 @@
-import Verified.Bytes.CopyByte
-import Verified.Bytes.Overlay
+module
+
+public import Verified.Bytes.CopyByte
+public import Verified.Bytes.Overlay
+
+public section
 
 namespace Verified.Bytes
 

@@ -1,4 +1,8 @@
-import LeanExe.Pipeline.Implements
+module
+
+public import LeanExe.Pipeline.Implements
+
+public section
 
 /-!
 The representation of Lean's `Int64`: its two's-complement word, `x.toUInt64`, as one `i64`.  With

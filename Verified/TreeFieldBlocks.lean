@@ -1,4 +1,8 @@
-import Verified.TreeFieldsMemory
+module
+
+public import Verified.TreeFieldsMemory
+
+public section
 
 namespace Verified
 

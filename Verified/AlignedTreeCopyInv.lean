@@ -1,8 +1,12 @@
-import Verified.TreeCopyStartInv
-import Verified.AlignedTreeMemory
-import Verified.TreeCopyInvariant
-import Verified.TreeCopyCompleteInv
-import Verified.TreeAdvance
+module
+
+public import Verified.TreeCopyStartInv
+public import Verified.AlignedTreeMemory
+public import Verified.TreeCopyInvariant
+public import Verified.TreeCopyCompleteInv
+public import Verified.TreeAdvance
+
+public section
 
 /-!
 The alignment of a tree copy in progress, and the copy's invariants under the flag.  `CopyAligned`

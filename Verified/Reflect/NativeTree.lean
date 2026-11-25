@@ -1,4 +1,8 @@
-import Verified.Reflect.RecursiveLayout
+module
+
+public import Verified.Reflect.RecursiveLayout
+
+public section
 
 namespace Verified.Reflect
 

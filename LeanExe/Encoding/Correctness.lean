@@ -1,5 +1,9 @@
-import LeanExe.Encoding.Completeness.Modules
-import LeanExe.Encoding.Spec.Validity
+module
+
+public import LeanExe.Encoding.Completeness.Modules
+public import LeanExe.Encoding.Spec.Validity
+
+public section
 
 namespace Wasm.Encoding
 

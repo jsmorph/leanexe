@@ -1,5 +1,9 @@
-import LeanExe.Native.Proof.Eval
-import Interpreter.Wasm.Semantics
+module
+
+public import LeanExe.Native.Proof.Eval
+public import Interpreter.Wasm.Semantics
+
+public section
 
 /-!
 The relation between a Talos state and a state of the translated C function, and the outcomes

@@ -1,5 +1,9 @@
-import Verified.ListFoldResource
-import Verified.Reflect.FitsLemmas
+module
+
+public import Verified.ListFoldResource
+public import Verified.Reflect.FitsLemmas
+
+public section
 
 namespace Verified.ListFold
 

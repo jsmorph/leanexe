@@ -1,12 +1,16 @@
-import LeanExe.Encoding.Decode
-import LeanExe.Encoding.Spec.Values
+module
+
+public import LeanExe.Encoding.Decode
+public import LeanExe.Encoding.Spec.Values
+
+public section
 
 namespace Wasm.Encoding.Decoder
 
 open Wasm.Encoding.Spec
 
 /-- `parser` reads exactly `bytes` and returns `value`, whatever input follows. -/
-def Parses (parser : Parser α) (bytes : List UInt8) (value : α) : Prop :=
+@[expose] def Parses (parser : Parser α) (bytes : List UInt8) (value : α) : Prop :=
   ∀ rest, parser.run (bytes ++ rest) = .ok (value, rest)
 
 theorem Parses.cast {parser : Parser α} {bytes bytes' : List UInt8} {value : α}

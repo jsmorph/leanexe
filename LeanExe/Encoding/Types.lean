@@ -1,24 +1,28 @@
-import LeanExe.Encoding.Containers
-import LeanExe.Encoding.Spec.Types
-import Init.Data.BitVec.Lemmas
+module
+
+public import LeanExe.Encoding.Containers
+public import LeanExe.Encoding.Spec.Types
+public import Init.Data.BitVec.Lemmas
+
+public section
 
 namespace Wasm.Encoding
 
-def valueType : (type : Wasm.ValueType) → Result Spec.ValType type
+@[expose] def valueType : (type : Wasm.ValueType) → Result Spec.ValType type
   | .i32 => .ok ⟨[0x7f], .i32⟩
   | .i64 => .ok ⟨[0x7e], .i64⟩
   | .f32 => .ok ⟨[0x7d], .f32⟩
   | .f64 => .ok ⟨[0x7c], .f64⟩
   | _ => .error "value type is outside LeanExe's emitted WASM"
 
-def blockType : (types : List Wasm.ValueType) → Result Spec.BlockType types
+@[expose] def blockType : (types : List Wasm.ValueType) → Result Spec.BlockType types
   | [] => .ok ⟨[0x40], .empty⟩
   | [type] => do
       let encoded ← valueType type
       pure ⟨encoded.val, .value _ _ encoded.property⟩
   | _ => .error "block result types are outside LeanExe's emitted WASM"
 
-def functionType (type : Wasm.FuncType) : Result Spec.FuncType type := do
+@[expose] def functionType (type : Wasm.FuncType) : Result Spec.FuncType type := do
   let parameters ← vector valueType type.params
   let results ← vector valueType type.results
   pure ⟨0x60 :: (parameters.val ++ results.val),
@@ -44,11 +48,11 @@ def mutability : (mutable : Bool) → Encoded Spec.Mutability mutable
   | false => ⟨[0], .immutable⟩
   | true => ⟨[1], .mutable⟩
 
-def signed32 (value : UInt32) : Encoded (Spec.Signed 32) value.toBitVec.toInt :=
+@[expose] def signed32 (value : UInt32) : Encoded (Spec.Signed 32) value.toBitVec.toInt :=
   ⟨signed 32 value.toBitVec.toInt,
     signed_correct 32 _ (by decide) (BitVec.le_toInt _) BitVec.toInt_lt⟩
 
-def signed64 (value : UInt64) : Encoded (Spec.Signed 64) value.toBitVec.toInt :=
+@[expose] def signed64 (value : UInt64) : Encoded (Spec.Signed 64) value.toBitVec.toInt :=
   ⟨signed 64 value.toBitVec.toInt,
     signed_correct 64 _ (by decide) (BitVec.le_toInt _) BitVec.toInt_lt⟩
 

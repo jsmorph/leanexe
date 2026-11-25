@@ -1,5 +1,9 @@
-import LeanExe.Native.Proof.Run
-import LeanExe.Native.Proof.Genv
+module
+
+public import LeanExe.Native.Proof.Run
+public import LeanExe.Native.Proof.Genv
+
+public section
 
 /-!
 `translate_correct`: every function of a translated program simulates its Talos function.  For

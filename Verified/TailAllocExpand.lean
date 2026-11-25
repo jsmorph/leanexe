@@ -1,4 +1,8 @@
-import Verified.TailExpand
+module
+
+public import Verified.TailExpand
+
+public section
 
 namespace Verified
 

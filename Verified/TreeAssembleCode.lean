@@ -1,8 +1,12 @@
-import Verified.TreeAssemble
-import Verified.TreeFieldsStore
-import Verified.LocalFrame
-import Verified.TreeCopyCode
-import Verified.TreeStorage
+module
+
+public import Verified.TreeAssemble
+public import Verified.TreeFieldsStore
+public import Verified.LocalFrame
+public import Verified.TreeCopyCode
+public import Verified.TreeStorage
+
+public section
 
 namespace Verified
 

@@ -1,5 +1,9 @@
-import Verified.OwnedExpr
-import Verified.FieldsAfter
+module
+
+public import Verified.OwnedExpr
+public import Verified.FieldsAfter
+
+public section
 
 namespace Verified
 

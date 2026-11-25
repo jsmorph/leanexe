@@ -1,6 +1,10 @@
-import Verified.ArgPot
-import Verified.TailBound
-import Verified.EnvStep
+module
+
+public import Verified.ArgPot
+public import Verified.TailBound
+public import Verified.EnvStep
+
+public section
 
 namespace Verified
 

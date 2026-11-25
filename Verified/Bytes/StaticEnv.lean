@@ -1,5 +1,9 @@
-import Verified.Bytes.LiteralFrame
-import Verified.After
+module
+
+public import Verified.Bytes.LiteralFrame
+public import Verified.After
+
+public section
 
 namespace Verified.Bytes.LiteralPool
 

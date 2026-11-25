@@ -1,5 +1,9 @@
-import LeanExe.Pipeline.RuntimeSpec
-import LeanExe.ProofKit.AlignedExec
+module
+
+public import LeanExe.Pipeline.RuntimeSpec
+public import LeanExe.ProofKit.AlignedExec
+
+public section
 
 /-!
 Alignment of the allocator's state.  `Heap.Aligned heap` states that `top` and the root and

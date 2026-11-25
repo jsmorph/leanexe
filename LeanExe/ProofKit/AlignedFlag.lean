@@ -1,6 +1,10 @@
-import Interpreter.Wasm.Wp.Tactic
-import Interpreter.Wasm.Wp.Loop
-import LeanExe.ProofKit.AlignedLoop
+module
+
+public import Interpreter.Wasm.Wp.Tactic
+public import Interpreter.Wasm.Wp.Loop
+public import LeanExe.ProofKit.AlignedLoop
+
+public section
 
 /-!
 The flag `strict`.  `wpX false` is Talos's `wp` and `wpX true` is `wpA`, both by definition, so a
@@ -17,7 +21,7 @@ open Wasm
 variable {α : Type}
 
 /-- `wp` when `strict` is false and `wpA` when it is true. -/
-def wpX (strict : Bool) (m : Module) (c : Program) (Q : Assertion α) (st : Store α) (s : Locals)
+@[expose] def wpX (strict : Bool) (m : Module) (c : Program) (Q : Assertion α) (st : Store α) (s : Locals)
     (env : HostEnv α := {}) : Prop :=
   match strict with
   | false => wp m c Q st s env
@@ -28,8 +32,8 @@ section
 variable {strict : Bool} {m : Module} {Q Q' : Assertion α} {st : Store α} {s : Locals}
   {env : HostEnv α} {c rest : Program}
 
-@[simp] theorem wpX_false : wpX false m c Q st s env = wp m c Q st s env := rfl
-@[simp] theorem wpX_true : wpX true m c Q st s env = wpA m c Q st s env := rfl
+@[simp] theorem wpX_false : wpX false m c Q st s env = wp m c Q st s env := by rfl
+@[simp] theorem wpX_true : wpX true m c Q st s env = wpA m c Q st s env := by rfl
 
 theorem wpX.wp (h : wpX strict m c Q st s env) : wp m c Q st s env := by
   cases strict

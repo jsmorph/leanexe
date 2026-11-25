@@ -1,10 +1,14 @@
-import LeanExe.ProofKit.Frame
-import LeanExe.Runtime.FreeList
+module
+
+public import LeanExe.ProofKit.Frame
+public import LeanExe.Runtime.FreeList
+
+public section
 
 namespace LeanExe.ProofKit.FixedArraySearch
 open Wasm
 
-def frame (params saved tail : List Wasm.Value)
+@[expose] def frame (params saved tail : List Wasm.Value)
     (need previous current capacity next result : UInt64) : Locals :=
   { params := params
     locals := saved ++ ([.i64 need, .i64 previous, .i64 current,

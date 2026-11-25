@@ -10,7 +10,11 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26, 2026-10-27, and 2026-11-04: transcribed from Coq into Lean,
 with the changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import LeanExe.Native.Clight.Ctypes
+module
+
+public import LeanExe.Native.Clight.Ctypes
+
+public section
 
 /-!
 Global environments and the allocation of globals, from CompCert 3.18's `common/Globalenvs.v`,
@@ -38,11 +42,11 @@ structure t (F V : Type) where
 
 variable {F V : Type}
 
-def find_symbol (ge : t F V) (id : ident) : Option block := ge.genv_symb[id]?
+@[expose] def find_symbol (ge : t F V) (id : ident) : Option block := ge.genv_symb[id]?
 
-def find_def (ge : t F V) (b : block) : Option (globdef F V) := ge.genv_defs[b]?
+@[expose] def find_def (ge : t F V) (b : block) : Option (globdef F V) := ge.genv_defs[b]?
 
-def find_funct_ptr (ge : t F V) (b : block) : Option F :=
+@[expose] def find_funct_ptr (ge : t F V) (b : block) : Option F :=
   match find_def ge b with
   | some (.Gfun f) => some f
   | _ => none
@@ -64,13 +68,13 @@ def find_funct (ge : t F V) (v : val) : Option F :=
   | .Vptr b ofs => if ofs = Ptrofs.zero then find_funct_ptr ge b else none
   | _ => none
 
-def add_global (ge : t F V) (idg : ident × globdef F V) : t F V :=
+@[expose] def add_global (ge : t F V) (idg : ident × globdef F V) : t F V :=
   { genv_public := ge.genv_public
     genv_symb := ge.genv_symb.insert idg.1 ge.genv_next
     genv_defs := ge.genv_defs.insert ge.genv_next idg.2
     genv_next := ge.genv_next + 1 }
 
-def add_globals (ge : t F V) (gl : List (ident × globdef F V)) : t F V :=
+@[expose] def add_globals (ge : t F V) (gl : List (ident × globdef F V)) : t F V :=
   gl.foldl add_global ge
 
 def empty_genv (pub : List ident) : t F V :=

@@ -1,6 +1,10 @@
-import Verified.TreeContextAppend
-import Verified.TreeMatchLocals
-import Verified.TreeMatchDetach
+module
+
+public import Verified.TreeContextAppend
+public import Verified.TreeMatchLocals
+public import Verified.TreeMatchDetach
+
+public section
 
 namespace Verified
 

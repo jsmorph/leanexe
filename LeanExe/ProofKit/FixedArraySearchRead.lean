@@ -1,11 +1,15 @@
-import LeanExe.ProofKit.FixedArraySearchFrame
-import LeanExe.ProofKit.Memory
-import Interpreter.Wasm.Wp.Tactic
+module
+
+public import LeanExe.ProofKit.FixedArraySearchFrame
+public import LeanExe.ProofKit.Memory
+public import Interpreter.Wasm.Wp.Tactic
+
+public section
 
 namespace LeanExe.ProofKit.FixedArraySearch
 open Wasm Memory
 
-def readProgram (start : Nat) : Wasm.Program :=
+@[expose] def readProgram (start : Nat) : Wasm.Program :=
   [.localGet (start + 2), .constI64 32, .subI64, .wrapI64, .load64 0, .localSet (start + 3),
     .localGet (start + 2), .constI64 8, .subI64, .wrapI64, .load64 0, .localSet (start + 4)]
 
@@ -36,7 +40,7 @@ theorem readProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : S
   simpa [readProgram, wp_simp, frame, Nat.add_assoc, Nat.reducePow, ← toUInt32_eq_ofNat,
     hCapacityRead', hNextRead', Nat.not_lt.mpr hCapacityBound, Nat.not_lt.mpr hNextBound] using hNext
 
-def advanceProgram (start : Nat) : Wasm.Program :=
+@[expose] def advanceProgram (start : Nat) : Wasm.Program :=
   [.localGet (start + 2), .localSet (start + 1), .localGet (start + 4), .localSet (start + 2)]
 
 theorem advanceProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit)

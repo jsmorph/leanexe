@@ -1,14 +1,18 @@
-import LeanExe.Encoding.Spec.Instructions
+module
+
+public import LeanExe.Encoding.Spec.Instructions
+
+public section
 
 namespace Wasm.Encoding.Spec
 
-def emptyFunctionTable : Wasm.TableDecl :=
+@[expose] def emptyFunctionTable : Wasm.TableDecl :=
   { min := 0, max := none, elemType := .funcref, is64 := false }
 
-def TableProfile (tables : List Wasm.TableDecl) : Prop :=
+@[expose] def TableProfile (tables : List Wasm.TableDecl) : Prop :=
   tables = [] ∨ tables = [emptyFunctionTable]
 
-def signature (func : Wasm.Function) : Wasm.FuncType :=
+@[expose] def signature (func : Wasm.Function) : Wasm.FuncType :=
   { params := func.params, results := func.results }
 
 inductive FunctionIndex (types : List Wasm.FuncType) : Bytes → Wasm.Function → Prop
@@ -43,7 +47,7 @@ inductive Export : Bytes → (UInt8 × String × Nat) → Prop
       (indexEncoding : Unsigned 32 indexBytes index) :
       Export (nameBytes ++ kind :: indexBytes) (kind, name, index)
 
-def exports (m : Wasm.Module) : List (UInt8 × String × Nat) :=
+@[expose] def exports (m : Wasm.Module) : List (UInt8 × String × Nat) :=
   m.exports.map (fun e => (0, e.name, e.funcIdx)) ++
   m.globalExports.map (fun e => (3, e.1, e.2)) ++
   m.memoryExports.map (fun e => (2, e.1, e.2)) ++
@@ -66,11 +70,11 @@ structure Shape (m : Wasm.Module) : Prop where
   tags : m.tags = []
 
 /-- The memory declarations without their data segments, which the data section holds. -/
-def memoryDecls (m : Wasm.Module) : List Wasm.MemDecl :=
+@[expose] def memoryDecls (m : Wasm.Module) : List Wasm.MemDecl :=
   m.memory.toList.map fun decl => { decl with data := [] }
 
 /-- The data segments of the default memory. -/
-def dataSegments (m : Wasm.Module) : List Wasm.DataSegment :=
+@[expose] def dataSegments (m : Wasm.Module) : List Wasm.DataSegment :=
   m.memory.toList.flatMap (·.data)
 
 inductive Section (id : UInt8) (relation : Bytes → α → Prop) : Bytes → α → Prop
@@ -108,7 +112,7 @@ end Wasm.Encoding.Spec
 
 namespace Wasm.Encoding
 
-def Encodes (m : Wasm.Module) (bytes : ByteArray) : Prop :=
+@[expose] def Encodes (m : Wasm.Module) (bytes : ByteArray) : Prop :=
   Spec.ModuleBytes bytes.data.toList m
 
 end Wasm.Encoding

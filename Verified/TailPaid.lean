@@ -1,1 +1,5 @@
-import Verified.TailBound
+module
+
+public import Verified.TailBound
+
+public section

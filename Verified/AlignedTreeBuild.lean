@@ -1,9 +1,13 @@
-import Verified.AlignedTreeAssemble
-import Verified.AlignedCopy
-import Verified.TreeNodeCode
-import Verified.TreeNodeBound
-import Verified.FieldsAdvance
-import Verified.TreeAssembleTyped
+module
+
+public import Verified.AlignedTreeAssemble
+public import Verified.AlignedCopy
+public import Verified.TreeNodeCode
+public import Verified.TreeNodeBound
+public import Verified.FieldsAdvance
+public import Verified.TreeAssembleTyped
+
+public section
 
 /-!
 The construction of a tree under the flag.  The parent record comes from `alloc`, whose block

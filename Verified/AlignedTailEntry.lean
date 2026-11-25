@@ -1,18 +1,22 @@
-import Verified.AlignedListFold
-import Verified.AlignedFunction
-import Verified.TailHeap
-import Verified.TailEntryFacts
-import Verified.TailCorrect
-import Verified.TailArgs
-import Verified.TailLetPair
-import Verified.TreeMatchFacts
-import Verified.TailBindPrefix
-import Verified.TailAllocExpand
-import Verified.TreeMatchPotential
-import Verified.OwnedExpr
-import Verified.Bytes.StaticPrefix
-import Verified.TreeDispatch
-import Verified.ExprCorrect
+module
+
+public import Verified.AlignedListFold
+public import Verified.AlignedFunction
+public import Verified.TailHeap
+public import Verified.TailEntryFacts
+public import Verified.TailCorrect
+public import Verified.TailArgs
+public import Verified.TailLetPair
+public import Verified.TreeMatchFacts
+public import Verified.TailBindPrefix
+public import Verified.TailAllocExpand
+public import Verified.TreeMatchPotential
+public import Verified.OwnedExpr
+public import Verified.Bytes.StaticPrefix
+public import Verified.TreeDispatch
+public import Verified.ExprCorrect
+
+public section
 
 /-!
 The code and the run of a tail function under the flag.  `TailBody.code_specX` proves

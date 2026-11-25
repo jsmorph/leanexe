@@ -1,4 +1,8 @@
-import Verified.AlignedControl
+module
+
+public import Verified.AlignedControl
+
+public section
 
 /-!
 The loops under the flag.  A loop's state is held in the loop's mode and passed to the condition

@@ -1,6 +1,10 @@
-import Interpreter.Wasm.Wp.Defs
-import Interpreter.Wasm.Semantics.Lemmas
-import LeanExe.ProofKit.AlignedDefs
+module
+
+public import Interpreter.Wasm.Wp.Defs
+public import Interpreter.Wasm.Semantics.Lemmas
+public import LeanExe.ProofKit.AlignedDefs
+
+public section
 
 /-!
 Aligned runs.  `AlignedExec fuel m st s p env` states that every 64-bit load and store that
@@ -44,7 +48,7 @@ theorem UInt64.toUInt32_mod8 {a : UInt64} (ha : a.toNat % 8 = 0) :
 
 /-- `wp` with aligned 64-bit accesses: from some fuel on, the run of `c` satisfies `Q` and every
 64-bit access that it makes inside memory is aligned. -/
-def wpA (m : Module) (c : Program) (Q : Assertion α) (st : Store α) (s : Locals)
+@[expose] def wpA (m : Module) (c : Program) (Q : Assertion α) (st : Store α) (s : Locals)
     (env : HostEnv α := {}) : Prop :=
   ∃ N, ∀ fuel ≥ N, Q (exec fuel m st s c env) ∧ AlignedExec fuel m st s c env
 

@@ -1,5 +1,9 @@
-import Verified.FieldsExpr
-import Verified.Bytes.Normalize
+module
+
+public import Verified.FieldsExpr
+public import Verified.Bytes.Normalize
+
+public section
 
 namespace Verified
 

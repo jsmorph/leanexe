@@ -1,4 +1,8 @@
-import Interpreter.Wasm.Syntax
+module
+
+public import Interpreter.Wasm.Syntax
+
+public section
 
 /-!
 Binary decoder for the subset of WebAssembly that `Wasm.Encoding.encode` produces:
@@ -30,12 +34,12 @@ def malformed (message : String) : Parser α := throw (.malformed message)
 def unsupported (message : String) : Parser α := throw (.unsupported message)
 def invalid (message : String) : Parser α := throw (.invalid message)
 
-def byte : Parser UInt8 := do
+@[expose] def byte : Parser UInt8 := do
   match ← get with
   | head :: tail => set tail; pure head
   | [] => malformed "unexpected end"
 
-def take (count : Nat) : Parser (List UInt8) := do
+@[expose] def take (count : Nat) : Parser (List UInt8) := do
   let input ← get
   if count ≤ input.length then
     set (input.drop count)
@@ -43,20 +47,20 @@ def take (count : Nat) : Parser (List UInt8) := do
   else malformed "unexpected end"
 
 /-- Eight bytes, least significant first, as a 64-bit word. -/
-def fixed64 : Parser UInt64 := do
+@[expose] def fixed64 : Parser UInt64 := do
   let bytes ← take 8
   pure (UInt64.ofNat (bytes.foldr (fun b acc => b.toNat + 256 * acc) 0))
 
 /-- Four bytes, least significant first, as a 32-bit word. -/
-def fixed32 : Parser UInt32 := do
+@[expose] def fixed32 : Parser UInt32 := do
   let bytes ← take 4
   pure (UInt32.ofNat (bytes.foldr (fun b acc => b.toNat + 256 * acc) 0))
 
-def remaining : Parser Nat := do
+@[expose] def remaining : Parser Nat := do
   return (← get).length
 
 /-- `uN`: unsigned LEB128 with at most `⌈N/7⌉` bytes and no bits above `N`. -/
-def unsigned (width : Nat) : Parser Nat := do
+@[expose] def unsigned (width : Nat) : Parser Nat := do
   let b ← byte
   if b.toNat < 128 then
     if b.toNat < 2 ^ width then pure b.toNat else malformed "integer too large"
@@ -67,7 +71,7 @@ def unsigned (width : Nat) : Parser Nat := do
 termination_by width
 
 /-- `sN`: signed LEB128 with at most `⌈N/7⌉` bytes, sign-extended from the last. -/
-def signed (width : Nat) : Parser Int := do
+@[expose] def signed (width : Nat) : Parser Int := do
   let b ← byte
   if b.toNat < 64 then
     if b.toNat < 2 ^ (width - 1) then pure b.toNat else malformed "integer too large"
@@ -80,11 +84,11 @@ def signed (width : Nat) : Parser Int := do
   else malformed "integer representation too long"
 termination_by width
 
-def wrap32 (value : Int) : UInt32 := UInt32.ofNat (value % 4294967296).toNat
+@[expose] def wrap32 (value : Int) : UInt32 := UInt32.ofNat (value % 4294967296).toNat
 
-def wrap64 (value : Int) : UInt64 := UInt64.ofNat (value % 18446744073709551616).toNat
+@[expose] def wrap64 (value : Int) : UInt64 := UInt64.ofNat (value % 18446744073709551616).toNat
 
-def many (item : Parser α) : Nat → Parser (List α)
+@[expose] def many (item : Parser α) : Nat → Parser (List α)
   | 0 => pure []
   | count + 1 => do
       let head ← item
@@ -93,12 +97,12 @@ def many (item : Parser α) : Nat → Parser (List α)
 
 /-- `vec(B)`.  Every item in this subset occupies at least one byte, so a count
 larger than the remaining input is malformed. -/
-def vec (item : Parser α) : Parser (List α) := do
+@[expose] def vec (item : Parser α) : Parser (List α) := do
   let count ← unsigned 32
   let available ← remaining
   if available < count then malformed "unexpected end" else many item count
 
-def name : Parser String := do
+@[expose] def name : Parser String := do
   let length ← unsigned 32
   let bytes ← take length
   match String.fromUTF8? ⟨bytes.toArray⟩ with
@@ -106,14 +110,14 @@ def name : Parser String := do
   | none => malformed "malformed UTF-8 encoding"
 
 /-- Runs `parser` on exactly the next `size` bytes. -/
-def within (size : Nat) (parser : Parser α) : Parser α := do
+@[expose] def within (size : Nat) (parser : Parser α) : Parser α := do
   let contents ← take size
   match parser.run contents with
   | .ok (value, []) => pure value
   | .ok (_, _ :: _) => malformed "section size mismatch"
   | .error error => throw error
 
-def valueType : Parser ValueType := do
+@[expose] def valueType : Parser ValueType := do
   let b ← byte
   match b with
   | 0x7f => pure .i32
@@ -124,7 +128,7 @@ def valueType : Parser ValueType := do
       if b = 0x7b ∨ (0x63 ≤ b ∧ b ≤ 0x74) then unsupported "vector or reference type"
       else malformed "malformed value type"
 
-def funcType : Parser FuncType := do
+@[expose] def funcType : Parser FuncType := do
   let b ← byte
   match b with
   | 0x60 => do
@@ -134,7 +138,7 @@ def funcType : Parser FuncType := do
   | 0x4e | 0x4f | 0x50 | 0x5e | 0x5f => unsupported "GC type definition"
   | _ => malformed "malformed function type"
 
-def importDecl (types : List FuncType) : Parser ImportDecl := do
+@[expose] def importDecl (types : List FuncType) : Parser ImportDecl := do
   let moduleName ← name
   let fieldName ← name
   let kind ← byte
@@ -149,7 +153,7 @@ def importDecl (types : List FuncType) : Parser ImportDecl := do
   | 0x01 | 0x02 | 0x03 | 0x04 => unsupported "non-function import"
   | _ => malformed "malformed import kind"
 
-def memType : Parser MemDecl := do
+@[expose] def memType : Parser MemDecl := do
   let flags ← byte
   match flags with
   | 0x00 => do
@@ -162,29 +166,29 @@ def memType : Parser MemDecl := do
   | 0x02 | 0x03 | 0x04 | 0x05 | 0x06 | 0x07 => unsupported "shared or 64-bit memory"
   | _ => malformed "malformed limits flags"
 
-def memories : Parser (Option MemDecl) := do
+@[expose] def memories : Parser (Option MemDecl) := do
   match ← vec memType with
   | [] => pure none
   | [memory] => pure (some memory)
   | _ => unsupported "multiple memories"
 
-def emptyFunctionTable : Parser TableDecl := do
+@[expose] def emptyFunctionTable : Parser TableDecl := do
   if (← byte) ≠ 0x70 then unsupported "table element type"
   else if (← byte) ≠ 0 then unsupported "table limits"
   else if (← unsigned 32) ≠ 0 then unsupported "nonempty table"
   else pure { min := 0, max := none, elemType := .funcref, is64 := false }
 
-def tables : Parser (List TableDecl) := do
+@[expose] def tables : Parser (List TableDecl) := do
   match ← vec emptyFunctionTable with
   | [] => pure []
   | [table] => pure [table]
   | _ => unsupported "multiple tables"
 
-def constEnd : Parser Unit := do
+@[expose] def constEnd : Parser Unit := do
   if (← byte) ≠ 0x0b then unsupported "global initializer"
 
 /-- An active data segment of the default memory at a constant offset. -/
-def dataSegment : Parser DataSegment := do
+@[expose] def dataSegment : Parser DataSegment := do
   match ← byte with
   | 0x00 => do
       if (← byte) ≠ 0x41 then unsupported "data segment offset"
@@ -196,13 +200,13 @@ def dataSegment : Parser DataSegment := do
         pure { offset := some offset, bytes := bytes }
   | _ => unsupported "passive or explicitly indexed data segment"
 
-def mutability : Parser Bool := do
+@[expose] def mutability : Parser Bool := do
   match ← byte with
   | 0x00 => pure false
   | 0x01 => pure true
   | _ => malformed "malformed mutability"
 
-def global : Parser GlobalDecl := do
+@[expose] def global : Parser GlobalDecl := do
   let type ← valueType
   let mutable ← mutability
   let opcode ← byte
@@ -219,7 +223,7 @@ def global : Parser GlobalDecl := do
              sourceInit := some [.constI64 value] }
   | _, _ => unsupported "global initializer"
 
-def exportEntry : Parser (UInt8 × String × Nat) := do
+@[expose] def exportEntry : Parser (UInt8 × String × Nat) := do
   let exportName ← name
   let kind ← byte
   let index ← unsigned 32
@@ -228,7 +232,7 @@ def exportEntry : Parser (UInt8 × String × Nat) := do
   | 0x04 => unsupported "tag export"
   | _ => malformed "malformed export kind"
 
-def blockType : Parser (List ValueType) := do
+@[expose] def blockType : Parser (List ValueType) := do
   match ← byte with
   | 0x40 => pure []
   | 0x7f => pure [.i32]
@@ -238,7 +242,7 @@ def blockType : Parser (List ValueType) := do
   | _ => unsupported "block type"
 
 /-- `memarg` for an access whose natural alignment is `2 ^ natural` bytes. -/
-def memArg (natural : Nat) : Parser UInt32 := do
+@[expose] def memArg (natural : Nat) : Parser UInt32 := do
   let alignment ← unsigned 32
   if 64 ≤ alignment then unsupported "memory index in memarg"
   let offset ← unsigned 64
@@ -246,7 +250,7 @@ def memArg (natural : Nat) : Parser UInt32 := do
   if 4294967296 ≤ offset then invalid "offset out of range for a 32-bit memory"
   pure (UInt32.ofNat offset)
 
-def plain : UInt8 → Option Instruction
+@[expose] def plain : UInt8 → Option Instruction
   | 0x00 => some .unreachable
   | 0x01 => some .nop
   | 0x0f => some .ret
@@ -311,7 +315,7 @@ def plain : UInt8 → Option Instruction
   | 0xc0 => some .extend8S
   | _ => none
 
-def index : UInt8 → Option (Nat → Instruction)
+@[expose] def index : UInt8 → Option (Nat → Instruction)
   | 0x0c => some .br
   | 0x0d => some .br_if
   | 0x10 => some .call
@@ -323,7 +327,7 @@ def index : UInt8 → Option (Nat → Instruction)
   | _ => none
 
 /-- Memory accesses: the natural alignment exponent and the constructor. -/
-def memory : UInt8 → Option (Nat × (UInt32 → Instruction))
+@[expose] def memory : UInt8 → Option (Nat × (UInt32 → Instruction))
   | 0x28 => some (2, .load32)
   | 0x29 => some (3, .load64)
   | 0x2d => some (0, .load8U)
@@ -340,7 +344,7 @@ inductive Terminator where
 /-- Decodes instructions up to and including the next `end` or `else` at this
 nesting level.  Every call consumes at least one byte before recursing, so `fuel`
 equal to the remaining input suffices. -/
-def instructions : Nat → Parser (List Instruction × Terminator)
+@[expose] def instructions : Nat → Parser (List Instruction × Terminator)
   | 0 => malformed "unexpected end"
   | fuel + 1 => do
       let opcode ← byte
@@ -395,12 +399,12 @@ where
 /-- Wasmtime's per-function limit on locals. -/
 def maxLocals : Nat := 50000
 
-def localGroup : Parser (Nat × ValueType) := do
+@[expose] def localGroup : Parser (Nat × ValueType) := do
   let count ← unsigned 32
   let type ← valueType
   pure (count, type)
 
-def codeBody : Parser (List ValueType × Program) := do
+@[expose] def codeBody : Parser (List ValueType × Program) := do
   let groups ← vec localGroup
   let total := (groups.map (·.1)).sum
   if 2 ^ 32 ≤ total then malformed "too many locals"
@@ -411,7 +415,7 @@ def codeBody : Parser (List ValueType × Program) := do
     let (body, terminator) ← instructions available
     if terminator = .else then malformed "else outside if" else pure (locals, body)
 
-def code : Parser (List ValueType × Program) := do
+@[expose] def code : Parser (List ValueType × Program) := do
   let size ← unsigned 32
   within size codeBody
 
@@ -427,7 +431,7 @@ structure Sections where
   data : List DataSegment := []
 
 /-- Position of a section id in the required order, or 0 for an unknown id. -/
-def sectionOrder : UInt8 → Nat
+@[expose] def sectionOrder : UInt8 → Nat
   | 1 => 1 | 2 => 2 | 3 => 3 | 4 => 4 | 5 => 5 | 13 => 6 | 6 => 7
   | 7 => 8 | 8 => 9 | 9 => 10 | 12 => 11 | 10 => 12 | 11 => 13
   | _ => 0
@@ -437,7 +441,7 @@ def customSection : Parser Unit := do
   let rest ← remaining
   let _ ← take rest
 
-def sectionContents (id : UInt8) (size : Nat) (acc : Sections) : Parser Sections :=
+@[expose] def sectionContents (id : UInt8) (size : Nat) (acc : Sections) : Parser Sections :=
   match id with
   | 1 => return { acc with types := ← within size (vec funcType) }
   | 2 => return { acc with imports := ← within size (vec (importDecl acc.types)) }
@@ -450,7 +454,7 @@ def sectionContents (id : UInt8) (size : Nat) (acc : Sections) : Parser Sections
   | 11 => return { acc with data := ← within size (vec dataSegment) }
   | _ => unsupported s!"section {id}"
 
-def sections : Nat → Nat → Sections → Parser Sections
+@[expose] def sections : Nat → Nat → Sections → Parser Sections
   | 0, _, acc => pure acc
   | fuel + 1, last, acc => do
       let available ← remaining
@@ -466,7 +470,7 @@ def sections : Nat → Nat → Sections → Parser Sections
           let acc ← sectionContents id size acc
           sections fuel (sectionOrder id) acc
 
-def function (types : List FuncType) (typeIndex : Nat)
+@[expose] def function (types : List FuncType) (typeIndex : Nat)
     (body : List ValueType × Program) : Parser Function := do
   match types[typeIndex]? with
   | some type =>
@@ -474,7 +478,7 @@ def function (types : List FuncType) (typeIndex : Nat)
              results := type.results, typeIdx := some typeIndex }
   | none => invalid "unknown type"
 
-def functions (types : List FuncType) :
+@[expose] def functions (types : List FuncType) :
     List Nat → List (List ValueType × Program) → Parser (List Function)
   | [], [] => pure []
   | typeIndex :: indices, body :: bodies => do
@@ -483,7 +487,7 @@ def functions (types : List FuncType) :
       pure (head :: tail)
   | _, _ => malformed "function and code section have inconsistent lengths"
 
-def assemble (found : Sections) (funcs : List Function) : Module :=
+@[expose] def assemble (found : Sections) (funcs : List Function) : Module :=
   { funcs
     exports := found.exports.filterMap fun (kind, exportName, index) =>
       if kind = 0x00 then some { name := exportName, funcIdx := index } else none
@@ -500,7 +504,7 @@ def assemble (found : Sections) (funcs : List Function) : Module :=
     tableExports := found.exports.filterMap fun (kind, exportName, index) =>
       if kind = 0x01 then some (exportName, index) else none }
 
-def tableProfile (found : Sections) : Bool :=
+@[expose] def tableProfile (found : Sections) : Bool :=
   let exports := found.exports.filterMap fun (kind, exportName, index) =>
     if kind = 0x01 then some (exportName, index) else none
   match found.tables with
@@ -508,7 +512,7 @@ def tableProfile (found : Sections) : Bool :=
   | [_] => exports == [("__indirect_function_table", 0)]
   | _ => false
 
-def moduleParser : Parser Module := do
+@[expose] def moduleParser : Parser Module := do
   let magic ← take 4
   if magic ≠ [0x00, 0x61, 0x73, 0x6d] then malformed "magic header not detected" else do
     let version ← take 4

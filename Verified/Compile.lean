@@ -1,14 +1,18 @@
-import Verified.Source
-import Verified.Literals
-import Verified.ListFoldDefs
-import Verified.LocalFrame
-import Verified.TreeCopyCode
-import Verified.TreeHeaderCode
-import Verified.TreeFieldsCode
-import Verified.Bytes.Code
-import Verified.Bytes.BuildCode
-import Verified.Bytes.LiteralCode
-import LeanExe.Runtime.Defs
+module
+
+public import Verified.Source
+public import Verified.Literals
+public import Verified.ListFoldDefs
+public import Verified.LocalFrame
+public import Verified.TreeCopyCode
+public import Verified.TreeHeaderCode
+public import Verified.TreeFieldsCode
+public import Verified.Bytes.Code
+public import Verified.Bytes.BuildCode
+public import Verified.Bytes.LiteralCode
+public import LeanExe.Runtime.Defs
+
+public section
 
 /-! The verified compiler: a Lean function from source functions to a WebAssembly module.  The
 module holds the runtime's `alloc` and `release` of `LeanExe` at functions 0 and 1, so that the

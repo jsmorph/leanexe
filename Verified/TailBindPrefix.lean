@@ -1,6 +1,10 @@
-import Verified.TailCorrect
-import Verified.ContextAppend
-import Verified.ContextHEq
+module
+
+public import Verified.TailCorrect
+public import Verified.ContextAppend
+public import Verified.ContextHEq
+
+public section
 
 namespace Verified
 

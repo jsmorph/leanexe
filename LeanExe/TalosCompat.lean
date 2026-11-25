@@ -1,4 +1,8 @@
-import Interpreter.Wasm.Wp.Tactic
+module
+
+public import Interpreter.Wasm.Wp.Tactic
+
+public section
 
 /-!
 # Talos compatibility declarations
@@ -21,7 +25,7 @@ theorem toNat_sub_of_le (a b : _root_.UInt32) (h : b ≤ a) :
 
 end UInt32
 
-@[simp, wp_simp]
+@[expose, simp, wp_simp]
 def Locals.validIndex (s : Locals) (i : Nat) : Prop :=
   i < s.params.length + s.locals.length
 

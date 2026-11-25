@@ -10,7 +10,11 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
 that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import LeanExe.Native.Clight.Values
+module
+
+public import LeanExe.Native.Clight.Values
+
+public section
 
 /-!
 The in-memory representation of values, from CompCert 3.18's `common/Memdata.v`, on a
@@ -20,7 +24,7 @@ ARM.
 
 namespace LClight
 
-def size_chunk : memory_chunk → _root_.Int
+@[expose] def size_chunk : memory_chunk → _root_.Int
   | .Mbool => 1
   | .Mint8signed => 1
   | .Mint8unsigned => 1
@@ -33,7 +37,7 @@ def size_chunk : memory_chunk → _root_.Int
   | .Many32 => 4
   | .Many64 => 8
 
-def size_chunk_nat (chunk : memory_chunk) : Nat := (size_chunk chunk).toNat
+@[expose] def size_chunk_nat (chunk : memory_chunk) : Nat := (size_chunk chunk).toNat
 
 /-- `align_chunk`, with `Archi.align_int64` and `Archi.align_float64` both 8. -/
 def align_chunk : memory_chunk → _root_.Int
@@ -64,22 +68,22 @@ inductive memval where
   | Fragment (v : val) (q : quantity) (n : Nat)
   deriving Repr, DecidableEq, Inhabited
 
-def bytes_of_int : Nat → _root_.Int → List byte
+@[expose] def bytes_of_int : Nat → _root_.Int → List byte
   | 0, _ => []
   | m + 1, x => Byte.repr x :: bytes_of_int m (x / 256)
 
-def int_of_bytes : List byte → _root_.Int
+@[expose] def int_of_bytes : List byte → _root_.Int
   | [] => 0
   | b :: l => Byte.unsigned b + int_of_bytes l * 256
 
 /-- `encode_int` on a little-endian target, where `rev_if_be` is the identity. -/
-def encode_int (sz : Nat) (x : _root_.Int) : List byte := bytes_of_int sz x
+@[expose] def encode_int (sz : Nat) (x : _root_.Int) : List byte := bytes_of_int sz x
 
-def decode_int (b : List byte) : _root_.Int := int_of_bytes b
+@[expose] def decode_int (b : List byte) : _root_.Int := int_of_bytes b
 
-def inj_bytes (bl : List byte) : List memval := bl.map .Byte
+@[expose] def inj_bytes (bl : List byte) : List memval := bl.map .Byte
 
-def proj_bytes : List memval → Option (List byte)
+@[expose] def proj_bytes : List memval → Option (List byte)
   | [] => some []
   | .Byte b :: vl =>
       match proj_bytes vl with
@@ -105,7 +109,7 @@ def proj_value (q : quantity) (vl : List memval) : val :=
   | _ => .Vundef
 
 /-- `encode_val`. -/
-def encode_val (A : Archi) (chunk : memory_chunk) (v : val) : List memval :=
+@[expose] def encode_val (A : Archi) (chunk : memory_chunk) (v : val) : List memval :=
   match v, chunk with
   | .Vint n, .Mbool | .Vint n, .Mint8signed | .Vint n, .Mint8unsigned =>
       inj_bytes (encode_int 1 (Int.unsigned n))
@@ -121,7 +125,7 @@ def encode_val (A : Archi) (chunk : memory_chunk) (v : val) : List memval :=
   | _, _ => List.replicate (size_chunk_nat chunk) .Undef
 
 /-- `decode_val`. -/
-def decode_val (A : Archi) (chunk : memory_chunk) (vl : List memval) : val :=
+@[expose] def decode_val (A : Archi) (chunk : memory_chunk) (vl : List memval) : val :=
   match proj_bytes vl with
   | some bl =>
       match chunk with

@@ -1,6 +1,10 @@
-import Verified.TreeCopySources
-import Verified.TreeCopyPath
-import Verified.AllocCost
+module
+
+public import Verified.TreeCopySources
+public import Verified.TreeCopyPath
+public import Verified.AllocCost
+
+public section
 
 namespace Verified
 

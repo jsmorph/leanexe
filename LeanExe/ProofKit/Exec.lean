@@ -1,4 +1,8 @@
-import Interpreter.Wasm.Semantics
+module
+
+public import Interpreter.Wasm.Semantics
+
+public section
 
 /-!
 Equations of Talos's `exec` for the empty and the nonempty list and of `execOne` at fuel 0 and

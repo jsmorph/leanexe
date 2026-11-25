@@ -1,5 +1,9 @@
-import Interpreter.Wasm.Wp.Defs
-import Interpreter.Wasm.Semantics.Lemmas
+module
+
+public import Interpreter.Wasm.Wp.Defs
+public import Interpreter.Wasm.Semantics.Lemmas
+
+public section
 
 namespace Wasm
 

@@ -1,6 +1,10 @@
-import Verified.TreeContextMoves
-import Verified.TailState
-import Verified.EnvRegions
+module
+
+public import Verified.TreeContextMoves
+public import Verified.TailState
+public import Verified.EnvRegions
+
+public section
 
 namespace Verified
 

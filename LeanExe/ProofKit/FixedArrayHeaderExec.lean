@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.FixedArrayHeader
-import LeanExe.ProofKit.Frame
-import Interpreter.Wasm.Wp.Tactic
+module
+
+public import LeanExe.ProofKit.FixedArrayHeader
+public import LeanExe.ProofKit.Frame
+public import Interpreter.Wasm.Wp.Tactic
+
+public section
 
 namespace LeanExe.ProofKit.FixedArrayHeader
 open Wasm LeanExe.ProofKit.Memory LeanExe.ProofKit.Allocation
@@ -40,7 +44,7 @@ theorem writeLocal_spec (module_ : Wasm.Module) (env : HostEnv Unit)
     Nat.add_zero, UInt32.add_zero, Nat.not_lt.mpr hBound, reduceIte]
   simpa only [hEmpty] using hNext
 
-def program (pointerLocal capacityLocal : Nat) (stride : UInt64) : Wasm.Program :=
+@[expose] def program (pointerLocal capacityLocal : Nat) (stride : UInt64) : Wasm.Program :=
   [.localGet pointerLocal, .constI64 48, .subI64, .wrapI64,
     .constI64 5501223100278326855, .store64 0,
    .localGet pointerLocal, .constI64 40, .subI64, .wrapI64,

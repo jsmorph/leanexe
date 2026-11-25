@@ -1,4 +1,8 @@
-import Lean
+module
+
+public import Lean
+
+public section
 
 /-! Finite tail runs: a step continues with another state or returns a value.  The natural
 index counts continuing steps and occurs only in proofs. -/
@@ -33,12 +37,12 @@ theorem Run.rank_eq {step : α → Sum α β}
     rw [Verified.Tail.rank_eq step wf state, h]
     exact congrArg (fun n => n + 1) ih
 
-def costAt (step : α → Sum α β) (charge : α → Nat) : Nat → α → Nat
+@[expose] def costAt (step : α → Sum α β) (charge : α → Nat) : Nat → α → Nat
   | 0, _ => 0
   | fuel + 1, state =>
     charge state + (step state).elim (costAt step charge fuel) (fun _ => 0)
 
-def fitsAt (step : α → Sum α β) (valid : α → Bool) : Nat → α → Bool
+@[expose] def fitsAt (step : α → Sum α β) (valid : α → Bool) : Nat → α → Bool
   | 0, _ => false
   | fuel + 1, state =>
     valid state && (step state).elim (fitsAt step valid fuel) (fun _ => true)

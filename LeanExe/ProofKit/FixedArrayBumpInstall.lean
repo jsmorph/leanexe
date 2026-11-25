@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.FixedArrayBumpPrefix
+module
+
+public import LeanExe.ProofKit.FixedArrayBumpPrefix
+
+public section
 
 namespace LeanExe.ProofKit.FixedArrayBump
 open Wasm FixedArrayFold

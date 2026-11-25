@@ -1,3 +1,7 @@
+module
+
+public section
+
 namespace LeanExe
 
 /-- Applies `step` to a state that starts at `init` while `cond` holds, at most `fuel` times. -/

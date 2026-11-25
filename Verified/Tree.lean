@@ -1,7 +1,11 @@
-import LeanExe.Pipeline.Slotted
-import Verified.AllocCost
-import Verified.Elem
-import Verified.TreeCopyWork
+module
+
+public import LeanExe.Pipeline.Slotted
+public import Verified.AllocCost
+public import Verified.Elem
+public import Verified.TreeCopyWork
+
+public section
 
 universe u
 

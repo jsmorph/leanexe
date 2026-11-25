@@ -1,5 +1,9 @@
-import Verified.Tree
-import LeanExe.Pipeline.Records
+module
+
+public import Verified.Tree
+public import LeanExe.Pipeline.Records
+
+public section
 
 namespace Verified
 

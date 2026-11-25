@@ -1,4 +1,8 @@
-import Verified.LiteralCoverage
+module
+
+public import Verified.LiteralCoverage
+
+public section
 
 namespace Verified
 

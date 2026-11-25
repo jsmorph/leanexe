@@ -1,4 +1,8 @@
-import Verified.ScalarAtoms
+module
+
+public import Verified.ScalarAtoms
+
+public section
 
 namespace Wasm
 

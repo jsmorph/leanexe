@@ -1,5 +1,9 @@
-import Verified.TreeFieldBlocks
-import Verified.TreeFieldValues
+module
+
+public import Verified.TreeFieldBlocks
+public import Verified.TreeFieldValues
+
+public section
 
 namespace Verified
 

@@ -10,7 +10,11 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26, 2026-10-27, and 2026-11-04: transcribed from Coq into Lean,
 with the changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import LeanExe.Native.Clight.Floats
+module
+
+public import LeanExe.Native.Clight.Floats
+
+public section
 
 /-!
 The syntax shared by CompCert's languages, from CompCert 3.18's `common/AST.v`: identifiers, the

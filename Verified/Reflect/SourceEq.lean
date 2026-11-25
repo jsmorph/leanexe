@@ -1,4 +1,8 @@
-import Verified.Reflect.Definitions
+module
+
+public import Verified.Reflect.Definitions
+
+public section
 
 namespace Verified.Reflect
 

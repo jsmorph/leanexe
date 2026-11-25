@@ -1,6 +1,10 @@
-import LeanExe.TalosPrelude
-import LeanExe.Pipeline.Runtime
-import LeanExe.Pipeline.Aborts
+module
+
+public import LeanExe.TalosPrelude
+public import LeanExe.Pipeline.Runtime
+public import LeanExe.Pipeline.Aborts
+
+public section
 
 namespace LeanExe.Pipeline
 

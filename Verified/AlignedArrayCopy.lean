@@ -1,7 +1,11 @@
-import Verified.ArrayCopy
-import LeanExe.Pipeline.AlignedHeap
-import LeanExe.Pipeline.AlignedRuns
-import LeanExe.ProofKit.AlignedFlag
+module
+
+public import Verified.ArrayCopy
+public import LeanExe.Pipeline.AlignedHeap
+public import LeanExe.Pipeline.AlignedRuns
+public import LeanExe.ProofKit.AlignedFlag
+
+public section
 
 /-!
 A port of `ArrayCopy.lean` to the flag `strict`: the allocation of an array, the loop that copies

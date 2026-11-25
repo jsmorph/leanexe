@@ -1,20 +1,24 @@
-import Verified.Correct
-import Verified.Instantiate
-import Verified.Reflect.Lemmas
-import Verified.Reflect.BoundPass
-import Verified.Reflect.Modes
-import Verified.Reflect.FoldLemmas
-import Verified.Reflect.ListFoldLemmas
-import Verified.Reflect.TreeLemmas
-import Verified.Reflect.TreeNodeLemmas
-import Verified.Reflect.NativeList
-import Verified.Reflect.NativeTree
-import Verified.Reflect.RecursiveLayout
-import Verified.Reflect.TailBoundLemmas
-import LeanExe.Encoding.RoundTrip
-import LeanExe.Encoding.Completeness.Writes
-import LeanExe.ProofKit.Signed64Float
-import LeanExe.Pipeline.Int64
+module
+
+public import Verified.Correct
+public import Verified.Instantiate
+public import Verified.Reflect.Lemmas
+public import Verified.Reflect.BoundPass
+public import Verified.Reflect.Modes
+public import Verified.Reflect.FoldLemmas
+public import Verified.Reflect.ListFoldLemmas
+public import Verified.Reflect.TreeLemmas
+public import Verified.Reflect.TreeNodeLemmas
+public import Verified.Reflect.NativeList
+public import Verified.Reflect.NativeTree
+public import Verified.Reflect.RecursiveLayout
+public import Verified.Reflect.TailBoundLemmas
+public import LeanExe.Encoding.RoundTrip
+public import LeanExe.Encoding.Completeness.Writes
+public import LeanExe.ProofKit.Signed64Float
+public import LeanExe.Pipeline.Int64
+
+public section
 
 /-! The reflector.  `verified_compile p := [f, g, …]` reads the listed Lean definitions, writes
 each as a source function, and proves its equation `denote (reflect f) = f` from the lemmas of

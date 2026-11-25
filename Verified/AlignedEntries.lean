@@ -1,6 +1,10 @@
-import Verified.AlignedCorrect
-import Verified.Correct
-import LeanExe.Pipeline.ImplementsAligned
+module
+
+public import Verified.AlignedCorrect
+public import Verified.Correct
+public import LeanExe.Pipeline.ImplementsAligned
+
+public section
 
 /-!
 The alignment statement for the functions of a compiled program.  `AlignedInput` of a call's

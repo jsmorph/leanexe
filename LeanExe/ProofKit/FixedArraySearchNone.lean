@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.FixedArraySearchRead
-import Interpreter.Wasm.Wp.Block
-import Interpreter.Wasm.Wp.Loop
+module
+
+public import LeanExe.ProofKit.FixedArraySearchRead
+public import Interpreter.Wasm.Wp.Block
+public import Interpreter.Wasm.Wp.Loop
+
+public section
 
 namespace LeanExe.ProofKit.FixedArraySearch
 open Wasm LeanExe.Runtime
@@ -9,12 +13,12 @@ def guardProgram (start : Nat) : Wasm.Program :=
   [.localGet (start + 2), .constI64 0, .eqI64, .br_if 1,
     .localGet (start + 5), .constI64 0, .neI64, .br_if 1]
 
-def body (start : Nat) (fitProgram : Wasm.Program) : Wasm.Program :=
+@[expose] def body (start : Nat) (fitProgram : Wasm.Program) : Wasm.Program :=
   guardProgram start ++ readProgram start ++
     [.localGet (start + 3), .localGet start, .geUI64,
       .iff 0 0 fitProgram (advanceProgram start), .br 0]
 
-def program (start : Nat) (fitProgram : Wasm.Program) : Wasm.Program :=
+@[expose] def program (start : Nat) (fitProgram : Wasm.Program) : Wasm.Program :=
   [.block 0 0 [.loop 0 0 (body start fitProgram)]]
 
 theorem guardProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit)
@@ -31,7 +35,7 @@ theorem guardProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit)
     Frame.withValues_get, hCurrent, hResult, hValues, hRoot, reduceIte]
   simpa [hEmpty] using hNext
 
-def noneInvariant (initial : Store Unit) (params saved tail : List Wasm.Value)
+@[expose] def noneInvariant (initial : Store Unit) (params saved tail : List Wasm.Value)
     (need : UInt64) (nodes : List FreeNode) : AssertionF Unit :=
   fun store locals => ∃ previous capacity next : UInt64, ∃ visited remaining : List FreeNode,
     store = initial ∧ nodes = visited ++ remaining ∧ FreeListAt initial.mem remaining ∧

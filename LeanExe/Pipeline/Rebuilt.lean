@@ -1,4 +1,8 @@
-import LeanExe.Pipeline.Records
+module
+
+public import LeanExe.Pipeline.Records
+
+public section
 
 /-!
 Values rebuilt from consumed records.  A function that consumes a value may rewrite its records

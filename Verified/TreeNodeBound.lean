@@ -1,5 +1,9 @@
-import Verified.TreeNodeArgs
-import Verified.TreeParent
+module
+
+public import Verified.TreeNodeArgs
+public import Verified.TreeParent
+
+public section
 
 namespace Verified
 

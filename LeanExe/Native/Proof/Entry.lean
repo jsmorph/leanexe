@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Dispatch
+module
+
+public import LeanExe.Native.Proof.Dispatch
+
+public section
 
 /-!
 Function entry: the parameters bound by `function_entry2`, the declared locals set to 0 by the

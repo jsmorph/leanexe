@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.ReleaseTree
-import Verified.AllocCost
-import Verified.Bytes.Cost
+module
+
+public import LeanExe.ProofKit.ReleaseTree
+public import Verified.AllocCost
+public import Verified.Bytes.Cost
+
+public section
 
 namespace Verified
 

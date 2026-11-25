@@ -1,5 +1,9 @@
-import LeanExe.Native.Proof.MemBytes
-import LeanExe.Native.Proof.Control
+module
+
+public import LeanExe.Native.Proof.MemBytes
+public import LeanExe.Native.Proof.Control
+
+public section
 
 /-!
 The simulation of the memory instructions.  `MemRel` is preserved by a change of memory that keeps

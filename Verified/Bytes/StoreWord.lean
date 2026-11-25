@@ -1,4 +1,8 @@
-import Verified.Bytes.Write
+module
+
+public import Verified.Bytes.Write
+
+public section
 
 namespace Verified.Bytes
 

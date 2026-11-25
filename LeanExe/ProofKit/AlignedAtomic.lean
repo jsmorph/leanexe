@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.AlignedFlagRules
+module
+
+public import LeanExe.ProofKit.AlignedFlagRules
+
+public section
 
 /-!
 The flagged forms of Talos's atomic rules for the instructions of the native subset, generated from

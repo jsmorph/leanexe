@@ -1,5 +1,9 @@
-import Verified.TailState
-import Verified.TailBound
+module
+
+public import Verified.TailState
+public import Verified.TailBound
+
+public section
 
 namespace Verified
 

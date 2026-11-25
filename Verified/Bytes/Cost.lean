@@ -1,3 +1,7 @@
+module
+
+public section
+
 namespace Verified.Bytes
 
 def allocationCost (count : Nat) : Nat :=

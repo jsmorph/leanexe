@@ -1,5 +1,9 @@
-import Verified.AlignedBytes
-import Verified.ArgsCorrect
+module
+
+public import Verified.AlignedBytes
+public import Verified.ArgsCorrect
+
+public section
 
 /-!
 The arguments of a call under the flag.  `Env.AlignedVals` is the alignment of each argument's

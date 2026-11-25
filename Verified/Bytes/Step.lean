@@ -1,5 +1,9 @@
-import Verified.Bytes.Basic
-import Verified.HeapStep
+module
+
+public import Verified.Bytes.Basic
+public import Verified.HeapStep
+
+public section
 
 namespace Verified.Bytes
 

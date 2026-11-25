@@ -1,9 +1,13 @@
-import Verified.TreeMatchBlocks
-import Verified.TreeMatchMemory
-import Verified.TreeHeapFields
-import Verified.LocalFrame
-import Verified.TreeCopyCode
-import Verified.TreeStorage
+module
+
+public import Verified.TreeMatchBlocks
+public import Verified.TreeMatchMemory
+public import Verified.TreeHeapFields
+public import Verified.LocalFrame
+public import Verified.TreeCopyCode
+public import Verified.TreeStorage
+
+public section
 
 namespace Verified
 

@@ -1,4 +1,8 @@
-import Verified.Bytes.Memory
+module
+
+public import Verified.Bytes.Memory
+
+public section
 
 namespace Verified.Bytes
 
@@ -90,7 +94,7 @@ theorem top_empty (base : Nat) (h : base % 8 = 0) : (LiteralPool.mk base []).top
   simp only [top, endAddress, payload, List.flatten_nil, List.length_nil, Nat.add_zero]
   omega
 
-theorem segments_empty (base : Nat) : (LiteralPool.mk base []).segments = [] := rfl
+theorem segments_empty (base : Nat) : (LiteralPool.mk base []).segments = [] := by rfl
 
 theorem Valid.frame {pool : LiteralPool} {mem mem' : Mem} (h : pool.Valid mem)
     (hMemory : pool.endAddress ≤ mem'.pages * 65536)

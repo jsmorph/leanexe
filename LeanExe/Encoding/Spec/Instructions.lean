@@ -1,4 +1,8 @@
-import LeanExe.Encoding.Spec.Types
+module
+
+public import LeanExe.Encoding.Spec.Types
+
+public section
 
 namespace Wasm.Encoding.Spec
 
@@ -97,11 +101,11 @@ inductive MemArg (maxAlignment : Nat) : Bytes → UInt32 → Prop
       MemArg maxAlignment (alignBytes ++ offsetBytes) offset
 
 /-- A 64-bit word as eight bytes, least significant first. -/
-def littleEndian64 (value : UInt64) : Bytes :=
+@[expose] def littleEndian64 (value : UInt64) : Bytes :=
   (List.range 8).map fun i => UInt8.ofNat (value.toNat / 256 ^ i)
 
 /-- A 32-bit word as four bytes, least significant first. -/
-def littleEndian32 (value : UInt32) : Bytes :=
+@[expose] def littleEndian32 (value : UInt32) : Bytes :=
   (List.range 4).map fun i => UInt8.ofNat (value.toNat / 256 ^ i)
 
 mutual

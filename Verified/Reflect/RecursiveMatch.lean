@@ -1,5 +1,9 @@
-import Verified.Reflect.Definitions
-import Verified.Reflect.TailListLemmas
+module
+
+public import Verified.Reflect.Definitions
+public import Verified.Reflect.TailListLemmas
+
+public section
 
 namespace Verified.Reflect
 

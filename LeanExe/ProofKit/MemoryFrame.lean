@@ -1,9 +1,13 @@
-import LeanExe.ProofKit.Memory
+module
+
+public import LeanExe.ProofKit.Memory
+
+public section
 
 namespace LeanExe.ProofKit.Memory
 open Wasm
 
-def WritesRange (initial final : Store α) (start stop : Nat) : Prop :=
+@[expose] def WritesRange (initial final : Store α) (start stop : Nat) : Prop :=
   final = { initial with mem := final.mem } ∧
   final.mem.pages = initial.mem.pages ∧
   ∀ address : Nat, address < start ∨ stop ≤ address →

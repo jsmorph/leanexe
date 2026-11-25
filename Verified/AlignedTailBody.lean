@@ -1,7 +1,11 @@
-import Verified.AlignedTail
-import Verified.TailLetPair
-import Verified.TailCorrect
-import Verified.TailArgs
+module
+
+public import Verified.AlignedTail
+public import Verified.TailLetPair
+public import Verified.TailCorrect
+public import Verified.TailArgs
+
+public section
 
 /-!
 The tail body's constructs that pass the next state, choose, and bind, under the flag.  Each is its

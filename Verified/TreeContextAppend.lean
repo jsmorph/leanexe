@@ -1,5 +1,9 @@
-import Verified.ContextHEq
-import Verified.TreeContextLayout
+module
+
+public import Verified.ContextHEq
+public import Verified.TreeContextLayout
+
+public section
 
 namespace Verified
 

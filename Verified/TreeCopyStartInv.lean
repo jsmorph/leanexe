@@ -1,5 +1,9 @@
-import Verified.TreeCopyInvariant
-import Verified.RuntimeFacts
+module
+
+public import Verified.TreeCopyInvariant
+public import Verified.RuntimeFacts
+
+public section
 
 namespace Verified
 

@@ -1,10 +1,14 @@
-import Verified.HeapStep
-import Verified.LocalFrame
-import Verified.RuntimeFacts
-import Verified.AllocCost
-import Verified.ArrayCopyCode
-import LeanExe.Pipeline.RuntimeSpec
-import LeanExe.ProofKit.ArrayPrefix
+module
+
+public import Verified.HeapStep
+public import Verified.LocalFrame
+public import Verified.RuntimeFacts
+public import Verified.AllocCost
+public import Verified.ArrayCopyCode
+public import LeanExe.Pipeline.RuntimeSpec
+public import LeanExe.ProofKit.ArrayPrefix
+
+public section
 
 /-! The specifications of the code that allocates arrays and copies them into new blocks. -/
 

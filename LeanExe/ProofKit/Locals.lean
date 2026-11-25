@@ -1,4 +1,8 @@
-import Interpreter.Wasm.Locals
+module
+
+public import Interpreter.Wasm.Locals
+
+public section
 
 /-!
 Reads and writes of a Talos frame's locals by their combined index, as reads and writes of the

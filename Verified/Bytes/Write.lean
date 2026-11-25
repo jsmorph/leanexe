@@ -1,5 +1,9 @@
-import Verified.Bytes.Allocation
-import Verified.LocalFrame
+module
+
+public import Verified.Bytes.Allocation
+public import Verified.LocalFrame
+
+public section
 
 namespace Verified.Bytes
 

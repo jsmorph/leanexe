@@ -10,7 +10,11 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
 that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import LeanExe.Native.Clight.Ctypes
+module
+
+public import LeanExe.Native.Clight.Ctypes
+
+public section
 
 /-!
 The operators of Clight, from CompCert 3.18's `cfrontend/Cop.v`, with an empty composite
@@ -63,7 +67,7 @@ inductive classify_cast_cases where
   | cast_case_default
   deriving Repr, DecidableEq
 
-def classify_cast (A : Archi) (tfrom tto : type) : classify_cast_cases :=
+@[expose] def classify_cast (A : Archi) (tfrom tto : type) : classify_cast_cases :=
   match tto, tfrom with
   | .Tvoid, _ => .cast_case_void
   | .Tint sz2 si2 _, .Tint _ _ _ =>
@@ -109,7 +113,7 @@ def classify_cast (A : Archi) (tfrom tto : type) : classify_cast_cases :=
   | .Tunion id2 _, .Tunion id1 _ => .cast_case_union id1 id2
   | _, _ => .cast_case_default
 
-def cast_int_int (sz : intsize) (sg : signedness) (i : int) : int :=
+@[expose] def cast_int_int (sz : intsize) (sg : signedness) (i : int) : int :=
   match sz, sg with
   | .I8, .Signed => Int.sign_ext 8 i
   | .I8, .Unsigned => Int.zero_ext 8 i
@@ -118,52 +122,52 @@ def cast_int_int (sz : intsize) (sg : signedness) (i : int) : int :=
   | .I32, _ => i
   | .IBool, _ => if Int.eq i Int.zero then Int.zero else Int.one
 
-def cast_int_float (si : signedness) (i : int) : float :=
+@[expose] def cast_int_float (si : signedness) (i : int) : float :=
   match si with
   | .Signed => Float.of_int i
   | .Unsigned => Float.of_intu i
 
-def cast_float_int (si : signedness) (f : float) : Option int :=
+@[expose] def cast_float_int (si : signedness) (f : float) : Option int :=
   match si with
   | .Signed => Float.to_int f
   | .Unsigned => Float.to_intu f
 
-def cast_int_single (si : signedness) (i : int) : float32 :=
+@[expose] def cast_int_single (si : signedness) (i : int) : float32 :=
   match si with
   | .Signed => Float32.of_int i
   | .Unsigned => Float32.of_intu i
 
-def cast_single_int (si : signedness) (f : float32) : Option int :=
+@[expose] def cast_single_int (si : signedness) (f : float32) : Option int :=
   match si with
   | .Signed => Float32.to_int f
   | .Unsigned => Float32.to_intu f
 
-def cast_int_long (si : signedness) (i : int) : int64 :=
+@[expose] def cast_int_long (si : signedness) (i : int) : int64 :=
   match si with
   | .Signed => Int64.repr (Int.signed i)
   | .Unsigned => Int64.repr (Int.unsigned i)
 
-def cast_long_float (si : signedness) (i : int64) : float :=
+@[expose] def cast_long_float (si : signedness) (i : int64) : float :=
   match si with
   | .Signed => Float.of_long i
   | .Unsigned => Float.of_longu i
 
-def cast_long_single (si : signedness) (i : int64) : float32 :=
+@[expose] def cast_long_single (si : signedness) (i : int64) : float32 :=
   match si with
   | .Signed => Float32.of_long i
   | .Unsigned => Float32.of_longu i
 
-def cast_float_long (si : signedness) (f : float) : Option int64 :=
+@[expose] def cast_float_long (si : signedness) (f : float) : Option int64 :=
   match si with
   | .Signed => Float.to_long f
   | .Unsigned => Float.to_longu f
 
-def cast_single_long (si : signedness) (f : float32) : Option int64 :=
+@[expose] def cast_single_long (si : signedness) (f : float32) : Option int64 :=
   match si with
   | .Signed => Float32.to_long f
   | .Unsigned => Float32.to_longu f
 
-def sem_cast (A : Archi) (v : val) (t1 t2 : type) (m : mem) : Option val :=
+@[expose] def sem_cast (A : Archi) (v : val) (t1 t2 : type) (m : mem) : Option val :=
   match classify_cast A t1 t2 with
   | .cast_case_pointer =>
       match v with
@@ -284,7 +288,7 @@ inductive classify_bool_cases where
   | bool_case_i | bool_case_l | bool_case_f | bool_case_s | bool_default
   deriving Repr, DecidableEq
 
-def classify_bool (A : Archi) (ty : type) : classify_bool_cases :=
+@[expose] def classify_bool (A : Archi) (ty : type) : classify_bool_cases :=
   match typeconv ty with
   | .Tint _ _ _ => .bool_case_i
   | .Tpointer _ _ => if A.ptr64 then .bool_case_l else .bool_case_i
@@ -293,7 +297,7 @@ def classify_bool (A : Archi) (ty : type) : classify_bool_cases :=
   | .Tlong _ _ => .bool_case_l
   | _ => .bool_default
 
-def bool_val (A : Archi) (v : val) (t : type) (m : mem) : Option Bool :=
+@[expose] def bool_val (A : Archi) (v : val) (t : type) (m : mem) : Option Bool :=
   match classify_bool A t with
   | .bool_case_i =>
       match v with
@@ -321,7 +325,7 @@ def bool_val (A : Archi) (v : val) (t : type) (m : mem) : Option Bool :=
 
 /-! ## Unary operators -/
 
-def sem_notbool (A : Archi) (v : val) (ty : type) (m : mem) : Option val :=
+@[expose] def sem_notbool (A : Archi) (v : val) (ty : type) (m : mem) : Option val :=
   (bool_val A v ty m).map fun b => Val.of_bool (!b)
 
 inductive classify_neg_cases where
@@ -329,7 +333,7 @@ inductive classify_neg_cases where
   | neg_default
   deriving Repr, DecidableEq
 
-def classify_neg (ty : type) : classify_neg_cases :=
+@[expose] def classify_neg (ty : type) : classify_neg_cases :=
   match ty with
   | .Tint .I32 .Unsigned _ => .neg_case_i .Unsigned
   | .Tint _ _ _ => .neg_case_i .Signed
@@ -338,7 +342,7 @@ def classify_neg (ty : type) : classify_neg_cases :=
   | .Tlong si _ => .neg_case_l si
   | _ => .neg_default
 
-def sem_neg (v : val) (ty : type) : Option val :=
+@[expose] def sem_neg (v : val) (ty : type) : Option val :=
   match classify_neg ty with
   | .neg_case_i _ =>
       match v with
@@ -358,7 +362,7 @@ def sem_neg (v : val) (ty : type) : Option val :=
       | _ => none
   | .neg_default => none
 
-def sem_absfloat (v : val) (ty : type) : Option val :=
+@[expose] def sem_absfloat (v : val) (ty : type) : Option val :=
   match classify_neg ty with
   | .neg_case_i sg =>
       match v with
@@ -382,14 +386,14 @@ inductive classify_notint_cases where
   | notint_case_i (s : signedness) | notint_case_l (s : signedness) | notint_default
   deriving Repr, DecidableEq
 
-def classify_notint (ty : type) : classify_notint_cases :=
+@[expose] def classify_notint (ty : type) : classify_notint_cases :=
   match ty with
   | .Tint .I32 .Unsigned _ => .notint_case_i .Unsigned
   | .Tint _ _ _ => .notint_case_i .Signed
   | .Tlong si _ => .notint_case_l si
   | _ => .notint_default
 
-def sem_notint (v : val) (ty : type) : Option val :=
+@[expose] def sem_notint (v : val) (ty : type) : Option val :=
   match classify_notint ty with
   | .notint_case_i _ =>
       match v with
@@ -408,7 +412,7 @@ inductive binarith_cases where
   | bin_default
   deriving Repr, DecidableEq
 
-def classify_binarith (ty1 ty2 : type) : binarith_cases :=
+@[expose] def classify_binarith (ty1 ty2 : type) : binarith_cases :=
   match ty1, ty2 with
   | .Tint .I32 .Unsigned _, .Tint _ _ _ => .bin_case_i .Unsigned
   | .Tint _ _ _, .Tint .I32 .Unsigned _ => .bin_case_i .Unsigned
@@ -425,7 +429,7 @@ def classify_binarith (ty1 ty2 : type) : binarith_cases :=
   | .Tint _ _ _, .Tfloat .F32 _ | .Tlong _ _, .Tfloat .F32 _ => .bin_case_s
   | _, _ => .bin_default
 
-def binarith_type (c : binarith_cases) : type :=
+@[expose] def binarith_type (c : binarith_cases) : type :=
   match c with
   | .bin_case_i sg => .Tint .I32 sg noattr
   | .bin_case_l sg => .Tlong sg noattr
@@ -433,7 +437,7 @@ def binarith_type (c : binarith_cases) : type :=
   | .bin_case_s => .Tfloat .F32 noattr
   | .bin_default => .Tvoid
 
-def sem_binarith (A : Archi)
+@[expose] def sem_binarith (A : Archi)
     (sem_int : signedness → int → int → Option val)
     (sem_long : signedness → int64 → int64 → Option val)
     (sem_float : float → float → Option val)
@@ -470,7 +474,7 @@ inductive classify_add_cases where
   | add_case_lp (ty : type)
   | add_default
 
-def classify_add (ty1 ty2 : type) : classify_add_cases :=
+@[expose] def classify_add (ty1 ty2 : type) : classify_add_cases :=
   match typeconv ty1, typeconv ty2 with
   | .Tpointer ty _, .Tint _ si _ => .add_case_pi ty si
   | .Tpointer ty _, .Tlong _ _ => .add_case_pl ty
@@ -478,12 +482,12 @@ def classify_add (ty1 ty2 : type) : classify_add_cases :=
   | .Tlong _ _, .Tpointer ty _ => .add_case_lp ty
   | _, _ => .add_default
 
-def ptrofs_of_int (A : Archi) (si : signedness) (n : int) : ptrofs :=
+@[expose] def ptrofs_of_int (A : Archi) (si : signedness) (n : int) : ptrofs :=
   match si with
   | .Signed => Ptrofs.of_ints A n
   | .Unsigned => Ptrofs.of_intu A n
 
-def sem_add_ptr_int (A : Archi) (ty : type) (si : signedness) (v1 v2 : val) : Option val :=
+@[expose] def sem_add_ptr_int (A : Archi) (ty : type) (si : signedness) (v1 v2 : val) : Option val :=
   match v1, v2 with
   | .Vptr b1 ofs1, .Vint n2 =>
       let n2 := ptrofs_of_int A si n2
@@ -496,7 +500,7 @@ def sem_add_ptr_int (A : Archi) (ty : type) (si : signedness) (v1 v2 : val) : Op
       else none
   | _, _ => none
 
-def sem_add_ptr_long (A : Archi) (ty : type) (v1 v2 : val) : Option val :=
+@[expose] def sem_add_ptr_long (A : Archi) (ty : type) (v1 v2 : val) : Option val :=
   match v1, v2 with
   | .Vptr b1 ofs1, .Vlong n2 =>
       let n2 := Ptrofs.of_int64 A n2
@@ -509,7 +513,7 @@ def sem_add_ptr_long (A : Archi) (ty : type) (v1 v2 : val) : Option val :=
       else none
   | _, _ => none
 
-def sem_add (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
+@[expose] def sem_add (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
   match classify_add t1 t2 with
   | .add_case_pi ty si => sem_add_ptr_int A ty si v1 v2
   | .add_case_pl ty => sem_add_ptr_long A ty v1 v2
@@ -529,14 +533,14 @@ inductive classify_sub_cases where
   | sub_case_pl (ty : type)
   | sub_default
 
-def classify_sub (ty1 ty2 : type) : classify_sub_cases :=
+@[expose] def classify_sub (ty1 ty2 : type) : classify_sub_cases :=
   match typeconv ty1, typeconv ty2 with
   | .Tpointer ty _, .Tint _ si _ => .sub_case_pi ty si
   | .Tpointer ty _, .Tpointer _ _ => .sub_case_pp ty
   | .Tpointer ty _, .Tlong _ _ => .sub_case_pl ty
   | _, _ => .sub_default
 
-def sem_sub (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
+@[expose] def sem_sub (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
   match classify_sub t1 t2 with
   | .sub_case_pi ty si =>
       match v1, v2 with
@@ -582,7 +586,7 @@ def sem_sub (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) 
         (fun n1 n2 => some (.Vsingle (Float32.sub A n1 n2)))
         v1 t1 v2 t2 m
 
-def sem_mul (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
+@[expose] def sem_mul (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
   sem_binarith A
     (fun _ n1 n2 => some (.Vint (Int.mul n1 n2)))
     (fun _ n1 n2 => some (.Vlong (Int64.mul n1 n2)))
@@ -590,7 +594,7 @@ def sem_mul (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) 
     (fun n1 n2 => some (.Vsingle (Float32.mul A n1 n2)))
     v1 t1 v2 t2 m
 
-def sem_div (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
+@[expose] def sem_div (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) : Option val :=
   sem_binarith A
     (fun sg n1 n2 =>
       match sg with
@@ -611,7 +615,7 @@ def sem_div (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) 
     (fun n1 n2 => some (.Vsingle (Float32.div A n1 n2)))
     v1 t1 v2 t2 m
 
-def sem_mod (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
+@[expose] def sem_mod (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
     Option val :=
   sem_binarith A
     (fun sg n1 n2 =>
@@ -633,7 +637,7 @@ def sem_mod (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) 
     (fun _ _ => none)
     v1 t1 v2 t2 m
 
-def sem_and (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
+@[expose] def sem_and (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
     Option val :=
   sem_binarith A
     (fun _ n1 n2 => some (.Vint (Int.and n1 n2)))
@@ -642,7 +646,7 @@ def sem_and (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) 
     (fun _ _ => none)
     v1 t1 v2 t2 m
 
-def sem_or (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
+@[expose] def sem_or (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
     Option val :=
   sem_binarith A
     (fun _ n1 n2 => some (.Vint (Int.or n1 n2)))
@@ -651,7 +655,7 @@ def sem_or (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
     (fun _ _ => none)
     v1 t1 v2 t2 m
 
-def sem_xor (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
+@[expose] def sem_xor (A : Archi) (v1 : val) (t1 : type) (v2 : val) (t2 : type) (m : mem) :
     Option val :=
   sem_binarith A
     (fun _ n1 n2 => some (.Vint (Int.xor n1 n2)))
@@ -665,7 +669,7 @@ inductive classify_shift_cases where
   | shift_case_il (s : signedness) | shift_case_li (s : signedness) | shift_default
   deriving Repr, DecidableEq
 
-def classify_shift (ty1 ty2 : type) : classify_shift_cases :=
+@[expose] def classify_shift (ty1 ty2 : type) : classify_shift_cases :=
   match typeconv ty1, typeconv ty2 with
   | .Tint .I32 .Unsigned _, .Tint _ _ _ => .shift_case_ii .Unsigned
   | .Tint _ _ _, .Tint _ _ _ => .shift_case_ii .Signed
@@ -675,7 +679,7 @@ def classify_shift (ty1 ty2 : type) : classify_shift_cases :=
   | .Tlong s _, .Tlong _ _ => .shift_case_ll s
   | _, _ => .shift_default
 
-def sem_shift
+@[expose] def sem_shift
     (sem_int : signedness → int → int → int)
     (sem_long : signedness → int64 → int64 → int64)
     (v1 : val) (t1 : type) (v2 : val) (t2 : type) : Option val :=
@@ -705,10 +709,10 @@ def sem_shift
       | _, _ => none
   | .shift_default => none
 
-def sem_shl (v1 : val) (t1 : type) (v2 : val) (t2 : type) : Option val :=
+@[expose] def sem_shl (v1 : val) (t1 : type) (v2 : val) (t2 : type) : Option val :=
   sem_shift (fun _ n1 n2 => Int.shl n1 n2) (fun _ n1 n2 => Int64.shl n1 n2) v1 t1 v2 t2
 
-def sem_shr (v1 : val) (t1 : type) (v2 : val) (t2 : type) : Option val :=
+@[expose] def sem_shr (v1 : val) (t1 : type) (v2 : val) (t2 : type) : Option val :=
   sem_shift
     (fun sg n1 n2 =>
       match sg with
@@ -725,7 +729,7 @@ inductive classify_cmp_cases where
   | cmp_case_lp | cmp_default
   deriving Repr, DecidableEq
 
-def classify_cmp (ty1 ty2 : type) : classify_cmp_cases :=
+@[expose] def classify_cmp (ty1 ty2 : type) : classify_cmp_cases :=
   match typeconv ty1, typeconv ty2 with
   | .Tpointer _ _, .Tpointer _ _ => .cmp_case_pp
   | .Tpointer _ _, .Tint _ si _ => .cmp_case_pi si
@@ -735,7 +739,7 @@ def classify_cmp (ty1 ty2 : type) : classify_cmp_cases :=
   | _, _ => .cmp_default
 
 /-- `sem_cmp`.  The five pointer cases call `cmp_ptr`, which the copy omits. -/
-def sem_cmp (A : Archi) (c : comparison) (v1 : val) (t1 : type) (v2 : val) (t2 : type)
+@[expose] def sem_cmp (A : Archi) (c : comparison) (v1 : val) (t1 : type) (v2 : val) (t2 : type)
     (m : mem) : Option val :=
   match classify_cmp t1 t2 with
   | .cmp_default =>
@@ -763,7 +767,7 @@ def classify_fun (ty : type) : classify_fun_cases :=
   | .Tpointer (.Tfunction args res cc) _ => .fun_case_f args res cc
   | _ => .fun_default
 
-def sem_unary_operation (A : Archi) (op : unary_operation) (v : val) (ty : type) (m : mem) :
+@[expose] def sem_unary_operation (A : Archi) (op : unary_operation) (v : val) (ty : type) (m : mem) :
     Option val :=
   match op with
   | .Onotbool => sem_notbool A v ty m
@@ -771,7 +775,7 @@ def sem_unary_operation (A : Archi) (op : unary_operation) (v : val) (ty : type)
   | .Oneg => sem_neg v ty
   | .Oabsfloat => sem_absfloat v ty
 
-def sem_binary_operation (A : Archi) (op : binary_operation) (v1 : val) (t1 : type) (v2 : val)
+@[expose] def sem_binary_operation (A : Archi) (op : binary_operation) (v1 : val) (t1 : type) (v2 : val)
     (t2 : type) (m : mem) : Option val :=
   match op with
   | .Oadd => sem_add A v1 t1 v2 t2 m

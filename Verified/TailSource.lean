@@ -1,6 +1,10 @@
-import Verified.Compile
-import Verified.FunRename
-import Verified.TailRun
+module
+
+public import Verified.Compile
+public import Verified.FunRename
+public import Verified.TailRun
+
+public section
 
 namespace Verified
 

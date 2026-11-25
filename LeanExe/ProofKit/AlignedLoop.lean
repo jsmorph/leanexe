@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.AlignedExec
+module
+
+public import LeanExe.ProofKit.AlignedExec
+
+public section
 
 /-!
 The rule for `loop` under `wpA`, the counterpart of Talos's `wp_loop_cons`: an invariant `Inv`

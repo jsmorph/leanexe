@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.FreeListMemory
+module
+
+public import LeanExe.ProofKit.FreeListMemory
+
+public section
 
 /-!
 # Returning a block to the free list

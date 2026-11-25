@@ -1,9 +1,13 @@
-import Verified.TreeContextSep
-import Verified.TreeNodeArgs
-import Verified.TreeMatchMemory
-import Verified.TreeFieldPositions
-import Verified.TreeFieldsLoad
-import Verified.TreeHeapFields
+module
+
+public import Verified.TreeContextSep
+public import Verified.TreeNodeArgs
+public import Verified.TreeMatchMemory
+public import Verified.TreeFieldPositions
+public import Verified.TreeFieldsLoad
+public import Verified.TreeHeapFields
+
+public section
 
 namespace Verified
 

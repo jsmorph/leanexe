@@ -1,6 +1,10 @@
-import LeanExe.Native.Proof.Init
-import LeanExe.Pipeline.Implements
-import LeanExe.Pipeline.RuntimeSpec
+module
+
+public import LeanExe.Native.Proof.Init
+public import LeanExe.Pipeline.Implements
+public import LeanExe.Pipeline.RuntimeSpec
+
+public section
 
 /-!
 The step from Talos's theorems to the translated functions.  `Runs.native` combines a `Runs`

@@ -1,5 +1,9 @@
-import LeanExe.Runtime.Tree
-import LeanExe.ProofKit.Memory
+module
+
+public import LeanExe.Runtime.Tree
+public import LeanExe.ProofKit.Memory
+
+public section
 
 namespace LeanExe.Runtime
 
@@ -10,7 +14,7 @@ structure FreeNode where
   capacity : UInt64
   deriving Inhabited
 
-def freeHead : List FreeNode → UInt64
+@[expose] def freeHead : List FreeNode → UInt64
   | [] => 0
   | node :: _ => node.root
 
@@ -39,7 +43,7 @@ structure FreeChoice where
   next : UInt64
   remaining : List FreeNode
 
-def previousRoot (initial : UInt64) : List FreeNode → UInt64
+@[expose] def previousRoot (initial : UInt64) : List FreeNode → UInt64
   | [] => initial
   | node :: rest => previousRoot node.root rest
 
@@ -252,7 +256,7 @@ theorem takeFirstFitFrom_some_remaining_mem {previous need : UInt64}
   · exact List.mem_append_left _ hSkipped
   · exact List.mem_append_right _ (List.mem_cons_of_mem _ hTail)
 
-def FreeNode.region (node : FreeNode) : Nat × Nat :=
+@[expose] def FreeNode.region (node : FreeNode) : Nat × Nat :=
   (node.root.toNat - 48, 48 + node.capacity.toNat)
 
 inductive FreeListAt : Mem → List FreeNode → Prop where
@@ -546,7 +550,7 @@ private theorem FreeListAt.unlink_after {mem : Mem}
                   (List.mem_cons_of_mem previous
                     (List.mem_cons_of_mem selected htailMem))
 
-def unlinkFreeChoice (mem : Mem) (choice : FreeChoice) : Mem :=
+@[expose] def unlinkFreeChoice (mem : Mem) (choice : FreeChoice) : Mem :=
   if choice.previous = 0 then
     mem
   else

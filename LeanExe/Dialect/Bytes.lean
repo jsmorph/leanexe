@@ -1,4 +1,8 @@
-import Lean
+module
+
+public import Lean
+
+public section
 
 namespace LeanExe
 
@@ -38,7 +42,7 @@ def set (buffer : Bytes) (index byte : UInt64) : Bytes :=
     exact Array.size_set (h := h)
   · rfl
 
-@[simp] theorem size_empty : size empty = 0 := rfl
+@[simp] theorem size_empty : size empty = 0 := by rfl
 
 theorem size_toNat (bytes : Bytes) (h : bytes.data.size < 2 ^ 64) :
     (size bytes).toNat = bytes.data.size := by

@@ -1,4 +1,8 @@
-import Verified.ExprSpec
+module
+
+public import Verified.ExprSpec
+
+public section
 
 namespace Verified
 

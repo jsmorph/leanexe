@@ -1,6 +1,10 @@
-import Verified.Reflect.TailState
-import Verified.Reflect.TailBoundLemmas
-import Verified.Reflect.SourceEq
+module
+
+public import Verified.Reflect.TailState
+public import Verified.Reflect.TailBoundLemmas
+public import Verified.Reflect.SourceEq
+
+public section
 
 namespace Verified.Reflect
 

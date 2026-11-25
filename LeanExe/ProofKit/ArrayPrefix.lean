@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.Array
-import LeanExe.ProofKit.MemoryFrame
-import LeanExe.ProofKit.Memory
+module
+
+public import LeanExe.ProofKit.Array
+public import LeanExe.ProofKit.MemoryFrame
+public import LeanExe.ProofKit.Memory
+
+public section
 
 namespace LeanExe.ProofKit.UInt64Array
 open Wasm Memory

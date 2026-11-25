@@ -1,4 +1,8 @@
-import LeanExe.TalosCompat
+module
+
+public import LeanExe.TalosCompat
+
+public section
 
 namespace Verified
 
@@ -67,10 +71,10 @@ theorem Frame.slot {base p : Nat} {s s' : Locals} (h : Frame base s s')
     ({ s with values := vs } : Locals).get i = s.get i := rfl
 
 @[simp] theorem Locals.positions_values (s : Locals) (vs : List Value) :
-    ({ s with values := vs } : Locals).positions = s.positions := rfl
+    ({ s with values := vs } : Locals).positions = s.positions := by rfl
 
 /-- Local `i`, past the parameters, after a store of `v`. -/
-def setLocal (s : Locals) (i : Nat) (v : Value) : Locals :=
+@[expose] def setLocal (s : Locals) (i : Nat) (v : Value) : Locals :=
   { s with locals := s.locals.set (i - s.params.length) v }
 
 @[simp] theorem Locals.positions_setLocal (s : Locals) (i : Nat) (v : Value) :

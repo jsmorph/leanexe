@@ -1,21 +1,25 @@
-import Verified.AlignedTailTree
-import Verified.AlignedTailBody
-import Verified.AlignedTailLoop
-import Verified.ListFoldCode
-import Verified.ListFoldSource
-import Verified.TailCorrect
-import Verified.TreeMatchFacts
-import Verified.TailBindPrefix
-import Verified.TailAllocExpand
-import Verified.TreeMatchPotential
-import Verified.OwnedExpr
-import Verified.Bytes.StaticPrefix
-import Verified.TreeDispatch
-import Verified.TailBind
-import Verified.TailArgs
-import Verified.ListFoldResource
-import Verified.ListFoldBorrowed
-import Verified.TailHeap
+module
+
+public import Verified.AlignedTailTree
+public import Verified.AlignedTailBody
+public import Verified.AlignedTailLoop
+public import Verified.ListFoldCode
+public import Verified.ListFoldSource
+public import Verified.TailCorrect
+public import Verified.TreeMatchFacts
+public import Verified.TailBindPrefix
+public import Verified.TailAllocExpand
+public import Verified.TreeMatchPotential
+public import Verified.OwnedExpr
+public import Verified.Bytes.StaticPrefix
+public import Verified.TreeDispatch
+public import Verified.TailBind
+public import Verified.TailArgs
+public import Verified.ListFoldResource
+public import Verified.ListFoldBorrowed
+public import Verified.TailHeap
+
+public section
 
 /-!
 The fold over a list under the flag.  `ListFold.step_specX` assembles the flagged tail constructs

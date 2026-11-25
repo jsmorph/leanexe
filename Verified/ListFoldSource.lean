@@ -1,6 +1,10 @@
-import Verified.ContextAppend
-import Verified.ListFoldDefs
-import Verified.Rename
+module
+
+public import Verified.ContextAppend
+public import Verified.ListFoldDefs
+public import Verified.Rename
+
+public section
 
 namespace Verified
 

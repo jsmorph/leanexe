@@ -1,9 +1,23 @@
-import LeanExe.ProofKit.Signed64
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64NegateOps
-import LeanExe.ProofKit.F32Convert
-import LeanExe.ProofKit.F32Negate
-import LeanExe.ProofKit.F32TruncSat
+module
+
+public import LeanExe.ProofKit.Signed64
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64NegateOps
+public import LeanExe.ProofKit.F32Convert
+public import LeanExe.ProofKit.F32Negate
+public import LeanExe.ProofKit.F32TruncSat
+public import LeanExe.ProofKit.F32Bits
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F32Packing
+public import LeanExe.ProofKit.F32Sign
+public import LeanExe.ProofKit.F64Packing
+public import LeanExe.ProofKit.F64Sign
+public import LeanExe.ProofKit.F32Sub
+public import LeanExe.ProofKit.F64Sub
+import all Init.Data.SInt.Float
+import all Init.Data.SInt.Float32
+
+public section
 
 /-!
 The word forms of Lean's conversions between `Int64` and the floats, over the unsigned conversions,

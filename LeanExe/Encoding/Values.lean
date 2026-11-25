@@ -1,6 +1,10 @@
-import LeanExe.Encoding.Spec.Values
-import Init.Omega
-import Init.Data.UInt.Lemmas
+module
+
+public import LeanExe.Encoding.Spec.Values
+public import Init.Omega
+public import Init.Data.UInt.Lemmas
+
+public section
 
 namespace Wasm.Encoding
 

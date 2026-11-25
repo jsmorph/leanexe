@@ -1,4 +1,8 @@
-import Verified.After
+module
+
+public import Verified.After
+
+public section
 
 /-! The potential of owned arrays, which, with the charges, bounds the bytes of the moves of an
 array that grows.  An owned array of `n` words at `p` has the potential `4u ∸ 2c`, with

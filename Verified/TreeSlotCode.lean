@@ -1,7 +1,11 @@
-import Verified.TreeAdvance
-import Verified.LocalFrame
-import Verified.TreeCopyCode
-import Verified.TreeStorage
+module
+
+public import Verified.TreeAdvance
+public import Verified.LocalFrame
+public import Verified.TreeCopyCode
+public import Verified.TreeStorage
+
+public section
 
 namespace Verified
 

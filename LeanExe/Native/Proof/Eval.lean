@@ -1,5 +1,9 @@
-import LeanExe.Native.Translate
-import LeanExe.Native.Proof.Mem
+module
+
+public import LeanExe.Native.Translate
+public import LeanExe.Native.Proof.Mem
+
+public section
 
 /-!
 The values of the operators, casts, and conditions that the translator emits, at the C types

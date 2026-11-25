@@ -1,5 +1,9 @@
-import LeanExe.Pipeline.AlignedFreeList
-import LeanExe.ProofKit.ReleaseTree
+module
+
+public import LeanExe.Pipeline.AlignedFreeList
+public import LeanExe.ProofKit.ReleaseTree
+
+public section
 
 /-!
 `release` on a tree of records under `wpA`: the ports of `wp_loop_ghost`, `dropReference_spec`,

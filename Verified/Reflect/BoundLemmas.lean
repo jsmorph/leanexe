@@ -1,4 +1,8 @@
-import Verified.BoundFacts
+module
+
+public import Verified.BoundFacts
+
+public section
 
 /-! The lemmas from which the reflector builds the equation between a function's allocation bound
 and a Lean term: one lemma per source form and side condition.  Each states `Expr.allocs` of a

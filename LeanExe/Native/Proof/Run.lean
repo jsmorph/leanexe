@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Entry
+module
+
+public import LeanExe.Native.Proof.Entry
+
+public section
 
 /-!
 The simulation of a call of a translated function: Talos's `run` against CompCert's

@@ -1,5 +1,9 @@
-import Verified.Reflect.TailBody
-import Verified.TailTransport
+module
+
+public import Verified.Reflect.TailBody
+public import Verified.TailTransport
+
+public section
 
 namespace Verified.Reflect
 

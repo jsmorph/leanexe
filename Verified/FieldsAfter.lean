@@ -1,5 +1,9 @@
-import Verified.After
-import Verified.OwnedValues
+module
+
+public import Verified.After
+public import Verified.OwnedValues
+
+public section
 
 namespace Verified
 

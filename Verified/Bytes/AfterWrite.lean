@@ -1,5 +1,9 @@
-import Verified.After
-import Verified.Bytes.Write
+module
+
+public import Verified.After
+public import Verified.Bytes.Write
+
+public section
 
 namespace Verified
 

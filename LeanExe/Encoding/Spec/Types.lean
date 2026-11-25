@@ -1,5 +1,9 @@
-import LeanExe.Encoding.Spec.Values
-import Interpreter.Wasm.Syntax
+module
+
+public import LeanExe.Encoding.Spec.Values
+public import Interpreter.Wasm.Syntax
+
+public section
 
 namespace Wasm.Encoding.Spec
 
@@ -65,7 +69,7 @@ end Wasm.Encoding.Spec
 
 namespace Wasm.Encoding
 
-def Numeric (type : Wasm.ValueType) : Prop :=
+@[expose] def Numeric (type : Wasm.ValueType) : Prop :=
   type = .i32 ∨ type = .i64 ∨ type = .f32 ∨ type = .f64
 
 inductive BlockForm : List Wasm.ValueType → Prop

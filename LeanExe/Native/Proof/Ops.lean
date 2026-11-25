@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Straight
+module
+
+public import LeanExe.Native.Proof.Straight
+
+public section
 
 /-!
 The simulation of the globals, the constants, the integer operations, and `unreachable`.

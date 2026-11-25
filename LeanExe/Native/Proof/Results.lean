@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.MemOps
+module
+
+public import LeanExe.Native.Proof.MemOps
+
+public section
 
 /-!
 A function with several results stores them in the result globals before it returns, and its

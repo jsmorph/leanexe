@@ -1,8 +1,12 @@
-import Verified.TreeNodeLayout
-import LeanExe.Pipeline.RecordSlots
-import Verified.LocalFrame
-import Verified.TreeCopyCode
-import Verified.TreeStorage
+module
+
+public import Verified.TreeNodeLayout
+public import LeanExe.Pipeline.RecordSlots
+public import Verified.LocalFrame
+public import Verified.TreeCopyCode
+public import Verified.TreeStorage
+
+public section
 
 namespace Verified
 

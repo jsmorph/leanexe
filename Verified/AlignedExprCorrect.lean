@@ -1,6 +1,10 @@
-import Verified.AlignedTreeCase
-import Verified.AlignedFloat32
-import Verified.AlignedListFold
+module
+
+public import Verified.AlignedTreeCase
+public import Verified.AlignedFloat32
+public import Verified.AlignedListFold
+
+public section
 
 /-!
 The assembly of the construct proofs under the flag.  `Expr.code_specInX` is `Expr.code_specIn`

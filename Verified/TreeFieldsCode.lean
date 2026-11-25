@@ -1,6 +1,10 @@
-import LeanExe.Runtime.Defs
-import Verified.Tree
-import Verified.LocalFrame
+module
+
+public import LeanExe.Runtime.Defs
+public import Verified.Tree
+public import Verified.LocalFrame
+
+public section
 
 namespace Verified
 

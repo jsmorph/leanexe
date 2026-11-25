@@ -1,11 +1,15 @@
-import LeanExe.Runtime.FreeList
-import LeanExe.ProofKit.FixedArrayHeader
+module
+
+public import LeanExe.Runtime.FreeList
+public import LeanExe.ProofKit.FixedArrayHeader
+
+public section
 
 namespace LeanExe.ProofKit
 
 open Wasm LeanExe.Common LeanExe.Runtime
 
-def fixedArrayAllocFitMem (mem : Mem) (choice : FreeChoice)
+@[expose] def fixedArrayAllocFitMem (mem : Mem) (choice : FreeChoice)
     (stride : UInt64) : Mem :=
   ((((((unlinkFreeChoice mem choice).write64
       ((choice.node.root - 48).toUInt32) 5501223100278326855).write64
@@ -15,7 +19,7 @@ def fixedArrayAllocFitMem (mem : Mem) (choice : FreeChoice)
       ((choice.node.root - 16).toUInt32) stride).write64
       ((choice.node.root - 8).toUInt32) 0
 
-def fixedArrayAllocFitStore (st : Store Unit) (choice : FreeChoice)
+@[expose] def fixedArrayAllocFitStore (st : Store Unit) (choice : FreeChoice)
     (stride : UInt64) : Store Unit :=
   { st with
     globals := if choice.previous = 0 then
@@ -204,29 +208,29 @@ open Wasm LeanExe.Common LeanExe.Runtime
 
 /-- Whether reusing `choice`'s block for `need` bytes leaves at least 56 bytes,
 one header and one word, to keep as a smaller free block. -/
-def splitsFit (need : UInt64) (choice : FreeChoice) : Bool :=
+@[expose] def splitsFit (need : UInt64) (choice : FreeChoice) : Bool :=
   56 ≤ choice.node.capacity - need
 
 /-- The header address of the object that a split places at the upper end of
 `choice`'s block. -/
-def splitBase (need : UInt64) (choice : FreeChoice) : UInt64 :=
+@[expose] def splitBase (need : UInt64) (choice : FreeChoice) : UInt64 :=
   choice.node.root + choice.node.capacity - need - 48
 
 /-- Memory after a split: the block's size word lowered, and a fresh header at
 `splitBase`. -/
-def fixedArraySplitMem (mem : Mem) (choice : FreeChoice) (need stride : UInt64) : Mem :=
+@[expose] def fixedArraySplitMem (mem : Mem) (choice : FreeChoice) (need stride : UInt64) : Mem :=
   fixedArrayHeaderMem
     (mem.write64 (choice.node.root - 32).toUInt32 (choice.node.capacity - need - 48))
     (splitBase need choice) need stride
 
 /-- The store after reusing `choice`'s block for `need` bytes. -/
-def fixedArrayReuseStore (st : Store Unit) (choice : FreeChoice) (need stride : UInt64) :
+@[expose] def fixedArrayReuseStore (st : Store Unit) (choice : FreeChoice) (need stride : UInt64) :
     Store Unit :=
   if splitsFit need choice then { st with mem := fixedArraySplitMem st.mem choice need stride }
   else fixedArrayAllocFitStore st choice stride
 
 /-- The payload pointer of the object made from `choice`'s block. -/
-def reuseRoot (choice : FreeChoice) (need : UInt64) : UInt64 :=
+@[expose] def reuseRoot (choice : FreeChoice) (need : UInt64) : UInt64 :=
   if splitsFit need choice then choice.node.root + choice.node.capacity - need
   else choice.node.root
 

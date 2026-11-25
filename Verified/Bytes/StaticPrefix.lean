@@ -1,6 +1,10 @@
-import Verified.Bytes.StaticEnv
-import Verified.ContextHEq
-import Verified.ContextAppend
+module
+
+public import Verified.Bytes.StaticEnv
+public import Verified.ContextHEq
+public import Verified.ContextAppend
+
+public section
 
 namespace Verified.Bytes.LiteralPool.Safe
 

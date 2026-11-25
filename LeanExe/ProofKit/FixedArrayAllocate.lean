@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.FixedArrayAllocateNone
-import LeanExe.ProofKit.FixedArraySearchFit
+module
+
+public import LeanExe.ProofKit.FixedArrayAllocateNone
+public import LeanExe.ProofKit.FixedArraySearchFit
+
+public section
 
 namespace LeanExe.ProofKit.FixedArrayAllocate
 open Wasm LeanExe.Runtime FixedArraySearch

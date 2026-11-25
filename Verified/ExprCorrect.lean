@@ -1,40 +1,44 @@
-import Verified.ExprSpec
-import Verified.ArgsCorrect
-import Verified.Bytes.Get
-import Verified.LiteralCoverage
-import Verified.LiteralCoverageFacts
-import Verified.TreeNodeCode
-import Verified.TreeMatchBody
-import Verified.ListFoldCode
-import Verified.Float32Facts
-import LeanExe.ProofKit.F32Nearest
-import Verified.TreeNodeBound
-import Verified.FieldsAdvance
-import Verified.TreeAssembleTyped
-import Verified.OwnedExpr
-import Verified.Bytes.StaticPrefix
-import Verified.TreeDispatch
-import Verified.ListFoldSource
-import Verified.TailCorrect
-import Verified.TreeMatchFacts
-import Verified.TailBindPrefix
-import Verified.TailAllocExpand
-import Verified.TreeMatchPotential
-import Verified.TailBind
-import Verified.TailArgs
-import Verified.ListFoldResource
-import Verified.ListFoldBorrowed
-import Verified.TailHeap
-import Verified.Bytes.AfterWrite
-import Verified.Bytes.BuildCode
-import Verified.LocalFrame
-import LeanExe.TalosCompat
-import LeanExe.Pipeline.Aborts
-import Verified.Bytes.StoreWord
-import Verified.Bytes.Overlay
-import Verified.Bytes.LiteralCode
-import Verified.Bytes.LiteralFrame
-import Verified.Bytes.Copy
+module
+
+public import Verified.ExprSpec
+public import Verified.ArgsCorrect
+public import Verified.Bytes.Get
+public import Verified.LiteralCoverage
+public import Verified.LiteralCoverageFacts
+public import Verified.TreeNodeCode
+public import Verified.TreeMatchBody
+public import Verified.ListFoldCode
+public import Verified.Float32Facts
+public import LeanExe.ProofKit.F32Nearest
+public import Verified.TreeNodeBound
+public import Verified.FieldsAdvance
+public import Verified.TreeAssembleTyped
+public import Verified.OwnedExpr
+public import Verified.Bytes.StaticPrefix
+public import Verified.TreeDispatch
+public import Verified.ListFoldSource
+public import Verified.TailCorrect
+public import Verified.TreeMatchFacts
+public import Verified.TailBindPrefix
+public import Verified.TailAllocExpand
+public import Verified.TreeMatchPotential
+public import Verified.TailBind
+public import Verified.TailArgs
+public import Verified.ListFoldResource
+public import Verified.ListFoldBorrowed
+public import Verified.TailHeap
+public import Verified.Bytes.AfterWrite
+public import Verified.Bytes.BuildCode
+public import Verified.LocalFrame
+public import LeanExe.TalosCompat
+public import LeanExe.Pipeline.Aborts
+public import Verified.Bytes.StoreWord
+public import Verified.Bytes.Overlay
+public import Verified.Bytes.LiteralCode
+public import Verified.Bytes.LiteralFrame
+public import Verified.Bytes.Copy
+
+public section
 
 /-! Lemmas for the correctness proofs of expression code: the regions that the code of a value
 keeps, the bounds of pairs, the paid states and potentials of loops, the room of an array's

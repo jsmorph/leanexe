@@ -1,4 +1,8 @@
-import Verified.BindPrefix
+module
+
+public import Verified.BindPrefix
+
+public section
 
 namespace Verified
 

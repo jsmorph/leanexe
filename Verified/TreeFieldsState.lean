@@ -1,5 +1,9 @@
-import Verified.TreeFieldsMemory
-import Verified.HeapStep
+module
+
+public import Verified.TreeFieldsMemory
+public import Verified.HeapStep
+
+public section
 
 namespace Verified
 

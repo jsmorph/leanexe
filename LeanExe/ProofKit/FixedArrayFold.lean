@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.Array
-import LeanExe.ProofKit.FixedArrayResult
+module
+
+public import LeanExe.ProofKit.Array
+public import LeanExe.ProofKit.FixedArrayResult
+
+public section
 
 namespace LeanExe.ProofKit.FixedArrayFold
 
@@ -60,7 +64,7 @@ theorem forwardSetupFrame_params (frame : Locals) (inputPtr : UInt64)
     (initial : UInt64) :
     (forwardSetupFrame frame inputPtr inputSize arrayLocal lengthLocal
       indexLocal stopScratchLocal stopLocal accumulatorLocal releaseReadyLocal
-      effectiveStopLocal initial).params = frame.params := rfl
+      effectiveStopLocal initial).params = frame.params := by rfl
 
 theorem forwardSetupFrame_locals_length (frame : Locals) (inputPtr : UInt64)
     (inputSize : Nat) (arrayLocal lengthLocal indexLocal stopScratchLocal
@@ -77,7 +81,7 @@ theorem forwardSetupFrame_values (frame : Locals) (inputPtr : UInt64)
     (initial : UInt64) :
     (forwardSetupFrame frame inputPtr inputSize arrayLocal lengthLocal
       indexLocal stopScratchLocal stopLocal accumulatorLocal releaseReadyLocal
-      effectiveStopLocal initial).values = [] := rfl
+      effectiveStopLocal initial).values = [] := by rfl
 
 set_option maxHeartbeats 1000000 in
 set_option Elab.async false in
@@ -227,14 +231,14 @@ theorem forwardSetupProgram_spec
 def resultProgram (accumulatorLocal resultLocal : Nat) : Wasm.Program :=
   [.localGet accumulatorLocal, .localSet resultLocal]
 
-def resultFrame (frame : Locals) (resultLocal : Nat) (value : UInt64) : Locals :=
+@[expose] def resultFrame (frame : Locals) (resultLocal : Nat) (value : UInt64) : Locals :=
   { frame with
     locals := frame.locals.set (resultLocal - frame.params.length) (.i64 value),
     values := [] }
 
 theorem resultFrame_params (frame : Locals) (resultLocal : Nat)
     (value : UInt64) :
-    (resultFrame frame resultLocal value).params = frame.params := rfl
+    (resultFrame frame resultLocal value).params = frame.params := by rfl
 
 theorem resultFrame_locals_length (frame : Locals) (resultLocal : Nat)
     (value : UInt64) :
@@ -243,7 +247,7 @@ theorem resultFrame_locals_length (frame : Locals) (resultLocal : Nat)
 
 theorem resultFrame_values (frame : Locals) (resultLocal : Nat)
     (value : UInt64) :
-    (resultFrame frame resultLocal value).values = [] := rfl
+    (resultFrame frame resultLocal value).values = [] := by rfl
 
 @[simp]
 theorem resultFrame_get_result (frame : Locals) (resultLocal : Nat)

@@ -1,5 +1,9 @@
-import CodeLib.Entry
-import LeanExe.ProofKit.CallRemainder
+module
+
+public import CodeLib.Entry
+public import LeanExe.ProofKit.CallRemainder
+
+public section
 
 /-! `ReturnsOrAborts`: every run with enough fuel either returns values that satisfy the
 postcondition or traps at an `unreachable` instruction.  The compiler emits `unreachable`
@@ -13,7 +17,7 @@ variable {α : Type} {env : HostEnv α} {m : Module} {id : Nat} {initial : Store
 
 /-- The outcomes other than a return that a run may have: a trap at `unreachable` when
 `aborts`, and none otherwise. -/
-def Trapped : Bool → Result α → Prop
+@[expose] def Trapped : Bool → Result α → Prop
   | true, r => ∃ st, r = .Trap st "unreachable"
   | false, _ => False
 
@@ -24,7 +28,7 @@ def TrapMsg : Bool → String → Prop
   | false, _ => False
 
 /-- An assertion accepts the traps that `Trapped aborts` allows. -/
-def TrapOK : Bool → Assertion α → Prop
+@[expose] def TrapOK : Bool → Assertion α → Prop
   | true, Q => ∀ st, Q (.Trap st "unreachable")
   | false, _ => True
 
@@ -37,7 +41,7 @@ theorem TrapOK.imp {aborts : Bool} {Q Q' : Assertion α} (h : TrapOK aborts Q)
 
 /-- Every run of entry `id` with at least some fuel returns values satisfying `P` or ends in
 an outcome that `Trapped aborts` allows: with `aborts` false, the call terminates and returns. -/
-def Runs (aborts : Bool) (env : HostEnv α) (m : Module) (id : Nat) (initial : Store α)
+@[expose] def Runs (aborts : Bool) (env : HostEnv α) (m : Module) (id : Nat) (initial : Store α)
     (args : List Value) (P : Store α → List Value → Prop) : Prop :=
   ∃ N, ∀ fuel ≥ N, (∃ vs st, run fuel m id initial args env = .Success vs st ∧ P st vs) ∨
     Trapped aborts (run fuel m id initial args env)

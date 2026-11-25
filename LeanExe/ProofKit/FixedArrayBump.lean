@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.FixedArrayBumpInstall
-import LeanExe.ProofKit.FixedArrayHeaderExec
-import LeanExe.ProofKit.MemoryEnsure
+module
+
+public import LeanExe.ProofKit.FixedArrayBumpInstall
+public import LeanExe.ProofKit.FixedArrayHeaderExec
+public import LeanExe.ProofKit.MemoryEnsure
+
+public section
 
 namespace LeanExe.ProofKit.FixedArrayBump
 open Wasm FixedArrayFold MemoryGrowth
@@ -8,22 +12,22 @@ open Wasm FixedArrayFold MemoryGrowth
 def requiredPages (base need : UInt64) : Nat :=
   (base.toNat + 48 + need.toNat - 1) / 65536 + 1
 
-def prepareProgram (needLocal topLocal pagesLocal resultLocal : Nat) : Wasm.Program :=
+@[expose] def prepareProgram (needLocal topLocal pagesLocal resultLocal : Nat) : Wasm.Program :=
   prefixProgram needLocal topLocal pagesLocal ++ ensureProgram pagesLocal ++
     installProgram resultLocal topLocal
 
-def program (needLocal topLocal pagesLocal resultLocal : Nat) (stride : UInt64) : Wasm.Program :=
+@[expose] def program (needLocal topLocal pagesLocal resultLocal : Nat) (stride : UInt64) : Wasm.Program :=
   prepareProgram needLocal topLocal pagesLocal resultLocal ++
     FixedArrayHeader.program resultLocal needLocal stride
 
-def result (frame : Locals) (topLocal pagesLocal resultLocal : Nat) (base need : UInt64) : Locals :=
+@[expose] def result (frame : Locals) (topLocal pagesLocal resultLocal : Nat) (base need : UInt64) : Locals :=
   resultFrame (prefixFrame frame topLocal pagesLocal base need) resultLocal (base + 48)
 
 def preparedStore (store : Store Unit) (base need : UInt64) : Store Unit :=
   let grown := ensured store (requiredPages base need)
   { grown with globals := { globals := grown.globals.globals.set 0 (.i64 (base + 48 + need)) } }
 
-def allocated (store : Store Unit) (base need stride : UInt64) : Store Unit :=
+@[expose] def allocated (store : Store Unit) (base need stride : UInt64) : Store Unit :=
   fixedArrayAllocBumpStore (ensured store (requiredPages base need)) base need stride
 
 theorem requiredPages_le (base need : UInt64)

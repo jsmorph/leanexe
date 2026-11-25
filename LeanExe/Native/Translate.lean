@@ -1,5 +1,9 @@
-import LeanExe.Native.Subset
-import LeanExe.Native.Clight.Clight
+module
+
+public import LeanExe.Native.Subset
+public import LeanExe.Native.Clight.Clight
+
+public section
 
 /-!
 The translator from a Talos module to a Clight program, in the form that `clightgen` produces
@@ -63,7 +67,7 @@ def ofValueType : ValueType → Option VT
   | _ => none
 
 /-- The C type: `unsigned int`, `unsigned long long`, `float`, or `double`. -/
-def ty : VT → type
+@[expose] def ty : VT → type
   | .i32 => .Tint .I32 .Unsigned noattr
   | .i64 => .Tlong .Unsigned noattr
   | .f32 => .Tfloat .F32 noattr
@@ -90,10 +94,10 @@ def zero : VT → expr
 
 end VT
 
-def tuint : type := VT.ty .i32
-def tulong : type := VT.ty .i64
-def tint : type := .Tint .I32 .Signed noattr
-def tlong : type := .Tlong .Signed noattr
+@[expose] def tuint : type := VT.ty .i32
+@[expose] def tulong : type := VT.ty .i64
+@[expose] def tint : type := .Tint .I32 .Signed noattr
+@[expose] def tlong : type := .Tlong .Signed noattr
 def tuchar : type := .Tint .I8 .Unsigned noattr
 
 /-! ## Identifiers
@@ -384,7 +388,7 @@ def punDef : globvar type :=
   { gvar_info := punType, gvar_init := [.Init_space 8], gvar_readonly := false
     gvar_volatile := false }
 
-def tdouble : type := VT.ty .f64
+@[expose] def tdouble : type := VT.ty .f64
 
 /-- The signature of `__builtin_fsqrt`, as CompCert's table of built-ins gives it. -/
 def sqrtSig : signature := { sig_args := [.Xfloat], sig_res := .Xfloat, sig_cc := cc_default }
@@ -465,7 +469,7 @@ converts it to `double` first, which quiets a signaling NaN.  `sqrt` takes the s
 `double` conversion and converts the result back, which rounds twice but gives the correctly
 rounded result, and `nearest` computes the integer from the word with shifts and masks. -/
 
-def tfloat : type := VT.ty .f32
+@[expose] def tfloat : type := VT.ty .f32
 
 /-- The float in `lx_pun` after a store of the word `w`, into the float slot at height `h`. -/
 def punStore32 (w : expr) (h : Nat) : statement :=

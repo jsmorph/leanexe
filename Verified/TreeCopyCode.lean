@@ -1,7 +1,11 @@
-import Verified.Tree
-import Verified.ArrayCopyCode
-import Verified.Bytes.Code
-import LeanExe.Runtime.Defs
+module
+
+public import Verified.Tree
+public import Verified.ArrayCopyCode
+public import Verified.Bytes.Code
+public import LeanExe.Runtime.Defs
+
+public section
 
 namespace Verified
 

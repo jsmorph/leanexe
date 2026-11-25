@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.AlignedFlag
-import LeanExe.TalosCompat
+module
+
+public import LeanExe.ProofKit.AlignedFlag
+public import LeanExe.TalosCompat
+
+public section
 
 /-!
 More rules for `wpX`.  `wpX_cons_simple` reduces `wpX` of an instruction without a 64-bit access

@@ -1,4 +1,8 @@
-import Interpreter.Wasm.Semantics
+module
+
+public import Interpreter.Wasm.Semantics
+
+public section
 
 /-!
 The aligned runs.  `AlignedExec fuel m st s p env` states that every 64-bit load and store that
@@ -19,7 +23,7 @@ variable {α : Type}
 mutual
 
 /-- The 64-bit accesses of `execOne fuel m st s inst env` inside memory are aligned. -/
-def AlignedOne (fuel : Nat) (m : Module) (st : Store α) (s : Locals) (inst : Instruction)
+@[expose] def AlignedOne (fuel : Nat) (m : Module) (st : Store α) (s : Locals) (inst : Instruction)
     (env : HostEnv α) : Prop :=
   match fuel, inst with
   | 0, _ => True
@@ -54,7 +58,7 @@ decreasing_by
   all_goals (apply Prod.Lex.left; omega)
 
 /-- The 64-bit accesses of `exec fuel m st s p env` inside memory are aligned. -/
-def AlignedExec (fuel : Nat) (m : Module) (st : Store α) (s : Locals) (p : Program)
+@[expose] def AlignedExec (fuel : Nat) (m : Module) (st : Store α) (s : Locals) (p : Program)
     (env : HostEnv α) : Prop :=
   match p with
   | [] => True

@@ -10,7 +10,11 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the
 changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import LeanExe.Native.Clight.Archi
+module
+
+public import LeanExe.Native.Clight.Archi
+
+public section
 
 /-!
 The machine integers of CompCert 3.18's `lib/Integers.v`: `Int` (32 bits), `Int64`, `Ptrofs` (64
@@ -45,57 +49,57 @@ inductive comparison where
 
 namespace Int
 
-def modulus : _root_.Int := 2 ^ 32
+@[expose] def modulus : _root_.Int := 2 ^ 32
 def max_unsigned : _root_.Int := modulus - 1
 def half_modulus : _root_.Int := modulus / 2
 def max_signed : _root_.Int := half_modulus - 1
 def min_signed : _root_.Int := -half_modulus
 
-def unsigned (n : int) : _root_.Int := n.toNat
+@[expose] def unsigned (n : int) : _root_.Int := n.toNat
 
 def signed (n : int) : _root_.Int :=
   if unsigned n < half_modulus then unsigned n else unsigned n - modulus
 
-def repr (x : _root_.Int) : int := UInt32.ofNat (x % modulus).toNat
+@[expose] def repr (x : _root_.Int) : int := UInt32.ofNat (x % modulus).toNat
 
-def zero : int := repr 0
-def one : int := repr 1
+@[expose] def zero : int := repr 0
+@[expose] def one : int := repr 1
 def mone : int := repr (-1)
 def iwordsize : int := repr 32
 
-def eq (x y : int) : Bool := decide (unsigned x = unsigned y)
+@[expose] def eq (x y : int) : Bool := decide (unsigned x = unsigned y)
 def lt (x y : int) : Bool := decide (signed x < signed y)
-def ltu (x y : int) : Bool := decide (unsigned x < unsigned y)
+@[expose] def ltu (x y : int) : Bool := decide (unsigned x < unsigned y)
 
 def neg (x : int) : int := repr (- unsigned x)
-def add (x y : int) : int := repr (unsigned x + unsigned y)
-def sub (x y : int) : int := repr (unsigned x - unsigned y)
+@[expose] def add (x y : int) : int := repr (unsigned x + unsigned y)
+@[expose] def sub (x y : int) : int := repr (unsigned x - unsigned y)
 def mul (x y : int) : int := repr (unsigned x * unsigned y)
 def divs (x y : int) : int := repr ((signed x).tdiv (signed y))
 def mods (x y : int) : int := repr ((signed x).tmod (signed y))
 def divu (x y : int) : int := repr (unsigned x / unsigned y)
 def modu (x y : int) : int := repr (unsigned x % unsigned y)
 
-def and (x y : int) : int := UInt32.ofNat ((unsigned x).toNat &&& (unsigned y).toNat)
-def or (x y : int) : int := UInt32.ofNat ((unsigned x).toNat ||| (unsigned y).toNat)
+@[expose] def and (x y : int) : int := UInt32.ofNat ((unsigned x).toNat &&& (unsigned y).toNat)
+@[expose] def or (x y : int) : int := UInt32.ofNat ((unsigned x).toNat ||| (unsigned y).toNat)
 def xor (x y : int) : int := UInt32.ofNat ((unsigned x).toNat ^^^ (unsigned y).toNat)
 def not (x : int) : int := xor x mone
 
-def shl (x y : int) : int :=
+@[expose] def shl (x y : int) : int :=
   if unsigned y < 32 then repr (unsigned x * 2 ^ (unsigned y).toNat) else zero
-def shru (x y : int) : int :=
+@[expose] def shru (x y : int) : int :=
   if unsigned y < 32 then repr (unsigned x / 2 ^ (unsigned y).toNat) else zero
 def shr (x y : int) : int :=
   if unsigned y < 32 then repr (signed x / 2 ^ (unsigned y).toNat)
   else if signed x < 0 then mone else zero
 
 /-- `Zzero_ext n x` is `x mod 2^n` for `n > 0` and `0` otherwise. -/
-def zero_ext (n : _root_.Int) (x : int) : int :=
+@[expose] def zero_ext (n : _root_.Int) (x : int) : int :=
   repr (if n ≤ 0 then 0 else unsigned x % 2 ^ n.toNat)
 
 /-- `Zsign_ext n x` is the low `n` bits of `x` read in two's complement for `n > 0`, and `0`
 otherwise. -/
-def sign_ext (n : _root_.Int) (x : int) : int :=
+@[expose] def sign_ext (n : _root_.Int) (x : int) : int :=
   repr (if n ≤ 0 then 0
     else
       let y := unsigned x % 2 ^ n.toNat
@@ -123,56 +127,56 @@ end Int
 
 namespace Int64
 
-def modulus : _root_.Int := 2 ^ 64
+@[expose] def modulus : _root_.Int := 2 ^ 64
 def max_unsigned : _root_.Int := modulus - 1
-def half_modulus : _root_.Int := modulus / 2
+@[expose] def half_modulus : _root_.Int := modulus / 2
 def max_signed : _root_.Int := half_modulus - 1
-def min_signed : _root_.Int := -half_modulus
+@[expose] def min_signed : _root_.Int := -half_modulus
 
-def unsigned (n : int64) : _root_.Int := n.toNat
+@[expose] def unsigned (n : int64) : _root_.Int := n.toNat
 
-def signed (n : int64) : _root_.Int :=
+@[expose] def signed (n : int64) : _root_.Int :=
   if unsigned n < half_modulus then unsigned n else unsigned n - modulus
 
-def repr (x : _root_.Int) : int64 := UInt64.ofNat (x % modulus).toNat
+@[expose] def repr (x : _root_.Int) : int64 := UInt64.ofNat (x % modulus).toNat
 
-def zero : int64 := repr 0
-def one : int64 := repr 1
-def mone : int64 := repr (-1)
-def iwordsize : int64 := repr 64
+@[expose] def zero : int64 := repr 0
+@[expose] def one : int64 := repr 1
+@[expose] def mone : int64 := repr (-1)
+@[expose] def iwordsize : int64 := repr 64
 /-- `Int64.iwordsize'`, the word size as a 32-bit integer. -/
 def iwordsize' : int := Int.repr 64
 
-def eq (x y : int64) : Bool := decide (unsigned x = unsigned y)
-def lt (x y : int64) : Bool := decide (signed x < signed y)
-def ltu (x y : int64) : Bool := decide (unsigned x < unsigned y)
+@[expose] def eq (x y : int64) : Bool := decide (unsigned x = unsigned y)
+@[expose] def lt (x y : int64) : Bool := decide (signed x < signed y)
+@[expose] def ltu (x y : int64) : Bool := decide (unsigned x < unsigned y)
 
-def neg (x : int64) : int64 := repr (- unsigned x)
-def add (x y : int64) : int64 := repr (unsigned x + unsigned y)
-def sub (x y : int64) : int64 := repr (unsigned x - unsigned y)
-def mul (x y : int64) : int64 := repr (unsigned x * unsigned y)
+@[expose] def neg (x : int64) : int64 := repr (- unsigned x)
+@[expose] def add (x y : int64) : int64 := repr (unsigned x + unsigned y)
+@[expose] def sub (x y : int64) : int64 := repr (unsigned x - unsigned y)
+@[expose] def mul (x y : int64) : int64 := repr (unsigned x * unsigned y)
 def divs (x y : int64) : int64 := repr ((signed x).tdiv (signed y))
-def mods (x y : int64) : int64 := repr ((signed x).tmod (signed y))
-def divu (x y : int64) : int64 := repr (unsigned x / unsigned y)
-def modu (x y : int64) : int64 := repr (unsigned x % unsigned y)
+@[expose] def mods (x y : int64) : int64 := repr ((signed x).tmod (signed y))
+@[expose] def divu (x y : int64) : int64 := repr (unsigned x / unsigned y)
+@[expose] def modu (x y : int64) : int64 := repr (unsigned x % unsigned y)
 
-def and (x y : int64) : int64 := UInt64.ofNat ((unsigned x).toNat &&& (unsigned y).toNat)
-def or (x y : int64) : int64 := UInt64.ofNat ((unsigned x).toNat ||| (unsigned y).toNat)
-def xor (x y : int64) : int64 := UInt64.ofNat ((unsigned x).toNat ^^^ (unsigned y).toNat)
-def not (x : int64) : int64 := xor x mone
+@[expose] def and (x y : int64) : int64 := UInt64.ofNat ((unsigned x).toNat &&& (unsigned y).toNat)
+@[expose] def or (x y : int64) : int64 := UInt64.ofNat ((unsigned x).toNat ||| (unsigned y).toNat)
+@[expose] def xor (x y : int64) : int64 := UInt64.ofNat ((unsigned x).toNat ^^^ (unsigned y).toNat)
+@[expose] def not (x : int64) : int64 := xor x mone
 
-def shl (x y : int64) : int64 :=
+@[expose] def shl (x y : int64) : int64 :=
   if unsigned y < 64 then repr (unsigned x * 2 ^ (unsigned y).toNat) else zero
-def shru (x y : int64) : int64 :=
+@[expose] def shru (x y : int64) : int64 :=
   if unsigned y < 64 then repr (unsigned x / 2 ^ (unsigned y).toNat) else zero
-def shr (x y : int64) : int64 :=
+@[expose] def shr (x y : int64) : int64 :=
   if unsigned y < 64 then repr (signed x / 2 ^ (unsigned y).toNat)
   else if signed x < 0 then mone else zero
 
 /-- The low 32 bits. -/
-def loword (n : int64) : int := Int.repr (unsigned n)
+@[expose] def loword (n : int64) : int := Int.repr (unsigned n)
 
-def cmp (c : comparison) (x y : int64) : Bool :=
+@[expose] def cmp (c : comparison) (x y : int64) : Bool :=
   match c with
   | .Ceq => eq x y
   | .Cne => !eq x y
@@ -181,7 +185,7 @@ def cmp (c : comparison) (x y : int64) : Bool :=
   | .Cgt => lt y x
   | .Cge => !lt x y
 
-def cmpu (c : comparison) (x y : int64) : Bool :=
+@[expose] def cmpu (c : comparison) (x y : int64) : Bool :=
   match c with
   | .Ceq => eq x y
   | .Cne => !eq x y
@@ -195,41 +199,41 @@ end Int64
 namespace Ptrofs
 
 /-- `Wordsize_Ptrofs.wordsize`. -/
-def wordsize (A : Archi) : Nat := if A.ptr64 then 64 else 32
+@[expose] def wordsize (A : Archi) : Nat := if A.ptr64 then 64 else 32
 
-def modulus (A : Archi) : _root_.Int := 2 ^ wordsize A
+@[expose] def modulus (A : Archi) : _root_.Int := 2 ^ wordsize A
 def max_unsigned (A : Archi) : _root_.Int := modulus A - 1
-def half_modulus (A : Archi) : _root_.Int := modulus A / 2
-def max_signed (A : Archi) : _root_.Int := half_modulus A - 1
+@[expose] def half_modulus (A : Archi) : _root_.Int := modulus A / 2
+@[expose] def max_signed (A : Archi) : _root_.Int := half_modulus A - 1
 
 def unsigned (n : ptrofs) : _root_.Int := n.toNat
 
-def signed (A : Archi) (n : ptrofs) : _root_.Int :=
+@[expose] def signed (A : Archi) (n : ptrofs) : _root_.Int :=
   if unsigned n < half_modulus A then unsigned n else unsigned n - modulus A
 
 def repr (A : Archi) (x : _root_.Int) : ptrofs := UInt64.ofNat (x % modulus A).toNat
 
 /-- `Ptrofs.zero`, which is `repr A 0` for every `A`. -/
-def zero : ptrofs := 0
+@[expose] def zero : ptrofs := 0
 
-def add (A : Archi) (x y : ptrofs) : ptrofs := repr A (unsigned x + unsigned y)
-def sub (A : Archi) (x y : ptrofs) : ptrofs := repr A (unsigned x - unsigned y)
-def mul (A : Archi) (x y : ptrofs) : ptrofs := repr A (unsigned x * unsigned y)
-def divs (A : Archi) (x y : ptrofs) : ptrofs := repr A ((signed A x).tdiv (signed A y))
+@[expose] def add (A : Archi) (x y : ptrofs) : ptrofs := repr A (unsigned x + unsigned y)
+@[expose] def sub (A : Archi) (x y : ptrofs) : ptrofs := repr A (unsigned x - unsigned y)
+@[expose] def mul (A : Archi) (x y : ptrofs) : ptrofs := repr A (unsigned x * unsigned y)
+@[expose] def divs (A : Archi) (x y : ptrofs) : ptrofs := repr A ((signed A x).tdiv (signed A y))
 
-def to_int (x : ptrofs) : int := Int.repr (unsigned x)
+@[expose] def to_int (x : ptrofs) : int := Int.repr (unsigned x)
 def to_int64 (x : ptrofs) : int64 := Int64.repr (unsigned x)
-def of_int64 (A : Archi) (x : int64) : ptrofs := repr A (Int64.unsigned x)
-def of_intu (A : Archi) (x : int) : ptrofs := repr A (Int.unsigned x)
-def of_ints (A : Archi) (x : int) : ptrofs := repr A (Int.signed x)
+@[expose] def of_int64 (A : Archi) (x : int64) : ptrofs := repr A (Int64.unsigned x)
+@[expose] def of_intu (A : Archi) (x : int) : ptrofs := repr A (Int.unsigned x)
+@[expose] def of_ints (A : Archi) (x : int) : ptrofs := repr A (Int.signed x)
 
 end Ptrofs
 
 namespace Byte
 
-def modulus : _root_.Int := 2 ^ 8
-def unsigned (n : byte) : _root_.Int := n.toNat
-def repr (x : _root_.Int) : byte := UInt8.ofNat (x % modulus).toNat
+@[expose] def modulus : _root_.Int := 2 ^ 8
+@[expose] def unsigned (n : byte) : _root_.Int := n.toNat
+@[expose] def repr (x : _root_.Int) : byte := UInt8.ofNat (x % modulus).toNat
 
 end Byte
 

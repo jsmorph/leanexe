@@ -1,6 +1,10 @@
-import Verified.Reflect.TailTermination
-import Verified.Reflect.TailState
-import Verified.Reflect.TailBounds
+module
+
+public import Verified.Reflect.TailTermination
+public import Verified.Reflect.TailState
+public import Verified.Reflect.TailBounds
+
+public section
 
 namespace Verified.Reflect
 

@@ -1,4 +1,8 @@
-import Verified.AlignedReaders
+module
+
+public import Verified.AlignedReaders
+
+public section
 
 /-!
 The constructs that bind or choose under the flag.  `After.coerceX` is `After.coerce` with the

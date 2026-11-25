@@ -1,6 +1,10 @@
-import Verified.AlignedTreeMemory
-import Verified.FieldsMixed
-import Verified.AlignedCopy
+module
+
+public import Verified.AlignedTreeMemory
+public import Verified.FieldsMixed
+public import Verified.AlignedCopy
+
+public section
 
 /-!
 The construction of a tree under the flag.  A tree's fields are evaluated in order and each is

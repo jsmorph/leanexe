@@ -1,5 +1,9 @@
-import LeanExe.Pipeline.Allocation
-import LeanExe.Pipeline.Records
+module
+
+public import LeanExe.Pipeline.Allocation
+public import LeanExe.Pipeline.Records
+
+public section
 
 namespace Verified
 

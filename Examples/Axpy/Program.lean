@@ -1,3 +1,7 @@
+module
+
+public section
+
 namespace Examples.Axpy
 
 /-- `a * x + y` in binary64, with two roundings. -/

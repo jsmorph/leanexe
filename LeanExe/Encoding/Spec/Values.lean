@@ -1,4 +1,8 @@
-import Init.Data.List.Lemmas
+module
+
+public import Init.Data.List.Lemmas
+
+public section
 
 namespace Wasm.Encoding.Spec
 
@@ -14,7 +18,7 @@ inductive Unsigned : Nat → Bytes → Nat → Prop
       (rest : Unsigned width tail value) :
       Unsigned (width + 7) (byte :: tail) (byte.toNat - 128 + 128 * value)
 
-def signedDigit (byte : UInt8) : Int :=
+@[expose] def signedDigit (byte : UInt8) : Int :=
   if byte.toNat < 64 then byte.toNat else (byte.toNat : Int) - 128
 
 inductive Signed : Nat → Bytes → Int → Prop

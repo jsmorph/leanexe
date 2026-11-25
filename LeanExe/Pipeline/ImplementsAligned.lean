@@ -1,5 +1,9 @@
-import LeanExe.Pipeline.AlignedImplements
-import LeanExe.ProofKit.AlignedDefs
+module
+
+public import LeanExe.Pipeline.AlignedImplements
+public import LeanExe.ProofKit.AlignedDefs
+
+public section
 
 /-!
 The alignment statement of a compiled function.  `ImplementsAligned` adds three facts to

@@ -1,4 +1,8 @@
-import Verified.ListFoldState
+module
+
+public import Verified.ListFoldState
+
+public section
 
 namespace Verified
 

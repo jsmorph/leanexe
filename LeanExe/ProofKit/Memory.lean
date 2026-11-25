@@ -1,5 +1,9 @@
-import LeanExe.TalosPrelude
-import LeanExe.TalosCompat
+module
+
+public import LeanExe.TalosPrelude
+public import LeanExe.TalosCompat
+
+public section
 
 namespace LeanExe.ProofKit.Memory
 

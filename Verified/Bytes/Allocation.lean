@@ -1,6 +1,10 @@
-import Verified.Bytes.Represent
-import Verified.Bytes.Cost
-import Verified.RuntimeFacts
+module
+
+public import Verified.Bytes.Represent
+public import Verified.Bytes.Cost
+public import Verified.RuntimeFacts
+
+public section
 
 namespace Verified.Bytes
 

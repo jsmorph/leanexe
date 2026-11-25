@@ -1,7 +1,11 @@
-import Verified.TreeLayout
-import Verified.TreeFieldsCode
-import Verified.TreeFieldsStore
-import LeanExe.Pipeline.RecordSlots
+module
+
+public import Verified.TreeLayout
+public import Verified.TreeFieldsCode
+public import Verified.TreeFieldsStore
+public import LeanExe.Pipeline.RecordSlots
+
+public section
 
 namespace Verified
 

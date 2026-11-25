@@ -1,4 +1,8 @@
-import Interpreter.Wasm.Syntax
+module
+
+public import Interpreter.Wasm.Syntax
+
+public section
 
 /-!
 The modules that the translator to C accepts.  `InSubset m` holds when `m` has the shape of the

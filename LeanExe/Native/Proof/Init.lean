@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Correct
+module
+
+public import LeanExe.Native.Proof.Correct
+
+public section
 
 /-!
 The initial state of a translated program.  `init_spec` follows `Genv.init_mem` through the

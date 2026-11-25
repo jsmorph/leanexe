@@ -1,5 +1,9 @@
-import LeanExe.Native.Proof.Blocks
-import LeanExe.Native.Proof.Results
+module
+
+public import LeanExe.Native.Proof.Blocks
+public import LeanExe.Native.Proof.Results
+
+public section
 
 /-!
 The simulation of `br`, `br_if`, and `ret`.

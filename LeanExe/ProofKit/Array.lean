@@ -1,4 +1,9 @@
-import LeanExe.ProofKit.Memory
+module
+
+public import LeanExe.ProofKit.Memory
+import all Init.Data.Array.Basic
+
+public section
 
 namespace LeanExe.ProofKit.ArrayFold
 
@@ -25,10 +30,10 @@ namespace LeanExe.ProofKit.UInt64Array
 open Wasm
 open LeanExe.ProofKit.Memory
 
-def wordAddress (ptr : UInt64) (word : Nat) : UInt32 :=
+@[expose] def wordAddress (ptr : UInt64) (word : Nat) : UInt32 :=
   (ptr + UInt64.ofNat (8 * word)).toUInt32
 
-def At (store : Store Unit) (ptr : UInt64) (values : Array UInt64) : Prop :=
+@[expose] def At (store : Store Unit) (ptr : UInt64) (values : Array UInt64) : Prop :=
   ptr.toNat + 8 * (values.size + 1) ≤ 4294967296 ∧
   ptr.toNat + 8 * (values.size + 1) ≤ store.mem.pages * 65536 ∧
   store.mem.read64 ptr.toUInt32 = UInt64.ofNat values.size ∧

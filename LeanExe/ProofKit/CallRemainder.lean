@@ -1,4 +1,8 @@
-import CodeLib.Entry
+module
+
+public import CodeLib.Entry
+
+public section
 
 namespace Wasm
 

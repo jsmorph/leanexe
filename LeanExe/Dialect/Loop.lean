@@ -1,3 +1,7 @@
+module
+
+public section
+
 namespace LeanExe
 
 /-- Applies `f` to the indices `0` through `n - 1` in increasing order, to a state that starts at

@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.AlignedTransfer
-import LeanExe.ProofKit.AlignedFlag
-import LeanExe.ProofKit.FixedArraySearchNone
+module
+
+public import LeanExe.ProofKit.AlignedTransfer
+public import LeanExe.ProofKit.AlignedFlag
+public import LeanExe.ProofKit.FixedArraySearchNone
+
+public section
 
 /-!
 The free-list search of `alloc` under `wpA`: the ports of `readProgram_spec`, which loads the

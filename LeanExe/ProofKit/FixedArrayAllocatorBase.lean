@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.Allocation
-import Interpreter.Wasm.Wp.Tactic
+module
+
+public import LeanExe.ProofKit.Allocation
+public import Interpreter.Wasm.Wp.Tactic
+
+public section
 
 namespace LeanExe.ProofKit.FixedArrayAllocator
 
@@ -27,7 +31,7 @@ macro "wp_alloc_to_store" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
       Nat.reduceLeDiff, Nat.reduceSub, Nat.add_left_cancel_iff,
       Nat.add_lt_add_iff_left, Nat.reduceEqDiff, if_true, if_false, $ts,*])
 
-def searchBody (stride : UInt64) : Wasm.Program :=
+@[expose] def searchBody (stride : UInt64) : Wasm.Program :=
   [
   .localGet 11,
   .constI64 0,
@@ -114,10 +118,10 @@ def searchBody (stride : UInt64) : Wasm.Program :=
   .br 0
   ]
 
-def search (stride : UInt64) : Wasm.Program :=
+@[expose] def search (stride : UInt64) : Wasm.Program :=
   [.block 0 0 [.loop 0 0 (searchBody stride)]]
 
-def bump (stride : UInt64) : Wasm.Program :=
+@[expose] def bump (stride : UInt64) : Wasm.Program :=
   [
   .localGet 14,
   .constI64 0,
@@ -201,7 +205,7 @@ def bump (stride : UInt64) : Wasm.Program :=
   ] []
   ]
 
-def finish : Wasm.Program :=
+@[expose] def finish : Wasm.Program :=
   [
   .globalGet 2,
   .constI64 1,
@@ -211,7 +215,7 @@ def finish : Wasm.Program :=
   .localSet 5
   ]
 
-def region (stride : UInt64) : Wasm.Program :=
+@[expose] def region (stride : UInt64) : Wasm.Program :=
   [
   .constI64 0,
   .localSet 14,
@@ -221,7 +225,7 @@ def region (stride : UInt64) : Wasm.Program :=
   .localSet 11
   ] ++ search stride ++ bump stride ++ finish
 
-def headerMem (mem : Mem) (base capacity stride : UInt64) : Mem :=
+@[expose] def headerMem (mem : Mem) (base capacity stride : UInt64) : Mem :=
   (((((mem.write64
     (UInt32.ofNat (base.toNat % 4294967296)) 5501223100278326855).write64
     (UInt32.ofNat ((base.toNat + 8) % 4294967296)) 1).write64
@@ -230,7 +234,7 @@ def headerMem (mem : Mem) (base capacity stride : UInt64) : Mem :=
     (UInt32.ofNat ((base.toNat + 32) % 4294967296)) stride).write64
     (UInt32.ofNat ((base.toNat + 40) % 4294967296)) 0
 
-def allocStore (st : Store Unit) (base capacity stride allocs : UInt64) : Store Unit :=
+@[expose] def allocStore (st : Store Unit) (base capacity stride allocs : UInt64) : Store Unit :=
   let globals :=
     (st.globals.globals.set 0 (.i64 (base + 48 + capacity))).set 2
       (.i64 (allocs + 1))
@@ -238,11 +242,11 @@ def allocStore (st : Store Unit) (base capacity stride allocs : UInt64) : Store 
     globals := { globals := globals }
     mem := headerMem st.mem base capacity stride }
 
-def searchFrame (base : Locals) : Locals :=
+@[expose] def searchFrame (base : Locals) : Locals :=
   { base with
     locals := ((base.locals.set 13 (.i64 0)).set 9 (.i64 0)).set 10 (.i64 0) }
 
-def allocFrame (base : Locals) (heapTop capacity : UInt64) : Locals :=
+@[expose] def allocFrame (base : Locals) (heapTop capacity : UInt64) : Locals :=
   { base with
     locals := ((((((base.locals.set 13 (.i64 0)).set 9 (.i64 0)).set 10
       (.i64 0)).set 11 (.i64 (heapTop + 48 + capacity))).set 12

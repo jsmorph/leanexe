@@ -1,14 +1,18 @@
-import LeanExe.Encoding.Types
-import LeanExe.Encoding.Spec.Instructions
+module
+
+public import LeanExe.Encoding.Types
+public import LeanExe.Encoding.Spec.Instructions
+
+public section
 
 namespace Wasm.Encoding
 
-def indexInstruction (opcode : UInt8) (make : Nat → Wasm.Instruction)
+@[expose] def indexInstruction (opcode : UInt8) (make : Nat → Wasm.Instruction)
     (rule : Spec.IndexOp opcode make) (index : Nat) : Result Spec.Instr (make index) := do
   let immediate ← u32 index
   pure ⟨opcode :: immediate.val, .index _ _ _ _ rule immediate.property⟩
 
-def memoryInstruction (opcode : UInt8) (alignment : Nat) (make : UInt32 → Wasm.Instruction)
+@[expose] def memoryInstruction (opcode : UInt8) (alignment : Nat) (make : UInt32 → Wasm.Instruction)
     (rule : Spec.MemoryOp opcode alignment make) (offset : UInt32) :
     Result Spec.Instr (make offset) := do
   let immediate ← u32 offset.toNat
@@ -17,7 +21,7 @@ def memoryInstruction (opcode : UInt8) (alignment : Nat) (make : UInt32 → Wasm
     .memory _ _ _ _ _ rule (.intro _ _ 0 _ zero (Nat.zero_le _) immediate.property)⟩
 
 mutual
-  def instruction (instr : Wasm.Instruction) : Result Spec.Instr instr :=
+  @[expose] def instruction (instr : Wasm.Instruction) : Result Spec.Instr instr :=
     match instr with
     | .unreachable => .ok ⟨[0x00], .plain _ _ .unreachable⟩
     | .nop => .ok ⟨[0x01], .plain _ _ .nop⟩

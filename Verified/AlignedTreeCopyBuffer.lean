@@ -1,6 +1,10 @@
-import Verified.AlignedTreeCopyArray
-import Verified.TreeCopyBufferCode
-import Verified.AlignedBytes
+module
+
+public import Verified.AlignedTreeCopyArray
+public import Verified.TreeCopyBufferCode
+public import Verified.AlignedBytes
+
+public section
 
 /-!
 The copy of a buffer slot under the flag: the ports of `CopyInv.freshStep` and

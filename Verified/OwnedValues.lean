@@ -1,4 +1,8 @@
-import Verified.State
+module
+
+public import Verified.State
+
+public section
 
 namespace Verified
 

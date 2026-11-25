@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.Allocation
-import Interpreter.Wasm.Wp.Tactic
+module
+
+public import LeanExe.ProofKit.Allocation
+public import Interpreter.Wasm.Wp.Tactic
+
+public section
 
 namespace LeanExe.ProofKit.MemoryGrowth
 open Wasm LeanExe.ProofKit.Memory
@@ -19,7 +23,7 @@ theorem delta_toNat (current required : Nat)
     exact hOrder), UInt64.toNat_ofNat_of_lt' hRequired, hCurrent,
     Nat.mod_eq_of_lt (by omega)]
 
-def grown (store : Store Unit) (required : Nat) : Store Unit :=
+@[expose] def grown (store : Store Unit) (required : Nat) : Store Unit :=
   { store with mem := { store.mem with pages := required } }
 
 theorem grow_exact (store : Store Unit) (required cap : Nat)
@@ -40,7 +44,7 @@ theorem previous_not_failure (current : Nat) (hBound : current ≤ 65536) :
   change current = 4294967295 at hNat
   omega
 
-def growProgram : Wasm.Program :=
+@[expose] def growProgram : Wasm.Program :=
   [.memorySize, .extendUI32, .subI64, .wrapI64, .memoryGrow,
     .const 4294967295, .eq, .iff 0 0 [.unreachable] []]
 

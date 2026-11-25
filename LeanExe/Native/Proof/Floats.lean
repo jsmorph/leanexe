@@ -1,6 +1,10 @@
-import LeanExe.Native.Proof.Ops
-import LeanExe.Native.Proof.MemOps
-import LeanExe.ProofKit.F64Bits
+module
+
+public import LeanExe.Native.Proof.Ops
+public import LeanExe.Native.Proof.MemOps
+public import LeanExe.ProofKit.F64Bits
+
+public section
 
 /-!
 The simulation of the binary64 forms.

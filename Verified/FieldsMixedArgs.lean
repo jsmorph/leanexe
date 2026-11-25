@@ -1,5 +1,9 @@
-import Verified.FieldsArgs
-import Verified.FieldsMixed
+module
+
+public import Verified.FieldsArgs
+public import Verified.FieldsMixed
+
+public section
 
 namespace Verified
 

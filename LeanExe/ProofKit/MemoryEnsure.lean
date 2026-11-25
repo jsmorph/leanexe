@@ -1,10 +1,14 @@
-import LeanExe.ProofKit.MemoryGrowth
-import LeanExe.ProofKit.Frame
+module
+
+public import LeanExe.ProofKit.MemoryGrowth
+public import LeanExe.ProofKit.Frame
+
+public section
 
 namespace LeanExe.ProofKit.MemoryGrowth
 open Wasm
 
-def ensured (store : Store Unit) (required : Nat) : Store Unit :=
+@[expose] def ensured (store : Store Unit) (required : Nat) : Store Unit :=
   if store.mem.pages < required then grown store required else store
 
 theorem ensured_pages (store : Store Unit) (required : Nat) :

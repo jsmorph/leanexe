@@ -1,6 +1,10 @@
-import Verified.State
-import Verified.LocalFrame
-import Verified.TreeFieldsCode
+module
+
+public import Verified.State
+public import Verified.LocalFrame
+public import Verified.TreeFieldsCode
+
+public section
 
 /-! The specifications of the code that turns the i64 that holds a word in memory into a value of
 its type and back. -/

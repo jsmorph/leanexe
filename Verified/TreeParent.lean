@@ -1,5 +1,9 @@
-import Verified.TreeAllocate
-import Verified.ExprSpec
+module
+
+public import Verified.TreeAllocate
+public import Verified.ExprSpec
+
+public section
 
 namespace Verified
 

@@ -1,9 +1,13 @@
-import LeanExe.Encoding.Modules
-import LeanExe.Encoding.Domain
+module
+
+public import LeanExe.Encoding.Modules
+public import LeanExe.Encoding.Domain
+
+public section
 
 namespace Wasm.Encoding
 
-def Produces (result : Result relation value) (size : Nat) : Prop :=
+@[expose] def Produces (result : Result relation value) (size : Nat) : Prop :=
   ∃ output, result = .ok output ∧ output.val.length = size
 
 theorem u32_produces (value : Nat) (bound : value < 2 ^ 32) :

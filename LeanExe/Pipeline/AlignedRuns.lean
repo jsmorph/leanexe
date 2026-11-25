@@ -1,5 +1,9 @@
-import LeanExe.Pipeline.Aborts
-import LeanExe.ProofKit.AlignedExec
+module
+
+public import LeanExe.Pipeline.Aborts
+public import LeanExe.ProofKit.AlignedExec
+
+public section
 
 /-!
 Function-level alignment.  `RunsA` is `Runs` together with `AlignedRun` at every fuel from some

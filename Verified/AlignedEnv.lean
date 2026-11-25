@@ -1,5 +1,9 @@
-import Verified.AlignedArgs
-import Verified.TailState
+module
+
+public import Verified.AlignedArgs
+public import Verified.TailState
+
+public section
 
 /-!
 The alignment of a context's values, as a tail loop's state and a function's parameters hold

@@ -1,5 +1,9 @@
-import Verified.AlignedReleaseChain
-import LeanExe.ProofKit.AlignedFlagRules
+module
+
+public import Verified.AlignedReleaseChain
+public import LeanExe.ProofKit.AlignedFlagRules
+
+public section
 
 /-!
 The rest of the flagged specification layer: `CodeSpecInX`, the flagged `CodeSpecIn`, with its

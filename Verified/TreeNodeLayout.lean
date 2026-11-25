@@ -1,5 +1,9 @@
-import Verified.TreeLayout
-import Verified.TreeCopyWork
+module
+
+public import Verified.TreeLayout
+public import Verified.TreeCopyWork
+
+public section
 
 namespace Verified
 

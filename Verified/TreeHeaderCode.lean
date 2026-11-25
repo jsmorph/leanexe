@@ -1,5 +1,9 @@
-import Verified.Tree
-import LeanExe.Runtime.Defs
+module
+
+public import Verified.Tree
+public import LeanExe.Runtime.Defs
+
+public section
 
 namespace Verified
 

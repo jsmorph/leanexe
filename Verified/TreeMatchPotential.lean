@@ -1,5 +1,9 @@
-import Verified.TreeMatchFrame
-import Verified.Potential
+module
+
+public import Verified.TreeMatchFrame
+public import Verified.Potential
+
+public section
 
 namespace Verified
 

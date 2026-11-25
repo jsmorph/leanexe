@@ -1,4 +1,8 @@
-import Verified.TailCorrect
+module
+
+public import Verified.TailCorrect
+
+public section
 
 namespace Verified
 

@@ -1,4 +1,8 @@
-import Lean
+module
+
+public import Lean
+
+public section
 
 register_option verified.tailLoops : Bool := {
   defValue := true

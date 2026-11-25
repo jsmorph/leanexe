@@ -1,5 +1,9 @@
-import Verified.AlignedTail
-import Verified.TailHeap
+module
+
+public import Verified.AlignedTail
+public import Verified.TailHeap
+
+public section
 
 /-!
 The tail loop under the flag.  `tail_step_specX` runs one pass: it releases the owned parameters

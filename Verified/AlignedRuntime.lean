@@ -1,6 +1,10 @@
-import Verified.AlignedRelease
-import LeanExe.Pipeline.AlignedAlloc
-import LeanExe.ProofKit.AlignedReleaseTree
+module
+
+public import Verified.AlignedRelease
+public import LeanExe.Pipeline.AlignedAlloc
+public import LeanExe.ProofKit.AlignedReleaseTree
+
+public section
 
 /-!
 The second stage's interfaces, proved for the runtime's functions.  `Runtime.allocAligned`

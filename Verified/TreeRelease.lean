@@ -1,7 +1,11 @@
-import Verified.HeapStep
-import Verified.TreeHeader
-import Verified.RuntimeFacts
-import LeanExe.ProofKit.ReleaseTree
+module
+
+public import Verified.HeapStep
+public import Verified.TreeHeader
+public import Verified.RuntimeFacts
+public import LeanExe.ProofKit.ReleaseTree
+
+public section
 
 namespace Verified
 

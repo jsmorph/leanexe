@@ -1,5 +1,9 @@
-import LeanExe.Encoding.Spec.Modules
-import LeanExe.Encoding.Values
+module
+
+public import LeanExe.Encoding.Spec.Modules
+public import LeanExe.Encoding.Values
+
+public section
 
 namespace Wasm.Encoding
 
@@ -110,18 +114,18 @@ end
 
 namespace Size
 
-def u32 (value : Nat) : Nat := (unsigned 32 value).length
+@[expose] def u32 (value : Nat) : Nat := (unsigned 32 value).length
 
-def s32 (value : UInt32) : Nat := (signed 32 value.toBitVec.toInt).length
+@[expose] def s32 (value : UInt32) : Nat := (signed 32 value.toBitVec.toInt).length
 
-def s64 (value : UInt64) : Nat := (signed 64 value.toBitVec.toInt).length
+@[expose] def s64 (value : UInt64) : Nat := (signed 64 value.toBitVec.toInt).length
 
-def vector (sizes : List Nat) : Nat := u32 sizes.length + sizes.sum
+@[expose] def vector (sizes : List Nat) : Nat := u32 sizes.length + sizes.sum
 
-def name (value : String) : Nat := u32 value.toUTF8.size + value.toUTF8.size
+@[expose] def name (value : String) : Nat := u32 value.toUTF8.size + value.toUTF8.size
 
 mutual
-  def instruction : Wasm.Instruction → Nat
+  @[expose] def instruction : Wasm.Instruction → Nat
     | .i32TruncSatF32S => 2
     | .i64TruncSatF32U => 2
     | .i64TruncSatF64U => 2
@@ -154,7 +158,7 @@ mutual
     | head :: tail => instruction head + program tail
 end
 
-def functionType (type : Wasm.FuncType) : Nat :=
+@[expose] def functionType (type : Wasm.FuncType) : Nat :=
   1 + u32 type.params.length + type.params.length + u32 type.results.length + type.results.length
 
 def bodyPayload (func : Wasm.Function) : Nat :=

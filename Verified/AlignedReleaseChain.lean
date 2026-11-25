@@ -1,5 +1,9 @@
-import Verified.AlignedRelease
-import Verified.AlignedSpec
+module
+
+public import Verified.AlignedRelease
+public import Verified.AlignedSpec
+
+public section
 
 /-!
 The release chain under the flag.  `wpX_release`, `Bytes.wpX_release`, `wpX_releaseNode`, and

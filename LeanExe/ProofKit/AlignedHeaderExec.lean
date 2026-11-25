@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.FixedArrayHeaderExec
-import LeanExe.ProofKit.AlignedExec
+module
+
+public import LeanExe.ProofKit.FixedArrayHeaderExec
+public import LeanExe.ProofKit.AlignedExec
+
+public section
 
 /-!
 A port of `FixedArrayHeaderExec.lean` to `wpA`: the six stores of a fresh block's header, which

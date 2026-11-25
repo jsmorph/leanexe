@@ -1,5 +1,9 @@
-import LeanExe.Encoding.Instructions
-import LeanExe.Encoding.Spec.Modules
+module
+
+public import LeanExe.Encoding.Instructions
+public import LeanExe.Encoding.Spec.Modules
+
+public section
 
 deriving instance DecidableEq for Wasm.GcTypeDef
 deriving instance DecidableEq for Wasm.TableDecl
@@ -97,7 +101,7 @@ def shape (m : Wasm.Module) : Except String (PLift (Spec.Shape m)) := do
     tagExports := tagExports.down
     tags := tags.down }⟩
 
-def sectionBytes (id : UInt8) (payload : Encoded relation value) :
+@[expose] def sectionBytes (id : UInt8) (payload : Encoded relation value) :
     Result (Spec.Section id relation) value := do
   let size ← u32 payload.val.length
   pure ⟨id :: (size.val ++ payload.val), .intro _ _ _ size.property payload.property⟩

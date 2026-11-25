@@ -10,7 +10,11 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26, 2026-10-27, and 2026-11-04: transcribed from Coq into Lean,
 with the changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import LeanExe.Native.Clight.Clight
+module
+
+public import LeanExe.Native.Clight.Clight
+
+public section
 
 /-!
 The big-step semantics of terminating Clight statements and calls, from CompCert 3.18's

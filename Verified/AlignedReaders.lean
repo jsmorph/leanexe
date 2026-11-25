@@ -1,6 +1,10 @@
-import Verified.AlignedScalar
-import Verified.AlignedAccess
-import LeanExe.ProofKit.AlignedFree
+module
+
+public import Verified.AlignedScalar
+public import Verified.AlignedAccess
+public import LeanExe.ProofKit.AlignedFree
+
+public section
 
 /-!
 The readers under the flag: a variable, the size and bytes of a buffer, a bound test against an

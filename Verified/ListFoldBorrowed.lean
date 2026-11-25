@@ -1,5 +1,9 @@
-import Verified.ListFoldState
-import Verified.ArgsCorrect
+module
+
+public import Verified.ListFoldState
+public import Verified.ArgsCorrect
+
+public section
 
 namespace Verified
 

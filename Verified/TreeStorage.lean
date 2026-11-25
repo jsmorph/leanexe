@@ -1,4 +1,8 @@
-import Verified.TreeHeader
+module
+
+public import Verified.TreeHeader
+
+public section
 
 namespace Verified
 

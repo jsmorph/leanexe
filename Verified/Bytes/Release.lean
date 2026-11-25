@@ -1,6 +1,10 @@
-import Verified.Bytes.Step
-import Verified.RuntimeFacts
-import LeanExe.ProofKit.ReleaseTree
+module
+
+public import Verified.Bytes.Step
+public import Verified.RuntimeFacts
+public import LeanExe.ProofKit.ReleaseTree
+
+public section
 
 namespace Verified.Bytes
 

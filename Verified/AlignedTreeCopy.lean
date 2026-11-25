@@ -1,22 +1,26 @@
-import Verified.AlignedTreeCopySlot
-import LeanExe.ProofKit.AlignedReleaseTree
-import Verified.TreeSlotCode
-import Verified.TreeCopyInvariant
-import Verified.TreeAdvance
-import Verified.TreeCopyLocals
-import Verified.TreeAllocate
-import Verified.LocalFrame
-import Verified.TreeCopyCode
-import Verified.TreeStorage
-import Verified.TreeInitialize
-import Verified.TreeSelect
-import Verified.TreeBeginState
-import Verified.TreeCopyStartInv
-import Verified.TreeTestCode
-import Verified.TreeCopyBufferCode
-import Verified.TreeRestore
-import Verified.TreeNodeLayout
-import Verified.TreeCopyCompleteInv
+module
+
+public import Verified.AlignedTreeCopySlot
+public import LeanExe.ProofKit.AlignedReleaseTree
+public import Verified.TreeSlotCode
+public import Verified.TreeCopyInvariant
+public import Verified.TreeAdvance
+public import Verified.TreeCopyLocals
+public import Verified.TreeAllocate
+public import Verified.LocalFrame
+public import Verified.TreeCopyCode
+public import Verified.TreeStorage
+public import Verified.TreeInitialize
+public import Verified.TreeSelect
+public import Verified.TreeBeginState
+public import Verified.TreeCopyStartInv
+public import Verified.TreeTestCode
+public import Verified.TreeCopyBufferCode
+public import Verified.TreeRestore
+public import Verified.TreeNodeLayout
+public import Verified.TreeCopyCompleteInv
+
+public section
 
 /-!
 The copy of a tree under the flag: the ports of `CopyRecord.Holds.widthPushes`,

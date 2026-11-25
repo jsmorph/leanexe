@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.Array
-import LeanExe.ProofKit.FixedArrayAllocator
-import LeanExe.ProofKit.Memory
+module
+
+public import LeanExe.ProofKit.Array
+public import LeanExe.ProofKit.FixedArrayAllocator
+public import LeanExe.ProofKit.Memory
+
+public section
 
 namespace LeanExe.ProofKit.FixedArrayResult
 
@@ -41,7 +45,7 @@ def payloadStoreProgram (rootLocal scratchLocal index : Nat) : Wasm.Program :=
   .store64 0
   ]
 
-def finishProgram (rootLocal destinationLocal returnLocal : Nat) : Wasm.Program :=
+@[expose] def finishProgram (rootLocal destinationLocal returnLocal : Nat) : Wasm.Program :=
   [
   .localGet rootLocal,
   .localSet destinationLocal,

@@ -1,6 +1,10 @@
-import Verified.Reflect.BoundLemmas
-import Verified.Reflect.FitsLemmas
-import Verified.TreeAgree
+module
+
+public import Verified.Reflect.BoundLemmas
+public import Verified.Reflect.FitsLemmas
+public import Verified.TreeAgree
+
+public section
 
 namespace Verified.Reflect
 

@@ -1,16 +1,20 @@
-import Verified.AlignedWriters
-import Verified.Bytes.Copy
-import Verified.Bytes.LiteralCode
-import Verified.ExprSpec
-import LeanExe.TalosCompat
-import Verified.Bytes.LiteralFrame
-import Verified.ArgsCorrect
-import Verified.Bytes.AfterWrite
-import Verified.Bytes.BuildCode
-import Verified.LocalFrame
-import LeanExe.Pipeline.Aborts
-import Verified.Bytes.StoreWord
-import Verified.Bytes.Overlay
+module
+
+public import Verified.AlignedWriters
+public import Verified.Bytes.Copy
+public import Verified.Bytes.LiteralCode
+public import Verified.ExprSpec
+public import LeanExe.TalosCompat
+public import Verified.Bytes.LiteralFrame
+public import Verified.ArgsCorrect
+public import Verified.Bytes.AfterWrite
+public import Verified.Bytes.BuildCode
+public import Verified.LocalFrame
+public import LeanExe.Pipeline.Aborts
+public import Verified.Bytes.StoreWord
+public import Verified.Bytes.Overlay
+
+public section
 
 /-!
 Buffers under the flag.  A buffer's bytes are read and written one at a time, so only the

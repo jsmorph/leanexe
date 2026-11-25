@@ -1,33 +1,37 @@
-import Verified.State
-import Verified.Bound
-import Verified.RuntimeFacts
-import Verified.TreeRelease
-import Verified.ArrayCopy
-import Verified.Bytes.Release
-import LeanExe.Pipeline.RuntimeSpec
-import LeanExe.ProofKit.ReleaseTree
-import LeanExe.ProofKit.ArrayPrefix
-import Verified.TreeSlotCode
-import Verified.TreeHeaderCopy
-import Verified.Bytes.Copy
-import Verified.TreeCopyInvariant
-import Verified.TreeAdvance
-import Verified.TreeCopyLocals
-import Verified.TreeAllocate
-import Verified.LocalFrame
-import Verified.TreeCopyCode
-import Verified.TreeStorage
-import Verified.TreeInitialize
-import Verified.TreeSelect
-import Verified.TreeBeginState
-import Verified.TreeCopyStartInv
-import Verified.TreeTestCode
-import Verified.TreeCopyBufferCode
-import Verified.TreeRestore
-import Verified.TreeNodeLayout
-import Verified.TreeCopyCompleteInv
-import Verified.TreeHeaderCode
-import LeanExe.TalosCompat
+module
+
+public import Verified.State
+public import Verified.Bound
+public import Verified.RuntimeFacts
+public import Verified.TreeRelease
+public import Verified.ArrayCopy
+public import Verified.Bytes.Release
+public import LeanExe.Pipeline.RuntimeSpec
+public import LeanExe.ProofKit.ReleaseTree
+public import LeanExe.ProofKit.ArrayPrefix
+public import Verified.TreeSlotCode
+public import Verified.TreeHeaderCopy
+public import Verified.Bytes.Copy
+public import Verified.TreeCopyInvariant
+public import Verified.TreeAdvance
+public import Verified.TreeCopyLocals
+public import Verified.TreeAllocate
+public import Verified.LocalFrame
+public import Verified.TreeCopyCode
+public import Verified.TreeStorage
+public import Verified.TreeInitialize
+public import Verified.TreeSelect
+public import Verified.TreeBeginState
+public import Verified.TreeCopyStartInv
+public import Verified.TreeTestCode
+public import Verified.TreeCopyBufferCode
+public import Verified.TreeRestore
+public import Verified.TreeNodeLayout
+public import Verified.TreeCopyCompleteInv
+public import Verified.TreeHeaderCode
+public import LeanExe.TalosCompat
+
+public section
 
 /-! The code that allocates, copies, and releases arrays, and its specifications: a release of an
 owned array consumes its block, and a copy of a value puts each of its arrays in a new block. -/

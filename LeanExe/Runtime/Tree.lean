@@ -1,5 +1,9 @@
-import LeanExe.TalosPrelude
-import LeanExe.Common
+module
+
+public import LeanExe.TalosPrelude
+public import LeanExe.Common
+
+public section
 
 /-!
 # Release trees
@@ -99,7 +103,7 @@ def slotsFootprint : List RelSlot → List (Nat × Nat)
   | _ :: rest => slotsFootprint rest
 end
 
-def regionsDisjoint (a b : Nat × Nat) : Prop :=
+@[expose] def regionsDisjoint (a b : Nat × Nat) : Prop :=
   a.1 + a.2 ≤ b.1 ∨ b.1 + b.2 ≤ a.1
 
 def footprintOk (regions : List (Nat × Nat)) : Prop :=
@@ -558,7 +562,7 @@ def natMask (slots : List RelSlot) : Nat :=
 
 theorem natMask_cons (slot : RelSlot) (rest : List RelSlot) :
     natMask (slot :: rest) =
-    2 * natMask rest + (if slot.masked then 1 else 0) := rfl
+    2 * natMask rest + (if slot.masked then 1 else 0) := by rfl
 
 theorem natMask_lt (slots : List RelSlot) :
     natMask slots < 2 ^ slots.length := by

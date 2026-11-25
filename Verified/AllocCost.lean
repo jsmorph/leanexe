@@ -1,3 +1,7 @@
+module
+
+public section
+
 namespace Verified
 
 /-- The growth of `top` for an allocation of `bytes` payload bytes that no free block supplies. -/
