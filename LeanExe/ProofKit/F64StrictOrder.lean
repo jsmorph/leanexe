@@ -2,7 +2,7 @@ import LeanExe.ProofKit.F64Order
 
 namespace LeanExe.ProofKit.F64Order
 set_option exponentiation.threshold 4096
-set_option maxRecDepth 8192
+set_option maxRecDepth 40000
 
 private def magnitude (n : Nat) : Nat :=
   if n / 2 ^ 52 = 0 then n % 2 ^ 52
