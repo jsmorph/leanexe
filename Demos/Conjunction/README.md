@@ -265,20 +265,23 @@ of 1,000 standard deviations, uniform panels are far wider than the region that 
 probability, and the clamp at 1 sets the upper endpoint.  The sample of `pc` above, whose
 conditional mean is 0 on every panel, keeps its interval bit for bit.
 
-![The 16 inputs of the containment test in decreasing order of the reference value, each with its reference value and its intervals at 16, 256, and 4,096 panels on a logarithmic axis of the probability, and each interval's width divided by the reference value](containment.svg)
+![The intervals of the containment test at 16, 256, and 4,096 panels for each of the 16 inputs, each drawn as a bar from the relative error of its lower endpoint to that of its upper endpoint, and every bar crossing or touching the reference value at 0](containment.svg)
 
 `uv run tests/conjunction/figure.py build/conjunction/reference.txt Demos/Conjunction/containment.svg`
 draws the figure from the report that `tests/conjunction/run.sh` writes, and it exits with status 1
-when a result is rejected or a reference value lies outside its interval.  The rows hold the 16
-inputs in decreasing order of the reference value.  The left panel's logarithmic axis reaches down
-to the reference value `6.6e-545` of the miss of 50 standard deviations, so an interval has
-visible length only when its lower endpoint is 0 or near it: at every panel count for that miss,
-whose upper endpoints are 1, 2, and 17 subnormal steps, and at 16 and 256 panels for the disk of
-1,000 standard deviations.  The right panel gives each interval's width divided by the reference
-value.  For the other 14 inputs this ratio lies between 0.13 and 0.79 at 16 panels and between
-`5.0e-4` and `3.1e-3` at 4,096, and each sixteenfold increase of the panel count divides it by
-15.7 to 16.0.  For the miss of 50 standard deviations it exceeds `1e220`, and the panel gives its
-smallest and largest values in text.
+when a result is rejected or a reference value lies outside its interval.  Each bar runs from
+`(lo - ref)/ref` to `(hi - ref)/ref`, which the script computes as exact fractions of the report's
+decimals, so a bar that crosses or touches 0 is an interval that contains the reference value.
+The rows hold the 16 inputs in decreasing order of the reference value, which the table gives to
+two digits.  The axis is linear between `-1e-4` and `1e-4`, below the smallest nonzero relative
+error, `2.4e-4`, and logarithmic beyond.  For 14 of the inputs, the ends at 4,096 panels lie
+between `2.4e-4` and `1.6e-3` from 0, and each sixteenfold increase of the panel count divides a
+bar's length by 15.7 to 16.0.  A lower endpoint of 0 gives an end at `-1`, as at every panel
+count for the miss of 50 standard deviations, whose upper ends, `7.5e220` to `1.3e222`, lie beyond
+the axis and appear as arrows with their values.  For the disk of 1,000 standard deviations, the
+lower endpoints at 16 and 256 panels, 0 and `1.7e-12`, give ends at and near `-1`, and every bar
+ends at 0, since the report prints the reference value to 17 digits as 1.0, equal to the upper
+endpoint.
 
 The same driver checks the message form.  [The message check](../../tests/conjunction/message.py)
 projects the states and covariances onto the encounter plane with `mpmath` at 50 digits, with

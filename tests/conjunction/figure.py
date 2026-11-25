@@ -4,19 +4,23 @@
 # ///
 """Draws the containment test of the conjunction program from REPORT, the report of
 tests/conjunction/reference.py that tests/conjunction/run.sh writes to
-build/conjunction/reference.txt: for each input of `pc`, the intervals at 16, 256, and 4,096 panels
-against the reference value of the probability, which reference.py computes at 50 digits, and each
-interval's relative width, its width divided by the reference value.
+build/conjunction/reference.txt.  For each input of `pc` and each of 16, 256, and 4,096 panels, a
+bar runs from (lo - ref)/ref to (hi - ref)/ref, the relative errors of the interval's ends, where
+ref is the reference value that reference.py computes at 50 digits.  A bar that crosses or touches
+the line at 0 shows an interval that contains the reference value.
 
 The rows hold the inputs in decreasing order of the reference value, and inputs with equal
-reference values in their order in REPORT.  The left panel's axis is the base-10 logarithm of the
-probability, computed from the exact decimals, so it places reference values below the smallest
-positive double, and it draws an interval whose lower endpoint is 0 as a bar from the panel's left
-edge.  The right panel gives the relative widths on a logarithmic axis up to 10, and for a row
-with relative widths above 10 it writes the smallest and the largest of them.  Every value comes
-from REPORT, read as exact decimals.  The format of OUT, SVG or PNG, follows its extension.  The
-exit status is 0 when the figure is drawn, 1 when a result is rejected or a reference value lies
-outside its interval, and 2 for a usage error.
+reference values in their order in REPORT, with the bars of each row in increasing order of the
+panel count.  The table gives each input and its reference value to two significant digits.  The
+script computes each relative error from REPORT's decimals as an exact fraction, since some values
+lie below the smallest positive double, so a lower endpoint of 0 gives exactly -1.  The axis is
+symmetric-logarithmic, linear within the threshold, the largest power of ten at or below the
+smallest nonzero relative error, so every nonzero end lies in the logarithmic part.  It runs from
+-2 to 2: a lower end is at least -1, since the program's lower endpoints are at least 0, and an
+end beyond 2 is drawn as an arrow at the axis's edge with its value written beside it.  The
+format of OUT, SVG or PNG, follows its extension.  The exit status is 0 when the figure is drawn,
+1 when a result is rejected or a reference value lies outside its interval, and 2 for a usage
+error.
 
 Usage: uv run tests/conjunction/figure.py REPORT OUT
 """
@@ -31,21 +35,21 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 
 matplotlib.rcParams["svg.hashsalt"] = "conjunction-figure"
 
 INK, MUTED, GRID = "#111111", "#555555", "#dddddd"
-PANELS = {16: ("#d55e00", "o"), 256: ("#0072b2", "s"), 4096: ("#009e73", "^")}
-DODGE = {16: -0.26, 256: 0.0, 4096: 0.26}
-CEILING = 10
+PANELS = {16: "#d55e00", 256: "#0072b2", 4096: "#009e73"}
+DODGE = {16: -0.28, 256: 0.0, 4096: 0.28}
+BAR, LIMIT = 0.22, 2
 
 LINE = re.compile(r"(ok  |FAIL) m=\((\S+),(\S+)\) C=\((\S+),(\S+),(\S+)\) r=(\S+) n=(\d+) "
                   r"status=(\d+) ref=(\S+) lo=(\S+) hi=(\S+) width=\S+")
 
-W, ROW, TOP, BOTTOM = 7.3, 0.27, 0.95, 0.55
-TABLE = [0.1, 1.05, 1.75]
-A_LEFT, A_RIGHT = 3.55, 4.9
-B_LEFT, B_RIGHT = 5.2, 7.1
+W, ROW, TOP, BOTTOM = 7.3, 0.36, 1.1, 0.6
+TABLE = [0.1, 0.88, 1.33, 3.0]
+LEFT, RIGHT = 3.95, 6.55
 
 
 def read(path):
@@ -99,6 +103,7 @@ def power(e):
 
 
 def scientific(x):
+    """x to two significant digits, as a multiple of a power of ten."""
     e = math.floor(log10(x))
     mantissa = float(x / Fraction(10) ** e)
     if mantissa >= 9.95:
@@ -106,79 +111,67 @@ def scientific(x):
     return f"{mantissa:.1f} × {power(e)}"
 
 
+def tick(t):
+    if t == 0:
+        return "0"
+    e = round(math.log10(abs(t)))
+    return ("−" if t < 0 else "") + ("1" if e == 0 else power(e))
+
+
 def draw(cases, path):
     rows = sorted(cases.items(), key=lambda item: -item[1]["ref"])
+    errors = [{n: ((lo - case["ref"]) / case["ref"], (hi - case["ref"]) / case["ref"])
+               for n, (lo, hi) in case["intervals"].items()} for _, case in rows]
+    smallest = min(abs(x) for row in errors for ends in row.values() for x in ends if x != 0)
+    threshold = 10.0 ** math.floor(log10(smallest))
     k = len(rows)
     H = TOP + k * ROW + BOTTOM
     fig = plt.figure(figsize=(W, H))
-
-    def axes(left, right):
-        return fig.add_axes([left / W, BOTTOM / H, (right - left) / W, k * ROW / H])
-
-    a, b = axes(A_LEFT, A_RIGHT), axes(B_LEFT, B_RIGHT)
-    logs = [log10(case["ref"]) for _, case in rows]
-    logs += [log10(hi) for _, case in rows for _, hi in case["intervals"].values() if hi > 0]
-    left = math.floor(min(logs) / 50) * 50 - 10
-    widths = []
-    for y, (_, case) in enumerate(rows):
-        for n, (lo, hi) in case["intervals"].items():
-            color, _ = PANELS[n]
-            a.plot([log10(lo) if lo > 0 else left, log10(hi)], [y + DODGE[n]] * 2, color=color,
-                   linewidth=2.2, solid_capstyle="butt", zorder=2)
-            if lo == 0:
-                a.plot(left, y + DODGE[n], marker="<", color=color, markersize=4, clip_on=False,
-                       zorder=3)
-        a.plot([log10(case["ref"])] * 2, [y - 0.42, y + 0.42], color=INK, linewidth=1.2,
-               zorder=4)
-        widths.append({n: (hi - lo) / case["ref"] for n, (lo, hi) in case["intervals"].items()})
-    least = min(w for row in widths for w in row.values())
-    bounds = (10 ** math.floor(log10(least)), CEILING)
-    for y, ((inputs, _), row) in enumerate(zip(rows, widths)):
-        for n, w in row.items():
-            if w <= CEILING:
-                color, marker = PANELS[n]
-                b.plot(float(w), y + DODGE[n], marker=marker, color=color, markersize=4.6,
-                       markeredgecolor="white", markeredgewidth=0.4, linestyle="none", zorder=3)
-        above = sorted(w for w in row.values() if w > CEILING)
-        if above:
-            text = scientific(above[0])
-            if len(above) > 1:
-                text += f" to {scientific(above[-1])}"
-            b.text(CEILING, y, f"{text} →", ha="right", va="center", fontsize=7.5, color=INK,
-                   bbox={"facecolor": "white", "edgecolor": "none", "pad": 0.5})
-        for x, text in zip(TABLE, label(inputs)):
-            fig.text(x / W, (BOTTOM + (k - y - 0.5) * ROW) / H, text, fontsize=8, color=INK,
+    ax = fig.add_axes([LEFT / W, BOTTOM / H, (RIGHT - LEFT) / W, k * ROW / H])
+    ax.set_xscale("symlog", linthresh=threshold, linscale=1)
+    for y, ((inputs, case), row) in enumerate(zip(rows, errors)):
+        for n, (low, high) in row.items():
+            if low < -LIMIT:
+                raise ValueError(f"{inputs} at {n} panels: a lower end below -{LIMIT}")
+            right = min(high, LIMIT)
+            ax.barh(y + DODGE[n], float(right - low), left=float(low), height=BAR,
+                    color=PANELS[n], linewidth=0, zorder=2)
+            if high > LIMIT:
+                ax.plot(LIMIT, y + DODGE[n], marker=">", color=PANELS[n], markersize=4.5,
+                        clip_on=False, zorder=3)
+                ax.annotate(scientific(high), (LIMIT, y + DODGE[n]), xytext=(7, 0),
+                            textcoords="offset points", ha="left", va="center", fontsize=7,
+                            color=INK, annotation_clip=False)
+        cells = (*label(inputs), scientific(case["ref"]))
+        for x, text in zip(TABLE, cells):
+            fig.text(x / W, (BOTTOM + (k - y - 0.5) * ROW) / H, text, fontsize=7.5, color=INK,
                      va="center")
-    for x, text in zip(TABLE, ("Miss vector m", "Radius r", "Covariance")):
-        fig.text(x / W, (BOTTOM + k * ROW + 0.08) / H, text, fontsize=8.5, color=MUTED,
+    for x, text in zip(TABLE, ("Miss\nvector m", "Radius\nr", "Covariance", "Reference\nvalue")):
+        fig.text(x / W, (BOTTOM + k * ROW + 0.08) / H, text, fontsize=8, color=MUTED,
                  va="bottom")
-    a.set_xlim(left, 10)
-    b.set_xscale("log")
-    b.set_xlim(*bounds)
-    for ax in (a, b):
-        ax.set_ylim(k - 0.5, -0.5)
-        ax.set_yticks(range(k), [""] * k)
-        ax.tick_params(axis="y", length=0)
-        ax.tick_params(axis="x", colors=INK, labelsize=8.5)
-        ax.grid(axis="x", color=GRID, linewidth=0.6)
-        ax.set_axisbelow(True)
-        for spine in ("top", "right", "left"):
-            ax.spines[spine].set_visible(False)
-        for y in range(k - 1):
-            ax.axhline(y + 0.5, color=GRID, linewidth=0.4, zorder=0)
-    ticks = range(0, left, -200)
-    a.set_xticks(list(ticks), [power(t) for t in ticks])
-    a.set_xlabel("Probability", fontsize=9, color=INK)
-    b.set_xlabel("Relative width", fontsize=9, color=INK)
+    ax.axvline(0, color=INK, linewidth=1.0, zorder=4)
+    for y in range(k - 1):
+        ax.axhline(y + 0.5, color=GRID, linewidth=0.4, zorder=0)
+    ax.set_xlim(-LIMIT, LIMIT)
+    ax.set_ylim(k - 0.5, -0.5)
+    ax.set_yticks([])
+    decades = range(0, math.floor(math.log10(threshold)) - 1, -2)
+    ticks = [0] + [s * 10.0 ** d for d in decades for s in (-1, 1)]
+    ax.set_xticks(ticks, [tick(t) for t in ticks])
+    ax.tick_params(axis="x", colors=INK, labelsize=8)
+    ax.grid(axis="x", color=GRID, linewidth=0.6)
+    ax.set_axisbelow(True)
+    for spine in ("top", "right", "left"):
+        ax.spines[spine].set_visible(False)
+    ax.set_xlabel("(interval's end − reference value) / reference value", fontsize=9, color=INK)
     fig.text(0.1 / W, 1 - 0.24 / H, f"Containment test of pc: {k} inputs at 16, 256, and 4,096 "
              "panels, against the reference value at 50 digits", fontsize=9, color=MUTED,
              va="baseline")
-    handles = [Line2D([], [], color=INK, linewidth=1.2, label="Reference value")]
-    handles += [Line2D([], [], color=color, marker=marker, linewidth=2.2, markersize=4.6,
-                       markeredgecolor="white", markeredgewidth=0.4, label=f"{n:,} panels")
-                for n, (color, marker) in PANELS.items()]
+    handles = [Line2D([], [], color=INK, linewidth=1.0, label="Reference value")]
+    handles += [Patch(color=color, linewidth=0, label=f"{n:,} panels")
+                for n, color in PANELS.items()]
     fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.1 / W - 0.01, 1 - 0.3 / H),
-               ncol=4, frameon=False, fontsize=8.5, handlelength=2.0, columnspacing=1.4)
+               ncol=4, frameon=False, fontsize=8.5, handlelength=1.6, columnspacing=1.4)
     fig.savefig(path, metadata={"Date": None} if path.endswith(".svg") else None, dpi=150)
 
 
