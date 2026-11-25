@@ -1,13 +1,17 @@
-import LeanExe.ProofKit.F64NearestEven
+module
+
+public import LeanExe.ProofKit.F64NearestEven
+
+public section
 
 namespace LeanExe.ProofKit.F64PositiveRounding
 open CodeLib.IEEE64
 
 set_option exponentiation.threshold 4096
 
-def positiveInfinity : UInt64 := 0x7FF0000000000000
+@[expose] def positiveInfinity : UInt64 := 0x7FF0000000000000
 
-noncomputable def overflowThreshold : ℝ := (2 : ℝ) ^ 1024 - (2 : ℝ) ^ 970
+@[expose] noncomputable def overflowThreshold : ℝ := (2 : ℝ) ^ 1024 - (2 : ℝ) ^ 970
 
 def IsRoundNearestEven (y : ℝ) (w : UInt64) : Prop :=
   0 ≤ y ∧

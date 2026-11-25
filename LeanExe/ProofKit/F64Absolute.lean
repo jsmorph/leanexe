@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64NormalizeModel
+module
+
+public import LeanExe.ProofKit.F64NormalizeModel
+
+public section
 
 namespace LeanExe.ProofKit.F64Order
 open CodeLib.IEEE64

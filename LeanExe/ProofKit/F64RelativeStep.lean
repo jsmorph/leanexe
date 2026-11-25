@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64FullStep
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64SignedRounding
-import LeanExe.ProofKit.F64Sign
+module
+
+public import LeanExe.ProofKit.F64FullStep
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64SignedRounding
+public import LeanExe.ProofKit.F64Sign
+
+public section
 
 /-!
 A finite word whose value lies within `11/8` units of roundoff of a real number, relative to the

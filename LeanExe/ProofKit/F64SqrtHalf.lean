@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64SqrtBounds
+module
+
+public import LeanExe.ProofKit.F64SqrtBounds
+
+public section
 
 /-!
 The rounded square root lies within half a spacing of the binade below a bound of the exact root:

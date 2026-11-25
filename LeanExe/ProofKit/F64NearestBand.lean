@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64NearestSteps
+module
+
+public import LeanExe.ProofKit.F64NearestSteps
+
+public section
 
 /-!
 One step from a band around `y` that is wider below than `F64NearestSteps.steps_half` allows.

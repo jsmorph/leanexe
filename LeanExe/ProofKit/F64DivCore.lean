@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RationalNormalize
+module
+
+public import LeanExe.ProofKit.F64RationalNormalize
+
+public section
 
 namespace LeanExe.ProofKit.F64DivCore
 open Float.Model Float.Model.UnpackedFloat F64Encoding F64RationalNormalize FloatCommon

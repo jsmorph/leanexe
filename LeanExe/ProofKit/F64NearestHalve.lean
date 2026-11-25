@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64NearestSteps
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import LeanExe.ProofKit.F64NearestSteps
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64Magnitude
+
+public section
 
 /-!
 Halving keeps the nearest property.  If `c` is a nearest word of `s` with

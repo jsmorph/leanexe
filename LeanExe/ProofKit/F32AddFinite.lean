@@ -1,12 +1,16 @@
-import LeanExe.ProofKit.F32Normalize
+module
+
+public import LeanExe.ProofKit.F32Normalize
+
+public section
 
 namespace LeanExe.ProofKit.F32AddFinite
 open Float.Model Float.Model.UnpackedFloat F32Normalize FloatCommon
 
-def scaled (s : Sign) (m : Nat) (e : Int) : Int :=
+@[expose] def scaled (s : Sign) (m : Nat) (e : Int) : Int :=
   s.apply ((m * 2 ^ (e + 149).toNat : Nat) : Int)
 
-def roundedSigned (z : Int) : UInt32 :=
+@[expose] def roundedSigned (z : Int) : UInt32 :=
   if z = 0 then 0 else Wasm.IEEE32.roundScaledMagnitude (decide (z < 0)) z.natAbs
 
 theorem pack_normalize_scaled (z : Int) (e : Int) (he : -149 ≤ e) :

@@ -1,11 +1,15 @@
-import LeanExe.ProofKit.F64FullStep
-import LeanExe.ProofKit.F64NearestSum
-import LeanExe.ProofKit.F64PackingFinite
-import LeanExe.ProofKit.F64Approx
-import LeanExe.ProofKit.F64SignedRounding
-import LeanExe.ProofKit.F64UpperWord
-import LeanExe.ProofKit.F64Exact
-import Mathlib.Data.Int.Log
+module
+
+public import LeanExe.ProofKit.F64FullStep
+public import LeanExe.ProofKit.F64NearestSum
+public import LeanExe.ProofKit.F64PackingFinite
+public import LeanExe.ProofKit.F64Approx
+public import LeanExe.ProofKit.F64SignedRounding
+public import LeanExe.ProofKit.F64UpperWord
+public import LeanExe.ProofKit.F64Exact
+public import Mathlib.Data.Int.Log
+
+public section
 
 /-!
 A sum or difference of finite words rounds to a nearest word of its exact value: no word has a
@@ -23,7 +27,7 @@ set_option exponentiation.threshold 4096
 
 /-- `c` is finite, has the sign of a nonzero `S`, and no word has a magnitude closer to
 `|S|`. -/
-def Rounded (c : UInt64) (S : ℝ) : Prop :=
+@[expose] def Rounded (c : UInt64) (S : ℝ) : Prop :=
   Finite c ∧ (S < 0 → Wasm.IEEE64.sign c = true) ∧ (0 < S → Wasm.IEEE64.sign c = false) ∧
     ∀ v : UInt64, abs (|value c| - |S|) ≤ abs (|value v| - |S|)
 

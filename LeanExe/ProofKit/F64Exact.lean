@@ -1,8 +1,12 @@
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64ExponentBounds
-import LeanExe.ProofKit.F64Source
+module
+
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64ExponentBounds
+public import LeanExe.ProofKit.F64Source
+
+public section
 
 /-!
 Exact operations.  A finite word's magnitude is `M · 2 ^ (e - 1)` scaled units with `M < 2 ^ 53`

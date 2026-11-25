@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RationalScale
+module
+
+public import LeanExe.ProofKit.F64RationalScale
+
+public section
 
 namespace LeanExe.ProofKit.F64RationalNormalize
 open Float.Model Float.Model.UnpackedFloat F64Encoding F64RationalScale F64RoundRational FloatCommon

@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64DyadicBounds
-import CodeLib.IEEE64.Operations
+module
+
+public import LeanExe.ProofKit.F64DyadicBounds
+public import CodeLib.IEEE64.Operations
+
+public section
 
 /-!
 Multiplication by a power of two.  A normal power of two times a normal operand gives the exact

@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64PackingFinite
-import LeanExe.ProofKit.F64AddNearest
-import LeanExe.ProofKit.F64AddBounds
-import LeanExe.ProofKit.F64Approx
+module
+
+public import LeanExe.ProofKit.F64PackingFinite
+public import LeanExe.ProofKit.F64AddNearest
+public import LeanExe.ProofKit.F64AddBounds
+public import LeanExe.ProofKit.F64Approx
+
+public section
 
 /-!
 Rounding to binary64 up to the overflow threshold `2^1024 - 2^970`.  `F64PackRelative.pack_spec`

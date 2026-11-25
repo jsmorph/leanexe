@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64TopPack
-import LeanExe.ProofKit.F64MulBounds
+module
+
+public import LeanExe.ProofKit.F64TopPack
+public import LeanExe.ProofKit.F64MulBounds
+
+public section
 
 /-!
 Rounded multiplication up to the overflow threshold `2^1024 - 2^970`.

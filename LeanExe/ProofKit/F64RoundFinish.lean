@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Normalize
+module
+
+public import LeanExe.ProofKit.F64Normalize
+
+public section
 
 namespace LeanExe.ProofKit.F64RoundFinish
 open Float.Model Float.Model.UnpackedFloat F64Encoding F64Packing FloatRounding F64RoundScaled FloatCommon
@@ -11,7 +15,7 @@ def finish (s : Sign) (m : Nat) (e : Int) : UnpackedFloat :=
 theorem roundWithAccuracy_finish (s : Sign) (m : Nat) (e : Int) (acc : Accuracy) :
     roundWithAccuracy Format.binary64 s m e acc =
       let first := shiftToTargetExponent Format.binary64 m e acc
-      finish s first.1.roundedMantissa first.2 := rfl
+      finish s first.1.roundedMantissa first.2 := by rfl
 
 theorem finish_no_shift (s : Sign) (m : Nat) (e : Int) (hm : 0 < m)
     (ht : Format.binary64.targetExponent (totalExponent m e) = e) :

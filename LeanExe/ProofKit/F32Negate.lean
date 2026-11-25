@@ -1,5 +1,9 @@
-import CodeLib.IEEE32.Roundoff
-import CodeLib.IEEE32.SpecialValues
+module
+
+public import CodeLib.IEEE32.Roundoff
+public import CodeLib.IEEE32.SpecialValues
+
+public section
 
 /-!
 Negation of the binary32 words that `Wasm.IEEE32` packs.  `roundScaledMagnitude` rounds a

@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64PackingModel
+module
+
+public import LeanExe.ProofKit.F64PackingModel
+
+public section
 
 namespace LeanExe.ProofKit.F64Packing
 open CodeLib.IEEE64

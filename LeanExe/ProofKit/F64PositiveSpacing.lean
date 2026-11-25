@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64PositiveOrder
+module
+
+public import LeanExe.ProofKit.F64PositiveOrder
+
+public section
 
 namespace LeanExe.ProofKit.F64PositiveSpacing
 open CodeLib.IEEE64 F64PositiveOrder

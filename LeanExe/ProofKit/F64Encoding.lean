@@ -1,10 +1,14 @@
-import LeanExe.ProofKit.F64Source
-import LeanExe.ProofKit.FloatCommon
+module
+
+public import LeanExe.ProofKit.F64Source
+public import LeanExe.ProofKit.FloatCommon
+
+public section
 
 namespace LeanExe.ProofKit.F64Encoding
 open Float.Model Float.Model.UnpackedFloat FloatCommon
 
-def sourceSign (x : UInt64) : Sign :=
+@[expose] def sourceSign (x : UInt64) : Sign :=
   if Wasm.IEEE64.sign x then .negative else .positive
 
 theorem unpackMantissa_eq (x : UInt64) :
@@ -31,7 +35,7 @@ theorem unpackSign_eq (x : UInt64) :
   simp only [he]
   split <;> split <;> first | rfl | omega
 
-def decode (x : UInt64) : UnpackedFloat :=
+@[expose] def decode (x : UInt64) : UnpackedFloat :=
   let s := sourceSign x
   let e := Wasm.IEEE64.exponent x
   let f := Wasm.IEEE64.fraction x

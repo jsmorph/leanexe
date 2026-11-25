@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64DyadicBounds
+module
+
+public import LeanExe.ProofKit.F64DyadicBounds
+
+public section
 
 /-!
 The bits of a nonnegative word from its scaled value.  A word with a clear sign bit whose scaled

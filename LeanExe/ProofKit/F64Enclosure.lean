@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64MagnitudeEnclosure
+module
+
+public import LeanExe.ProofKit.F64MagnitudeEnclosure
+
+public section
 
 namespace LeanExe.ProofKit.F64Adjacent
 open CodeLib.IEEE64

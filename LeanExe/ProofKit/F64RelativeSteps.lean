@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RelativeStep
+module
+
+public import LeanExe.ProofKit.F64RelativeStep
+
+public section
 
 /-!
 `m` representable steps from relative and absolute errors.  A word whose value lies within

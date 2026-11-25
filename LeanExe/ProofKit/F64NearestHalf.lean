@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64NearestRelative
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import LeanExe.ProofKit.F64NearestRelative
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64Magnitude
+
+public section
 
 /-!
 A nearest word lies within half a spacing of its target.  `nearest_half` states it on the grid of

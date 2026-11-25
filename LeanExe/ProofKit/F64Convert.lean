@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64Normalize
-import LeanExe.ProofKit.F32TruncSat
+module
+
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64Normalize
+public import LeanExe.ProofKit.F32TruncSat
+
+public section
 
 /-!
 Lean's conversions between `UInt64` and `Float` agree with WebAssembly's
@@ -83,7 +87,7 @@ theorem truncSat_eq (value : UInt64) :
     · have hn : Wasm.IEEE64.isNaN value = true := by simp [Wasm.IEEE64.isNaN, he, hf]
       simp only [decode, he, hf, ↓reduceIte, UnpackedFloat.toUInt64, toInt,
         Wasm.IEEE64.truncSatI64U, hn]
-      rfl
+      exact UInt64.ofNatClamp_eq_ofNat 0 (by decide)
   · by_cases hz : Wasm.IEEE64.scaledMagnitude value = 0
     · rw [zero_encoding value hz]
       cases Wasm.IEEE64.sign value <;> decide +kernel
@@ -98,7 +102,7 @@ theorem truncSat_eq (value : UInt64) :
       · exact clamp_nat _
       · rw [ite_eq_left (by omega)]
         simp only [Int.toNat_neg_natCast]
-        rfl
+        exact UInt64.ofNatClamp_eq_ofNat 0 (by decide)
 
 theorem toUInt64_eq (x : Float) : x.toUInt64 = Wasm.IEEE64.truncSatI64U x.toBits := by
   change x.toModel.unpack.toUInt64 = _

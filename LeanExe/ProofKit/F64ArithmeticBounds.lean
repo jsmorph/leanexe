@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64AddBounds
-import LeanExe.ProofKit.F64MulBounds
-import LeanExe.ProofKit.F64DivBounds
+module
+
+public import LeanExe.ProofKit.F64AddBounds
+public import LeanExe.ProofKit.F64MulBounds
+public import LeanExe.ProofKit.F64DivBounds
+
+public section
 
 /-! The unit roundoff `arithmeticEpsilon` and error bounds of rounded addition, subtraction,
 multiplication, and division in terms of it. -/

@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64MulFinite
-import LeanExe.ProofKit.F64Add
+module
+
+public import LeanExe.ProofKit.F64MulFinite
+public import LeanExe.ProofKit.F64Add
+
+public section
 
 namespace LeanExe.ProofKit.F64Mul
 open Float.Model Float.Model.UnpackedFloat F64Encoding F64Packing F64Decoded F64MulFinite FloatCommon

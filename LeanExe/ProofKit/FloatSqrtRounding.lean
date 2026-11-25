@@ -1,10 +1,14 @@
-import LeanExe.ProofKit.FloatRationalRounding
-import Mathlib.Data.Nat.Sqrt
+module
+
+public import LeanExe.ProofKit.FloatRationalRounding
+public import Mathlib.Data.Nat.Sqrt
+
+public section
 
 namespace LeanExe.ProofKit.FloatSqrtRounding
 open Float.Model.UnpackedFloat FloatRationalRounding
 
-def rootAccuracy (n : Nat) : Accuracy :=
+@[expose] def rootAccuracy (n : Nat) : Accuracy :=
   let r := n.sqrt
   let rem := n - r * r
   if rem = 0 then .exact else .inexact (if rem ≤ r then .lt else .gt)

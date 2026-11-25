@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64Decoded
-import LeanExe.ProofKit.F64RoundDyadic
+module
+
+public import LeanExe.ProofKit.F64Decoded
+public import LeanExe.ProofKit.F64RoundDyadic
+
+public section
 
 namespace LeanExe.ProofKit.F64MulFinite
 open Float.Model Float.Model.UnpackedFloat F64Encoding F64Packing F64Decoded F64RoundDyadic FloatCommon

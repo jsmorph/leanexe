@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.FloatShift
-import CodeLib.IEEE32.Roundoff
+module
+
+public import LeanExe.ProofKit.FloatShift
+public import CodeLib.IEEE32.Roundoff
+
+public section
 
 /-!
 Lemmas about Lean's float model and the exact rounding helpers that hold for
@@ -13,11 +17,11 @@ theorem append_toNat (x : BitVec m) (y : BitVec n) :
     (x ++ y).toNat = x.toNat * 2 ^ n + y.toNat := by
   rw [BitVec.toNat_append, ← Nat.shiftLeft_add_eq_or_of_lt y.isLt, Nat.shiftLeft_eq]
 
-def negative (s : Sign) : Bool := match s with
+@[expose] def negative (s : Sign) : Bool := match s with
   | .negative => true
   | .positive => false
 
-def aligned (m : Nat) (e target : Int) : ExtendedMantissa :=
+@[expose] def aligned (m : Nat) (e target : Int) : ExtendedMantissa :=
   ExtendedMantissa.ofMantissaAndAccuracy (m * 2 ^ (e - target).toNat) .exact >>>
     (target - e).toNat
 
@@ -50,7 +54,7 @@ theorem sign_apply_neg (s : Sign) (z : Int) : (-s).apply z = -(s.apply z) := by
   | negative => exact (neg_neg z).symm
   | positive => rfl
 
-def rounded (m k : Nat) : Nat := if k = 0 then m else Wasm.IEEE32.roundShift m k
+@[expose] def rounded (m k : Nat) : Nat := if k = 0 then m else Wasm.IEEE32.roundShift m k
 
 theorem rounded_eq (m k : Nat) :
     (ExtendedMantissa.ofMantissaAndAccuracy m .exact >>> k).roundedMantissa = rounded m k := by

@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64ArithmeticBounds
+module
+
+public import LeanExe.ProofKit.F64ArithmeticBounds
+
+public section
 
 /-!
 One rounded product or sum in a chain of bounded operations: from bounds on the operands' values

@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64OutwardSpec
+module
+
+public import LeanExe.ProofKit.F64OutwardSpec
+
+public section
 
 namespace LeanExe.ProofKit.F64Outward
 open CodeLib.IEEE64

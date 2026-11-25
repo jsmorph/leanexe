@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RoundingResidual
+module
+
+public import LeanExe.ProofKit.F64RoundingResidual
+
+public section
 
 /-! The rounding certificate of a conservative update and the balance of a sequence of such updates. -/
 
@@ -31,7 +35,7 @@ theorem rounded_update (ratio state fluxL fluxR : UInt64)
       (value state - value (Wasm.IEEE64.mul ratio (Wasm.IEEE64.sub fluxR fluxL))),
     by ring, sub_error _ _ hh hl hd, mul_error _ _ hr hd hp, sub_error _ _ hs hp ho⟩
 
-def residual (ratio state fluxL fluxR output : UInt64) : ℝ :=
+@[expose] def residual (ratio state fluxL fluxR output : UInt64) : ℝ :=
   value output - value state + value ratio * (value fluxR - value fluxL)
 
 theorem balance (ratio state fluxL fluxR output : UInt64) :

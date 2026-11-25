@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RoundNearest
+module
+
+public import LeanExe.ProofKit.F64RoundNearest
+
+public section
 
 /-!
 A word closer to `y` than half the spacing on either side of it is the nearest-even reference of

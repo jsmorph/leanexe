@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.FloatSqrtRounding
-import LeanExe.ProofKit.FloatShift
+module
+
+public import LeanExe.ProofKit.FloatSqrtRounding
+public import LeanExe.ProofKit.FloatShift
+
+public section
 
 namespace LeanExe.ProofKit.F32SqrtCore
 open Float.Model Float.Model.UnpackedFloat FloatSqrtRounding

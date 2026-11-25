@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.PolyChecks
-import LeanExe.ProofKit.TaylorRemainder
+module
+
+public import LeanExe.ProofKit.PolyChecks
+public import LeanExe.ProofKit.TaylorRemainder
+
+public section
 
 /-!
 Operations on coefficient lists for `PolyBound` beyond sums and products: the formal derivative,

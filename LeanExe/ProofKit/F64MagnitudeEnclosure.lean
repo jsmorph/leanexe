@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64MagnitudeGaps
-import LeanExe.ProofKit.F64RoundingScale
+module
+
+public import LeanExe.ProofKit.F64MagnitudeGaps
+public import LeanExe.ProofKit.F64RoundingScale
+
+public section
 
 namespace LeanExe.ProofKit.F64Adjacent
 open LeanExe.ProofKit.F64Order

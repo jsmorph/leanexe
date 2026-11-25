@@ -1,8 +1,12 @@
-import LeanExe.ProofKit.PolyBound
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Series
-import Mathlib.Analysis.SpecialFunctions.Complex.Arctan
-import Mathlib.Analysis.SpecialFunctions.Log.Deriv
-import Mathlib.Analysis.SpecificLimits.Basic
+module
+
+public import LeanExe.ProofKit.PolyBound
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Series
+public import Mathlib.Analysis.SpecialFunctions.Complex.Arctan
+public import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+public import Mathlib.Analysis.SpecificLimits.Basic
+
+public section
 
 /-!
 Taylor polynomials as coefficient lists for `PolyBound`, and bounds on their remainders.  The

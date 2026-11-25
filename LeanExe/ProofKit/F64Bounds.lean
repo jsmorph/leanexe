@@ -1,4 +1,8 @@
-import CodeLib.Numerical.Kernels
+module
+
+public import CodeLib.Numerical.Kernels
+
+public section
 
 /-!
 # Reusable raw binary64 magnitude guards
@@ -16,12 +20,12 @@ set_option exponentiation.threshold 4096
 set_option maxRecDepth 8192
 
 /-- Clear the sign bit of a raw binary64 word. -/
-def f64AbsBits (bits : UInt64) : UInt64 :=
+@[expose] def f64AbsBits (bits : UInt64) : UInt64 :=
   bits &&& 0x7FFFFFFFFFFFFFFF
 
 /-- Raw-bit guard recognizing binary64 encodings with magnitude at most one
 half, including both signed zeros. -/
-def boundedByHalfBits (bits : UInt64) : Bool :=
+@[expose] def boundedByHalfBits (bits : UInt64) : Bool :=
   decide (f64AbsBits bits ≤ 0x3FE0000000000000)
 
 private theorem f64AbsBits_toNat (bits : UInt64) :

@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64PackRelative
-import LeanExe.ProofKit.F64DyadicBounds
+module
+
+public import LeanExe.ProofKit.F64PackRelative
+public import LeanExe.ProofKit.F64DyadicBounds
+
+public section
 
 /-! The relative error of the rounded binary64 square root of a scaled magnitude. -/
 

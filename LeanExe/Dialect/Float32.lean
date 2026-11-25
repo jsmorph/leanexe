@@ -1,20 +1,24 @@
-import Init.Data.SInt.Float32
+module
+
+public import Init.Data.SInt.Float32
+
+public section
 
 namespace LeanExe.Float32
 
-def addBits (left right : UInt32) : UInt32 :=
+@[expose] def addBits (left right : UInt32) : UInt32 :=
   (_root_.Float32.ofBits left + _root_.Float32.ofBits right).toBits
 
-def subBits (left right : UInt32) : UInt32 :=
+@[expose] def subBits (left right : UInt32) : UInt32 :=
   (_root_.Float32.ofBits left - _root_.Float32.ofBits right).toBits
 
-def mulBits (left right : UInt32) : UInt32 :=
+@[expose] def mulBits (left right : UInt32) : UInt32 :=
   (_root_.Float32.ofBits left * _root_.Float32.ofBits right).toBits
 
-def divBits (left right : UInt32) : UInt32 :=
+@[expose] def divBits (left right : UInt32) : UInt32 :=
   (_root_.Float32.ofBits left / _root_.Float32.ofBits right).toBits
 
-def sqrtBits (value : UInt32) : UInt32 :=
+@[expose] def sqrtBits (value : UInt32) : UInt32 :=
   (_root_.Float32.ofBits value).sqrt.toBits
 
 def toFloat64Bits (value : UInt32) : UInt64 :=
@@ -23,13 +27,13 @@ def toFloat64Bits (value : UInt32) : UInt64 :=
 def ofFloat64Bits (value : UInt64) : UInt32 :=
   (Float.ofBits value).toFloat32.toBits
 
-def ofInt32Bits (value : UInt32) : UInt32 :=
+@[expose] def ofInt32Bits (value : UInt32) : UInt32 :=
   (Int32.ofUInt32 value).toFloat32.toBits
 
-def toInt32Bits (value : UInt32) : UInt32 :=
+@[expose] def toInt32Bits (value : UInt32) : UInt32 :=
   (_root_.Float32.ofBits value).toInt32.toUInt32
 
-def nearestBits (value : UInt32) : UInt32 :=
+@[expose] def nearestBits (value : UInt32) : UInt32 :=
   let exponent := value.toNat / 2 ^ 23 % 256
   let fraction := value.toNat % 2 ^ 23
   if exponent == 255 then
@@ -51,7 +55,7 @@ def nearestBits (value : UInt32) : UInt32 :=
 
 /-- The integer nearest to `x`, ties to even, as Wasm's `f32.nearest` and WGSL's `round`
 compute it. -/
-def nearest (x : _root_.Float32) : _root_.Float32 :=
+@[expose] def nearest (x : _root_.Float32) : _root_.Float32 :=
   _root_.Float32.ofBits (nearestBits x.toBits)
 
 end LeanExe.Float32

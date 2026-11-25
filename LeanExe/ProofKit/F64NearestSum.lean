@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64RoundingScale
-import LeanExe.ProofKit.F64PackRelative
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64SignedRounding
+module
+
+public import LeanExe.ProofKit.F64RoundingScale
+public import LeanExe.ProofKit.F64PackRelative
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64SignedRounding
+
+public section
 
 /-!
 Rounded addition gives the nearest binary64 value to the exact sum.  `roundedMagnitude_nearest`

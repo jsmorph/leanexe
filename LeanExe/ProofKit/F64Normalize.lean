@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64RoundScaled
-import LeanExe.ProofKit.FloatShift
+module
+
+public import LeanExe.ProofKit.F64RoundScaled
+public import LeanExe.ProofKit.FloatShift
+
+public section
 
 namespace LeanExe.ProofKit.F64Normalize
 open Float.Model Float.Model.UnpackedFloat FloatRounding FloatShift FloatCommon

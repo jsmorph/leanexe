@@ -1,5 +1,9 @@
-import Interpreter.Wasm.Syntax
-import Interpreter.Wasm.IEEE64
+module
+
+public import Interpreter.Wasm.Syntax
+public import Interpreter.Wasm.IEEE64
+
+public section
 
 /-!
 The source language of GPU kernels: scalar types and their values, the word, binary64, and
@@ -90,7 +94,7 @@ inductive F32Op where
   | div
   deriving Repr, DecidableEq
 
-def F32Op.apply : F32Op → UInt32 → UInt32 → UInt32
+@[expose] def F32Op.apply : F32Op → UInt32 → UInt32 → UInt32
   | .add, left, right => IEEE32.add left right
   | .sub, left, right => IEEE32.sub left right
   | .mul, left, right => IEEE32.mul left right

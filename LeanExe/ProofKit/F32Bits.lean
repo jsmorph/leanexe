@@ -1,9 +1,13 @@
-import LeanExe.ProofKit.F32Mul
-import LeanExe.ProofKit.F32Sub
-import LeanExe.ProofKit.F32Div
-import LeanExe.ProofKit.F32Sqrt
-import LeanExe.ProofKit.F32Compare
-import LeanExe.ProofKit.F32Sign
+module
+
+public import LeanExe.ProofKit.F32Mul
+public import LeanExe.ProofKit.F32Sub
+public import LeanExe.ProofKit.F32Div
+public import LeanExe.ProofKit.F32Sqrt
+public import LeanExe.ProofKit.F32Compare
+public import LeanExe.ProofKit.F32Sign
+
+public section
 
 /-!
 Lean's `Float32` operations on bit patterns agree with Talos's `IEEE32`

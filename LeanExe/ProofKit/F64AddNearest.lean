@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64AddBounds
-import LeanExe.ProofKit.F64RelativeSteps
-import LeanExe.ProofKit.F64NearestSum
-import Mathlib.Data.Int.Log
+module
+
+public import LeanExe.ProofKit.F64AddBounds
+public import LeanExe.ProofKit.F64RelativeSteps
+public import LeanExe.ProofKit.F64NearestSum
+public import Mathlib.Data.Int.Log
+
+public section
 
 /-!
 Steps between nearest words.  `roundShift n s` rounds `n / 2 ^ s` to an integer at least as close

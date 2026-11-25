@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64RoundingResidual
-import LeanExe.ProofKit.F64DivEnclosure
+module
+
+public import LeanExe.ProofKit.F64RoundingResidual
+public import LeanExe.ProofKit.F64DivEnclosure
+
+public section
 
 /-! The error of a rounded binary64 quotient, bounded by its rounding radius. -/
 

@@ -1,5 +1,9 @@
-import Mathlib.Data.Real.Basic
-import Mathlib.Tactic.Ring
+module
+
+public import Mathlib.Data.Real.Basic
+public import Mathlib.Tactic.Ring
+
+public section
 
 /-! The error of a product when both factors have errors. -/
 

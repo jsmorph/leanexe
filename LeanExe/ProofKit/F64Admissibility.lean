@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64InternalEnergy
-import LeanExe.ProofKit.F64NormalizeModel
+module
+
+public import LeanExe.ProofKit.F64InternalEnergy
+public import LeanExe.ProofKit.F64NormalizeModel
+
+public section
 
 namespace LeanExe.ProofKit.F64Admissibility
 open CodeLib.IEEE64

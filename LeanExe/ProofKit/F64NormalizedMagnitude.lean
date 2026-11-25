@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64Bounds
-import LeanExe.ProofKit.F64Order
+module
+
+public import LeanExe.ProofKit.F64Bounds
+public import LeanExe.ProofKit.F64Order
+
+public section
 
 /-! The exponent field of a word and its magnitude normalized to a top exponent, with their values. -/
 

@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.Float64
-import Interpreter.Wasm.IEEE64
-import Mathlib.Tactic
+module
+
+public import LeanExe.ProofKit.Float64
+public import Interpreter.Wasm.IEEE64
+public import Mathlib.Tactic
+
+public section
 
 namespace LeanExe.ProofKit.F64Source
 
@@ -50,11 +54,11 @@ theorem sign_encodeFinite (negative : Bool) (e f : Nat)
     simp [Wasm.IEEE64.sign, Wasm.IEEE64.encodeFinite, UInt64.toNat_ofNat, Nat.mod_eq_of_lt] <;>
     omega
 
-theorem add_source (left right : UInt64) : LeanExe.ProofKit.Float64.addBits left right = add left right := rfl
-theorem sub_source (left right : UInt64) : LeanExe.ProofKit.Float64.subBits left right = sub left right := rfl
-theorem mul_source (left right : UInt64) : LeanExe.ProofKit.Float64.mulBits left right = mul left right := rfl
-theorem div_source (left right : UInt64) : LeanExe.ProofKit.Float64.divBits left right = div left right := rfl
-theorem sqrt_source (value : UInt64) : LeanExe.ProofKit.Float64.sqrtBits value = sqrt value := rfl
+theorem add_source (left right : UInt64) : LeanExe.ProofKit.Float64.addBits left right = add left right := by rfl
+theorem sub_source (left right : UInt64) : LeanExe.ProofKit.Float64.subBits left right = sub left right := by rfl
+theorem mul_source (left right : UInt64) : LeanExe.ProofKit.Float64.mulBits left right = mul left right := by rfl
+theorem div_source (left right : UInt64) : LeanExe.ProofKit.Float64.divBits left right = div left right := by rfl
+theorem sqrt_source (value : UInt64) : LeanExe.ProofKit.Float64.sqrtBits value = sqrt value := by rfl
 
 #print axioms add_source
 #print axioms sub_source

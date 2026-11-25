@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Float32
-import Interpreter.Wasm.IEEE32
-import Mathlib.Tactic
+module
+
+public import LeanExe.Dialect.Float32
+public import Interpreter.Wasm.IEEE32
+public import Mathlib.Tactic
+
+public section
 
 namespace LeanExe.ProofKit.F32Source
 
@@ -19,11 +23,11 @@ def div (left right : UInt32) : UInt32 :=
 def sqrt (value : UInt32) : UInt32 :=
   (Float32.Model.sqrt (Float32.Model.ofBits value)).toBits
 
-theorem add_source (left right : UInt32) : LeanExe.Float32.addBits left right = add left right := rfl
-theorem sub_source (left right : UInt32) : LeanExe.Float32.subBits left right = sub left right := rfl
-theorem mul_source (left right : UInt32) : LeanExe.Float32.mulBits left right = mul left right := rfl
-theorem div_source (left right : UInt32) : LeanExe.Float32.divBits left right = div left right := rfl
-theorem sqrt_source (value : UInt32) : LeanExe.Float32.sqrtBits value = sqrt value := rfl
+theorem add_source (left right : UInt32) : LeanExe.Float32.addBits left right = add left right := by rfl
+theorem sub_source (left right : UInt32) : LeanExe.Float32.subBits left right = sub left right := by rfl
+theorem mul_source (left right : UInt32) : LeanExe.Float32.mulBits left right = mul left right := by rfl
+theorem div_source (left right : UInt32) : LeanExe.Float32.divBits left right = div left right := by rfl
+theorem sqrt_source (value : UInt32) : LeanExe.Float32.sqrtBits value = sqrt value := by rfl
 
 #print axioms add_source
 #print axioms sub_source

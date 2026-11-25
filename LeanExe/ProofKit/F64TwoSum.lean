@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64RoundNearest
-import LeanExe.ProofKit.F64Exact
+module
+
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64RoundNearest
+public import LeanExe.ProofKit.F64Exact
+
+public section
 
 /-!
 Dekker's error-free sum.  For finite `a` and `b` with `|b| ≤ |a|`, the words

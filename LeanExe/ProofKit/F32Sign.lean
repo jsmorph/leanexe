@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F32Sub
+module
+
+public import LeanExe.ProofKit.F32Sub
+
+public section
 
 /-!
 Lean's negation and absolute value of binary32 values in terms of Talos's

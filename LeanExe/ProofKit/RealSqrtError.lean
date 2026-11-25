@@ -1,5 +1,9 @@
-import Mathlib.Tactic
-import Mathlib.Analysis.Real.Sqrt
+module
+
+public import Mathlib.Tactic
+public import Mathlib.Analysis.Real.Sqrt
+
+public section
 
 /-! The relative error of a square root whose input has a relative error. -/
 

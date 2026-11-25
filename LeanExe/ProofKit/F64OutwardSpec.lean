@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64Outward
-import LeanExe.ProofKit.F64MulEnclosure
-import LeanExe.ProofKit.F64DivEnclosure
-import LeanExe.ProofKit.F64SqrtEnclosure
+module
+
+public import LeanExe.ProofKit.F64Outward
+public import LeanExe.ProofKit.F64MulEnclosure
+public import LeanExe.ProofKit.F64DivEnclosure
+public import LeanExe.ProofKit.F64SqrtEnclosure
+
+public section
 
 namespace LeanExe.ProofKit.F64Outward
 open CodeLib.IEEE64
@@ -9,7 +13,7 @@ open LeanExe.ProofKit.F64Order
 open LeanExe.ProofKit.F64Adjacent
 set_option exponentiation.threshold 4096
 
-def Sound (up : Bool) (result : Checked) (x : ℝ) : Prop :=
+@[expose] def Sound (up : Bool) (result : Checked) (x : ℝ) : Prop :=
   result.status = 0 ∧ Finite result.value ∧
     if up then x ≤ value result.value else value result.value ≤ x
 

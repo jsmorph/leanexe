@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Exact
+module
+
+public import LeanExe.ProofKit.F64Exact
+
+public section
 
 /-!
 Results of the binary64 operations at their saturation points, proved from the definitions in

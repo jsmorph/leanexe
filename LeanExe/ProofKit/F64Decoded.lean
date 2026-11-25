@@ -1,13 +1,17 @@
-import LeanExe.ProofKit.F64AddFinite
+module
+
+public import LeanExe.ProofKit.F64AddFinite
+
+public section
 
 namespace LeanExe.ProofKit.F64Decoded
 open Float.Model Float.Model.UnpackedFloat F64Encoding F64Packing F64AddFinite FloatCommon
 
-def mantissa (x : UInt64) : Nat :=
+@[expose] def mantissa (x : UInt64) : Nat :=
   if Wasm.IEEE64.exponent x = 0 then Wasm.IEEE64.fraction x
   else 2 ^ 52 + Wasm.IEEE64.fraction x
 
-def exponent (x : UInt64) : Int :=
+@[expose] def exponent (x : UInt64) : Int :=
   if Wasm.IEEE64.exponent x = 0 then -1074 else (Wasm.IEEE64.exponent x : Int) - 1075
 
 theorem exponent_ge (x : UInt64) : -1074 ≤ exponent x := by

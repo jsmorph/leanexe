@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RoundNearest
+module
+
+public import LeanExe.ProofKit.F64RoundNearest
+
+public section
 
 /-!
 Doubling keeps a word nearest.  If `c` is a nearest word of `S` and `d` has the value `2 c`, then

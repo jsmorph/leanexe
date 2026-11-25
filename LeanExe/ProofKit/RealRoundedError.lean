@@ -1,6 +1,10 @@
-import Mathlib.Data.Real.Basic
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.Ring
+module
+
+public import Mathlib.Data.Real.Basic
+public import Mathlib.Tactic.Linarith
+public import Mathlib.Tactic.Ring
+
+public section
 
 /-!
 Errors of sums and products whose operands have errors, and the magnitude of a value within a

@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64Adjacent
-import LeanExe.ProofKit.F64NearestNonnegative
+module
+
+public import LeanExe.ProofKit.F64Adjacent
+public import LeanExe.ProofKit.F64NearestNonnegative
+
+public section
 
 namespace LeanExe.ProofKit.F64PositiveOrder
 open CodeLib.IEEE64

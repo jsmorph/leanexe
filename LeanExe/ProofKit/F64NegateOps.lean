@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64RelativeStep
-import LeanExe.ProofKit.F64Add
+module
+
+public import LeanExe.ProofKit.F64RelativeStep
+public import LeanExe.ProofKit.F64Add
+
+public section
 
 /-!
 Rounded sums, products, and quotients of negated operands.  Each rounding helper of `Wasm.IEEE64`

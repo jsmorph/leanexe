@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F32Add
+module
+
+public import LeanExe.ProofKit.F32Add
+
+public section
 
 /-!
 Lean's comparisons of binary32 values agree with Talos's `IEEE32.lt`, `le`, and

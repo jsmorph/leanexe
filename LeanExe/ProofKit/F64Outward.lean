@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Adjacent
+module
+
+public import LeanExe.ProofKit.F64Adjacent
+
+public section
 
 namespace LeanExe.ProofKit.F64Outward
 open LeanExe.ProofKit.F64Order
@@ -9,35 +13,35 @@ structure Checked where
   value : UInt64
   deriving DecidableEq, Inhabited, Repr
 
-def rejected : Checked := ⟨1, 0⟩
+@[expose] def rejected : Checked := ⟨1, 0⟩
 
-def neighbor (up : Bool) (bits : UInt64) : UInt64 :=
+@[expose] def neighbor (up : Bool) (bits : UInt64) : UInt64 :=
   if up then nextUp bits else nextDown bits
 
-def endpoint (up : Bool) (rounded : UInt64) : Checked :=
+@[expose] def endpoint (up : Bool) (rounded : UInt64) : Checked :=
   if finiteBits rounded then
     let bits := neighbor up rounded
     if finiteBits bits then ⟨0, bits⟩ else rejected
   else rejected
 
-def add (up : Bool) (a b : UInt64) : Checked :=
+@[expose] def add (up : Bool) (a b : UInt64) : Checked :=
   if finiteBits a && finiteBits b then endpoint up (Wasm.IEEE64.add a b)
   else rejected
 
-def sub (up : Bool) (a b : UInt64) : Checked :=
+@[expose] def sub (up : Bool) (a b : UInt64) : Checked :=
   if finiteBits a && finiteBits b then endpoint up (Wasm.IEEE64.sub a b)
   else rejected
 
-def mul (up : Bool) (a b : UInt64) : Checked :=
+@[expose] def mul (up : Bool) (a b : UInt64) : Checked :=
   if finiteBits a && finiteBits b then endpoint up (Wasm.IEEE64.mul a b)
   else rejected
 
-def div (up : Bool) (a b : UInt64) : Checked :=
+@[expose] def div (up : Bool) (a b : UInt64) : Checked :=
   if finiteBits a && finiteBits b && decide (0 < absBits b) then
     endpoint up (Wasm.IEEE64.div a b)
   else rejected
 
-def sqrt (up : Bool) (a : UInt64) : Checked :=
+@[expose] def sqrt (up : Bool) (a : UInt64) : Checked :=
   if finiteBits a && decide (a ≤ 0x8000000000000000) then
     endpoint up (Wasm.IEEE64.sqrt a)
   else rejected

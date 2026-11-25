@@ -1,11 +1,15 @@
-import LeanExe.ProofKit.F64Order
+module
+
+public import LeanExe.ProofKit.F64Order
+
+public section
 
 namespace LeanExe.ProofKit.F64ExponentBounds
 open CodeLib.IEEE64 F64Order
 
 set_option exponentiation.threshold 4096
 
-def boundary (e : Nat) : UInt64 := UInt64.ofNat (e * 2 ^ 52)
+@[expose] def boundary (e : Nat) : UInt64 := UInt64.ofNat (e * 2 ^ 52)
 
 theorem boundary_fields (e : Nat) (he : e < 2048) :
     (boundary e).toNat = e * 2 ^ 52 ∧ absBits (boundary e) = boundary e := by

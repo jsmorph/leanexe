@@ -1,4 +1,8 @@
-import Mathlib.Tactic
+module
+
+public import Mathlib.Tactic
+
+public section
 
 /-! The error of `state - ratio · difference` when the difference, the product, and the result have
 errors. -/

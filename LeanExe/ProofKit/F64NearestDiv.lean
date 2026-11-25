@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64NearestSum
-import LeanExe.ProofKit.F64GridExact
+module
+
+public import LeanExe.ProofKit.F64NearestSum
+public import LeanExe.ProofKit.F64GridExact
+
+public section
 
 /-!
 Rounded division gives the nearest binary64 value to the exact quotient.  `Wasm.IEEE64.div`

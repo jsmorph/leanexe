@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F32Decoded
-import LeanExe.ProofKit.F32RoundDyadic
+module
+
+public import LeanExe.ProofKit.F32Decoded
+public import LeanExe.ProofKit.F32RoundDyadic
+
+public section
 
 namespace LeanExe.ProofKit.F32MulFinite
 open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32RoundDyadic FloatCommon

@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64ErrorTrack
-import LeanExe.ProofKit.PolyBound
-import LeanExe.ProofKit.F64Bits
+module
+
+public import LeanExe.ProofKit.F64ErrorTrack
+public import LeanExe.ProofKit.PolyBound
+public import LeanExe.ProofKit.F64Bits
+
+public section
 
 /-!
 A verified error bound for Horner evaluation in binary64.  `hornerF [a₀, ..., aₙ] s` is
@@ -118,7 +122,7 @@ theorem hornerErr_cons (a b : ℚ) (q : List ℚ) (lo hi : ℚ) :
         uQ * (magBound (a :: b :: q) lo hi +
           (absMax lo hi * hornerErr (b :: q) lo hi +
             uQ * (absMax lo hi * (magBound (b :: q) lo hi + hornerErr (b :: q) lo hi)) + etaQ)) :=
-  rfl
+  by rfl
 
 theorem hornerErr_nonneg (cs : List ℚ) (lo hi : ℚ) (x : ℝ) (hlo : (lo : ℝ) ≤ x) (hhi : x ≤ hi) :
     (0 : ℝ) ≤ hornerErr cs lo hi := by

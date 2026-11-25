@@ -1,16 +1,20 @@
-import LeanExe.ProofKit.F64OrderComplete
-import LeanExe.ProofKit.F64Absolute
+module
+
+public import LeanExe.ProofKit.F64OrderComplete
+public import LeanExe.ProofKit.F64Absolute
+
+public section
 
 namespace LeanExe.ProofKit.F64Adjacent
 open CodeLib.IEEE64
 open LeanExe.ProofKit.F64Order
 set_option exponentiation.threshold 4096
 
-def nextUp (bits : UInt64) : UInt64 :=
+@[expose] def nextUp (bits : UInt64) : UInt64 :=
   if bits = 0x8000000000000000 then 1
   else if bits < 0x8000000000000000 then bits+1 else bits-1
 
-def nextDown (bits : UInt64) : UInt64 :=
+@[expose] def nextDown (bits : UInt64) : UInt64 :=
   if bits = 0 then 0x8000000000000001
   else if bits < 0x8000000000000000 then bits-1 else bits+1
 

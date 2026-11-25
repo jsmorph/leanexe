@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64NormalizedMagnitude
-import LeanExe.ProofKit.F64Admissibility
+module
+
+public import LeanExe.ProofKit.F64NormalizedMagnitude
+public import LeanExe.ProofKit.F64Admissibility
+
+public section
 
 /-! Magnitudes normalized to a top exponent, including words too small to normalize, with bounds on
 their scaled magnitudes. -/

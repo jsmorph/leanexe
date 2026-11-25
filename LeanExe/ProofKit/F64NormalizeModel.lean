@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64Bounds
-import LeanExe.ProofKit.F64Order
+module
+
+public import LeanExe.ProofKit.F64Bounds
+public import LeanExe.ProofKit.F64Order
+
+public section
 
 namespace LeanExe.ProofKit.F64Normalize
 open CodeLib.IEEE64

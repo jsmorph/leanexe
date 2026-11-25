@@ -1,5 +1,9 @@
-import Interpreter.Wasm.IEEE32
-import Mathlib.Tactic
+module
+
+public import Interpreter.Wasm.IEEE32
+public import Mathlib.Tactic
+
+public section
 
 namespace LeanExe.ProofKit.FloatRounding
 open Float.Model.UnpackedFloat

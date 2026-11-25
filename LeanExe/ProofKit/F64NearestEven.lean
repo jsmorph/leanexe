@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64NearestStep
+module
+
+public import LeanExe.ProofKit.F64NearestStep
+
+public section
 
 namespace LeanExe.ProofKit.F64NearestEven
 open CodeLib.IEEE64 F64NearestNonnegative F64PositiveOrder F64NearestStep

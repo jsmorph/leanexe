@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64TwoSteps
-import LeanExe.ProofKit.F64RoundNearest
+module
+
+public import LeanExe.ProofKit.F64TwoSteps
+public import LeanExe.ProofKit.F64RoundNearest
+
+public section
 
 /-!
 A word that is a nearest rounding of a real within `E` of `y`.  The last operation of a computed

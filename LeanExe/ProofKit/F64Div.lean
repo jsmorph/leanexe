@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64DivCore
-import LeanExe.ProofKit.F64Add
+module
+
+public import LeanExe.ProofKit.F64DivCore
+public import LeanExe.ProofKit.F64Add
+
+public section
 
 namespace LeanExe.ProofKit.F64Div
 open Float.Model Float.Model.UnpackedFloat F64Encoding F64Packing F64Decoded F64DivCore FloatCommon

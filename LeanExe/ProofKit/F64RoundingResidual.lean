@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64AddEnclosure
-import LeanExe.ProofKit.F64MulEnclosure
+module
+
+public import LeanExe.ProofKit.F64AddEnclosure
+public import LeanExe.ProofKit.F64MulEnclosure
+
+public section
 
 /-! The rounding radius of a binary64 word, the larger of its gaps to its two neighbors, bounds
 the error of a finite rounded sum, difference, or product against the exact result. -/

@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64ConservativeUpdate
+module
+
+public import LeanExe.ProofKit.F64ConservativeUpdate
+
+public section
 
 /-! The error of a rounded conservative update against the exact update with exact fluxes. -/
 

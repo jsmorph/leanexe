@@ -1,9 +1,13 @@
-import LeanExe.ProofKit.F64Mul
-import LeanExe.ProofKit.F64Sub
-import LeanExe.ProofKit.F64Div
-import LeanExe.ProofKit.F64Sqrt
-import LeanExe.ProofKit.F64Compare
-import LeanExe.ProofKit.F64Sign
+module
+
+public import LeanExe.ProofKit.F64Mul
+public import LeanExe.ProofKit.F64Sub
+public import LeanExe.ProofKit.F64Div
+public import LeanExe.ProofKit.F64Sqrt
+public import LeanExe.ProofKit.F64Compare
+public import LeanExe.ProofKit.F64Sign
+
+public section
 
 /-!
 Lean's `Float` operations on bit patterns agree with Talos's `IEEE64`

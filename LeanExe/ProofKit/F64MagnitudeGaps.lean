@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64AdjacentSigned
+module
+
+public import LeanExe.ProofKit.F64AdjacentSigned
+
+public section
 
 namespace LeanExe.ProofKit.F64Adjacent
 open LeanExe.ProofKit.F64Order

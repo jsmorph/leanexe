@@ -1,5 +1,9 @@
-import CodeLib.IEEE64.Roundoff
-import Mathlib.Tactic
+module
+
+public import CodeLib.IEEE64.Roundoff
+public import Mathlib.Tactic
+
+public section
 
 /-!
 A bound on a polynomial with rational coefficients over a rational interval, checked by the
@@ -15,7 +19,7 @@ a binary64 word, so a kernel's coefficients `value 0x...` occur in a polynomial 
 namespace LeanExe.ProofKit.PolyBound
 
 /-- The real value at `x` of the polynomial with coefficients `p`, lowest degree first. -/
-noncomputable def eval : List ℚ → ℝ → ℝ
+@[expose] noncomputable def eval : List ℚ → ℝ → ℝ
   | [], _ => 0
   | a :: p, x => (a : ℝ) + x * eval p x
 
@@ -62,10 +66,10 @@ def check (p : List ℚ) (lo hi ε : ℚ) : Nat → Bool
 /-- The exact rational value of a binary64 word. -/
 def ratOfWord (w : UInt64) : ℚ := (Wasm.IEEE64.scaledValue w : ℚ) / 2 ^ 1074
 
-@[simp] theorem eval_nil (x : ℝ) : eval [] x = 0 := rfl
+@[simp] theorem eval_nil (x : ℝ) : eval [] x = 0 := by rfl
 
 @[simp] theorem eval_cons (a : ℚ) (p : List ℚ) (x : ℝ) :
-    eval (a :: p) x = (a : ℝ) + x * eval p x := rfl
+    eval (a :: p) x = (a : ℝ) + x * eval p x := by rfl
 
 theorem ratOfWord_cast (w : UInt64) : ((ratOfWord w : ℚ) : ℝ) = CodeLib.IEEE64.value w := by
   simp [ratOfWord, CodeLib.IEEE64.value]

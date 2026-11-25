@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64ValueExact
-import LeanExe.ProofKit.F64PackingModel
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64RoundNearest
+module
+
+public import LeanExe.ProofKit.F64ValueExact
+public import LeanExe.ProofKit.F64PackingModel
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64RoundNearest
+
+public section
 
 /-!
 Rounded sums and differences are nearest: no finite word lies closer to the exact result.  The

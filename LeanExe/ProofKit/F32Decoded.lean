@@ -1,13 +1,17 @@
-import LeanExe.ProofKit.F32AddFinite
+module
+
+public import LeanExe.ProofKit.F32AddFinite
+
+public section
 
 namespace LeanExe.ProofKit.F32Decoded
 open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32AddFinite FloatCommon
 
-def mantissa (x : UInt32) : Nat :=
+@[expose] def mantissa (x : UInt32) : Nat :=
   if Wasm.IEEE32.exponent x = 0 then Wasm.IEEE32.fraction x
   else 2 ^ 23 + Wasm.IEEE32.fraction x
 
-def exponent (x : UInt32) : Int :=
+@[expose] def exponent (x : UInt32) : Int :=
   if Wasm.IEEE32.exponent x = 0 then -149 else (Wasm.IEEE32.exponent x : Int) - 150
 
 theorem exponent_ge (x : UInt32) : -149 ≤ exponent x := by

@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64ArithmeticBounds
-import LeanExe.ProofKit.F64SqrtBounds
-import LeanExe.ProofKit.F64OrderComplete
+module
+
+public import LeanExe.ProofKit.F64ArithmeticBounds
+public import LeanExe.ProofKit.F64SqrtBounds
+public import LeanExe.ProofKit.F64OrderComplete
+
+public section
 
 /-! Relative error bounds of rounded operations on positive normal binary64 values within a range. -/
 

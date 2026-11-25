@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64TwoSteps
+module
+
+public import LeanExe.ProofKit.F64TwoSteps
+
+public section
 
 /-!
 Composition of step bounds.  A word within one step of the reference of `y₁` lies within two

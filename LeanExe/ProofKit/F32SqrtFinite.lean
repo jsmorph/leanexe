@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F32SqrtCore
-import LeanExe.ProofKit.F32RoundFinish
+module
+
+public import LeanExe.ProofKit.F32SqrtCore
+public import LeanExe.ProofKit.F32RoundFinish
+
+public section
 
 namespace LeanExe.ProofKit.F32SqrtFinite
 open Float.Model Float.Model.UnpackedFloat F32SqrtCore FloatSqrtRounding F32RoundFinish FloatCommon

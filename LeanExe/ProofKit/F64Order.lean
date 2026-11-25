@@ -1,16 +1,20 @@
-import CodeLib.IEEE64.Roundoff
+module
+
+public import CodeLib.IEEE64.Roundoff
+
+public section
 
 /-! Integer guards for finite binary64 words, including zero and subnormals. -/
 namespace LeanExe.ProofKit.F64Order
 set_option exponentiation.threshold 4096
 set_option maxRecDepth 8192
 
-def absBits (bits : UInt64) : UInt64 := bits &&& 0x7FFFFFFFFFFFFFFF
+@[expose] def absBits (bits : UInt64) : UInt64 := bits &&& 0x7FFFFFFFFFFFFFFF
 
-def finiteBits (bits : UInt64) : Bool :=
+@[expose] def finiteBits (bits : UInt64) : Bool :=
   decide (absBits bits < (0x7FF0000000000000 : UInt64))
 
-def positiveBits (bits : UInt64) : Bool :=
+@[expose] def positiveBits (bits : UInt64) : Bool :=
   decide ((0 : UInt64) < bits) && decide (bits < (0x7FF0000000000000 : UInt64))
 
 theorem absBits_toNat (bits : UInt64) :
@@ -43,7 +47,7 @@ theorem finiteBits_iff (bits : UInt64) :
     (absBits bits).toNat / 2 ^ 52 ≠ 2047
   omega
 
-def unsignedScaled (n : Nat) : Nat :=
+@[expose] def unsignedScaled (n : Nat) : Nat :=
   if n / 2 ^ 52 = 0 then n % 2 ^ 52
   else (2 ^ 52 + n % 2 ^ 52) * 2 ^ (n / 2 ^ 52 - 1)
 

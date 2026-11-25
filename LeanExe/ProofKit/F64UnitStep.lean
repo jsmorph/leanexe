@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RelativeStep
+module
+
+public import LeanExe.ProofKit.F64RelativeStep
+
+public section
 
 /-!
 One step near 1: a finite word within one and a half spacings of `[1/2, 1)` of a number from

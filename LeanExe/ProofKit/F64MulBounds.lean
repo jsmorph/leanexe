@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64DyadicBounds
-import CodeLib.IEEE64.Operations
+module
+
+public import LeanExe.ProofKit.F64DyadicBounds
+public import CodeLib.IEEE64.Operations
+
+public section
 
 /-! Error bounds of rounded binary64 multiplication, relative and mixed absolute-relative. -/
 

@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64PositiveRounding
-import LeanExe.ProofKit.F64PositiveOrder
+module
+
+public import LeanExe.ProofKit.F64PositiveRounding
+public import LeanExe.ProofKit.F64PositiveOrder
+
+public section
 
 /-!
 The signed nearest-even reference and the count of representable steps between words.  Rounding
@@ -15,17 +19,17 @@ open CodeLib.IEEE64
 
 /-- The nearest-even binary64 word of `y`, positive infinity from the overflow threshold on and
 negative infinity from its negation down. -/
-noncomputable def roundNearestEven (y : ℝ) : UInt64 :=
+@[expose] noncomputable def roundNearestEven (y : ℝ) : UInt64 :=
   if 0 ≤ y then F64PositiveRounding.roundNearestEven y
   else Wasm.IEEE64.negate (F64PositiveRounding.roundNearestEven (-y))
 
 /-- The encoding of the magnitude of `w`, negated when the sign bit is set. -/
-def position (w : UInt64) : Int :=
+@[expose] def position (w : UInt64) : Int :=
   if Wasm.IEEE64.sign w then -((w.toNat - 2 ^ 63 : Nat) : Int) else (w.toNat : Int)
 
 /-- `w` is not a NaN and lies within `n` representable steps of the nearest-even reference of
 `y`. -/
-def WithinSteps (n : Nat) (y : ℝ) (w : UInt64) : Prop :=
+@[expose] def WithinSteps (n : Nat) (y : ℝ) (w : UInt64) : Prop :=
   w.toNat % 2 ^ 63 ≤ 0x7FF0000000000000 ∧ |position w - position (roundNearestEven y)| ≤ n
 
 theorem negate_toNat (w : UInt64) :

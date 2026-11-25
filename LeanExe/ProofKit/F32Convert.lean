@@ -1,5 +1,10 @@
-import LeanExe.ProofKit.F32Normalize
-import LeanExe.ProofKit.QuantizedInt32
+module
+
+public import LeanExe.ProofKit.F32Normalize
+public import LeanExe.ProofKit.QuantizedInt32
+import all Init.Data.SInt.Float32
+
+public section
 
 namespace LeanExe.ProofKit.F32Convert
 open Float.Model Float.Model.UnpackedFloat FloatCommon

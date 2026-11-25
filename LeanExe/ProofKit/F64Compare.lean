@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Add
+module
+
+public import LeanExe.ProofKit.F64Add
+
+public section
 
 /-!
 Lean's comparisons of binary64 values agree with Talos's `IEEE64.lt`, `le`, and

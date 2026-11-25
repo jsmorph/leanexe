@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64ErrorTrack
-import LeanExe.ProofKit.F64NearestBinade
-import LeanExe.ProofKit.F64ExponentBounds
+module
+
+public import LeanExe.ProofKit.F64ErrorTrack
+public import LeanExe.ProofKit.F64NearestBinade
+public import LeanExe.ProofKit.F64ExponentBounds
+
+public section
 
 /-!
 Sterbenz's lemma for binary64 words: a difference no larger than either operand in magnitude is

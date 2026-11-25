@@ -1,18 +1,22 @@
-import CodeLib.IEEE64.Roundoff
-import Mathlib.Data.Finset.Max
+module
+
+public import CodeLib.IEEE64.Roundoff
+public import Mathlib.Data.Finset.Max
+
+public section
 
 namespace LeanExe.ProofKit.F64NearestNonnegative
 open CodeLib.IEEE64
 
 set_option exponentiation.threshold 4096
 
-def limit : Nat := 0x7FF0000000000000
+@[expose] def limit : Nat := 0x7FF0000000000000
 
-def Nearest (y : ℝ) (w : UInt64) : Prop :=
+@[expose] def Nearest (y : ℝ) (w : UInt64) : Prop :=
   w.toNat < limit ∧
     ∀ v : UInt64, v.toNat < limit → |value w - y| ≤ |value v - y|
 
-def NearestEven (y : ℝ) (w : UInt64) : Prop :=
+@[expose] def NearestEven (y : ℝ) (w : UInt64) : Prop :=
   Nearest y w ∧ ∀ v : UInt64, Nearest y v → w.toNat % 2 ≤ v.toNat % 2
 
 theorem word_toNat (n : Nat) (hn : n < limit) : (UInt64.ofNat n).toNat = n :=

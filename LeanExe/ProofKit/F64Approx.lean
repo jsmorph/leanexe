@@ -1,11 +1,15 @@
-import LeanExe.ProofKit.F64ArithmeticBounds
-import LeanExe.ProofKit.F64SqrtBounds
-import LeanExe.ProofKit.F64SignedRounding
-import LeanExe.ProofKit.F64FullStep
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64PositiveSpacing
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.PolyBound
+module
+
+public import LeanExe.ProofKit.F64ArithmeticBounds
+public import LeanExe.ProofKit.F64SqrtBounds
+public import LeanExe.ProofKit.F64SignedRounding
+public import LeanExe.ProofKit.F64FullStep
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64PositiveSpacing
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.PolyBound
+
+public section
 
 /-!
 Error tracking for straight-line binary64 code.  `Approx w v e` states that the word `w` is finite
@@ -27,7 +31,7 @@ open CodeLib.IEEE64
 set_option exponentiation.threshold 4096
 
 /-- The word `w` is finite and within `e` of `v`. -/
-def Approx (w : UInt64) (v e : ℝ) : Prop := Finite w ∧ |value w - v| ≤ e
+@[expose] def Approx (w : UInt64) (v e : ℝ) : Prop := Finite w ∧ |value w - v| ≤ e
 
 theorem Approx.mag {w : UInt64} {v e : ℝ} (h : Approx w v e) : |value w| ≤ |v| + e := by
   have := abs_sub_abs_le_abs_sub (value w) v
@@ -237,7 +241,7 @@ theorem approx_negate {a : UInt64} {va ea : ℝ} (ha : Approx a va ea) :
   exact ha.2
 
 /-- `Approx` for a Lean float. -/
-def FApprox (x : Float) (v e : ℝ) : Prop := Approx x.toBits v e
+@[expose] def FApprox (x : Float) (v e : ℝ) : Prop := Approx x.toBits v e
 
 theorem fapprox_add {a b : Float} {va vb ea eb : ℝ} (ha : FApprox a va ea)
     (hb : FApprox b vb eb) (B : ℝ) (hB : |va + vb| + (ea + eb) ≤ B) (hBmax : B < 2 ^ 1023) :
