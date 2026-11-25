@@ -12,7 +12,8 @@ def fast : Bool := get_config? fast == some "true"
 package leanexe where
   version := v!"0.1.0"
   buildDir := if fast then ".lake/build-fast" else defaultBuildDir
-  leanOptions := if fast then #[⟨`debug.skipKernelTC, true⟩, ⟨`maxRecDepth, .ofNat 40000⟩] else #[]
+  leanOptions := if fast then #[⟨`debug.skipKernelTC, true⟩, ⟨`maxRecDepth, .ofNat 40000⟩]
+    else #[⟨`maxRecDepth, .ofNat 40000⟩]
 
 /-- The revision of Talos that supplies both CodeLib and WasmInterpreterLean. -/
 def talosRev : String := "8dd08348c9dcbeedc7f099dcf8e3134105c5b672"
