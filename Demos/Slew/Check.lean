@@ -314,9 +314,12 @@ theorem nan_not_lt {a : Float} (h : IsNaN a) (b : Float) : ¬ a < b := by
 
 theorem val_le_max_left (a b : Float) : val a ≤ val (max a b) := by
   rw [max_def']
-  by_cases hab : a ≤ b
-  · rw [ite_eq_left hab]; exact le_val_of_le hab
-  · exact le_of_eq (congrArg val (ite_eq_right hab).symm)
+  split_ifs with h1 h2 h3
+  · exact (lt_val_of_lt h1).le
+  · exact le_rfl
+  · exact le_rfl
+  · exact (val_eq_of_beq h3).le
+  · exact val_le_canonicalNaN a
 
 theorem keepout_f0 {f0 f1 x L : Float} {e : Bool}
     (h : (if e = true then max f0 f1 else max (max f0 f1) x) ≤ L) : val f0 ≤ val L := by
@@ -357,12 +360,12 @@ theorem keepin_facts {f0 f1 x L : Float} {e : Bool} (hf0 : Fin f0) (hf1 : Fin f1
       fun h' => absurd h' (by decide)⟩
 
 /-- A keep-in check with a NaN `f₁` and a NaN stationary value fails. -/
-theorem keepin_nan {f0 f1 x L : Float} {e : Bool} (hf1 : IsNaN f1) (hx : IsNaN x)
+theorem keepin_nan {f0 f1 x L : Float} {e : Bool} (hf1 : IsNaN f1) (_hx : IsNaN x)
     (h : L ≤ (if e = true then min f0 f1 else min (min f0 f1) x)) : False := by
   rw [hf1.min_right] at h
   cases e
   · rw [ite_eq_right Bool.false_ne_true, hf1.min_left] at h
-    exact hx.not_le_right L h
+    exact hf1.not_le_right L h
   · rw [ite_eq_left rfl] at h
     exact hf1.not_le_right L h
 
