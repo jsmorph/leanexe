@@ -411,6 +411,7 @@ public import LeanExe.ProofKit.FixedArraySearchNone
 public import LeanExe.ProofKit.FixedArraySearchRead
 public import LeanExe.ProofKit.Float64
 public import LeanExe.ProofKit.FloatCommon
+public import LeanExe.ProofKit.FloatMinMax
 public import LeanExe.ProofKit.FloatRationalRounding
 public import LeanExe.ProofKit.FloatRounding
 public import LeanExe.ProofKit.FloatShift

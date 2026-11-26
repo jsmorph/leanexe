@@ -16,6 +16,7 @@ public import Verified.Reflect.TailBoundLemmas
 public import LeanExe.Encoding.RoundTrip
 public import LeanExe.Encoding.Completeness.Writes
 public import LeanExe.ProofKit.Signed64Float
+public import LeanExe.ProofKit.FloatMinMax
 public import LeanExe.Pipeline.Int64
 
 @[expose] public section
@@ -2647,11 +2648,22 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let word := (← whnfR α).isConstOf ``UInt64 || (← whnfR α).isConstOf ``Int64
     unless (← isFloat α) || word do
       throwError "verified_compile: unsupported {fn} on {α}"
-    -- `min` and `max` on floats and words are `if a ≤ b`, with operands that are not variables
-    -- bound first.
+    -- Operands that are not variables are bound first.  On floats, `min` and `max` are IEEE
+    -- 754-2019's `minimum` and `maximum`, which `FloatMinMax` writes with `<`, `==`, and `|||` or
+    -- `&&&` on the bit patterns of two zeros.  On words they are `if a ≤ b`, which the kernel
+    -- reduces them to.
     let bind := [false, false, !(← projReduce a).isFVar, !(← projReduce b).isFVar]
     if bind.any id then
       return ← reflectAs (← bindArgs e.getAppFn [α, inst, a, b] bind #[] #[]) e
+    if ← isFloat α then
+      let thm := match fn == ``Min.min, (← whnfR α).isConstOf ``Float32 with
+        | true, false => ``LeanExe.ProofKit.FloatMinMax.min_eq
+        | false, false => ``LeanExe.ProofKit.FloatMinMax.max_eq
+        | true, true => ``LeanExe.ProofKit.FloatMinMax.min32_eq
+        | false, true => ``LeanExe.ProofKit.FloatMinMax.max32_eq
+      let eq ← mkAppM thm #[a, b]
+      let some (_, T, _) := (← inferType eq).eq? | throwError "verified_compile: the equation {eq}"
+      return ← reflectVia T (← mkExpectedTypeHint eq (← mkEq T e))
     let cond ← mkAppM ``LE.le #[a, b]
     let t ← if fn == ``Min.min then mkAppM ``ite #[cond, a, b] else mkAppM ``ite #[cond, b, a]
     reflectAs t e
