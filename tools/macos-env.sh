@@ -1,6 +1,6 @@
 # Source from the repository root after tools/bootstrap-macos.sh.
 # Existing versions and workspaces elsewhere on this machine are untouched.
-LEANRUN_TOOLCHAIN="$PWD/build/tools/lean-4.34.1-darwin_aarch64"
+LEANRUN_TOOLCHAIN="$PWD/build/tools/lean-4.36.0-darwin_aarch64"
 LEAN_SYSROOT="$LEANRUN_TOOLCHAIN"
 LEANRUN_LOCAL=1
 # Approved for this project's ARM Mac sandbox.

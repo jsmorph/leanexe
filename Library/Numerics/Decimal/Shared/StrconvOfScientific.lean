@@ -6,7 +6,7 @@ import LeanExe.ProofKit.F64RoundDyadic
 import LeanExe.ProofKit.F64GridExact
 
 /-!
-Lean's `Float.ofScientific` at `v4.34.1`, the meaning of every decimal literal of type `Float`,
+Lean's `Float.ofScientific` at `v4.36.0`, the meaning of every decimal literal of type `Float`,
 is `round64` of the decimal (`ofScientific_spec`).  The definition takes Clinger's fast path when
 `m < 2 ^ 53` and `e ≤ 22`: one multiplication or division of the exact double `m` by the exact
 power of ten `10 ^ e` from `Float.exactlyRepresentablePowersOfTen`, which `F64Bits` converts into
