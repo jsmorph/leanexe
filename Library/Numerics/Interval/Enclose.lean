@@ -2,6 +2,7 @@ module
 
 public import Library.Numerics.Interval.EncloseAttr
 public import Library.Numerics.Interval.FunctionsProof
+public meta import Library.Numerics.Interval.EncloseAttr
 
 @[expose] public section
 
@@ -47,19 +48,19 @@ open scoped Real
 
 /-! ### The translation -/
 
-def tableNames : Array Name := #[`trigInv, `trigHalf, `powLog, `powExp]
+meta def tableNames : Array Name := #[`trigInv, `trigHalf, `powLog, `powExp]
 
-def tables : Array Ident := tableNames.map mkIdent
+meta def tables : Array Ident := tableNames.map mkIdent
 
 /-- Component `i` of the `k` components of the tuple `p`. -/
-def component (p : Term) (i k : Nat) : MacroM Term := do
+meta def component (p : Term) (i k : Nat) : MacroM Term := do
   let mut e := p
   for _ in [0:i] do
     e ← `(($e).2)
   if i + 1 < k then `(($e).1) else pure e
 
 /-- The bindings of the components of a tuple, before `body`. -/
-def bindComponents (p : Ident) (xs : Array Ident) (body : Term) : MacroM Term := do
+meta def bindComponents (p : Ident) (xs : Array Ident) (body : Term) : MacroM Term := do
   let mut b := body
   for i in [0:xs.size] do
     let j := xs.size - 1 - i
@@ -69,7 +70,7 @@ def bindComponents (p : Ident) (xs : Array Ident) (body : Term) : MacroM Term :=
   pure b
 
 /-- The real body: the source with each tuple binding written as bindings of components. -/
-partial def realBody (stx : Term) : MacroM Term := do
+meta partial def realBody (stx : Term) : MacroM Term := do
   match stx with
   | `(let ($x:ident, $xs:ident,*) := $v; $b) =>
     let p := mkIdent `tuple
@@ -79,7 +80,7 @@ partial def realBody (stx : Term) : MacroM Term := do
   | _ => pure stx
 
 /-- The interval body. -/
-partial def intervalBody (stx : Term) : MacroM Term := do
+meta partial def intervalBody (stx : Term) : MacroM Term := do
   match stx with
   | `(($a)) => do `(($(← intervalBody a)))
   | `(let ($x:ident, $xs:ident,*) := $v; $b) =>
@@ -140,7 +141,7 @@ partial def intervalBody (stx : Term) : MacroM Term := do
   | _ => Macro.throwErrorAt stx "enclosure_def: unsupported term"
 
 /-- The number of components of the result of a body. -/
-partial def resultSize (stx : Term) : Nat :=
+meta partial def resultSize (stx : Term) : Nat :=
   match stx with
   | `(let ($_:ident, $_:ident,*) := $_; $b) => resultSize b
   | `(let $_:ident := $_; $b) => resultSize b
@@ -148,7 +149,7 @@ partial def resultSize (stx : Term) : Nat :=
   | _ => 1
 
 /-- The relation of the results: `Encloses`, or its product for a tuple. -/
-def resultRelation : Nat → MacroM Term
+meta def resultRelation : Nat → MacroM Term
   | 0 | 1 => `(Library.Numerics.Interval.Encloses)
   | k + 1 => do
     `(Library.Numerics.Interval.prodRel Library.Numerics.Interval.Encloses
@@ -157,7 +158,7 @@ def resultRelation : Nat → MacroM Term
 /-! ### The tactic -/
 
 /-- The relation between an interval value of type `ty` and its real value. -/
-partial def relationOf (ty : Expr) : MetaM Expr := do
+meta partial def relationOf (ty : Expr) : MetaM Expr := do
   let ty ← whnfR ty
   if ty.isConstOf ``Interval then return mkConst ``Encloses
   match ty.getAppFnArgs with
@@ -165,7 +166,7 @@ partial def relationOf (ty : Expr) : MetaM Expr := do
   | _ => throwError "enclose: no relation for values of type {ty}"
 
 /-- Runs a tactic on one goal and returns the goals it leaves. -/
-def runOn (g : MVarId) (tac : TSyntax `tactic) : TacticM (List MVarId) := do
+meta def runOn (g : MVarId) (tac : TSyntax `tactic) : TacticM (List MVarId) := do
   let saved ← getGoals
   setGoals [g]
   evalTactic tac
@@ -174,13 +175,13 @@ def runOn (g : MVarId) (tac : TSyntax `tactic) : TacticM (List MVarId) := do
   return rest
 
 /-- The value of an `Int64` literal. -/
-def literal? (e : Expr) : Option Nat :=
+meta def literal? (e : Expr) : Option Nat :=
   match e.getAppFnArgs with
   | (``OfNat.ofNat, #[_, n, _]) => n.rawNatLit?
   | _ => none
 
 /-- Splits a hypothesis that is a conjunction into its parts, repeatedly. -/
-partial def split (g : MVarId) (h : FVarId) : MetaM MVarId := g.withContext do
+meta partial def split (g : MVarId) (h : FVarId) : MetaM MVarId := g.withContext do
   let ty ← whnfR (← instantiateMVars (← h.getType))
   if ty.isAppOfArity ``And 2 then
     let #[s] ← g.cases h | throwError "enclose: cannot split {ty}"
@@ -191,7 +192,7 @@ partial def split (g : MVarId) (h : FVarId) : MetaM MVarId := g.withContext do
   else return g
 
 /-- Proves that an interval expression encloses a real expression. -/
-partial def solve (rules : Array Name) (g : MVarId) : TacticM Unit := g.withContext do
+meta partial def solve (rules : Array Name) (g : MVarId) : TacticM Unit := g.withContext do
   if ← withReducible g.assumptionCore then return
   let ty ← whnfR (← instantiateMVars (← g.getType))
   if ty.isAppOfArity ``Encloses 2 then
@@ -224,7 +225,7 @@ partial def solve (rules : Array Name) (g : MVarId) : TacticM Unit := g.withCont
   throwError "enclose: no rule proves {ty}"
 
 /-- Walks two chains of `let` bindings together. -/
-partial def chain (rules : Array Name) (g : MVarId) : TacticM Unit := g.withContext do
+meta partial def chain (rules : Array Name) (g : MVarId) : TacticM Unit := g.withContext do
   let ty ← instantiateMVars (← g.getType)
   let args := ty.getAppArgs
   unless 2 ≤ args.size do throwError "enclose: the goal {ty} is not a relation of two values"
@@ -263,7 +264,7 @@ elab "enclose" : tactic => withTheReader Core.Context ({ · with maxHeartbeats :
 /-! ### The command -/
 
 /-- The type of a tuple of `k` values of type `t`. -/
-def tupleType (t : Term) : Nat → MacroM Term
+meta def tupleType (t : Term) : Nat → MacroM Term
   | 0 | 1 => pure t
   | k + 1 => do `($t × $(← tupleType t k))
 

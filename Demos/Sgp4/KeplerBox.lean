@@ -4,6 +4,7 @@ public import Demos.Sgp4.Kepler
 public import Demos.Sgp4.Program
 public import Library.Numerics.Interval.EncloseAttr
 public import Library.Numerics.Interval.FunctionsProof
+public meta import Library.Numerics.Interval.EncloseAttr
 
 @[expose] public section
 
