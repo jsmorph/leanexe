@@ -57,7 +57,7 @@ instance : Fact (Nat.Prime 2147483647) := ⟨prime_modulus⟩
 
 /-- 16807 is a primitive root modulo `2^31 - 1`. -/
 theorem orderOf_multiplier : orderOf (16807 : ZMod 2147483647) = 2147483646 :=
-  orderOf_eq_of_pow_and_pow_div_prime (by norm_num) pow_order pow_div_prime_ne_one
+  orderOf_eq_of_pow_and_pow_div_prime pow_order pow_div_prime_ne_one
 
 /-! ### Iterates -/
 
