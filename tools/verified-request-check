@@ -76,7 +76,7 @@ lean() { tools/leanrun --timeout 60m --lock-timeout 3600 lake "$@"; }
 
 # The modules that tools/Emit.lean imports, less the toolchain's own.
 emit_imports() {
-  sed -n -E 's/^import ([A-Za-z0-9_.]+).*/\1/p' tools/Emit.lean |
+  sed -n -E 's/^(public )?(meta )?import (all )?([A-Za-z0-9_.]+).*/\4/p' tools/Emit.lean |
     { grep -v -E '^(Init|Std|Lean|Lake)(\.|$)' || true; }
 }
 
