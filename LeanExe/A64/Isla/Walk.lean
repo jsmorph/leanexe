@@ -207,7 +207,7 @@ section Meta
 open Lean Meta Elab Tactic
 
 /-- Whether `b`, a `Base`, is the variable `x`. -/
-def isVarE (x : Nat) (b : Expr) : Bool :=
+meta def isVarE (x : Nat) (b : Expr) : Bool :=
   b.isAppOfArity ``Base.var 1 && b.appArg!.nat? == some x
 
 /-- The strings of a list literal of string literals. -/

@@ -4,6 +4,7 @@ public import Demos.Bms.Program
 public import Demos.Bms.Stream
 public import Library.Hashing.Crc.Bitwise.Proof
 public import LeanExe.Requests.DelimitedSteps
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 
