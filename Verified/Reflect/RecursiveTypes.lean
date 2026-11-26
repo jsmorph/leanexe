@@ -11,13 +11,13 @@ namespace Verified.Reflect
 
 open Lean Meta Elab Command
 
-def fieldFamily (values : Array Term) : CommandElabM Term := do
+meta def fieldFamily (values : Array Term) : CommandElabM Term := do
   `(([$values,*]).get)
 
 /-- The word family of record constructor `r` with the word fields `words` of the elements
 `elems`: the list of the words when every field of the shape is a word or a child, and otherwise
 `TreeShape.wordsOf`. -/
-def wordFamilyTerm (shape : TreeShape) (r : Fin shape.records) (elems : Array Elem)
+meta def wordFamilyTerm (shape : TreeShape) (r : Fin shape.records) (elems : Array Elem)
     (words : Array Term) : CommandElabM Term := do
   if shape.allWords then return ← `(([$words,*]).get)
   let entries ← (elems.zip words).mapM fun (e, w) => `(⟨$(quote e), $w⟩)
@@ -33,7 +33,7 @@ inductive Rebuild where
 /-- The rebuilding of the component of a flat field of type `type` whose leaves have paths in the
 field's flattening that extend `pre`, with `paths` the paths of the field's leaves.  A structure
 rebuilds when its `Flat` tuple holds each field, and an enumeration or a sum does not rebuild. -/
-partial def rebuild? (type : Lean.Expr) (pre : List Bool) (paths : List (List Bool)) :
+meta partial def rebuild? (type : Lean.Expr) (pre : List Bool) (paths : List (List Bool)) :
     MetaM (Option Rebuild) := do
   let type ← withReducible (whnf type)
   if (fieldElem? type).isSome then return (paths.findIdx? (· == pre)).map .leaf
@@ -54,7 +54,7 @@ partial def rebuild? (type : Lean.Expr) (pre : List Bool) (paths : List (List Bo
 
 /-- The term that `rebuild` gives with the word of position `k` among the field's leaves as
 `word k`. -/
-partial def Rebuild.term (word : Nat → CommandElabM Term) : Rebuild → CommandElabM Term
+meta partial def Rebuild.term (word : Nat → CommandElabM Term) : Rebuild → CommandElabM Term
   | .leaf k => word k
   | .pair a b => do `(($(← a.term word), $(← b.term word)))
   | .ctor name fields => do `($(mkCIdent name) $(← fields.toArray.mapM (·.term word))*)
@@ -65,7 +65,7 @@ length slot after its root.  Each constructor with an array or buffer field is e
 variables for its fields, and an instance whose record list is a literal must have that order.
 The error names the first field out of place.  An instance that does not reduce to a literal
 record list is left to the agreement theorem. -/
-def checkEncodingOrder (layout : RecursiveLayout) : CommandElabM Unit := liftTermElabM do
+meta def checkEncodingOrder (layout : RecursiveLayout) : CommandElabM Unit := liftTermElabM do
   let type := mkConst layout.name
   let inst ← synthInstance (mkApp (mkConst ``LeanExe.Pipeline.Encode) type)
   for (ctor, kinds) in layout.ctors do
@@ -264,7 +264,7 @@ meta def elabVerifiedRecursiveType : CommandElab
 /-- Checks for the command `command` that each recursive type that the types of the definitions
 `names` use, directly or through the `Flat` tuple of a sum, has the declarations of
 `verified_recursive_type`. -/
-def requireRecursiveTypes (command : String) (names : Array Name) : CommandElabM Unit := do
+meta def requireRecursiveTypes (command : String) (names : Array Name) : CommandElabM Unit := do
   let mut types : List Name := []
   let mut pending : List Name := []
   for name in names do
