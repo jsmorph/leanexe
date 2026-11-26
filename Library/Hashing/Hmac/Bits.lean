@@ -129,6 +129,7 @@ theorem xorBlock_get (m : Words16) (c : UInt64) (t : Nat) (ht : t < 16) :
   interval_cases t <;> rfl
 
 theorem fold_one {β : Type} (f : (i : Nat) → i < 1 → β → β) (init : β) :
-    Nat.fold 1 f init = f 0 (by decide) init := rfl
+    Nat.fold 1 f init = f 0 (by decide) init := by
+  rw [Nat.fold_succ, Nat.fold_zero]
 
 end Library.Hashing.Hmac
