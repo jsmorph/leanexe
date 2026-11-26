@@ -56,4 +56,14 @@ def classes (n : UInt64) (js ks : Array UInt64) : Array UInt64 :=
     let least := if s.1[r.toNat]! = n then i else s.1[r.toNat]!
     (s.1.set! r.toNat least, s.2.set! i.toNat least)).2
 
+/-- Realizes the functional induction principles of `root` here.  `verified_compile` proves the
+termination of the loop it compiles from `root` with `fun_induction`, which realizes the principles
+in each module that compiles it.  Lean v4.36.0 refuses to import two such modules: it merges two
+realizations of a theorem only when the theorem concludes in a constant, and these conclude in their
+motive. -/
+theorem inductions_realized : True := by
+  have := @root.induct
+  have := @root.induct_unfolding
+  trivial
+
 end Library.Graphs.UnionFind

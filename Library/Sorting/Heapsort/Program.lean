@@ -66,4 +66,14 @@ def heapsort (xs : Array UInt64) : Array UInt64 :=
   else
     LeanExe.loop (n - 1) (heapify n xs) fun k acc => siftDown 0 (n - 1 - k) (swap 0 (n - 1 - k) acc)
 
+/-- Realizes the functional induction principles of `siftDown` here.  `verified_compile` proves the
+termination of the loop it compiles from it with `fun_induction`, which realizes the principles in
+each module that compiles it.  Lean v4.36.0 refuses to import two such modules: it merges two
+realizations of a theorem only when the theorem concludes in a constant, and these conclude in their
+motive. -/
+theorem inductions_realized : True := by
+  have := @siftDown.induct
+  have := @siftDown.induct_unfolding
+  trivial
+
 end Library.Sorting.Heapsort

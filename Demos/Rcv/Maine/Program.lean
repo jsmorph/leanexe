@@ -138,4 +138,14 @@ other array. -/
 def count (ws : Array UInt64) : Array UInt64 :=
   if validArray ws then countValid ws else #[0]
 
+/-- Realizes the functional induction principles of `examineAt` here.  `verified_compile` proves
+the termination of the loop it compiles from `examineAt` with `fun_induction`, which realizes the
+principles in each module that compiles it.  Lean v4.36.0 refuses to import two
+such modules: it merges two realizations of a theorem only when the theorem concludes in a
+constant, and these conclude in their motive. -/
+theorem inductions_realized : True := by
+  have := @examineAt.induct
+  have := @examineAt.induct_unfolding
+  trivial
+
 end Demos.Rcv.Maine.Program

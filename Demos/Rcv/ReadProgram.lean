@@ -308,4 +308,24 @@ def readContest (b : Bytes) : Array UInt64 :=
     else #[0, c.1, 4]
   else #[0, h.1, h.1 - 1]
 
+/-- Realizes the functional induction principles of this module's recursive functions here.
+`verified_compile` proves the termination of the loops it compiles from these functions with
+`fun_induction`, which realizes the principles in each module that compiles them.  Lean v4.36.0
+refuses to import two such modules: it merges two realizations of a theorem only when the theorem
+concludes in a constant, and these conclude in their motive. -/
+theorem inductions_realized : True := by
+  have := @findByte.induct
+  have := @findByte.induct_unfolding
+  have := @orderFrom.induct
+  have := @orderFrom.induct_unfolding
+  have := @markFrom.induct
+  have := @markFrom.induct_unfolding
+  have := @fieldsFrom.induct
+  have := @fieldsFrom.induct_unfolding
+  have := @candidatesFrom.induct
+  have := @candidatesFrom.induct_unfolding
+  have := @ballotsFrom.induct
+  have := @ballotsFrom.induct_unfolding
+  trivial
+
 end Demos.Rcv.ReadProgram
