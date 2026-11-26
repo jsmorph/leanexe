@@ -3,6 +3,7 @@ module
 public import Library.Hashing.XxHash64.Program
 public import Library.Bytes.LittleEndian
 public import Mathlib.Tactic
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

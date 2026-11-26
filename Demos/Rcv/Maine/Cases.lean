@@ -1,6 +1,9 @@
 module
 
 public import Demos.Rcv.Maine.Spec
+public meta import Demos.Rcv.Contest
+public meta import Demos.Rcv.Maine.Spec
+public meta import Demos.Rcv.Spec
 
 @[expose] public section
 

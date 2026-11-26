@@ -3,6 +3,7 @@ module
 public import Library.Hashing.SipHash.Program
 public import Library.Bytes.LittleEndian
 public import Mathlib.Tactic
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

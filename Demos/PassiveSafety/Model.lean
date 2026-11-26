@@ -7,6 +7,7 @@ public import Mathlib.Analysis.Calculus.Deriv.Shift
 public import Mathlib.Analysis.Calculus.Deriv.Pi
 public import Mathlib.Topology.Algebra.Module.FiniteDimension
 public import Mathlib.Algebra.Order.ToIntervalMod
+public import Mathlib.Analysis.Calculus.Deriv.Prod
 
 @[expose] public section
 

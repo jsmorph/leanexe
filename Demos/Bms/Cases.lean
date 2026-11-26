@@ -1,6 +1,9 @@
 module
 
 public import Demos.Bms.Spec
+public meta import Demos.Bms.Spec
+public meta import LeanExe.Requests.Delimited
+public meta import Library.Hashing.Crc.Division
 
 @[expose] public section
 

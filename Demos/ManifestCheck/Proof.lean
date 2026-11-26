@@ -4,6 +4,7 @@ public import Demos.ManifestCheck.Program
 public import Demos.ManifestCheck.Spec
 public import LeanExe.Dialect.BytesLemmas
 public import LeanExe.Dialect.Lemmas
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

@@ -3,6 +3,7 @@ module
 public import Demos.Slew.Program
 public import LeanExe.Dialect.Lemmas
 public import LeanExe.ProofKit.F64Bits
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

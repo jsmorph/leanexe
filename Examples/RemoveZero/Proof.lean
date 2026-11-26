@@ -4,6 +4,7 @@ public import Library.Arrays.Search.Proof
 public import Examples.RemoveZero.Program
 public import Examples.RemoveZero.Spec
 public import LeanExe.Dialect.Lemmas
+import all Init.Data.Array.Basic
 
 @[expose] public section
 

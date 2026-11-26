@@ -133,7 +133,7 @@ private structure Atomic where
   outputs : List ValueType
   rule : AtomicRule
 
-private def unary? : Wasm.Instruction → Option (Name × ValueType × ValueType)
+def unary? : Wasm.Instruction → Option (Name × ValueType × ValueType)
   | .eqz => some (``Spec.Validity.Unary.eqz, .i32, .i32)
   | .eqzI64 => some (``Spec.Validity.Unary.eqzI64, .i64, .i32)
   | .wrapI64 => some (``Spec.Validity.Unary.wrapI64, .i64, .i32)
@@ -158,7 +158,7 @@ private def unary? : Wasm.Instruction → Option (Name × ValueType × ValueType
   | .f64ReinterpretI64 => some (``Spec.Validity.Unary.f64ReinterpretI64, .i64, .f64)
   | _ => none
 
-private def binary? : Wasm.Instruction → Option (Name × ValueType × ValueType)
+def binary? : Wasm.Instruction → Option (Name × ValueType × ValueType)
   | .eq => some (``Spec.Validity.Binary.eq, .i32, .i32)
   | .ltU => some (``Spec.Validity.Binary.ltU, .i32, .i32)
   | .gtU => some (``Spec.Validity.Binary.gtU, .i32, .i32)
@@ -200,7 +200,7 @@ private def binary? : Wasm.Instruction → Option (Name × ValueType × ValueTyp
   | .f64Div => some (``Spec.Validity.Binary.f64Div, .f64, .f64)
   | _ => none
 
-private def lookup (label : String) (values : List α) (index : Nat) : Except String α :=
+def lookup (label : String) (values : List α) (index : Nat) : Except String α :=
   match values[index]? with
   | some value => .ok value
   | none => .error s!"{label} index {index} is out of bounds"
@@ -211,7 +211,7 @@ private def controlResults (parameters results : Nat) (parameterTypes resultType
     .error "structured control is outside the zero-parameter, at-most-one-result encoding profile"
   else .ok resultTypes
 
-private def atomic (context : Spec.Validity.Context) (instruction : Wasm.Instruction) :
+def atomic (context : Spec.Validity.Context) (instruction : Wasm.Instruction) :
     Except String Atomic := do
   if let some (constructor, input, output) := unary? instruction then
     return ⟨[input], [output], .unary constructor⟩
@@ -266,7 +266,7 @@ private def consume (stack required : List ValueType) : Except String (List Valu
     .error s!"operand types disagree: stack {repr stack}, required suffix {repr required}"
   else .ok (stack.take (stack.length - required.length))
 
-private def inferConsume (stack needed : List ValueType) :
+def inferConsume (stack needed : List ValueType) :
     List ValueType → Except String (List ValueType × List ValueType)
   | [] => .ok (stack, needed)
   | type :: rest =>
@@ -316,16 +316,16 @@ def typesExpr (types : List ValueType) : MetaM Lean.Expr := do
   return values.foldr (fun value tail => mkApp3 (mkConst ``List.cons [.zero]) type value tail)
     (mkApp (mkConst ``List.nil [.zero]) type)
 
-private def numericProof (type : ValueType) : MetaM Lean.Expr := do
+def numericProof (type : ValueType) : MetaM Lean.Expr := do
   mkDecideProof (← whnf (← mkAppM ``Numeric #[← valueTypeExpr type]))
 
-private def typesProof (types : List ValueType) : MetaM Lean.Expr := do
+def typesProof (types : List ValueType) : MetaM Lean.Expr := do
   let mut proof := mkConst ``types_nil
   for type in types.reverse do
     proof ← mkAppM ``types_cons #[← numericProof type, proof]
   return proof
 
-private def blockProof (types : List ValueType) : MetaM Lean.Expr := do
+def blockProof (types : List ValueType) : MetaM Lean.Expr := do
   match types with
   | [] => mkAppM ``BlockForm.empty #[]
   | [type] =>
@@ -333,13 +333,13 @@ private def blockProof (types : List ValueType) : MetaM Lean.Expr := do
     mkAppM ``BlockForm.value #[expression, ← numericProof type]
   | _ => throwError "validity proof: structured control has more than one result"
 
-private def ensureType (proof expected : Lean.Expr) : MetaM Lean.Expr := do
+def ensureType (proof expected : Lean.Expr) : MetaM Lean.Expr := do
   unless ← isDefEq (← inferType proof) expected do
     throwError "validity proof: constructed type{indentExpr (← inferType proof)}\n\
       differs from required type{indentExpr expected}"
   mkExpectedTypeHint (← instantiateMVars proof) expected
 
-private def instructionType (context instruction : Lean.Expr) (inputs outputs : List ValueType) :
+def instructionType (context instruction : Lean.Expr) (inputs outputs : List ValueType) :
     MetaM Lean.Expr := do
   mkAppM ``Spec.Validity.Instruction #[context, instruction, ← typesExpr inputs, ← typesExpr outputs]
 
@@ -355,7 +355,7 @@ private def closedDecideProof (type : Lean.Expr) : MetaM Lean.Expr := do
   addDecl (.thmDecl { name, levelParams := [], type, value := proof })
   return mkConst name
 
-private def lookupProof (context : Lean.Expr) (field : Name) (index : Nat) (value : Lean.Expr) :
+def lookupProof (context : Lean.Expr) (field : Name) (index : Nat) (value : Lean.Expr) :
     MetaM Lean.Expr := do
   let values ← whnf (← mkAppM field #[context])
   let found ← mkAppM ``GetElem?.getElem? #[values, mkNatLit index]
@@ -365,7 +365,7 @@ private def memoryProof (context : Lean.Expr) : MetaM Lean.Expr := do
   closedDecideProof (← mkEq (← whnf (← mkAppM ``Spec.Validity.Context.hasMemory #[context]))
     (toExpr true))
 
-private def labelContext (context : Lean.Expr) (label : List ValueType) : MetaM Lean.Expr := do
+def labelContext (context : Lean.Expr) (label : List ValueType) : MetaM Lean.Expr := do
   let label ← typesExpr label
   let labels ← whnf (← mkAppM ``Spec.Validity.Context.labels #[context])
   let labels ← mkAppM ``List.cons #[label, labels]
@@ -386,7 +386,7 @@ private def labelContext (context : Lean.Expr) (label : List ValueType) : MetaM 
     (.regular 1) .safe [name]))
   return mkConst name
 
-private def contextConstructor (name : Name) (context : Lean.Expr) (arguments : Array Lean.Expr) :
+def contextConstructor (name : Name) (context : Lean.Expr) (arguments : Array Lean.Expr) :
     MetaM Lean.Expr := do
   let constant ← mkConstWithFreshMVarLevels name
   forallTelescope (← inferType constant) fun parameters _ => do
@@ -407,7 +407,7 @@ private def contextConstructor (name : Name) (context : Lean.Expr) (arguments : 
       throwError "validity proof: excess arguments to {name}"
     mkAppOptM name assigned
 
-private def atomicProof (contextValue : Spec.Validity.Context) (context instruction : Lean.Expr)
+def atomicProof (contextValue : Spec.Validity.Context) (context instruction : Lean.Expr)
     (rule : Atomic) : MetaM Lean.Expr := do
   let instruction ← whnf instruction
   let arguments := instruction.getAppArgs
@@ -444,18 +444,18 @@ private def atomicProof (contextValue : Spec.Validity.Context) (context instruct
     | .control => throwError "validity proof: structured control requires its body proof"
   ensureType proof (← instructionType context instruction rule.inputs rule.outputs)
 
-private def frameProof (context instruction proof : Lean.Expr) (stackPrefix inputs outputs : List ValueType) :
+def frameProof (context instruction proof : Lean.Expr) (stackPrefix inputs outputs : List ValueType) :
     MetaM Lean.Expr := do
   let proof ← if stackPrefix.isEmpty then pure proof
     else contextConstructor ``Spec.Validity.Instruction.frame context #[proof, ← typesProof stackPrefix]
   ensureType proof (← instructionType context instruction (stackPrefix ++ inputs) (stackPrefix ++ outputs))
 
-private def fromExcept (value : Except String α) : MetaM α :=
+def fromExcept (value : Except String α) : MetaM α :=
   match value with
   | .ok result => pure result
   | .error message => throwError "validity proof: {message}"
 
-private def saveProgramProof (proof : Lean.Expr) : MetaM Lean.Expr := do
+def saveProgramProof (proof : Lean.Expr) : MetaM Lean.Expr := do
   let proof ← instantiateMVars proof
   let type ← instantiateMVars (← inferType proof)
   if proof.hasFVar || proof.hasMVar || type.hasFVar || type.hasMVar then

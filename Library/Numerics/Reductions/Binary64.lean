@@ -5,6 +5,7 @@ public import LeanExe.ProofKit.F64ErrorTrack
 public import LeanExe.ProofKit.F64Sterbenz
 public import LeanExe.ProofKit.F64Convert
 public import LeanExe.Dialect.Loop
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

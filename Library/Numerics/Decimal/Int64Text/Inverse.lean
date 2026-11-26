@@ -3,6 +3,7 @@ module
 public import Library.Numerics.Decimal.Int64Text.Spec
 public import Mathlib.Data.List.Induction
 public import Mathlib.Tactic
+import all Init.Data.Repr
 
 @[expose] public section
 

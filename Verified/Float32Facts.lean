@@ -5,6 +5,7 @@ public import LeanExe.ProofKit.F32Bits
 public import LeanExe.ProofKit.F32Convert
 public import LeanExe.ProofKit.F32TruncSat
 public import LeanExe.ProofKit.F64Convert
+import all Init.Data.BitVec.BasicAux
 
 @[expose] public section
 

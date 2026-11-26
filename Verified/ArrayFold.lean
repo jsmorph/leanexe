@@ -3,6 +3,7 @@ module
 public import Verified.State
 public import Verified.Rename
 public import Verified.Bound
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

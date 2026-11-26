@@ -4,6 +4,7 @@ public import Library.Sorting.Insertion.Program
 public import Library.Sorting.Insertion.Spec
 public import Library.Sorting.Sorted
 public import LeanExe.Dialect.Lemmas
+import all Init.Data.Array.Basic
 
 @[expose] public section
 

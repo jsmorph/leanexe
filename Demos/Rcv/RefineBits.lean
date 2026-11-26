@@ -4,6 +4,7 @@ public import Demos.Rcv.Spec
 public import Demos.Rcv.Program
 public import LeanExe.Dialect.Lemmas
 public import Mathlib.Data.Nat.BitIndices
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

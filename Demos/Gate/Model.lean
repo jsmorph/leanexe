@@ -5,6 +5,7 @@ public import Mathlib.Probability.Distributions.Gamma
 public import Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral
 public import Mathlib.MeasureTheory.Integral.DominatedConvergence
 public import Mathlib.Topology.Order.IntermediateValue
+public import Mathlib.Analysis.SpecialFunctions.Sqrt
 
 @[expose] public section
 

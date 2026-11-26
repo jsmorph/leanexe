@@ -5,6 +5,7 @@ public import Mathlib.Analysis.ODE.ExistUnique
 public import Mathlib.Analysis.InnerProductSpace.PiL2
 public import Mathlib.Analysis.InnerProductSpace.Calculus
 public import Mathlib.Analysis.Calculus.ContDiff.RCLike
+public import Mathlib.Analysis.Calculus.Deriv.Prod
 
 @[expose] public section
 

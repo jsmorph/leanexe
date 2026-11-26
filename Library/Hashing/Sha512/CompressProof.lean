@@ -3,6 +3,7 @@ module
 public import Library.Hashing.Sha512.Program
 public import Library.Hashing.Words.Proof
 public import Library.Hashing.Sha2.Equiv.SHA512.Compress.Impl
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

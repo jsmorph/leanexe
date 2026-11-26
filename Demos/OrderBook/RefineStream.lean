@@ -1,6 +1,7 @@
 module
 
 public import Demos.OrderBook.Invariant
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

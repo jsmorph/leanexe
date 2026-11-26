@@ -7,6 +7,7 @@ public import Mathlib.SetTheory.Cardinal.Finite
 public import Mathlib.Data.Nat.Prime.Basic
 public import Mathlib.Tactic.Ring
 public import Mathlib.Order.Interval.Finset.Nat
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 
