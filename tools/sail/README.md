@@ -24,7 +24,7 @@ rationals ([`emu/`](emu/)).  Nothing in the A64 model or its proofs depends on t
 | opam | 2.1.5 | Ubuntu package `opam` |
 | Sail model | arm-v9.4-a at `7d0581642` | [rems-project/sail-arm](https://github.com/rems-project/sail-arm) |
 | Lean support library | lean-sail `v6` (`c816ea7a`), which the back end names | [rems-project/lean-sail](https://github.com/rems-project/lean-sail) |
-| Lean | v4.29.0, which the back end names, and the repository's v4.34.0-rc2 | elan |
+| Lean | v4.29.0, which the back end names, and v4.34.0-rc2, the repository's toolchain when these runs were made | elan |
 
 [`install.sh`](install.sh) creates the opam root and the switch and installs Sail, in 3.5 min
 with 6 jobs and 1.1 GB.  Sail's installation guide names the Debian packages
