@@ -112,17 +112,22 @@ theorem Master.runs {α β : Type} [Represent α] [Represent β] {m : Module}
 open Lean Elab Command in
 /-- `master_registry [t₁, …, tₙ]` checks that each `tᵢ` is a theorem whose statement is a
 `Verified.Master` statement about a module, and fails otherwise.  The registry of the library,
-`Library/Masters.lean`, lists every master theorem. -/
+`Library/Masters.lean`, lists every master theorem.  Under the module system another module's
+theorem appears as an axiom, whose recorded axioms, unlike those of a declared axiom, do not include
+itself. -/
 elab "master_registry " "[" names:ident,* "]" : command => do
   let env ← getEnv
   for stx in names.getElems do
     let n ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo stx
-    match env.find? n with
-    | some (.thmInfo info) =>
-      let ty ← liftTermElabM <| Meta.whnfR info.type
-      unless ty.getAppFn.isConstOf ``Verified.Master do
-        throwErrorAt stx "{n} is not a Verified.Master statement"
-    | _ => throwErrorAt stx "{n} is not a theorem"
+    let theorem? ← match env.find? n with
+      | some (.thmInfo info) => pure (some info.type)
+      | some (.axiomInfo info) =>
+        pure (if (← collectAxioms n).contains n then none else some info.type)
+      | _ => pure none
+    let some type := theorem? | throwErrorAt stx "{n} is not a theorem"
+    let ty ← liftTermElabM <| Meta.whnfR type
+    unless ty.getAppFn.isConstOf ``Verified.Master do
+      throwErrorAt stx "{n} is not a Verified.Master statement"
   logInfo m!"master_registry: {names.getElems.size} master theorems"
 
 end Verified
