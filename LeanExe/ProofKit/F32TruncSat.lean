@@ -2,6 +2,7 @@ module
 
 public import LeanExe.ProofKit.F32Decoded
 public import LeanExe.ProofKit.F32Nearest
+import all Init.Data.SInt.Float32
 
 @[expose] public section
 

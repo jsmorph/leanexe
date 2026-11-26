@@ -3,6 +3,7 @@ module
 public import LeanExe.Base
 public import Batteries.Data.List.Basic
 public import Mathlib.Data.List.Range
+import all Batteries.Data.List.Basic
 
 @[expose] public section
 

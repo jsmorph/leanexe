@@ -1,6 +1,7 @@
 module
 
 public import LeanExe.A64.Isla.Walk
+public import LeanExe.A64.Isla.TraceElab
 
 @[expose] public section
 

@@ -3,6 +3,7 @@ module
 public import LeanExe.Source.Syntax
 public import LeanExe.Pipeline.Implements
 public import LeanExe.Dialect.Loop
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

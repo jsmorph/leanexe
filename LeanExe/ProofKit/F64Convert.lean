@@ -3,6 +3,7 @@ module
 public import LeanExe.ProofKit.F64Bits
 public import LeanExe.ProofKit.F64Normalize
 public import LeanExe.ProofKit.F32TruncSat
+import all Init.Data.BitVec.BasicAux
 
 @[expose] public section
 

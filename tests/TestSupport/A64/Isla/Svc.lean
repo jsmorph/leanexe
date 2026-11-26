@@ -3,6 +3,7 @@ module
 public import LeanExe.A64.Isla.Float
 public import LeanExe.A64.Isla.Linux
 public import LeanExe.A64.Linux
+public import LeanExe.A64.Isla.TraceElab
 
 @[expose] public section
 

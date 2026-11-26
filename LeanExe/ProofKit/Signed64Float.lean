@@ -6,6 +6,9 @@ public import LeanExe.ProofKit.F64NegateOps
 public import LeanExe.ProofKit.F32Convert
 public import LeanExe.ProofKit.F32Negate
 public import LeanExe.ProofKit.F32TruncSat
+import all Init.Data.SInt.Float
+import all Init.Data.SInt.Float32
+import all Init.Data.BitVec.BasicAux
 
 @[expose] public section
 

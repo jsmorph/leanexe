@@ -4,6 +4,7 @@ public import LeanExe.M7.Isla.Trace
 public import LeanExe.M7.Encode
 public import LeanExe.M7.Isla.Profile
 public import LeanExe.A64.Isla.Check
+public import LeanExe.A64.Isla.TraceElab
 
 @[expose] public section
 

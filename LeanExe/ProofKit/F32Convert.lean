@@ -2,6 +2,7 @@ module
 
 public import LeanExe.ProofKit.F32Normalize
 public import LeanExe.ProofKit.QuantizedInt32
+import all Init.Data.SInt.Float32
 
 @[expose] public section
 

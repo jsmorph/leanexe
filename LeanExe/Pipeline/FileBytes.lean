@@ -18,7 +18,7 @@ open Lean Elab Term
 
 syntax (name := binaryFile) "binary_file% " str : term
 
-@[term_elab binaryFile] def elabBinaryFile : TermElab := fun stx _ => do
+@[term_elab binaryFile] meta def elabBinaryFile : TermElab := fun stx _ => do
   let some path := stx[1].isStrLit? | throwUnsupportedSyntax
   let some dir := (System.FilePath.mk (← readThe Core.Context).fileName).parent
     | throwError "cannot compute the directory of the source file"
@@ -93,7 +93,7 @@ kernel checks the decoder's limit on the locals of each function. -/
 syntax (name := fileTheorems) "file_theorems " ident ident str (" from " term,+)? : command
 
 open Meta Command in
-@[command_elab fileTheorems] def elabFileTheorems : CommandElab := fun stx => do
+@[command_elab fileTheorems] meta def elabFileTheorems : CommandElab := fun stx => do
   let `(file_theorems $name $p $path $[from $bytes,*]?) := stx | throwUnsupportedSyntax
   let fileId := mkIdent (name.getId.appendAfter "_file")
   let decodeId := mkIdent (name.getId.appendAfter "_file_decode")

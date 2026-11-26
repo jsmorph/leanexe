@@ -2,6 +2,7 @@ module
 
 public import LeanExe.A64.Isla.Trace
 public import LeanExe.A64.Encode
+public import LeanExe.A64.Isla.TraceElab
 
 @[expose] public section
 

@@ -2,6 +2,7 @@ module
 
 public import LeanExe.M7.Isla.Check
 public import LeanExe.M7.Isla.Profile
+public import LeanExe.A64.Isla.TraceElab
 
 @[expose] public section
 

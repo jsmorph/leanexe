@@ -39,7 +39,7 @@ end NativeHost
 
 namespace Action
 
-private instance {α : Type} (reply : Transfer α) : Decidable reply.validErrno :=
+instance {α : Type} (reply : Transfer α) : Decidable reply.validErrno :=
   match reply with
   | .returned errno _ => inferInstanceAs (Decidable (errno.toNat ≤ 76))
   | .trapped _ _ => isTrue trivial

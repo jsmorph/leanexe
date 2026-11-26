@@ -1,6 +1,7 @@
 module
 
 public import LeanExe.ProofKit.Memory
+import all Init.Data.Array.Basic
 
 @[expose] public section
 
