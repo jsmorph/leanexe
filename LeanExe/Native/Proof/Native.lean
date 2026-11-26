@@ -27,6 +27,8 @@ presence of the function in the translation.  `NativeA.weaken` replaces the prec
 
 `alloc_native` and `release_native` transfer the runtime's theorems `alloc_spec_runs` and
 `release_run` to the C functions `lxf_alloc` and `lxf_release` of a translated module.
+`alloc_native_with` states the call of `alloc` with the trap under a flag, which gives
+`alloc_native` with the trap and `alloc_native_room`, for a heap with room, without it.
 -/
 
 namespace LeanExe.Native
@@ -207,6 +209,46 @@ section
 variable {A : Archi} {X : ExtSem}
 
 open LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit in
+/-- The runtime's `alloc` in a translated module, with the trap only when `traps`: from a C memory
+related to a store whose heap satisfies the allocator invariant, the C call of `alloc` on `bytes`
+terminates.  It returns the address of the new block with `lx_status` 0, in a memory related to
+the store after the allocation, or, when `traps`, ends with `lx_status` holding the code of
+`unreachable`.  When not `traps`, the heap has room for the allocation. -/
+theorem alloc_native_with (traps : Bool) {mod : Module} {cap : Nat} {T : Translation}
+    (hT : translate cap mod = some T)
+    {typeIdx : Nat} (hFunc : mod.funcs[0]? = some (allocFunction typeIdx)) (h0 : 0 ∈ T.funcs)
+    {E : Env} (hE : EnvOk E) (hG : E.globals.length = mod.globals.length) (hcap : E.cap = cap)
+    (hnres : T.nres ≤ E.nres)
+    (hF : ∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
+      ∃ b, Genv.find_symbol E.ge (funId k) = some b ∧
+        Genv.find_funct_ptr E.ge b = some (.Internal fd))
+    (heap : Heap) (store : Store Unit) (bytes : UInt64) (hHeap : heap.At store)
+    (hBytes : bytes.toNat ≤ 4294967296) (hCapS : store.memoryCap mod 0 ≤ 65535)
+    (hRoom : traps = false → heap.Room store mod (allocSize bytes)) (m : mem)
+    (hst : StoreRel A E store m) (hs : StatusRel A E m 0) :
+    ∃ fd, (funId 0, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
+      ∃ t m' vres st', eval_funcall A X E.ge m (.Internal fd) [.Vlong bytes] t m' vres ∧
+        StoreRel A E st' m' ∧
+        ((StatusRel A E m' 0 ∧ heap.Fits (allocSize bytes) ∧
+            st' = heap.allocateStore store (allocSize bytes) 1 ∧
+            vres = .Vlong (FixedArrayAllocate.root heap.top (allocSize bytes) heap.free)) ∨
+          (traps = true ∧ StatusRel A E m' trapUnreachable)) := by
+  obtain ⟨himp, h64, -⟩ := translate_spec hT
+  obtain ⟨fd, ps, rs, hfd, hsig⟩ := translate_sig hT h0
+  have hpr : signatureOf (allocFunction typeIdx) = some (ps, rs) := hsig _ hFunc
+  obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hpr)
+  obtain ⟨t, m', vres, st', hcall, hst', hres⟩ := Runs.native (A := A) (X := X) hT hE hG hcap
+    hnres hF hfd hsig (alloc_spec_runs traps h64 himp hFunc {} heap store bytes hHeap hBytes
+      hCapS hRoom) ⟨by simp, by simp [AllHas, VT.has]⟩ hst hs
+  refine ⟨fd, hfd, t, m', vres, st', hcall, hst', ?_⟩
+  rcases hres with ⟨hs', vs, ⟨hfits, rfl, rfl⟩, hr⟩ | htrap
+  · obtain ⟨v, hv, -, rfl⟩ := hr
+    simp only [List.cons.injEq] at hv
+    obtain ⟨rfl, -⟩ := hv
+    exact .inl ⟨hs', hfits, rfl, rfl⟩
+  · exact .inr htrap
+
+open LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit in
 /-- The runtime's `alloc` in a translated module: from a C memory related to a store whose heap
 satisfies the allocator invariant, the C call of `alloc` on `bytes` terminates.  It returns the
 address of the new block with `lx_status` 0, in a memory related to the store after the
@@ -229,21 +271,36 @@ theorem alloc_native {mod : Module} {cap : Nat} {T : Translation} (hT : translat
             st' = heap.allocateStore store (allocSize bytes) 1 ∧
             vres = .Vlong (FixedArrayAllocate.root heap.top (allocSize bytes) heap.free)) ∨
           StatusRel A E m' trapUnreachable) := by
-  obtain ⟨himp, h64, -⟩ := translate_spec hT
-  obtain ⟨fd, ps, rs, hfd, hsig⟩ := translate_sig hT h0
-  have hpr : signatureOf (allocFunction typeIdx) = some (ps, rs) := hsig _ hFunc
-  obtain ⟨rfl, rfl⟩ := Prod.mk.inj (Option.some.inj hpr)
-  obtain ⟨t, m', vres, st', hcall, hst', hres⟩ := Runs.native (A := A) (X := X) hT hE hG hcap
-    hnres hF
-    hfd hsig (alloc_spec_runs true h64 himp hFunc {} heap store bytes hHeap hBytes hCapS
-      (fun h => nomatch h)) ⟨by simp, by simp [AllHas, VT.has]⟩ hst hs
-  refine ⟨fd, hfd, t, m', vres, st', hcall, hst', ?_⟩
-  rcases hres with ⟨hs', vs, ⟨hfits, rfl, rfl⟩, hr⟩ | ⟨-, htrap⟩
-  · obtain ⟨v, hv, -, rfl⟩ := hr
-    simp only [List.cons.injEq] at hv
-    obtain ⟨rfl, -⟩ := hv
-    exact .inl ⟨hs', hfits, rfl, rfl⟩
-  · exact .inr htrap
+  obtain ⟨fd, hfd, t, m', vres, st', hcall, hst', hres⟩ := alloc_native_with true hT hFunc h0 hE
+    hG hcap hnres hF heap store bytes hHeap hBytes hCapS (fun h => nomatch h) m hst hs
+  exact ⟨fd, hfd, t, m', vres, st', hcall, hst', hres.imp_right And.right⟩
+
+open LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit in
+/-- The runtime's `alloc` in a translated module, from a heap with room for the allocation: the C
+call of `alloc` on `bytes` returns the address of the new block with `lx_status` 0, in a memory
+related to the store after the allocation. -/
+theorem alloc_native_room {mod : Module} {cap : Nat} {T : Translation}
+    (hT : translate cap mod = some T)
+    {typeIdx : Nat} (hFunc : mod.funcs[0]? = some (allocFunction typeIdx)) (h0 : 0 ∈ T.funcs)
+    {E : Env} (hE : EnvOk E) (hG : E.globals.length = mod.globals.length) (hcap : E.cap = cap)
+    (hnres : T.nres ≤ E.nres)
+    (hF : ∀ k fd, (funId k, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs →
+      ∃ b, Genv.find_symbol E.ge (funId k) = some b ∧
+        Genv.find_funct_ptr E.ge b = some (.Internal fd))
+    (heap : Heap) (store : Store Unit) (bytes : UInt64) (hHeap : heap.At store)
+    (hBytes : bytes.toNat ≤ 4294967296) (hCapS : store.memoryCap mod 0 ≤ 65535)
+    (hRoom : heap.Room store mod (allocSize bytes)) (m : mem)
+    (hst : StoreRel A E store m) (hs : StatusRel A E m 0) :
+    ∃ fd, (funId 0, globdef.Gfun (fundef.Internal fd)) ∈ T.cprogram.prog_defs ∧
+      ∃ t m' vres st', eval_funcall A X E.ge m (.Internal fd) [.Vlong bytes] t m' vres ∧
+        StoreRel A E st' m' ∧ StatusRel A E m' 0 ∧ heap.Fits (allocSize bytes) ∧
+        st' = heap.allocateStore store (allocSize bytes) 1 ∧
+        vres = .Vlong (FixedArrayAllocate.root heap.top (allocSize bytes) heap.free) := by
+  obtain ⟨fd, hfd, t, m', vres, st', hcall, hst', hres⟩ := alloc_native_with false hT hFunc h0
+    hE hG hcap hnres hF heap store bytes hHeap hBytes hCapS (fun _ => hRoom) m hst hs
+  rcases hres with hok | ⟨habs, -⟩
+  · exact ⟨fd, hfd, t, m', vres, st', hcall, hst', hok⟩
+  · cases habs
 
 open LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit in
 /-- The runtime's `release` in a translated module: from a C memory related to a store whose
