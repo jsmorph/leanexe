@@ -10,7 +10,7 @@ namespace Verified.Reflect
 
 open Lean Meta Elab Command
 
-private def fieldFamily (values : Array Term) : CommandElabM Term := do
+def fieldFamily (values : Array Term) : CommandElabM Term := do
   `(([$values,*]).get)
 
 /-- The word family of record constructor `r` with the word fields `words` of the elements
@@ -248,7 +248,7 @@ conversion back and the laws that the two are inverse.  The
 command follows `T`'s `Encode` instance, once, and every module that compiles a program over `T`
 imports the module that runs it. -/
 @[command_elab verifiedRecursiveType]
-def elabVerifiedRecursiveType : CommandElab
+meta def elabVerifiedRecursiveType : CommandElab
   | `(verified_recursive_type $type) => do
     let name ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo type
     let some layout ← liftTermElabM (recursiveLayout? (mkConst name))

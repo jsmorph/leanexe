@@ -23,7 +23,7 @@ open Wasm LeanExe LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime Verified Verifie
 
 open Lean Meta in
 /-- The value at `index` of an environment given as a chain of `Env.cons`. -/
-private partial def envValueAt (env : Lean.Expr) (index : Nat) : MetaM (Option Lean.Expr) := do
+private meta partial def envValueAt (env : Lean.Expr) (index : Nat) : MetaM (Option Lean.Expr) := do
   match (← whnfD env).getAppFnArgs with
   | (``Env.cons, #[_, _, value, rest]) =>
     if index == 0 then return some value else envValueAt rest (index - 1)

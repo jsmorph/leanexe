@@ -10,7 +10,7 @@ namespace Verified.Reflect
 
 open Lean Meta Elab
 
-private def containsSelf (name : Name) (e : Lean.Expr) : Bool :=
+def containsSelf (name : Name) (e : Lean.Expr) : Bool :=
   (e.find? (·.isConstOf name)).isSome
 
 partial def tailCallsOnly (name : Name) (e : Lean.Expr) : MetaM Bool := do
