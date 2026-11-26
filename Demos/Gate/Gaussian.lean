@@ -5,6 +5,7 @@ public import Demos.Gate.Mahalanobis
 public import Mathlib.Probability.Distributions.Gaussian.Multivariate
 public import Mathlib.Probability.Moments.ComplexMGF
 public import Mathlib.Analysis.Complex.Convex
+public import Mathlib.Analysis.Analytic.IsolatedZeros
 
 @[expose] public section
 
@@ -133,8 +134,7 @@ theorem integral_exp_mul_sumSq {d : ℕ} {t : ℝ} (ht : t < 1 / 2) :
 distribution with `d` degrees of freedom. -/
 theorem map_sumSq {d : ℕ} (hd : 1 ≤ d) : (stdNormal d).map sumSq = chiSquare d := by
   have := isProbability_of hd
-  have : IsProbabilityMeasure ((stdNormal d).map sumSq) :=
-    Measure.isProbabilityMeasure_map (measurable_sumSq d).aemeasurable
+  have : IsProbabilityMeasure ((stdNormal d).map sumSq) := inferInstance
   have hb : ∀ t < (1 / 2 : ℝ), 0 < 1 / 2 / (1 / 2 - t) := fun t ht =>
     div_pos (by norm_num) (by linarith)
   have hval : ∀ t < (1 / 2 : ℝ), ∫ x, exp (t * x) ∂((stdNormal d).map sumSq) =
