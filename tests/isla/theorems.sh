@@ -24,7 +24,8 @@ files=()
 for m in "$@"; do
   files+=("tests/TestSupport/A64/Isla/$m.lean")
 done
-imports=$(sed -n 's/^import //p' "${files[@]}" | sort -u)
+imports=$(sed -n -E 's/^(public )?(meta )?import (all )?([A-Za-z0-9_.]+).*/\4/p' "${files[@]}" |
+  sort -u)
 if grep -q '^TestSupport\.A64\.Isla\.' <<<"$imports"; then
   echo "fail: a module imports another module of tests/TestSupport/A64/Isla"
   exit 1
