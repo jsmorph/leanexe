@@ -3,6 +3,7 @@ module
 public import Library.Hashing.Sha256.Program
 public import Library.Hashing.Words.Encoding
 public import Verified.Reflect.Command
+public meta import Library.Hashing.Sha256.Program
 
 @[expose] public section
 

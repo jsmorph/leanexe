@@ -1,6 +1,7 @@
 module
 
 public import TestSupport.A64.CicTable
+public meta import TestSupport.A64.CicTable
 
 @[expose] public section
 

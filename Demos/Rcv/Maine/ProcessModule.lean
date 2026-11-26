@@ -2,6 +2,8 @@ module
 
 public import Demos.Rcv.Maine.ProcessWasi
 public import Verified.Wasi.ProcessCode
+public meta import Verified.Wasi.ProcessCode
+public meta import Demos.Rcv.Maine.ProcessWasi
 
 @[expose] public section
 

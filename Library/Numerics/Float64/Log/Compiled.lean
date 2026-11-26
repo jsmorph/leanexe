@@ -2,6 +2,7 @@ module
 
 public import Library.Numerics.Float64.Log.Program
 public import Verified.Reflect.Command
+public meta import Library.Numerics.Float64.Log.Program
 
 @[expose] public section
 

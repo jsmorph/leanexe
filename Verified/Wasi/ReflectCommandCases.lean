@@ -2,6 +2,7 @@ module
 
 public import Verified.Wasi.ReflectCommand
 public import Verified.Wasi.ReflectProgramCases
+public meta import Verified.Wasi.ReflectProgramCases
 
 @[expose] public section
 

@@ -5,6 +5,7 @@ public import Library.Hashing.Sha256.Stream
 public import Library.Hashing.Words.Encoding
 public import Verified.Wasi
 public import LeanExe.Wasi.WriteAll
+public meta import Library.Hashing.Sha256.Program
 
 @[expose] public section
 

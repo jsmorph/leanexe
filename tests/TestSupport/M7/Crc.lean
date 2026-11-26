@@ -4,6 +4,7 @@ public import Library.Hashing.Crc.Program
 public import LeanExe.Native.Requests
 public import Verified.Reflect.Command
 public import Verified.Call
+public meta import Library.Hashing.Crc.Program
 
 @[expose] public section
 

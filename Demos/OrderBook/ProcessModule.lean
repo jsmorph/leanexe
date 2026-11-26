@@ -2,6 +2,8 @@ module
 
 public import Demos.OrderBook.ProcessWasi
 public import Verified.Wasi.ProcessCode
+public meta import Verified.Wasi.ProcessCode
+public meta import Demos.OrderBook.ProcessWasi
 
 @[expose] public section
 

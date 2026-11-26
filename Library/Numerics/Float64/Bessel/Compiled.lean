@@ -2,6 +2,8 @@ module
 
 public import Library.Numerics.Float64.Bessel.Program
 public import Verified.Reflect.Command
+public meta import Library.Numerics.Float64.Log.Program
+public meta import Library.Numerics.Float64.Bessel.Program
 
 @[expose] public section
 

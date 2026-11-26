@@ -4,6 +4,9 @@ public import Library.Hashing.Crc.Program
 public import Library.Hashing.Sha256.Program
 public import Library.Hashing.Words.Encoding
 public import Verified.Reflect.Command
+public meta import Library.Hashing.Crc.Program
+public meta import Library.Hashing.Sha256.Program
+public meta import Library.Hashing.Words.Encoding
 
 @[expose] public section
 

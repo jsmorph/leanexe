@@ -3,6 +3,8 @@ module
 public import Library.Hashing.Sha512.Program
 public import Library.Hashing.Words.Encoding
 public import Verified.Reflect.Command
+public meta import Library.Hashing.Sha512.Program
+public meta import Library.Hashing.Words.Encoding
 
 @[expose] public section
 

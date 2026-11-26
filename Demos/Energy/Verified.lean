@@ -3,6 +3,7 @@ module
 public import Verified.Reflect.Command
 public import Demos.Energy.Flat
 public import Demos.Energy.Site
+public meta import Demos.Energy.Site
 
 @[expose] public section
 

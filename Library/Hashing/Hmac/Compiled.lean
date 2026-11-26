@@ -3,6 +3,10 @@ module
 public import Library.Hashing.Hmac.Program
 public import Library.Hashing.Words.Encoding
 public import Verified.Reflect.Command
+public meta import Library.Hashing.Sha256.Program
+public meta import Library.Hashing.Sha512.Program
+public meta import Library.Hashing.Hmac.Program
+public meta import Library.Hashing.Words.Encoding
 
 @[expose] public section
 

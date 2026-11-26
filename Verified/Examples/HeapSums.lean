@@ -2,6 +2,7 @@ module
 
 public import Verified.Reflect.Command
 public import Library.Trees.WordTree.Reflected
+public meta import Library.Trees.WordTree.Program
 
 @[expose] public section
 

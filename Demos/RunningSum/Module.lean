@@ -2,6 +2,8 @@ module
 
 public import Demos.RunningSum.Wasi
 public import Verified.Wasi.ProcessCode
+public meta import Verified.Wasi.ProcessCode
+public meta import Demos.RunningSum.Wasi
 
 @[expose] public section
 
