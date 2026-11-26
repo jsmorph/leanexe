@@ -494,8 +494,8 @@ inductive NativeKind where
   | tables
   | static
 
-syntax (name := verifiedCompile) "verified_compile " ("(" &"pages" " := " num ")")?
-  ("(" &"cap" " := " num ")")? ident " := " "[" ident,* "]" : command
+syntax (name := verifiedCompile) "verified_compile " (atomic("(" &"pages") " := " num ")")?
+  (atomic("(" &"cap") " := " num ")")? ident " := " "[" ident,* "]" : command
 
 /-- `verified_compile p := [f, g, …]` adds the program `p.program` of the listed definitions, in
 order, each of which may call those before it and, when recursive, itself; the meanings
@@ -524,7 +524,8 @@ function computes `f` as `p.f.implements` states from an aligned input, as `Nati
 `NativeTablesAlignedImpl` states it; and `p.bytes`, the module's bytes with all the functions'
 theorems.  The option `(pages := N)` starts the module's memory with `N` pages, 16 by default, or
 more when its static data needs them, and `(cap := C)` gives the translation `C` pages of
-`lx_mem`. -/
+`lx_mem`.  Either option may appear alone, and `(pages := N)` precedes `(cap := C)` when both
+appear. -/
 @[command_elab verifiedCompile]
 def elabVerifiedCompile : CommandElab
   | `(verified_compile $[(pages := $pages?)]? $[(cap := $cap?)]? $target := [$sources,*]) => do
