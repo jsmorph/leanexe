@@ -132,8 +132,7 @@ theorem sem_lt_ss (x y : UInt64) :
   rcases A with ⟨_ | _, _, _, _, _⟩
   all_goals
     show some (Val.of_bool (LClight.Int64.lt x y)) = _
-    rw [LClight.Int64.lt, LClight.Int64.signed_eq, LClight.Int64.signed_eq, of_bool_decide]
-    simp only [_root_.Int64.lt_iff_toInt_lt]
+    rw [LClight.Int64.lt, of_bool_decide]
 
 /-- `<=` on two `long long` operands, CompCert's signed comparison. -/
 theorem sem_le_ss (x y : UInt64) :
@@ -142,9 +141,8 @@ theorem sem_le_ss (x y : UInt64) :
   rcases A with ⟨_ | _, _, _, _, _⟩
   all_goals
     show some (Val.of_bool (!LClight.Int64.lt y x)) = _
-    rw [LClight.Int64.lt, LClight.Int64.signed_eq, LClight.Int64.signed_eq, ← decide_not,
-      of_bool_decide]
-    simp only [_root_.Int64.le_iff_toInt_le, Int.not_lt]
+    rw [LClight.Int64.lt, ← decide_not, of_bool_decide]
+    simp only [_root_.Int64.le_iff_toInt_le, _root_.Int64.lt_iff_toInt_lt, Int.not_lt]
 
 /-- `>>` of a `long long` by an `unsigned long long` below 64, CompCert's arithmetic shift. -/
 theorem sem_shr_sl (x y : UInt64) :

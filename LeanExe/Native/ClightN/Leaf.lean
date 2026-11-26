@@ -202,15 +202,30 @@ theorem cmpu_int (c : comparison) (x y : UInt32) :
   · show (!decide (u32 x < u32 y)) = true ↔ _
     simp [holds]
 
+/-- CompCert's signed reading of a word is Lean's `Int64.toInt` of it. -/
+theorem s64_toInt (x : UInt64) : s64 x = x.toInt64.toInt := by
+  show LClight.Int64.signed x = x.toBitVec.toInt
+  rw [BitVec.toInt_eq_toNat_cond]
+  have h : x.toBitVec.toNat = x.toNat := rfl
+  have e : ((2 ^ 64 : Nat) : _root_.Int) = 2 ^ 64 := rfl
+  rw [h, e]
+  simp only [LClight.Int64.signed, LClight.Int64.unsigned, LClight.Int64.half_modulus,
+    LClight.Int64.modulus]
+  by_cases hc : 2 * x.toNat < 2 ^ 64
+  · have hc' : (x.toNat : _root_.Int) < 2 ^ 64 / 2 := by omega
+    simp only [hc, hc', ↓reduceIte]
+  · have hc' : ¬ (x.toNat : _root_.Int) < 2 ^ 64 / 2 := by omega
+    simp only [hc, hc', ↓reduceIte]
+
 theorem cmp_long_lt (x y : UInt64) :
     LClight.Int64.cmp .Clt x y = true ↔ holds .Clt (s64 x) (s64 y) := by
-  show decide (s64 x < s64 y) = true ↔ _
-  simp [holds]
+  show decide (x.toInt64 < y.toInt64) = true ↔ _
+  simp [holds, s64_toInt, _root_.Int64.lt_iff_toInt_lt]
 
 theorem cmp_long_le (x y : UInt64) :
     LClight.Int64.cmp .Cle x y = true ↔ holds .Cle (s64 x) (s64 y) := by
-  show (!decide (s64 y < s64 x)) = true ↔ _
-  simp [holds]
+  show (!decide (y.toInt64 < x.toInt64)) = true ↔ _
+  simp [holds, s64_toInt, _root_.Int64.lt_iff_toInt_lt]
 
 theorem of_bool_cases {b : Bool} {p : Prop} (hc : b = true ↔ p) :
     (p ∧ Val.of_bool b = .Vint (r32 1)) ∨ (¬ p ∧ Val.of_bool b = .Vint (r32 0)) := by

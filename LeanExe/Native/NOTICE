@@ -58,3 +58,10 @@ encode_val, decode_val, Mem.load, Mem.loadv, Mem.store, Mem.storev, sizeof, acce
 operators of Cop.lean, the volatile loads and stores of Events.lean, the allocation of globals in
 Globalenvs.lean, and the semantics of Clight.lean and Bigstep.lean.  A ptrofs is a 64-bit word at
 both widths, below the modulus of the architecture.
+
+Changes, made on 2026-11-26: Integers.lean defines Int64.lt as decide (x.toInt64 < y.toInt64),
+which compares the two words as Lean's signed 64-bit integers, where CompCert compares signed x
+with signed y.  From Lean 4.35.0 on, the elaborator and the kernel exceed their recursion limits
+when they unfold CompCert's form of lt, whose signed compares with half_modulus = 2 ^ 64 / 2.  The
+theorem LClight.Int64.lt_signed in LeanExe/Native/Proof/Basics.lean proves that the new definition
+equals CompCert's.

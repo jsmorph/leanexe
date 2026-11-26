@@ -7,8 +7,8 @@ This file is distributed under the GNU Lesser General Public License, version 2.
 option) any later version, one of the two licenses CompCert offers for its source files.  The
 text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 
-Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the
-changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
+Changed from CompCert on 2026-10-26, 2026-11-04, and 2026-11-26: transcribed from Coq into Lean,
+with the changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 module
 
@@ -27,8 +27,9 @@ the result for an amount of at least the word size outright, which agrees with `
 `UInt64` at both widths, and the operations of `Ptrofs` take the architecture, whose `ptr64` fixes
 the word size as `Wordsize_Ptrofs` does.  `Ptrofs.unsigned` takes none: every offset that the
 semantics builds comes from `Ptrofs.repr` or `Ptrofs.zero`, so it lies below the modulus, as
-CompCert's type of offsets requires.  Only the operations that the semantics in this directory use
-are copied.
+CompCert's type of offsets requires.  `Int64.lt` compares Lean's `Int64` values in place of the
+`signed` values, and `LClight.Int64.lt_signed` proves the two forms equal.  Only the operations that
+the semantics in this directory use are copied.
 -/
 
 namespace LClight
@@ -148,7 +149,9 @@ def iwordsize : int64 := repr 64
 def iwordsize' : int := Int.repr 64
 
 def eq (x y : int64) : Bool := decide (unsigned x = unsigned y)
-def lt (x y : int64) : Bool := decide (signed x < signed y)
+/-- CompCert compares `signed x` with `signed y`.  This copy compares Lean's `Int64` values, which
+`LClight.Int64.lt_signed` proves equal. -/
+def lt (x y : int64) : Bool := decide (x.toInt64 < y.toInt64)
 def ltu (x y : int64) : Bool := decide (unsigned x < unsigned y)
 
 def neg (x : int64) : int64 := repr (- unsigned x)

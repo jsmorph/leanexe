@@ -157,6 +157,12 @@ theorem Int64.shr_eq (x k : UInt64) (hk : k.toNat < 64) :
     rfl
   rw [hs]
 
+/-- CompCert's definition of `lt`. -/
+theorem Int64.lt_signed (x y : UInt64) :
+    LClight.Int64.lt x y = decide (LClight.Int64.signed x < LClight.Int64.signed y) := by
+  rw [LClight.Int64.lt, LClight.Int64.signed_eq, LClight.Int64.signed_eq]
+  exact decide_eq_decide.mpr _root_.Int64.lt_iff_toInt_lt
+
 theorem Int64.eq_eq (x y : UInt64) : Int64.eq x y = decide (x = y) := by
   simp only [Int64.eq, Int64.unsigned, Int.ofNat_inj, decide_eq_decide]
   exact UInt64.toNat_inj
