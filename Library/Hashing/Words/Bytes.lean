@@ -1,5 +1,9 @@
-import Library.Hashing.Words.Program
-import Library.Bytes.Packed
+module
+
+public import Library.Hashing.Words.Program
+public import Library.Bytes.Packed
+
+@[expose] public section
 
 /-! The bytes of a digest.  The correctness theorems of the hash functions state their results
 through `Words8.bytes`, `Words6.bytes`, and `Words4.bytes`, in the packing of `Library.Bytes`, and

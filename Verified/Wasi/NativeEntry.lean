@@ -1,5 +1,9 @@
-import Verified.Wasi.EntryCorrect
-import Verified.Wasi.NativeResult
+module
+
+public import Verified.Wasi.EntryCorrect
+public import Verified.Wasi.NativeResult
+
+@[expose] public section
 
 namespace Verified.Wasi
 

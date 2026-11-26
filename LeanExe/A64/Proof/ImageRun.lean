@@ -1,7 +1,11 @@
-import LeanExe.A64.Proof.ImageLayout
-import LeanExe.A64.Proof.Lift
-import LeanExe.A64.Proof.Table
-import LeanExe.A64.Proof.Exit
+module
+
+public import LeanExe.A64.Proof.ImageLayout
+public import LeanExe.A64.Proof.Lift
+public import LeanExe.A64.Proof.Table
+public import LeanExe.A64.Proof.Exit
+
+@[expose] public section
 
 /-!
 The pieces that join the startup, the program, and the exit of an image in the boot model.  A

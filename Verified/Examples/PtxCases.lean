@@ -1,4 +1,8 @@
-import Verified.Examples.Ptx
+module
+
+public import Verified.Examples.Ptx
+
+@[expose] public section
 
 /-!
 Test cases of the PTX kernels of the WGSL examples, computed by native Lean, in the format of

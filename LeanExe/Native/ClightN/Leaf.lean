@@ -1,4 +1,8 @@
-import LeanExe.Native.ClightN.Laws
+module
+
+public import LeanExe.Native.ClightN.Laws
+
+@[expose] public section
 
 /-!
 The leaf forms of `clightn/N.nsx`, proved of the Lean copy of Clight at `Archi.aarch64`: for each

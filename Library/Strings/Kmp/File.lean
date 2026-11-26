@@ -1,5 +1,9 @@
-import Library.Strings.Kmp.Compiled
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Strings.Kmp.Compiled
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/kmp.wasm`: the file holds
 `encode compiled.module`, and it decodes to the module of `compiled.bytes`. -/

@@ -1,4 +1,8 @@
-import Demos.Rcv.ReadLemmas
+module
+
+public import Demos.Rcv.ReadLemmas
+
+@[expose] public section
 
 /-!
 T2(a): `read (write f) = .ok f` for every structure `f` that meets the constraints.  The written

@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.Allocation
-import Interpreter.Wasm.Wp.Tactic
+module
+
+public import LeanExe.ProofKit.Allocation
+public import Interpreter.Wasm.Wp.Tactic
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArrayAllocator
 

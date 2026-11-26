@@ -1,5 +1,9 @@
-import TestSupport.Native.Gcd
-import Verified.Bare
+module
+
+public import TestSupport.Native.Gcd
+public import Verified.Bare
+
+@[expose] public section
 
 /-!
 The theorem of the bare-metal program that computes `gcd 1071 462` with the loop of

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.Expm1KernelInner
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1KernelInner
+
+@[expose] public section
 
 /-!
 The rounding errors of `r1`, `t`, the numerator, the denominator, their quotient, and `e` in

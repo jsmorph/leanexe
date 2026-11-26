@@ -1,7 +1,11 @@
-import Library.Hashing.Sha3.Program
-import Library.Hashing.Sha3.Spec
-import Mathlib.Data.Fintype.Basic
-import Mathlib.Tactic.FinCases
+module
+
+public import Library.Hashing.Sha3.Program
+public import Library.Hashing.Sha3.Spec
+public import Mathlib.Data.Fintype.Basic
+public import Mathlib.Tactic.FinCases
+
+@[expose] public section
 
 /-! The lane program's permutation computes KECCAK-p[1600, 24] of the transcription.  `toState`
 reads the lanes as a state array: `A[x, y, z]` is bit `z` of lane `x + 5y`.  Each step function

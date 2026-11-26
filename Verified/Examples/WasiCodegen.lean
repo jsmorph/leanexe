@@ -1,5 +1,9 @@
-import Verified.Wasi.Program
-import LeanExe.Encoding.RoundTrip
+module
+
+public import Verified.Wasi.Program
+public import LeanExe.Encoding.RoundTrip
+
+@[expose] public section
 
 namespace Verified.Examples.WasiCodegen
 

@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.ProgramRuns
+module
+
+public import LeanExe.A64.Proof.ProgramRuns
+
+@[expose] public section
 
 /-!
 The run of the entry routine of `genInMain`, which reads words from the PL011's receiver.

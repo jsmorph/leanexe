@@ -1,5 +1,9 @@
-import Verified.Wasi.HostMemory
-import Interpreter.Wasm.Host.Registry
+module
+
+public import Verified.Wasi.HostMemory
+public import Interpreter.Wasm.Host.Registry
+
+@[expose] public section
 
 /-! A Talos host for the three stream imports from an oracle that answers each request of an
 abstract host.  The imports decode the one-iovec arguments from guest memory, as the specifications

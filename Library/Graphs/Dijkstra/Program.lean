@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import Library.Sorting.Heapsort.Program
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import Library.Sorting.Heapsort.Program
+
+@[expose] public section
 
 /-! The least walk lengths from one vertex by Dijkstra's algorithm with a binary heap of pairs of a
 tentative length and a vertex, in two arrays.  `relax` lowers the tentative lengths along the arcs

@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64AddBounds
-import LeanExe.ProofKit.F64MulBounds
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64Approx
+module
+
+public import LeanExe.ProofKit.F64AddBounds
+public import LeanExe.ProofKit.F64MulBounds
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64Approx
+
+@[expose] public section
 
 /-!
 Error tracking through chains of rounded operations, with `F64Approx.Approx`: `Approx w X e`

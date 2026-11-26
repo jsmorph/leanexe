@@ -1,7 +1,11 @@
-import Library.Numerics.Bounds.Program
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.RepeatWhile
+module
+
+public import Library.Numerics.Bounds.Program
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.RepeatWhile
+
+@[expose] public section
 
 /-!
 A first-order finite-volume solver for the two-dimensional Euler equations, on the four-quadrant

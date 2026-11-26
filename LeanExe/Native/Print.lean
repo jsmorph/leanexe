@@ -1,4 +1,8 @@
-import LeanExe.Native.Clight.Clight
+module
+
+public import LeanExe.Native.Clight.Clight
+
+@[expose] public section
 
 /-!
 A printer of Clight programs as C text, for the programs the translator and the differential

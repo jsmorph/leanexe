@@ -1,5 +1,9 @@
-import TestSupport.Native.Load
-import LeanExe.Native.ClightCheck
+module
+
+public import TestSupport.Native.Load
+public import LeanExe.Native.ClightCheck
+
+@[expose] public section
 
 /-!
 The executable `native-verified`, which translates the modules of the `tests/verified` corpus

@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Pow.PowLogBits
-import Library.Numerics.Float64.Pow.PowLogTable
-import Library.Numerics.Float64.Exp.ExpNegativeFinal
-import LeanExe.ProofKit.F64ExactProduct
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64ErrorTrack
+module
+
+public import Library.Numerics.Float64.Pow.PowLogBits
+public import Library.Numerics.Float64.Pow.PowLogTable
+public import Library.Numerics.Float64.Exp.ExpNegativeFinal
+public import LeanExe.ProofKit.F64ExactProduct
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64ErrorTrack
+
+@[expose] public section
 
 /-!
 The exact steps of `Pow.powLog` before its sums.  The word `iz` of `z` has exponent field 1022

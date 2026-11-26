@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Asinh.AcoshTheoremSmallCases
-import Library.Numerics.Float64.Asinh.AcoshTheoremMid
-import Library.Numerics.Float64.Asinh.AsinhTheorem
+module
+
+public import Library.Numerics.Float64.Asinh.AcoshTheoremSmallCases
+public import Library.Numerics.Float64.Asinh.AcoshTheoremMid
+public import Library.Numerics.Float64.Asinh.AsinhTheorem
+
+@[expose] public section
 
 /-!
 **`acosh` within two steps** and its exceptional inputs.  For `x ≥ 1` the code takes

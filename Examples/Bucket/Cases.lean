@@ -1,5 +1,9 @@
-import Examples.Bucket.Program
-import TestSupport.Host
+module
+
+public import Examples.Bucket.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `bucket`. -/
 

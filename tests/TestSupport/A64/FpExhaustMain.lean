@@ -1,5 +1,9 @@
-import TestSupport.A64.FpExhaust
-import Std.Data.HashMap
+module
+
+public import TestSupport.A64.FpExhaust
+public import Std.Data.HashMap
+
+@[expose] public section
 
 /-!
 The command `a64-fpexhaust` of the exhaustive test of the single-precision forms

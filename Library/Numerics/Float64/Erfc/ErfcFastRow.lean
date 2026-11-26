@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcFastMain
-import Library.Numerics.Float64.Erfc.ErfcSeriesI
-import Library.Numerics.Float64.Erfc.ErfcRound
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcFastMain
+public import Library.Numerics.Float64.Erfc.ErfcSeriesI
+public import Library.Numerics.Float64.Erfc.ErfcRound
+
+@[expose] public section
 
 /-!
 One row of `cr_erf_fast` from `1/16` on.  For `x` in `[i/16, (i+1)/16)`, `Erfc.erfFastMain` takes

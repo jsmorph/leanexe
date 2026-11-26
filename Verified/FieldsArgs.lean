@@ -1,5 +1,9 @@
-import Verified.FieldsCompose
-import Verified.FieldsOrder
+module
+
+public import Verified.FieldsCompose
+public import Verified.FieldsOrder
+
+@[expose] public section
 
 namespace Verified
 

@@ -1,4 +1,8 @@
-import Verified.ShimA64.Machine
+module
+
+public import Verified.ShimA64.Machine
+
+@[expose] public section
 
 /-!
 The stubs of the stream functions against the shim's host environment: each stub of

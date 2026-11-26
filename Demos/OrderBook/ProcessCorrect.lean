@@ -1,4 +1,8 @@
-import Demos.OrderBook.ProcessFuture
+module
+
+public import Demos.OrderBook.ProcessFuture
+
+@[expose] public section
 
 /-! The correctness of [the order book's process](Process.lean) under StreamFold's host
 assumptions.  `process_output` states that, from the initial state and an empty output history,

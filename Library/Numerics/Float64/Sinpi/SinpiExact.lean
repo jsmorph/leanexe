@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiWithin
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiWithin
+
+@[expose] public section
 
 /-!
 The exact results of `Sinpi.sinpi` and `Sinpi.cospi` as bit equalities: `sinpi` of an integer is

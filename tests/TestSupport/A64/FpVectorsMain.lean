@@ -1,4 +1,8 @@
-import TestSupport.A64.FpVectors
+module
+
+public import TestSupport.A64.FpVectors
+
+@[expose] public section
 
 /-!
 The command `a64-fpvectors` of the test of the floating-point forms' meanings

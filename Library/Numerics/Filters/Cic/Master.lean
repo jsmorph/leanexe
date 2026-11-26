@@ -1,7 +1,11 @@
-import Library.Numerics.Filters.Cic.Compiled
-import Library.Numerics.Filters.Cic.Proof
-import Library.Numerics.Filters.Cic.Exact
-import Verified.Master
+module
+
+public import Library.Numerics.Filters.Cic.Compiled
+public import Library.Numerics.Filters.Cic.Proof
+public import Library.Numerics.Filters.Cic.Exact
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Filters.Cic
 

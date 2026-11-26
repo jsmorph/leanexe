@@ -1,6 +1,10 @@
-import Examples.Trees.Program
-import Library.Trees.WordTree.Reflected
-import Verified.Reflect.Command
+module
+
+public import Examples.Trees.Program
+public import Library.Trees.WordTree.Reflected
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of the operations that `Program.lean` adds over `KeyTree`,
 with the library's `size`, `sum`, `incr`, and `insert`, which they call, listed first.  The

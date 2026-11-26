@@ -1,6 +1,10 @@
-import Demos.Sgp4.OmmVerified
-import Demos.Sgp4.OmmSound
-import Verified.Master
+module
+
+public import Demos.Sgp4.OmmVerified
+public import Demos.Sgp4.OmmSound
+public import Verified.Master
+
+@[expose] public section
 
 /-!
 The master theorems of the exports `field` and `fieldNonneg` of the module `sgp4omm`, the readers

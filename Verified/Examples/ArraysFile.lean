@@ -1,5 +1,9 @@
-import Verified.Examples.Arrays
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Arrays
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/arrays.wasm`: the file holds
 `encode Arrays.compiled.module`, and it decodes to the module of `Arrays.compiled.bytes`. -/

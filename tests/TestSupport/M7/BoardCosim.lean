@@ -1,5 +1,9 @@
-import TestSupport.M7.Cosim
-import LeanExe.M7.Board
+module
+
+public import TestSupport.M7.Cosim
+public import LeanExe.M7.Board
+
+@[expose] public section
 
 /-!
 The co-simulation of the Cortex-M7 model of `LeanExe/M7/Machine.lean` on the NUCLEO-F767ZI.

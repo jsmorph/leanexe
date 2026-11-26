@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.FixedArraySearchFrame
-import LeanExe.ProofKit.FixedArrayHeaderExec
-import LeanExe.ProofKit.FreeListMemory
-import Interpreter.Wasm.Wp.Block
+module
+
+public import LeanExe.ProofKit.FixedArraySearchFrame
+public import LeanExe.ProofKit.FixedArrayHeaderExec
+public import LeanExe.ProofKit.FreeListMemory
+public import Interpreter.Wasm.Wp.Block
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArrayReuse
 open Wasm LeanExe.Runtime

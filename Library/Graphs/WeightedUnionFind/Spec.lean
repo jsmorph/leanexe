@@ -1,4 +1,8 @@
-import Library.Graphs.UnionFind.Spec
+module
+
+public import Library.Graphs.UnionFind.Spec
+
+@[expose] public section
 
 /-! The specification of equivalence classes with path compression and union by size is
 `LeastLabels` of the module of Algorithm E, which `Library.Graphs.UnionFind.Spec` defines: `r` holds

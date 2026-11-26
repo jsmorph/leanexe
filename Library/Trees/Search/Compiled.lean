@@ -1,7 +1,11 @@
-import Library.Trees.Search.Proof
-import Library.Trees.WordTree.Reflected
-import Verified.Reflect.Command
-import Verified.Congr
+module
+
+public import Library.Trees.Search.Proof
+public import Library.Trees.WordTree.Reflected
+public import Verified.Reflect.Command
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of tree search and insertion.  The compiler translates the tail
 recursions of `search`, `ascend`, and `descend` into loops, so no theorem of the module has a

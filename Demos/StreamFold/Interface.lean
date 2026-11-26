@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Bytes
-import LeanExe.Dialect.RepeatWhile
-import LeanExe.Wasi.Process
+module
+
+public import LeanExe.Dialect.Bytes
+public import LeanExe.Dialect.RepeatWhile
+public import LeanExe.Wasi.Process
+
+@[expose] public section
 
 namespace Demos.StreamFold
 

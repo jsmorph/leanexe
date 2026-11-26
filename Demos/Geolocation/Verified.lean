@@ -1,5 +1,9 @@
-import Demos.Geolocation.Flat
-import Verified.Reflect.Command
+module
+
+public import Demos.Geolocation.Flat
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The geolocation program of `Demos/Geolocation/Program.lean`, compiled by the verified compiler
 with the interval operations, the library's `sin` and `cos`, and the frames demo's sidereal

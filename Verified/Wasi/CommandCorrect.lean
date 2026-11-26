@@ -1,13 +1,17 @@
-import Verified.Wasi.CommandLeaves
-import Verified.Wasi.ReadAllCommand
-import Verified.Wasi.CommandCallSpec
-import Verified.Wasi.CommandBindSpec
-import Verified.Wasi.CommandBindValueSpec
-import Verified.Wasi.CommandConditionalSpec
-import Verified.Wasi.CommandLoopSpec
-import Verified.Wasi.SysCommand
-import Verified.Wasi.ReadCommand
-import Verified.Wasi.CommandLetPair
+module
+
+public import Verified.Wasi.CommandLeaves
+public import Verified.Wasi.ReadAllCommand
+public import Verified.Wasi.CommandCallSpec
+public import Verified.Wasi.CommandBindSpec
+public import Verified.Wasi.CommandBindValueSpec
+public import Verified.Wasi.CommandConditionalSpec
+public import Verified.Wasi.CommandLoopSpec
+public import Verified.Wasi.SysCommand
+public import Verified.Wasi.ReadCommand
+public import Verified.Wasi.CommandLetPair
+
+@[expose] public section
 
 namespace Verified.Wasi
 

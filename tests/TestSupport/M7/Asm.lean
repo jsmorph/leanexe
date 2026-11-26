@@ -1,4 +1,8 @@
-import LeanExe.M7.Encode
+module
+
+public import LeanExe.M7.Encode
+
+@[expose] public section
 
 /-!
 The GNU assembler's syntax for the instructions of the Cortex-M7 model of `LeanExe/M7/Machine.lean`

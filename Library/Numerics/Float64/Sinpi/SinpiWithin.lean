@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Sinpi.SinpiTiny
-import Library.Numerics.Float64.Sinpi.SinpiCosFloor
-import Library.Numerics.Float64.Sinpi.SinpiTanpi
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiTiny
+public import Library.Numerics.Float64.Sinpi.SinpiCosFloor
+public import Library.Numerics.Float64.Sinpi.SinpiTanpi
+
+@[expose] public section
 
 /-!
 The one-step bounds of `Sinpi.sinpi`, `Sinpi.cospi`, and `Sinpi.tanpi` for every finite input,

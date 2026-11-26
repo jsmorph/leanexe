@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.GammaDD
+module
+
+public import LeanExe.ProofKit.GammaDD
+
+@[expose] public section
 
 /-!
 Relative bounds for CORE-MATH's polynomials for `lgamma`.  `relOk r p P e σ ε ε' m0` is a kernel

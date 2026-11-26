@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Erfc.ErfcAccMain
-import Library.Numerics.Float64.Erfc.ErfcFastRow
-import Library.Numerics.Float64.Erfc.ErfcCast
-import Library.Numerics.Float64.Erfc.ErfcSeriesZ
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAccMain
+public import Library.Numerics.Float64.Erfc.ErfcFastRow
+public import Library.Numerics.Float64.Erfc.ErfcCast
+public import Library.Numerics.Float64.Erfc.ErfcSeriesZ
+
+@[expose] public section
 
 /-!
 One row of `cr_erf_accurate` from `1/8` on.  For `x` in `[i/8, (i+1)/8)`, `Erfc.erfAccurate` takes

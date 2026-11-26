@@ -1,6 +1,10 @@
-import Demos.OrderBook.Verified
-import Demos.OrderBook.ProcessBatch
-import Demos.OrderBook.ProgramCounts
+module
+
+public import Demos.OrderBook.Verified
+public import Demos.OrderBook.ProcessBatch
+public import Demos.OrderBook.ProgramCounts
+
+@[expose] public section
 
 /-! The allocation bound of the order book's `run`.  `verified_compile` defines `run.bound`, the
 number of bytes by which the module's `run` can raise the allocator's `top`, and states it through

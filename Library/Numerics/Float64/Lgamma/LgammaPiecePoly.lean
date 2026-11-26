@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaFastSmall
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaFastSmall
+
+@[expose] public section
 
 /-!
 The double-double polynomial of the fast path's 19 pieces, `Lgamma.piecePoly`.  Piece `j` evaluates

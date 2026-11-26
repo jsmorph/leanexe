@@ -1,5 +1,9 @@
-import Verified.Wasi.EffectSpec
-import Verified.Wasi.ScratchContext
+module
+
+public import Verified.Wasi.EffectSpec
+public import Verified.Wasi.ScratchContext
+
+@[expose] public section
 
 namespace Verified.Wasi
 

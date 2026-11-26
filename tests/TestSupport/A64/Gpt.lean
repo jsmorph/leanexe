@@ -1,6 +1,10 @@
-import TestSupport.A64.GptScores
-import LeanExe.A64.Proof.ProgramRuns
-import LeanExe.Native.Bare
+module
+
+public import TestSupport.A64.GptScores
+public import LeanExe.A64.Proof.ProgramRuns
+public import LeanExe.Native.Bare
+
+@[expose] public section
 
 /-!
 The theorems of the GPT-2 kernel's bare-metal program for AArch64.  `scoresCheck_eq` states the

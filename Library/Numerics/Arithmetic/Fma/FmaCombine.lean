@@ -1,7 +1,11 @@
-import Library.Numerics.Arithmetic.Fma.FmaParts
-import Library.Numerics.Arithmetic.Fma.FmaRoundPack
-import Library.Numerics.Arithmetic.Fma.FmaNearestEven
-import Library.Numerics.Arithmetic.Fma.FmaAlign
+module
+
+public import Library.Numerics.Arithmetic.Fma.FmaParts
+public import Library.Numerics.Arithmetic.Fma.FmaRoundPack
+public import Library.Numerics.Arithmetic.Fma.FmaNearestEven
+public import Library.Numerics.Arithmetic.Fma.FmaAlign
+
+@[expose] public section
 
 /-!
 The rounded sum of `FmaParts.combine`.  For normalized addends `X` at scale `wX` and `Y` at scale

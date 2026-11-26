@@ -1,4 +1,8 @@
-import Demos.OrderBook.Invariant
+module
+
+public import Demos.OrderBook.Invariant
+
+@[expose] public section
 
 /-! The stream theorems of [the program](Program.lean): a stream run in two parts gives the book and
 the event words of one run, and the refinement of every step gives the refinement of `run`. -/

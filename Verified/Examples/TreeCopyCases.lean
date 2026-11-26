@@ -1,4 +1,8 @@
-import Examples.Trees.Cases
+module
+
+public import Examples.Trees.Cases
+
+@[expose] public section
 
 namespace Verified.Examples.TreeCopy
 

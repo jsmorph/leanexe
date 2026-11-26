@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tanh.Expm1KernelOuter
-import Library.Numerics.Float64.Tanh.Expm1SubOne
-import LeanExe.ProofKit.F64NearestScale
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1KernelOuter
+public import Library.Numerics.Float64.Tanh.Expm1SubOne
+public import LeanExe.ProofKit.F64NearestScale
+
+@[expose] public section
 
 /-!
 Facts shared by the five scaling forms of fdlibm's `expm1`.  `common` takes the kernel's inputs

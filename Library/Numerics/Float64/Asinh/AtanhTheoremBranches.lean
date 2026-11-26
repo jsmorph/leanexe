@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Asinh.AsinhTheoremBranches
-import Library.Numerics.Float64.Log1p.Log1pTheoremReduce
+module
+
+public import Library.Numerics.Float64.Asinh.AsinhTheoremBranches
+public import Library.Numerics.Float64.Log1p.Log1pTheoremReduce
+
+@[expose] public section
 
 /-!
 The main branch of `Asinh.atanh` as an equation.  The code forms `|x|` as the word

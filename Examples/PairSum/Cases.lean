@@ -1,5 +1,9 @@
-import Examples.PairSum.Program
-import TestSupport.Host
+module
+
+public import Examples.PairSum.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `pairSum`. -/
 

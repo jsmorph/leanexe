@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselYnOrderOne
-import Library.Numerics.Float64.Bessel.BesselJnTheorem
-import Library.Numerics.Float64.Bessel.BesselOrderHuge
+module
+
+public import Library.Numerics.Float64.Bessel.BesselYnOrderOne
+public import Library.Numerics.Float64.Bessel.BesselJnTheorem
+public import Library.Numerics.Float64.Bessel.BesselOrderHuge
+
+@[expose] public section
 
 /-!
 **The accuracy theorem for `Bessel.yn`** (`yn_accuracy`): for every finite `x > 0` and every order

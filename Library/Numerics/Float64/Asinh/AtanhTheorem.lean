@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Asinh.AtanhTheoremLarge
-import Library.Numerics.Float64.Asin.AsinTheoremSpecial
-import Library.Numerics.Float64.Asinh.AsinhTheoremTiny
+module
+
+public import Library.Numerics.Float64.Asinh.AtanhTheoremLarge
+public import Library.Numerics.Float64.Asin.AsinTheoremSpecial
+public import Library.Numerics.Float64.Asinh.AsinhTheoremTiny
+
+@[expose] public section
 
 /-!
 **`atanh` within two steps** and its exceptional inputs.  The code's first test,

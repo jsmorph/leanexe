@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.PrimeFactors.Program
-import Library.Numerics.Arithmetic.PrimeFactors.Spec
-import Mathlib.Tactic.IntervalCases
+module
+
+public import Library.Numerics.Arithmetic.PrimeFactors.Program
+public import Library.Numerics.Arithmetic.PrimeFactors.Spec
+public import Mathlib.Tactic.IntervalCases
+
+@[expose] public section
 
 namespace Library.Numerics.Arithmetic.PrimeFactors
 

@@ -1,5 +1,9 @@
-import Demos.RunningSum.Program
-import Verified.Reflect.Command
+module
+
+public import Demos.RunningSum.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

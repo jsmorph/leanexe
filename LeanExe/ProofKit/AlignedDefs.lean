@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Interpreter.Wasm.Semantics
+module
+
+public import LeanExe.Base
+public import Interpreter.Wasm.Semantics
+
+@[expose] public section
 
 /-!
 The aligned runs.  `AlignedExec fuel m st s p env` states that every 64-bit load and store that

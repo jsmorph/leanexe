@@ -1,4 +1,8 @@
-import Demos.RunningSum.Magnitude
+module
+
+public import Demos.RunningSum.Magnitude
+
+@[expose] public section
 
 namespace Demos.RunningSum.Magnitude
 

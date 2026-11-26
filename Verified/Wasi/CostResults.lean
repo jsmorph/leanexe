@@ -1,4 +1,8 @@
-import Verified.Wasi.BudgetSpec
+module
+
+public import Verified.Wasi.BudgetSpec
+
+@[expose] public section
 
 namespace Verified.Wasi
 

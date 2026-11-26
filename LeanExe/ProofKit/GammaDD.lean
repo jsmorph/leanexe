@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.GammaFits
+module
+
+public import LeanExe.ProofKit.GammaFits
+
+@[expose] public section
 
 /-!
 Divided differences of `lgamma`, for the relative accuracy of CORE-MATH's polynomials next to a

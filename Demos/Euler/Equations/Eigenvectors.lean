@@ -1,5 +1,9 @@
-import Demos.Euler.Equations.Flux
-import Mathlib.LinearAlgebra.Matrix.Determinant.Basic
+module
+
+public import Demos.Euler.Equations.Flux
+public import Mathlib.LinearAlgebra.Matrix.Determinant.Basic
+
+@[expose] public section
 
 namespace Demos.Euler.Equations
 open scoped Matrix

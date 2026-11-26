@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64RoundRational
-import LeanExe.ProofKit.FloatShift
+module
+
+public import LeanExe.ProofKit.F64RoundRational
+public import LeanExe.ProofKit.FloatShift
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64RationalScale
 open Float.Model Float.Model.UnpackedFloat FloatRationalRounding F64RoundScaled FloatCommon

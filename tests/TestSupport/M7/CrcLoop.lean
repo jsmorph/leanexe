@@ -1,9 +1,13 @@
-import TestSupport.M7.CrcStep
-import TestSupport.M7.CrcImages
-import TestSupport.M7.CrcReplies
-import TestSupport.M7.QemuLoop
-import LeanExe.M7.Proof.Board
-import LeanExe.Proof.AreaHeap
+module
+
+public import TestSupport.M7.CrcStep
+public import TestSupport.M7.CrcImages
+public import TestSupport.M7.CrcReplies
+public import TestSupport.M7.QemuLoop
+public import LeanExe.M7.Proof.Board
+public import LeanExe.Proof.AreaHeap
+
+@[expose] public section
 
 /-!
 The loop theorems of the CRC-32 step through the Cortex-M7 back end, from reset: `crc_loop` of

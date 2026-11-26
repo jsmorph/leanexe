@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatDigits
-import Library.Numerics.Decimal.ParseFloat.ParseFloatDigits
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatDigits
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatDigits
+
+@[expose] public section
 
 /-!
 The layouts as numbers of RFC 8259's grammar.  For `t ≥ 1`, `sci_derives` shows that

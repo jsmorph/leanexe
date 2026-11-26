@@ -1,5 +1,9 @@
-import Demos.Rcv.ReadWords
-import Demos.Rcv.PrintProgram
+module
+
+public import Demos.Rcv.ReadWords
+public import Demos.Rcv.PrintProgram
+
+@[expose] public section
 
 /-!
 Native runs of the reader of `Demos/Rcv/Read.lean`, for comparisons with the Python reference and

@@ -1,4 +1,8 @@
-import Demos.Gpt32.Driver
+module
+
+public import Demos.Gpt32.Driver
+
+@[expose] public section
 
 /-!
 `tools/leanrun --timeout 30m lake env lean --run Demos/Gpt32/Generate.lean TARGET HOST WEIGHTS KERNELS SCORES NH F CHUNK VOCAB LAYERS N ID...`

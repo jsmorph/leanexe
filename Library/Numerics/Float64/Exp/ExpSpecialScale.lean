@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Exp.ExpCoreState
-import Library.Numerics.Float64.Exp.ExpResidualBounds
-import Mathlib.Data.Nat.Bitwise
+module
+
+public import Library.Numerics.Float64.Exp.ExpCoreState
+public import Library.Numerics.Float64.Exp.ExpResidualBounds
+public import Mathlib.Data.Nat.Bitwise
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpSpecialScale
 open CodeLib.IEEE64

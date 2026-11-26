@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Erfc.ErfcExp1Red
-import Library.Numerics.Float64.Erfc.ErfcExpTab
-import Library.Numerics.Float64.Erfc.ErfcQ1
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcExp1Red
+public import Library.Numerics.Float64.Erfc.ErfcExpTab
+public import Library.Numerics.Float64.Erfc.ErfcQ1
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 `exp_1` of `Erfc`: `exp (xh + xl)` for `-700 ≤ xh ≤ -8`.  With `K = -n` from the reduction

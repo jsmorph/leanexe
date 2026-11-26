@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64Bits
-import Library.Numerics.Float64.Exp.ExpEvaluationBounds
+module
+
+public import LeanExe.ProofKit.F64Bits
+public import Library.Numerics.Float64.Exp.ExpEvaluationBounds
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpEvaluationBounds
 open CodeLib.IEEE64

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Pow.PowLogSums
-import Library.Numerics.Float64.Pow.PowExpPaths
+module
+
+public import Library.Numerics.Float64.Pow.PowLogSums
+public import Library.Numerics.Float64.Pow.PowExpPaths
+
+@[expose] public section
 
 /-!
 The error of `PowLogBits.finalOf` on words.  With `r = z invc - 1` exact (`PowLogReduce`),

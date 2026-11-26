@@ -1,4 +1,8 @@
-import Library.Trees.WordTree.Program
+module
+
+public import Library.Trees.WordTree.Program
+
+@[expose] public section
 
 /-! Knuth's Algorithm T, tree search and insertion, on `KeyTree`, with no recursion other than
 tail recursion.  `search` follows steps T1 to T4 from the root.  `insert` follows the same path in

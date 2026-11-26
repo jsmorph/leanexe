@@ -1,6 +1,10 @@
-import Library.Hashing.Crc.Compiled
-import Library.Hashing.Crc.Proof
-import Verified.Call
+module
+
+public import Library.Hashing.Crc.Compiled
+public import Library.Hashing.Crc.Proof
+public import Verified.Call
+
+@[expose] public section
 
 /-! The bytes of the module `crc` compute CRC-32 and CRC-32C.  An entry, called from a ready store
 with a borrowed array `msg` and a byte count `n`, returns without a trap the word whose value is

@@ -1,4 +1,8 @@
-import Verified.Source
+module
+
+public import Verified.Source
+
+@[expose] public section
 
 namespace Verified
 

@@ -1,6 +1,10 @@
-import Verified.Wasi.SysWords
-import Verified.Wasi.SysCode
-import Verified.LocalFrame
+module
+
+public import Verified.Wasi.SysWords
+public import Verified.Wasi.SysCode
+public import Verified.LocalFrame
+
+@[expose] public section
 
 /-! The argument code of a flat call: the test that rejects arguments that do not fit their core
 types, and the code that pushes the core arguments, with the buffer's root for the output and the

@@ -1,10 +1,14 @@
-import LeanExe.Base
-import Mathlib.Analysis.ODE.ExistUnique
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
-import Mathlib.Analysis.Calculus.Deriv.Shift
-import Mathlib.Analysis.Calculus.Deriv.Pi
-import Mathlib.Topology.Algebra.Module.FiniteDimension
-import Mathlib.Algebra.Order.ToIntervalMod
+module
+
+public import LeanExe.Base
+public import Mathlib.Analysis.ODE.ExistUnique
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+public import Mathlib.Analysis.Calculus.Deriv.Shift
+public import Mathlib.Analysis.Calculus.Deriv.Pi
+public import Mathlib.Topology.Algebra.Module.FiniteDimension
+public import Mathlib.Algebra.Order.ToIntervalMod
+
+@[expose] public section
 
 /-!
 The Hill–Clohessy–Wiltshire model of a deputy's motion relative to a chief in a circular orbit of

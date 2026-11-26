@@ -1,7 +1,11 @@
-import Library.Hashing.Sha256.Bytes
-import TestSupport.Native.Common
-import LeanExe.Native.Proof.Input
-import Verified.Bare
+module
+
+public import Library.Hashing.Sha256.Bytes
+public import TestSupport.Native.Common
+public import LeanExe.Native.Proof.Input
+public import Verified.Bare
+
+@[expose] public section
 
 /-!
 The theorem of the program with input of milestone B7 (`docs/native-bare-metal.md`): `main` with

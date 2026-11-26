@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaPieceBase
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPieceBase
+
+@[expose] public section
 
 /-!
 Relative bounds on the pieces 5, 6, 7, 8 of `cr_lgamma`'s piecewise polynomial on `[0.5, 8.29541]`

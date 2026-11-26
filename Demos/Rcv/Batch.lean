@@ -1,5 +1,9 @@
-import Demos.Rcv.Stability
-import Demos.Rcv.Variants
+module
+
+public import Demos.Rcv.Stability
+public import Demos.Rcv.Variants
+
+@[expose] public section
 
 /-!
 T10 of [the requirements](requirements.md), section "Theorems": for every interpretation that

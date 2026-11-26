@@ -1,7 +1,11 @@
-import Verified.Wasi.Program
-import Verified.Wasi.ModuleTransport
-import Verified.Wasi.CompilerFacts
-import Verified.Correct
+module
+
+public import Verified.Wasi.Program
+public import Verified.Wasi.ModuleTransport
+public import Verified.Wasi.CompilerFacts
+public import Verified.Correct
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Bytes
+module
+
+public import LeanExe.Dialect.Bytes
+
+@[expose] public section
 
 /-! The specifications of the pure core of the request in `Demos/RandomHistogram/request.txt`:
 `parseSpec`, the number N that the command line gives, `histogramSpec`, the counts of the residues

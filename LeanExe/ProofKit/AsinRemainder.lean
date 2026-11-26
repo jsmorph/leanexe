@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.TaylorRemainder
-import LeanExe.ProofKit.PolyChecks
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.InverseDeriv
-import Mathlib.Analysis.Calculus.MeanValue
+module
+
+public import LeanExe.ProofKit.TaylorRemainder
+public import LeanExe.ProofKit.PolyChecks
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.InverseDeriv
+public import Mathlib.Analysis.Calculus.MeanValue
+
+@[expose] public section
 
 /-!
 A Taylor remainder for `arcsin` on `|x| ≤ 1/2`, which Mathlib lacks.  The derivative of

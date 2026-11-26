@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Asin.AcosTheoremPos
+module
+
+public import Library.Numerics.Float64.Asin.AcosTheoremPos
+
+@[expose] public section
 
 /-!
 `Asin.acos x` within one step of `arccos x` for every finite `x` with `|x| ≤ 1`.  The proof

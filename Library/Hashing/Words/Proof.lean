@@ -1,5 +1,9 @@
-import Library.Hashing.Words.Bytes
-import Mathlib.Tactic.IntervalCases
+module
+
+public import Library.Hashing.Words.Bytes
+public import Mathlib.Tactic.IntervalCases
+
+@[expose] public section
 
 /-! Byte-level facts about `bswap` and the words the hash functions assemble.  `be8` assembles eight
 bytes into a word with the first byte most significant, the order of FIPS 180-4 §3.1, and

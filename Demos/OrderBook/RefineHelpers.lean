@@ -1,4 +1,8 @@
-import Demos.OrderBook.RefineChains
+module
+
+public import Demos.OrderBook.RefineChains
+
+@[expose] public section
 
 /-! The read-only helpers of [the program](Program.lean) against the chains and `toSpec`.
 `findSlot` finds the slot of an order id, `freeSlot` a free slot, `predecessor` the slot before a

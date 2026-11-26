@@ -1,5 +1,9 @@
-import Examples.Words.Program
-import LeanExe.Pipeline.Slotted
+module
+
+public import Examples.Words.Program
+public import LeanExe.Pipeline.Slotted
+
+@[expose] public section
 
 namespace Examples.Words
 

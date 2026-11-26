@@ -1,6 +1,10 @@
-import Library.Hashing.SipHash.Encoding
-import Library.Hashing.SipHash.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Hashing.SipHash.Encoding
+public import Library.Hashing.SipHash.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Hashing.SipHash
 

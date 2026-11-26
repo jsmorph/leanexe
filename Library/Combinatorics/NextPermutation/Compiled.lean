@@ -1,5 +1,9 @@
-import Library.Combinatorics.NextPermutation.Proof
-import Verified.Reflect.Command
+module
+
+public import Library.Combinatorics.NextPermutation.Proof
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of the next arrangement.  By the compiler's rules, which the
 verified compiler's manual states, the compiler translates the tail recursions of `ascent`,

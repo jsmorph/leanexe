@@ -1,5 +1,9 @@
-import TestSupport.M7.Area
-import LeanExe.M7.Proof.Board
+module
+
+public import TestSupport.M7.Area
+public import LeanExe.M7.Proof.Board
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of `tests/TestSupport/M7/Area.lean` that `m7-windows area-board`

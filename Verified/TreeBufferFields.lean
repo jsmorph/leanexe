@@ -1,6 +1,10 @@
-import Verified.TreeHeapFields
-import Verified.FieldsMixed
-import Verified.TreeNodeArgs
+module
+
+public import Verified.TreeHeapFields
+public import Verified.FieldsMixed
+public import Verified.TreeNodeArgs
+
+@[expose] public section
 
 /-! The buffer fields of a record under construction: the facts of a buffer in a record from its
 representation and its normalization, the locals and the normal roots of the buffer arguments,

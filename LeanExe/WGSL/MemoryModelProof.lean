@@ -1,5 +1,9 @@
-import LeanExe.WGSL.EventsInput
-import LeanExe.WGSL.MemoryModel
+module
+
+public import LeanExe.WGSL.EventsInput
+public import LeanExe.WGSL.MemoryModel
+
+@[expose] public section
 
 /-!
 A race-free dispatch under the memory model of `MemoryModel.lean`.  In every consistent execution

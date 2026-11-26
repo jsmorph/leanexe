@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! The specification, as the request in `request.txt` states it: for an input of at
 most eight words, each word plus one with wrapping arithmetic; for a longer input, the empty array.

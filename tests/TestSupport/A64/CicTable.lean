@@ -1,6 +1,10 @@
-import Library.Numerics.Filters.Cic.Program
-import LeanExe.Dialect.Build
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Filters.Cic.Program
+public import LeanExe.Dialect.Build
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-!
 The CIC filter's bare-metal program for AArch64: the filter `cic` of

@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.Fma.FmaSpecial
-import LeanExe.ProofKit.F64Bits
+module
+
+public import Library.Numerics.Arithmetic.Fma.FmaSpecial
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-!
 The software fused multiply-add of `Fma` is IEEE 754's fusedMultiplyAdd with roundTiesToEven.

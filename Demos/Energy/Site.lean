@@ -1,4 +1,8 @@
-import Demos.Energy.Program
+module
+
+public import Demos.Energy.Program
+
+@[expose] public section
 
 /-! The profile table of the test site, which is the profile of the worked example of
 `Demos/Energy/README.md`: an energy floor of 10,800,000 J and a ceiling of 34,200,000 J, a largest

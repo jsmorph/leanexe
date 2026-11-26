@@ -1,8 +1,12 @@
-import Demos.Orbit.LambertOrbit
-import Demos.Orbit.GibbsSound
-import Library.Numerics.Float64.Asin.AcosTheorem
-import Library.Numerics.Float64.Log.LogTheorem
-import LeanExe.Dialect.Lemmas
+module
+
+public import Demos.Orbit.LambertOrbit
+public import Demos.Orbit.GibbsSound
+public import Library.Numerics.Float64.Asin.AcosTheorem
+public import Library.Numerics.Float64.Log.LogTheorem
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-!
 Soundness of Lambert's interval program.  `tofI_encloses` states that `tofI` encloses Izzo's time

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erf.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.ErfReference
+module
+
+public import Library.Numerics.Float64.Erf.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.ErfReference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Erf.erf` against references computed with Lean's integers through
 `ErfReference`, rounded to the nearest double.  fdlibm states an error below one unit in the last

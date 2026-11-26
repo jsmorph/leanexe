@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! SipHash-c-d, transcribed from §2 of J.-P. Aumasson and D. J. Bernstein, "SipHash: a fast
 short-input PRF", the version of 2012-09-18, which the reference implementation's README lists

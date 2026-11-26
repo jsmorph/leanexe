@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 /-! A command that writes its arguments, their sizes, readings of two clocks, and random bytes to
 stdout.  `main` reads the arguments with `args` and writes their bytes, each followed by a zero

@@ -1,4 +1,8 @@
-import TestSupport.M7.ShaLoop
+module
+
+public import TestSupport.M7.ShaLoop
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of the SHA-256 step `shaUsart3Tick` for the NUCLEO-F767ZI that

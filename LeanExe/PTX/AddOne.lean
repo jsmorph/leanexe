@@ -1,4 +1,8 @@
-import LeanExe.PTX.Launch
+module
+
+public import LeanExe.PTX.Launch
+
+@[expose] public section
 
 /-!
 A kernel written by hand that adds one to each word of an array.  The input buffer holds the

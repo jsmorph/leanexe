@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaSinpidLow
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidLow
+
+@[expose] public section
 
 /-!
 The last three double-double steps of `Tgamma.asSinpid`: the sum `C2` of the sine product `C1` and

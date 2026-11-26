@@ -1,5 +1,9 @@
-import Library.HashTables.LinearProbing.Compiled
-import Verified.Master
+module
+
+public import Library.HashTables.LinearProbing.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.HashTables.LinearProbing
 

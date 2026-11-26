@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatWord32
-import Library.Numerics.Decimal.PrintFloat.PrintFloatDerive
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatWord32
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatDerive
+
+@[expose] public section
 
 /-!
 The theorems of the specification of [the printers](PrintFloat.md).  For every binary64 word `w`,

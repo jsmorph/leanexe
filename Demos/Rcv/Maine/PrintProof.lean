@@ -1,5 +1,9 @@
-import Demos.Rcv.Maine.PrintProgram
-import Demos.Rcv.Maine.Winner
+module
+
+public import Demos.Rcv.Maine.PrintProgram
+public import Demos.Rcv.Maine.Winner
+
+@[expose] public section
 
 /-!
 The Maine report's printer equals the specification's report.  The proof is the Oakland printer's

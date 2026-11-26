@@ -1,5 +1,9 @@
-import Library.Hashing.Sha256.WordProof
-import Library.Hashing.Sha2.Equiv.SHA256.Main
+module
+
+public import Library.Hashing.Sha256.WordProof
+public import Library.Hashing.Sha2.Equiv.SHA256.Main
+
+@[expose] public section
 
 /-! `compress` computes the compression `SHS.SHA256.compress` of FIPS 180-4 §6.2.2 on the 32-bit
 words that the low halves of its words hold, and therefore equals `SHS.SHA256.Impl.compress`,

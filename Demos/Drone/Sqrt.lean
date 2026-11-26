@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.CeilSqrt.Proof
-import Demos.Drone.Program
+module
+
+public import Library.Numerics.Arithmetic.CeilSqrt.Proof
+public import Demos.Drone.Program
+
+@[expose] public section
 
 namespace Demos.Drone
 

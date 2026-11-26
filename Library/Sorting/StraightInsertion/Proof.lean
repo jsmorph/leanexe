@@ -1,8 +1,12 @@
-import Library.Sorting.StraightInsertion.Program
-import Library.Sorting.StraightInsertion.Spec
-import Library.Sorting.Sorted
-import LeanExe.Dialect.Lemmas
-import Mathlib.Data.List.Sort
+module
+
+public import Library.Sorting.StraightInsertion.Program
+public import Library.Sorting.StraightInsertion.Spec
+public import Library.Sorting.Sorted
+public import LeanExe.Dialect.Lemmas
+public import Mathlib.Data.List.Sort
+
+@[expose] public section
 
 /-! The proof that straight insertion returns the array's elements in nondecreasing order.  One
 insertion is a statement about lists: when the words `xs[0, i)` are in order, `shift v i xs` puts

@@ -1,6 +1,10 @@
-import Library.Sorting.StraightInsertion.Proof
-import Verified.Reflect.Command
-import Verified.Congr
+module
+
+public import Library.Sorting.StraightInsertion.Proof
+public import Verified.Reflect.Command
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of straight insertion.  The compiler translates the tail
 recursion of `shift` into a loop, and `straightInsertion` consumes its array, which the caller

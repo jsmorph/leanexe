@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselModSmall
+module
+
+public import Library.Numerics.Float64.Bessel.BesselModSmall
+
+@[expose] public section
 
 /-!
 Lower bounds on `√(J₁² + Y₁²)` below 2, for the units of the theorems on `j1` and `y1`.  Kernel

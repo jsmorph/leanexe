@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64OrderComplete
-import LeanExe.ProofKit.F64Absolute
+module
+
+public import LeanExe.ProofKit.F64OrderComplete
+public import LeanExe.ProofKit.F64Absolute
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Adjacent
 open CodeLib.IEEE64

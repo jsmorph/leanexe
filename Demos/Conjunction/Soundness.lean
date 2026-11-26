@@ -1,12 +1,16 @@
-import Demos.Conjunction.Program
-import Demos.Conjunction.Model
-import Demos.Conjunction.Gaussian
-import Library.Numerics.Interval.Proof
-import Library.Numerics.Float64.Exp.ExpTheorem
-import Library.Numerics.Float64.Erf.ErfOdd
-import Library.Numerics.Float64.Erfc.ErfcTheorem
-import Library.Numerics.Interval.FunctionsProof
-import LeanExe.Dialect.Lemmas
+module
+
+public import Demos.Conjunction.Program
+public import Demos.Conjunction.Model
+public import Demos.Conjunction.Gaussian
+public import Library.Numerics.Interval.Proof
+public import Library.Numerics.Float64.Exp.ExpTheorem
+public import Library.Numerics.Float64.Erf.ErfOdd
+public import Library.Numerics.Float64.Erfc.ErfcTheorem
+public import Library.Numerics.Interval.FunctionsProof
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-!
 Soundness of the conjunction program.  `pc_enclosure` states that an accepted result of `pc`

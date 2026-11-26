@@ -1,5 +1,9 @@
-import Examples.Increment.Spec
-import TestSupport.Host
+module
+
+public import Examples.Increment.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `increment`. -/
 

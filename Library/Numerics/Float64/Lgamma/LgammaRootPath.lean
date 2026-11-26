@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaRootEval
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaRootEval
+
+@[expose] public section
 
 /-!
 The code of `Lgamma.accurate` for one range of the polynomials about the negative zeros, before

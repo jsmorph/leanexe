@@ -1,6 +1,10 @@
-import Examples.Binary32.Program
-import LeanExe.Dialect.Build
-import Verified.Reflect.Command
+module
+
+public import Examples.Binary32.Program
+public import LeanExe.Dialect.Build
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-!
 A program of the binary32 conversions for AArch64: `convCheck n` applies

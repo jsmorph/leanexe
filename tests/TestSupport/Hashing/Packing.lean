@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! Conversions between hexadecimal text, bytes, packed words, and bit messages for the hashing
 tests. -/

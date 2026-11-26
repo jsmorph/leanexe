@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Atan.AtanBytes
-import Library.Numerics.Float64.Atan.AtanTwoSpecial
-import Library.Numerics.Float64.Atan.AtanTwoNaN
-import Verified.Master
+module
+
+public import Library.Numerics.Float64.Atan.AtanBytes
+public import Library.Numerics.Float64.Atan.AtanTwoSpecial
+public import Library.Numerics.Float64.Atan.AtanTwoNaN
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Atan
 

@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Batteries.Data.ByteArray
+module
+
+public import LeanExe.Base
+public import Batteries.Data.ByteArray
+
+@[expose] public section
 
 /-! # Common: `ByteArray.get!` lemmas
 

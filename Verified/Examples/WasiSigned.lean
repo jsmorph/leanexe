@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 /-! A WASI command over `Int64`: `signedStep` reads up to 8 bytes, writes the low byte of
 `x / 3 - 7` and returns it when the read gave bytes, and returns `-x` otherwise.  `main` applies it

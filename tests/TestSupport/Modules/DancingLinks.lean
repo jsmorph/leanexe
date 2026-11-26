@@ -1,4 +1,8 @@
-import TestSupport.Host
+module
+
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of exact cover by dancing links. -/
 

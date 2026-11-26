@@ -1,4 +1,8 @@
-import Library.Combinatorics.DancingLinks.Layout
+module
+
+public import Library.Combinatorics.DancingLinks.Layout
+
+@[expose] public section
 
 /-! The parts of step X1: the layout of a valid input satisfies `Layout.Good`, and the links of a
 column after the insertion of a node above all of its nodes.  `layout_good` takes the bounds on the

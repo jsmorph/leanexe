@@ -1,6 +1,10 @@
-import Examples.TreeLookup.Program
-import Examples.TreeLookup.Spec
-import LeanExe.Dialect.Lemmas
+module
+
+public import Examples.TreeLookup.Program
+public import Examples.TreeLookup.Spec
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! The program equals the specification, a fact about the Lean definitions that the theorems of
 the verified compilation use. -/

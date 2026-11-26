@@ -1,5 +1,9 @@
-import Demos.Slew.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Demos.Slew.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! Representations for the verified compiler: a vector is its three floats, a quaternion its
 four, the dimensions their six words, and the search state the tuple of its fields, two arrays of

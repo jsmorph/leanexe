@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccFinish
-import Library.Numerics.Float64.Tgamma.TgammaAccPre
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccFinish
+public import Library.Numerics.Float64.Tgamma.TgammaAccPre
+
+@[expose] public section
 
 /-!
 The case `x < j` of the accurate path of `Tgamma` from `1/4`: `j = 4`, `-184 < x < 4`, and the loop

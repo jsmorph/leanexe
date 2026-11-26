@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.WasiProgram
+module
+
+public import LeanExe.A64.Proof.WasiProgram
+
+@[expose] public section
 
 /-!
 The platforms and the launch of an executable of `genWasiElf`.  `modulePlatform L G` maps less

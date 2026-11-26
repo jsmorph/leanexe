@@ -1,5 +1,9 @@
-import Verified.Examples.WasiReadAll
-import Verified.Shim
+module
+
+public import Verified.Examples.WasiReadAll
+public import Verified.Shim
+
+@[expose] public section
 
 /-!
 The footprint theorem at the specification level for the readAll command.  For every choice of

@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.BesselChain
+module
+
+public import LeanExe.ProofKit.BesselChain
+
+@[expose] public section
 
 /-!
 The last approximation of the chain in `BesselChain`, on `[X, ∞)`, and the induction over the

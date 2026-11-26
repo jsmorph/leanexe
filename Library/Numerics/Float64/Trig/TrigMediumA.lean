@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Trig.TrigMediumCases
+module
+
+public import Library.Numerics.Float64.Trig.TrigMediumCases
+
+@[expose] public section
 
 /-!
 The first outcome of the medium reduction: when the exponent of `y0 = R1 - W1` is at least that of

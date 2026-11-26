@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Exact
+module
+
+public import LeanExe.ProofKit.F64Exact
+
+@[expose] public section
 
 /-!
 The grid of doubles in a binade.  A finite word `w` with `2 ^ k ≤ |value w|` and `k ≤ 52` has its

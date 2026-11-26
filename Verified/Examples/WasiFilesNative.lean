@@ -1,5 +1,9 @@
-import Verified.Examples.WasiFilesShim
-import Verified.ShimA64.Elf
+module
+
+public import Verified.Examples.WasiFilesShim
+public import Verified.ShimA64.Elf
+
+@[expose] public section
 
 /-!
 The footprint theorem for the files command at the memory cap of a native executable.  The

@@ -1,4 +1,8 @@
-import Verified.Kernel.Params
+module
+
+public import Verified.Kernel.Params
+
+@[expose] public section
 
 namespace Verified.Kernel
 

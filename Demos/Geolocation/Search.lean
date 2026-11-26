@@ -1,5 +1,9 @@
-import Demos.Geolocation.Program
-import Demos.Screening.Soundness
+module
+
+public import Demos.Geolocation.Program
+public import Demos.Screening.Soundness
+
+@[expose] public section
 
 /-!
 Soundness of the search for any box test with two facts (`TestSound`): a box whose test gives 0

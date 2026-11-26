@@ -1,5 +1,9 @@
-import Verified.Reflect.Command
-import Library.Random.Xorshift.Jump
+module
+
+public import Verified.Reflect.Command
+public import Library.Random.Xorshift.Jump
+
+@[expose] public section
 
 /-! A program of the verified compiler: Marsaglia's xorshift64 of
 `Library/Random/Xorshift/Program.lean`, compiled unchanged.  `step`, `advance`, and `applyCols`

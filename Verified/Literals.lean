@@ -1,5 +1,9 @@
-import Verified.Source
-import Verified.Bytes.LiteralPool
+module
+
+public import Verified.Source
+public import Verified.Bytes.LiteralPool
+
+@[expose] public section
 
 namespace Verified
 

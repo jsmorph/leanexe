@@ -1,11 +1,15 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccFin
-import Library.Numerics.Float64.Tgamma.TgammaAccSel
-import Library.Numerics.Float64.Tgamma.TgammaAccRanges
-import Library.Numerics.Float64.Tgamma.TgammaAccGamma
-import Library.Numerics.Float64.Tgamma.TgammaAccComb
-import Library.Numerics.Float64.Tgamma.TgammaAccCrr
-import Library.Numerics.Float64.Tgamma.TgammaRefl9
-import Library.Numerics.Float64.Tgamma.TgammaFloor
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccFin
+public import Library.Numerics.Float64.Tgamma.TgammaAccSel
+public import Library.Numerics.Float64.Tgamma.TgammaAccRanges
+public import Library.Numerics.Float64.Tgamma.TgammaAccGamma
+public import Library.Numerics.Float64.Tgamma.TgammaAccComb
+public import Library.Numerics.Float64.Tgamma.TgammaAccCrr
+public import Library.Numerics.Float64.Tgamma.TgammaRefl9
+public import Library.Numerics.Float64.Tgamma.TgammaFloor
+
+@[expose] public section
 
 /-!
 The branch of `Tgamma.accurate` from `1/4` as `accRangeVal`, with its pairs as projections and its

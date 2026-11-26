@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-!
 The WGSL subset that kernels use: storage buffers of `u32` words, one compute entry point that

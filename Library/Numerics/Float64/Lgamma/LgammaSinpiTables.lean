@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaKernelBase
-import Library.Numerics.Float64.Lgamma.Compiled
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaKernelBase
+public import Library.Numerics.Float64.Lgamma.Compiled
+
+@[expose] public section
 
 /-!
 Bounds on the table and kernels of `as_sinpipid` (`lgamma.c` lines 1249-1328, commit

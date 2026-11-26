@@ -1,8 +1,12 @@
-import Library.Numerics.Decimal.Shared.StrconvOfScientific
-import LeanExe.ProofKit.F32Bits
-import LeanExe.ProofKit.F32Convert
-import LeanExe.ProofKit.F32DivCore
-import LeanExe.ProofKit.F32RoundDyadic
+module
+
+public import Library.Numerics.Decimal.Shared.StrconvOfScientific
+public import LeanExe.ProofKit.F32Bits
+public import LeanExe.ProofKit.F32Convert
+public import LeanExe.ProofKit.F32DivCore
+public import LeanExe.ProofKit.F32RoundDyadic
+
+@[expose] public section
 
 /-!
 Lean's `Float32.ofScientific` at `v4.34.1`, the meaning of every decimal literal of type

@@ -1,5 +1,9 @@
-import Verified.Source
-import LeanExe.Source.Denote
+module
+
+public import Verified.Source
+public import LeanExe.Source.Denote
+
+@[expose] public section
 
 namespace Verified.Kernel
 

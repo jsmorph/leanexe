@@ -1,115 +1,119 @@
-import TestSupport.LibraryCases
-import TestSupport.Hashing.Sha256Cases
-import TestSupport.Hashing.Sha512Cases
-import TestSupport.Hashing.HmacCases
-import TestSupport.Hashing.Sha3Cases
-import TestSupport.Hashing.CrcCases
-import TestSupport.Hashing.CrcBitwiseCases
-import TestSupport.Hashing.SipHashCases
-import TestSupport.Hashing.XxHash64Cases
-import TestSupport.Regex.Cases
-import TestSupport.Slew.Cases
-import TestSupport.Energy.Cases
-import TestSupport.OrderBook.Cases
-import TestSupport.Rcv.Cases
-import TestSupport.Rcv.MaineCases
-import TestSupport.Conjunction.Cases
-import TestSupport.Conjunction.AccuracyCases
-import TestSupport.Conjunction.AdaptiveCases
-import TestSupport.Sgp4.Cases
-import Verified.Examples.Poly
-import Verified.Examples.Mix
-import Verified.Examples.Lets
-import Verified.Examples.Select
-import Verified.Examples.Calls
-import Verified.Examples.Frontend
-import Verified.Examples.Fold
-import Verified.Examples.TreeCopyCases
-import Verified.Examples.TreeCases
-import Verified.Examples.ListsCases
-import Verified.Examples.SignedCases
-import Verified.Examples.CompositionCases
-import Verified.Examples.ScalarCompositionCases
-import Verified.Examples.RelocationCases
-import Verified.Examples.WgslCases
-import Demos.Gpt32.VerifiedCases
-import Verified.Examples.ListRecursionCases
-import Verified.Examples.ListLoopsCases
-import Verified.Examples.ListTailCases
-import Verified.Examples.RecursiveTypesCases
-import Verified.Examples.TaggedTypesCases
-import Verified.Examples.HeapSumsCases
-import Verified.Examples.TypedTreesCases
-import TestSupport.Numerics.FunctionCases
-import Verified.Examples.TailCore
-import Verified.Examples.Tail
-import Verified.Examples.TailConditions
-import Verified.Examples.Pairs
-import Verified.Examples.Loops
-import Verified.Examples.Arrays
-import Verified.Examples.Owned
-import Verified.Examples.Updates
-import Verified.Examples.Grow
-import Verified.Examples.Modes
-import Verified.Examples.Floats
-import Verified.Examples.Floats32
-import Verified.Examples.Sums
-import Examples.Shape.Cases
-import Verified.Examples.Elements
-import Verified.Examples.Tuples
-import Verified.Examples.OwnedTuples
-import Verified.Examples.Records
-import Verified.Examples.Grids
-import Verified.Examples.Repeat
-import Verified.Examples.Enums
-import Verified.Examples.Recursion
-import Verified.Examples.Fields
-import Library.Numerics.Float64.Trig.Program
-import Library.Numerics.Fourier.Program
-import Verified.Examples.Insert
-import Verified.Examples.Tables
-import Library.Numerics.Float64.Exp.Program
-import Library.Numerics.Float64.Tanh.Program
-import Library.Numerics.Float64.Log.Program
-import Demos.Drone.Program
-import Library.Random.Lcg.Program
-import Library.Random.ParkMiller.Program
-import Library.Random.Xorshift.Program
-import Examples.Increment.Cases
-import Examples.Below100.Cases
-import Examples.Below100.Program
-import Examples.RemoveZero.Cases
-import Examples.Binary32.Cases
-import Examples.Lookup.Cases
-import Examples.TreeLookup.Samples
-import Examples.TreeLookup.Spec
-import Examples.Lookup.Spec
-import Examples.RunningMax.Spec
-import Examples.RunningMax.Samples
-import Demos.RandomHistogram.Spec
-import Demos.RandomHistogram.Samples
-import Demos.ManifestCheck.Spec
-import Demos.ManifestCheck.Samples
-import Demos.RandomChoice.Spec
-import Demos.RandomChoice.Samples
-import Demos.RandomChoice.PicksSpec
-import Demos.RandomChoice.PicksSamples
-import Examples.Axpy.Cases
-import Examples.Bools.Cases
-import Examples.Bucket.Cases
-import Examples.Calc.Cases
-import Examples.Grids.Cases
-import Examples.Lists.Cases
-import Examples.PairSum.Cases
-import Examples.Piecewise.Cases
-import Examples.Scale.Cases
-import Examples.ScaledHypot.Cases
-import Examples.SumArray.Cases
-import Examples.SumCount.Cases
-import Examples.Trees.Cases
-import Examples.Updates.Cases
-import Verified.Examples.Forms
-import Verified.Examples.Patterns
+module
+
+public import TestSupport.LibraryCases
+public import TestSupport.Hashing.Sha256Cases
+public import TestSupport.Hashing.Sha512Cases
+public import TestSupport.Hashing.HmacCases
+public import TestSupport.Hashing.Sha3Cases
+public import TestSupport.Hashing.CrcCases
+public import TestSupport.Hashing.CrcBitwiseCases
+public import TestSupport.Hashing.SipHashCases
+public import TestSupport.Hashing.XxHash64Cases
+public import TestSupport.Regex.Cases
+public import TestSupport.Slew.Cases
+public import TestSupport.Energy.Cases
+public import TestSupport.OrderBook.Cases
+public import TestSupport.Rcv.Cases
+public import TestSupport.Rcv.MaineCases
+public import TestSupport.Conjunction.Cases
+public import TestSupport.Conjunction.AccuracyCases
+public import TestSupport.Conjunction.AdaptiveCases
+public import TestSupport.Sgp4.Cases
+public import Verified.Examples.Poly
+public import Verified.Examples.Mix
+public import Verified.Examples.Lets
+public import Verified.Examples.Select
+public import Verified.Examples.Calls
+public import Verified.Examples.Frontend
+public import Verified.Examples.Fold
+public import Verified.Examples.TreeCopyCases
+public import Verified.Examples.TreeCases
+public import Verified.Examples.ListsCases
+public import Verified.Examples.SignedCases
+public import Verified.Examples.CompositionCases
+public import Verified.Examples.ScalarCompositionCases
+public import Verified.Examples.RelocationCases
+public import Verified.Examples.WgslCases
+public import Demos.Gpt32.VerifiedCases
+public import Verified.Examples.ListRecursionCases
+public import Verified.Examples.ListLoopsCases
+public import Verified.Examples.ListTailCases
+public import Verified.Examples.RecursiveTypesCases
+public import Verified.Examples.TaggedTypesCases
+public import Verified.Examples.HeapSumsCases
+public import Verified.Examples.TypedTreesCases
+public import TestSupport.Numerics.FunctionCases
+public import Verified.Examples.TailCore
+public import Verified.Examples.Tail
+public import Verified.Examples.TailConditions
+public import Verified.Examples.Pairs
+public import Verified.Examples.Loops
+public import Verified.Examples.Arrays
+public import Verified.Examples.Owned
+public import Verified.Examples.Updates
+public import Verified.Examples.Grow
+public import Verified.Examples.Modes
+public import Verified.Examples.Floats
+public import Verified.Examples.Floats32
+public import Verified.Examples.Sums
+public import Examples.Shape.Cases
+public import Verified.Examples.Elements
+public import Verified.Examples.Tuples
+public import Verified.Examples.OwnedTuples
+public import Verified.Examples.Records
+public import Verified.Examples.Grids
+public import Verified.Examples.Repeat
+public import Verified.Examples.Enums
+public import Verified.Examples.Recursion
+public import Verified.Examples.Fields
+public import Library.Numerics.Float64.Trig.Program
+public import Library.Numerics.Fourier.Program
+public import Verified.Examples.Insert
+public import Verified.Examples.Tables
+public import Library.Numerics.Float64.Exp.Program
+public import Library.Numerics.Float64.Tanh.Program
+public import Library.Numerics.Float64.Log.Program
+public import Demos.Drone.Program
+public import Library.Random.Lcg.Program
+public import Library.Random.ParkMiller.Program
+public import Library.Random.Xorshift.Program
+public import Examples.Increment.Cases
+public import Examples.Below100.Cases
+public import Examples.Below100.Program
+public import Examples.RemoveZero.Cases
+public import Examples.Binary32.Cases
+public import Examples.Lookup.Cases
+public import Examples.TreeLookup.Samples
+public import Examples.TreeLookup.Spec
+public import Examples.Lookup.Spec
+public import Examples.RunningMax.Spec
+public import Examples.RunningMax.Samples
+public import Demos.RandomHistogram.Spec
+public import Demos.RandomHistogram.Samples
+public import Demos.ManifestCheck.Spec
+public import Demos.ManifestCheck.Samples
+public import Demos.RandomChoice.Spec
+public import Demos.RandomChoice.Samples
+public import Demos.RandomChoice.PicksSpec
+public import Demos.RandomChoice.PicksSamples
+public import Examples.Axpy.Cases
+public import Examples.Bools.Cases
+public import Examples.Bucket.Cases
+public import Examples.Calc.Cases
+public import Examples.Grids.Cases
+public import Examples.Lists.Cases
+public import Examples.PairSum.Cases
+public import Examples.Piecewise.Cases
+public import Examples.Scale.Cases
+public import Examples.ScaledHypot.Cases
+public import Examples.SumArray.Cases
+public import Examples.SumCount.Cases
+public import Examples.Trees.Cases
+public import Examples.Updates.Cases
+public import Verified.Examples.Forms
+public import Verified.Examples.Patterns
+
+@[expose] public section
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads

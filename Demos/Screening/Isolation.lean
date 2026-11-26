@@ -1,4 +1,8 @@
-import Demos.Screening.Filters
+module
+
+public import Demos.Screening.Filters
+
+@[expose] public section
 
 /-!
 Soundness of the isolation.  `spanTest_zero` states that a cell that the test excludes holds no

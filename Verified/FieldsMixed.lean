@@ -1,4 +1,8 @@
-import Verified.FieldsBytes
+module
+
+public import Verified.FieldsBytes
+
+@[expose] public section
 
 namespace Verified
 

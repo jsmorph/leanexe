@@ -1,10 +1,14 @@
-import Library.Sorting.RadixSort.Program
-import Library.Sorting.RadixSort.Spec
-import Library.Sorting.Sorted
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
-import Mathlib.Data.List.FinRange
-import Mathlib.Data.Fintype.Card
+module
+
+public import Library.Sorting.RadixSort.Program
+public import Library.Sorting.RadixSort.Spec
+public import Library.Sorting.Sorted
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+public import Mathlib.Data.List.FinRange
+public import Mathlib.Data.Fintype.Card
+
+@[expose] public section
 
 /-! The proof that `radixSort` returns the array's elements in nondecreasing order.  A pass on the
 byte at bit `s` puts the word at position `j` at `pos s src j`, the number of words with a smaller

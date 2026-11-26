@@ -1,10 +1,14 @@
-import Library.Numerics.Interval.Functions
-import Library.Numerics.Interval.ArithEncloses
-import Library.Numerics.Float64.Trig.TrigSinCos
-import LeanExe.ProofKit.Signed64Value
-import Mathlib.Analysis.SpecialFunctions.Pow.Real
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
-import Mathlib.Analysis.Real.Pi.Bounds
+module
+
+public import Library.Numerics.Interval.Functions
+public import Library.Numerics.Interval.ArithEncloses
+public import Library.Numerics.Float64.Trig.TrigSinCos
+public import LeanExe.ProofKit.Signed64Value
+public import Mathlib.Analysis.SpecialFunctions.Pow.Real
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+public import Mathlib.Analysis.Real.Pi.Bounds
+
+@[expose] public section
 
 /-!
 Soundness of the operations of `Functions.lean`, stated with `Encloses i x` of `ArithEncloses.lean`,

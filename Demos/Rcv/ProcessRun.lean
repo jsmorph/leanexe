@@ -1,12 +1,16 @@
-import Demos.Rcv.ProcessCorrect
-import Demos.Rcv.ProcessSizes
-import Demos.StreamFold.Observed
-import Verified.Wasi.ProcessCode
-import Verified.Wasi.ProcessCorrect
-import Verified.Wasi.ProcessNative
-import Verified.Wasi.ProcessTotalCorrect
-import Verified.Wasi.ProcessEntryProofs
-import LeanExe.Encoding.FormCheck
+module
+
+public import Demos.Rcv.ProcessCorrect
+public import Demos.Rcv.ProcessSizes
+public import Demos.StreamFold.Observed
+public import Verified.Wasi.ProcessCode
+public import Verified.Wasi.ProcessCorrect
+public import Verified.Wasi.ProcessNative
+public import Verified.Wasi.ProcessTotalCorrect
+public import Verified.Wasi.ProcessEntryProofs
+public import LeanExe.Encoding.FormCheck
+
+@[expose] public section
 
 /-! The runs of a compiled tabulator's process, for the Oakland process of
 `Demos/Rcv/ProcessProof.lean` and the Maine process of `Demos/Rcv/Maine/ProcessProof.lean`, which

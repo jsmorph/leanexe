@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Log10.Compiled
-import Library.Numerics.Float64.Log2.Log2Power
-import Library.Numerics.Float64.Log.LogBranches
-import LeanExe.ProofKit.F64HighWord
+module
+
+public import Library.Numerics.Float64.Log10.Compiled
+public import Library.Numerics.Float64.Log2.Log2Power
+public import Library.Numerics.Float64.Log.LogBranches
+public import LeanExe.ProofKit.F64HighWord
+
+@[expose] public section
 
 /-!
 The word arithmetic of `Log10.log10`.  On the main path the code takes the high word `hx` of the

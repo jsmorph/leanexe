@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tan.TanMath
-import Library.Numerics.Float64.Tan.TanStep
-import LeanExe.ProofKit.F64SignedNearestSum
+module
+
+public import Library.Numerics.Float64.Tan.TanMath
+public import Library.Numerics.Float64.Tan.TanStep
+public import LeanExe.ProofKit.F64SignedNearestSum
+
+@[expose] public section
 
 /-!
 The even path of `Tan.kernelTan` below `0x3FE59428`: `x + r` rounded, for `|x| = X ≤ 0.67434`

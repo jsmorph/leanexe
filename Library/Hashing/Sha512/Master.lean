@@ -1,5 +1,9 @@
-import Library.Hashing.Sha512.Bytes
-import Verified.Master
+module
+
+public import Library.Hashing.Sha512.Bytes
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Hashing.Sha512
 

@@ -1,8 +1,12 @@
-import Verified.BoundFacts
-import Verified.LoopCostLast
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.RepeatWhile
-import Verified.Bytes.Allocation
+module
+
+public import Verified.BoundFacts
+public import Verified.LoopCostLast
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.RepeatWhile
+public import Verified.Bytes.Allocation
+
+@[expose] public section
 
 /-! Facts for bounding the generated allocation bounds of programs: the allocation cost of byte
 strings, the cost of loops whose passes each cost at most a constant, the sizes of arrays that loops

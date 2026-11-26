@@ -1,5 +1,9 @@
-import Verified.Wasi.ReflectCommand
-import Verified.Wasi.ReflectProgramCases
+module
+
+public import Verified.Wasi.ReflectCommand
+public import Verified.Wasi.ReflectProgramCases
+
+@[expose] public section
 
 namespace Verified.Wasi.ReflectCommandCases
 

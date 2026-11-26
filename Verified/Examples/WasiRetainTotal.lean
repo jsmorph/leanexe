@@ -1,4 +1,8 @@
-import Verified.Examples.WasiRetainBudget
+module
+
+public import Verified.Examples.WasiRetainBudget
+
+@[expose] public section
 
 namespace Verified.Examples.WasiRetain
 

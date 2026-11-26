@@ -1,5 +1,9 @@
-import Demos.Attitude.QProgram
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Attitude.QProgram
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Attitude.QMethod
 

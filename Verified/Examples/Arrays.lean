@@ -1,5 +1,9 @@
-import Library.Arrays.Search.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Arrays.Search.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: arrays of words as parameters, read with
 `xs.size.toUInt64` and the bounds-checked `xs[i.toNat]!`, inside loops, passed to calls, bound with

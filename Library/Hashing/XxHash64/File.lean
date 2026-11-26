@@ -1,5 +1,9 @@
-import Library.Hashing.XxHash64.Bytes
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Hashing.XxHash64.Bytes
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/xxhash64.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Library/Hashing/XxHash64/File.lean`: the file holds

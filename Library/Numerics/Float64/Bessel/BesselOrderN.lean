@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.Bessel
+module
+
+public import LeanExe.ProofKit.Bessel
+
+@[expose] public section
 
 /-!
 The Bessel functions of integer order, which Mathlib lacks.  For `n ≥ 0`, `Jn n x` is the series

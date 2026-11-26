@@ -1,7 +1,11 @@
-import Demos.Rcv.Cases
-import Demos.Rcv.Read
-import Library.Random.SplitMix64.Program
-import TestSupport.OrderBook.Words
+module
+
+public import Demos.Rcv.Cases
+public import Demos.Rcv.Read
+public import Library.Random.SplitMix64.Program
+public import TestSupport.OrderBook.Words
+
+@[expose] public section
 
 /-! The cases of the module `rcvCount`, the export `count` of `Demos/Rcv/Compiled.lean`, whose
 expected results are those of the specification `Demos.Rcv.Spec.countArray` in native Lean.  The

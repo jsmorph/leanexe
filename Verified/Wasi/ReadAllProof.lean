@@ -1,6 +1,10 @@
-import Verified.Wasi.ReadAllLoop
-import Verified.Wasi.ReadAllCost
-import Verified.Wasi.ReadAllocation
+module
+
+public import Verified.Wasi.ReadAllLoop
+public import Verified.Wasi.ReadAllCost
+public import Verified.Wasi.ReadAllocation
+
+@[expose] public section
 
 /-! The code of `readAll` from the limit on the stack to the errno, root, and length on the stack:
 the test of the limit, the allocation of the buffer, and the read loop.  The code changes the

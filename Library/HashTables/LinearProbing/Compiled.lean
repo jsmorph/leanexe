@@ -1,7 +1,11 @@
-import Library.HashTables.LinearProbing.Proof
-import Verified.Reflect.Command
-import Verified.Call
-import Verified.Congr
+module
+
+public import Library.HashTables.LinearProbing.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of the hash table.  The compiler translates the tail recursions
 of `probe` and `close` into loops and unfolds `step` into the loop of `hashTable`, whose state owns

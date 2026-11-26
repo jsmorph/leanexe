@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RoundFinish
+module
+
+public import LeanExe.ProofKit.F64RoundFinish
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64RoundDyadic
 open Float.Model Float.Model.UnpackedFloat F64Encoding FloatRounding F64RoundScaled F64RoundFinish FloatCommon

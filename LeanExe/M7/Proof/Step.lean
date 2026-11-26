@@ -1,5 +1,9 @@
-import LeanExe.M7.Proof.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import LeanExe.M7.Proof.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-!
 The call of a step from the compiler's theorem of the step, as `ReqRuns` states it on the C path

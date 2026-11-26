@@ -1,5 +1,9 @@
-import Demos.Sgp4.Tle
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Sgp4.Tle
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Sgp4
 

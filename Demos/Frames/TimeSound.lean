@@ -1,6 +1,10 @@
-import Demos.Frames.Time
-import Demos.Frames.Soundness
-import LeanExe.Dialect.Lemmas
+module
+
+public import Demos.Frames.Time
+public import Demos.Frames.Soundness
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-!
 What an accepted result of `timeScales` states.  `scan_inv` carries the facts of the pass over

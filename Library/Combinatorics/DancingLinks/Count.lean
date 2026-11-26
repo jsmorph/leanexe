@@ -1,6 +1,10 @@
-import Library.Combinatorics.DancingLinks.Spec
-import Mathlib.Algebra.BigOperators.Group.Finset.Basic
-import Mathlib.Algebra.BigOperators.Group.List.Basic
+module
+
+public import Library.Combinatorics.DancingLinks.Spec
+public import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+public import Mathlib.Algebra.BigOperators.Group.List.Basic
+
+@[expose] public section
 
 /-! The count of exact covers of a set of items, and the recursion of Algorithm X.  `coversOf os B`
 is the number of sets of indices of the options of `os` that lie inside `B` and contain each item

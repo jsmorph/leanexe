@@ -1,7 +1,11 @@
-import Demos.Rcv.Maine.TabulateProgram
-import Demos.Rcv.Maine.PrintProof
-import Demos.Rcv.Maine.Refinement
-import Demos.Rcv.TabulateProof
+module
+
+public import Demos.Rcv.Maine.TabulateProgram
+public import Demos.Rcv.Maine.PrintProof
+public import Demos.Rcv.Maine.Refinement
+public import Demos.Rcv.TabulateProof
+
+@[expose] public section
 
 /-!
 The Maine export `tabulate` returns the Maine report of every file: `tabulate_eq` states that the

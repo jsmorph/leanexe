@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaApprox
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+
+@[expose] public section
 
 /-!
 The kernel check of the database of hard cases of `Tgamma.accurate`.  For row `k`, `dbOk k` takes

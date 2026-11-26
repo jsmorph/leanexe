@@ -1,5 +1,9 @@
-import LeanExe.M7.Bound
-import LeanExe.ProofKit.Sequencing
+module
+
+public import LeanExe.M7.Bound
+public import LeanExe.ProofKit.Sequencing
+
+@[expose] public section
 
 /-!
 The static bound of `LeanExe/M7/Bound.lean` bounds the cost of every run.  `costOne_le` and

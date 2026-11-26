@@ -1,6 +1,10 @@
-import LeanExe.M7.Proof.Step
-import LeanExe.M7.Proof.Bound
-import TestSupport.Bare.Req
+module
+
+public import LeanExe.M7.Proof.Step
+public import LeanExe.M7.Proof.Bound
+public import TestSupport.Bare.Req
+
+@[expose] public section
 
 /-!
 The step theorems of the echo on the Cortex-M7: the calls of `usart3Tick`, function 9 of

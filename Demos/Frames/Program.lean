@@ -1,5 +1,9 @@
-import Demos.Frames.Enclose
-import LeanExe.Dialect.Loop
+module
+
+public import Demos.Frames.Enclose
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 The programs of `requirements.md`.  `gmst` encloses the sidereal angle of a day and an interval of

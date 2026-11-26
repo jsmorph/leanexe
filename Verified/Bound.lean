@@ -1,7 +1,11 @@
-import Verified.Compile
-import Verified.AllocCost
-import Verified.TailRun
-import Verified.Bytes.Cost
+module
+
+public import Verified.Compile
+public import Verified.AllocCost
+public import Verified.TailRun
+public import Verified.Bytes.Cost
+
+@[expose] public section
 
 /-! The allocation bound: the bytes by which the code of an expression can raise the allocator's
 `top`, as a Lean function of the values of its variables.  An allocation of `b` payload bytes

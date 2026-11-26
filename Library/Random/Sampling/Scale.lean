@@ -1,8 +1,12 @@
-import Library.Random.Sampling.Program
-import Mathlib.Data.FinEnum
-import Mathlib.Order.Interval.Finset.Nat
-import Mathlib.Tactic.NormNum
-import Mathlib.Tactic.Ring
+module
+
+public import Library.Random.Sampling.Program
+public import Mathlib.Data.FinEnum
+public import Mathlib.Order.Interval.Finset.Nat
+public import Mathlib.Tactic.NormNum
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-! The index of step P3: `scale u m` is `⌊u·m / 2^64⌋` when `m < 2^32` (`scale_toNat`), it lies
 below `m` (`scale_lt`), and each value `i < m` comes from `⌊2^64 / m⌋` or `⌈2^64 / m⌉` words

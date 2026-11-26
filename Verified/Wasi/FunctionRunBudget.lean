@@ -1,5 +1,9 @@
-import Verified.Wasi.FunctionRun
-import Verified.Wasi.FunctionEntryBudget
+module
+
+public import Verified.Wasi.FunctionRun
+public import Verified.Wasi.FunctionEntryBudget
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,5 +1,9 @@
-import LeanExe.Base
-import CodeLib.IEEE64.Roundoff
+module
+
+public import LeanExe.Base
+public import CodeLib.IEEE64.Roundoff
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Packing
 open CodeLib.IEEE64

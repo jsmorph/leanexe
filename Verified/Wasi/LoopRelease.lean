@@ -1,6 +1,10 @@
-import Verified.Wasi.PurePrefix
-import Verified.Heap
-import Verified.AlignedReleaseChain
+module
+
+public import Verified.Wasi.PurePrefix
+public import Verified.Heap
+public import Verified.AlignedReleaseChain
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,5 +1,9 @@
-import Verified.Wasi.ProcessEntryProofs
-import Verified.Wasi.ProcessTotalIteration
+module
+
+public import Verified.Wasi.ProcessEntryProofs
+public import Verified.Wasi.ProcessTotalIteration
+
+@[expose] public section
 
 namespace Verified.Wasi
 

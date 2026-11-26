@@ -1,7 +1,11 @@
-import LeanExe.WGSL.TranslateStmt
-import LeanExe.Source.Build
+module
 
-import LeanExe.Dialect.Build
+public import LeanExe.WGSL.TranslateStmt
+public import LeanExe.Source.Build
+
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 /-!
 The kernel of a build: for each index below the count, the value of the expression `element` after

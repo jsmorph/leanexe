@@ -1,5 +1,9 @@
-import Library.Arrays.BinarySearch.Program
-import Library.Arrays.BinarySearch.Spec
+module
+
+public import Library.Arrays.BinarySearch.Program
+public import Library.Arrays.BinarySearch.Spec
+
+@[expose] public section
 
 /-! The proof that binary search on a sorted array returns `expected`, the number of elements less
 than the key.  `search_spec` states the search's invariant: every element before `lo` is less than

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowExpSpecial
+module
+
+public import Library.Numerics.Float64.Pow.PowExpSpecial
+
+@[expose] public section
 
 /-!
 The special paths of `Pow.powExp` with `signBias = 0` for `768 < |x| < 1024`.  The residual

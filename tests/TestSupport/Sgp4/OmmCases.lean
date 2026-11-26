@@ -1,5 +1,9 @@
-import Demos.Sgp4.Omm
-import TestSupport.Host
+module
+
+public import Demos.Sgp4.Omm
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the module `sgp4omm`: `Omm.field` on decimal values in the forms of an Orbit
 Mean-Elements Message and on texts that are no numbers. -/

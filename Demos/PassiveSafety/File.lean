@@ -1,5 +1,9 @@
-import Demos.PassiveSafety.Verified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.PassiveSafety.Verified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/passivesafety.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Demos/PassiveSafety/File.lean`: the file holds

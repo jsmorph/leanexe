@@ -1,4 +1,8 @@
-import Library.Combinatorics.DancingLinks.Hide
+module
+
+public import Library.Combinatorics.DancingLinks.Hide
+
+@[expose] public section
 
 /-! The walk around an option, which `hide`, `unhide`, `coverOthers`, and `uncoverOthers` share.
 The forward walk starts at node `p + 1`, applies an operation `F` at each node of the option, and

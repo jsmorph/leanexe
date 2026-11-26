@@ -1,6 +1,10 @@
-import Library.Graphs.WeightedUnionFind.Program
-import Library.Graphs.WeightedUnionFind.Spec
-import Library.Graphs.UnionFind.Proof
+module
+
+public import Library.Graphs.WeightedUnionFind.Program
+public import Library.Graphs.WeightedUnionFind.Spec
+public import Library.Graphs.UnionFind.Proof
+
+@[expose] public section
 
 /-! The proof that `classes` labels each element with the least element of its class, with the
 invariant `Inv` of the module of Algorithm E.  A link from an element `j` to the root of its tree

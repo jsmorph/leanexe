@@ -1,5 +1,9 @@
-import Demos.Gpt.Exact
-import LeanExe.Pipeline.Implements
+module
+
+public import Demos.Gpt.Exact
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! The weights of GPT-2 and the pointers at which the host holds them, the cache after the first
 `p` tokens, and the arguments of the host's calls of `step` and `scores`.  The generation theorems

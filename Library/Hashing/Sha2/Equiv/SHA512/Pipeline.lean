@@ -1,10 +1,14 @@
-import Library.Hashing.Sha2.Equiv.SHA512.Compress.Impl
-import Library.Hashing.Sha2.Equiv.SHA512.Compress.Match
-import Library.Hashing.Sha2.Equiv.SHA512.Padding.Equiv
-import Library.Hashing.Sha2.Equiv.SHA512.Padding.ByteDecoding
-import Library.Hashing.Sha2.Equiv.SHA512.Padding.Parsing
-import Library.Hashing.Sha2.Equiv.SHA512.Digest
-import Library.Hashing.Sha2.Spec.SHA512tHash
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA512.Compress.Impl
+public import Library.Hashing.Sha2.Equiv.SHA512.Compress.Match
+public import Library.Hashing.Sha2.Equiv.SHA512.Padding.Equiv
+public import Library.Hashing.Sha2.Equiv.SHA512.Padding.ByteDecoding
+public import Library.Hashing.Sha2.Equiv.SHA512.Padding.Parsing
+public import Library.Hashing.Sha2.Equiv.SHA512.Digest
+public import Library.Hashing.Sha2.Spec.SHA512tHash
+
+@[expose] public section
 
 /-! # SHA-512 pipeline composition helpers
 

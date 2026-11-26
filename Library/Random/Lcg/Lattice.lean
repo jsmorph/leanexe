@@ -1,8 +1,12 @@
-import Library.Random.Lcg.Period
-import Mathlib.Algebra.Order.BigOperators.Group.Finset
-import Mathlib.Data.Int.Interval
-import Mathlib.Tactic.Linarith
-import Mathlib.Data.Fin.VecNotation
+module
+
+public import Library.Random.Lcg.Period
+public import Mathlib.Algebra.Order.BigOperators.Group.Finset
+public import Mathlib.Data.Int.Interval
+public import Mathlib.Tactic.Linarith
+public import Mathlib.Data.Fin.VecNotation
+
+@[expose] public section
 
 /-! These lemmas describe the lattice structure of the LCG of `Library/Random/Lcg/Program.lean`.  An
 integer vector `s` of length `t` lies in `Dual t` when `∑ s_k a^k ≡ 0 (mod 2^64)`, for `a` the

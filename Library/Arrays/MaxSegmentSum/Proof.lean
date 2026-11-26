@@ -1,5 +1,9 @@
-import Library.Arrays.MaxSegmentSum.Program
-import Library.Arrays.MaxSegmentSum.Spec
+module
+
+public import Library.Arrays.MaxSegmentSum.Program
+public import Library.Arrays.MaxSegmentSum.Spec
+
+@[expose] public section
 
 /-! The proof that `mss` computes `maxSegmentSum` of its elements read as integers when their
 absolute values sum to less than `2^63`.  The proof follows the fold from the left.  After a prefix

@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.TaylorRemainder
-import LeanExe.ProofKit.PolyChecks
+module
+
+public import LeanExe.ProofKit.TaylorRemainder
+public import LeanExe.ProofKit.PolyChecks
+
+@[expose] public section
 
 /-!
 The approximation error of fdlibm's tangent polynomial, as FreeBSD msun's `k_tan.c` at commit

@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-! Heapsort, Algorithm H of TAOCP §5.2.3, on an array of words, in place.  Indices start at 0, so
 node `i` of the heap `xs[0, n)` has the children `2i + 1` and `2i + 2`, where Knuth's node `j` has

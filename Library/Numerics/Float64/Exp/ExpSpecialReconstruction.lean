@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpSpecialScale
-import Library.Numerics.Float64.Exp.ExpCoreBounds
+module
+
+public import Library.Numerics.Float64.Exp.ExpSpecialScale
+public import Library.Numerics.Float64.Exp.ExpCoreBounds
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpSpecialReconstruction
 open CodeLib.IEEE64

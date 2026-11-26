@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.LinuxMain
-import LeanExe.A64.Proof.BytesProgram
+module
+
+public import LeanExe.A64.Proof.LinuxMain
+public import LeanExe.A64.Proof.BytesProgram
+
+@[expose] public section
 
 /-!
 The run of a program of `genSysProgram`, a Linux executable's program, from `main`: the call of

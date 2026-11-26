@@ -1,5 +1,9 @@
-import Demos.Drone.Selection
-import Demos.Drone.Timing
+module
+
+public import Demos.Drone.Selection
+public import Demos.Drone.Timing
+
+@[expose] public section
 
 /-! The costs in a row stay exact and bounded: an admitted predecessor adds its edge's ticks and
 the target's altitude above the floor without wrapping, and the first row and every advance of

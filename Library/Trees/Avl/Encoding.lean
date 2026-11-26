@@ -1,5 +1,9 @@
-import Library.Trees.Avl.Program
-import LeanExe.Pipeline.Slotted
+module
+
+public import Library.Trees.Avl.Program
+public import LeanExe.Pipeline.Slotted
+
+@[expose] public section
 
 namespace Library.Trees.Avl
 

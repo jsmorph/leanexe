@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiTanKernel
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiTanKernel
+
+@[expose] public section
 
 /-!
 The reflections of `Sinpi` on `[0, 1)`: for a positive `a` from `1/4` below `1/2`, `0.5 - a` is

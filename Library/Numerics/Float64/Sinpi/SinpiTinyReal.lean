@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Sinpi.SinpiProduct
-import Library.Numerics.Float64.Tan.TanEven
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiProduct
+public import Library.Numerics.Float64.Tan.TanEven
+
+@[expose] public section
 
 /-!
 The error of `Sinpi.piTiny` in real numbers.  With `A = x 2 ^ 53 = H + L` split into a head and

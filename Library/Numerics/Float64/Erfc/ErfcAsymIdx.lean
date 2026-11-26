@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcRound
-import Library.Numerics.Float64.Erfc.Compiled
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcRound
+public import Library.Numerics.Float64.Erfc.Compiled
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 The row indices of the asymptotic paths of `Erfc`.  `Erfc.asymptIndex yh` is the first `i` with

@@ -1,4 +1,8 @@
-import LeanExe.Source.Syntax
+module
+
+public import LeanExe.Source.Syntax
+
+@[expose] public section
 
 /-!
 The build kernels that the GPU targets translate: for each index below the count, the value of the

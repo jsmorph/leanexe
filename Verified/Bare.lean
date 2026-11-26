@@ -1,5 +1,9 @@
-import Verified.Native
-import LeanExe.Native.Proof.Main
+module
+
+public import Verified.Native
+public import LeanExe.Native.Proof.Main
+
+@[expose] public section
 
 /-!
 The theorems of bare-metal programs (`docs/native-bare-metal.md`).  `bare_of_nativeTables` is

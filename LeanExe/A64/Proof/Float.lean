@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.Arith
+module
+
+public import LeanExe.A64.Proof.Arith
+
+@[expose] public section
 
 /-!
 The simulation of the f64 forms.  An f64 value lies in the register of its height as its word, as

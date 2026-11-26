@@ -1,6 +1,10 @@
-import Library.Arrays.Repeat.Program
-import Library.Arrays.Range.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Arrays.Repeat.Program
+public import Library.Arrays.Range.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: arrays that grow with `xs.push v` and
 `xs ++ ys`.  An owned array that dies at the operation grows in its own block while the block has

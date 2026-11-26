@@ -1,5 +1,9 @@
-import LeanExe.M7.Proof.Straight
-import LeanExe.M7.Proof.Pair
+module
+
+public import LeanExe.M7.Proof.Straight
+public import LeanExe.M7.Proof.Pair
+
+@[expose] public section
 
 /-!
 Words of the model's memory and the code that loads and stores them relative to SP.  `Ram P a`

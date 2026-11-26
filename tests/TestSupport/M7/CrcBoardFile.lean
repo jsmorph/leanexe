@@ -1,4 +1,8 @@
-import TestSupport.M7.CrcLoop
+module
+
+public import TestSupport.M7.CrcLoop
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of the CRC-32 step `crcUsart3Tick` for the NUCLEO-F767ZI that

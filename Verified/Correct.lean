@@ -1,7 +1,11 @@
-import Verified.TailSpec
-import Verified.LiteralCodeEq
-import Verified.StaticImplements
-import Verified.AlignedCorrect
+module
+
+public import Verified.TailSpec
+public import Verified.LiteralCodeEq
+public import Verified.StaticImplements
+public import Verified.AlignedCorrect
+
+@[expose] public section
 
 /-! The compiler's correctness theorem.  Every function of a compiled program returns the value
 that the program gives it, with the heap and store changed only as `ImplementsA` allows.  The code

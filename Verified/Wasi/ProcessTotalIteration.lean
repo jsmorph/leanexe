@@ -1,6 +1,10 @@
-import Verified.Wasi.ProcessIteration
-import Verified.Wasi.ProcessTotalLoop
-import Verified.Wasi.CostCallHelper
+module
+
+public import Verified.Wasi.ProcessIteration
+public import Verified.Wasi.ProcessTotalLoop
+public import Verified.Wasi.CostCallHelper
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64ArithmeticBounds
-import Library.Numerics.Float64.Exp.ExpIntegerSelection
-import Library.Numerics.Float64.Exp.ExpReductionBounds
+module
+
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64ArithmeticBounds
+public import Library.Numerics.Float64.Exp.ExpIntegerSelection
+public import Library.Numerics.Float64.Exp.ExpReductionBounds
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpReductionSelection
 open CodeLib.IEEE64

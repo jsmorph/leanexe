@@ -1,4 +1,8 @@
-import Library.Combinatorics.DancingLinks.Column
+module
+
+public import Library.Combinatorics.DancingLinks.Column
+
+@[expose] public section
 
 /-! Knuth's `cover(i)` and `uncover(i)` on the whole array.  The item links follow the nodes, at
 `base = 3(Z + 1)`: `Items t L B` states that `LLINK` and `RLINK` give each item of `B ∪ {0}` its

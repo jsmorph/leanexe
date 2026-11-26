@@ -1,5 +1,9 @@
-import Demos.Euler.ReconstructedSpec
-import Demos.Euler.Equations.Hyperbolicity
+module
+
+public import Demos.Euler.ReconstructedSpec
+public import Demos.Euler.Equations.Hyperbolicity
+
+@[expose] public section
 
 /-! The Euler flux is hyperbolic at the states of admissible cells.  For both solvers, the words
 of a run that returns status 0 pack a final grid of such cells. -/

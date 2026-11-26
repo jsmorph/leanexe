@@ -1,6 +1,10 @@
-import Verified.Bytes.LiteralPool
-import Verified.HeapStep
-import LeanExe.ProofKit.ReleaseTree
+module
+
+public import Verified.Bytes.LiteralPool
+public import Verified.HeapStep
+public import LeanExe.ProofKit.ReleaseTree
+
+@[expose] public section
 
 namespace Verified.Bytes.LiteralPool
 

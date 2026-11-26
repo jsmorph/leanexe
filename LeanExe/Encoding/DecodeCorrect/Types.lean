@@ -1,5 +1,9 @@
-import LeanExe.Encoding.DecodeCorrect.Basic
-import LeanExe.Encoding.Spec.Modules
+module
+
+public import LeanExe.Encoding.DecodeCorrect.Basic
+public import LeanExe.Encoding.Spec.Modules
+
+@[expose] public section
 
 namespace Wasm.Encoding.Decoder
 

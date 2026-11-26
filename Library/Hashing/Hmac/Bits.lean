@@ -1,9 +1,13 @@
-import Library.Hashing.Hmac.Program
-import Library.Hashing.Hmac.Spec
-import Library.Hashing.Words.Proof
-import Library.Hashing.Sha2.Equiv.Common.Bytes
-import Library.Hashing.Sha2.Equiv.Common.FromBits
-import Library.Hashing.Sha2.Equiv.SHA256.Padding.ByteDecoding
+module
+
+public import Library.Hashing.Hmac.Program
+public import Library.Hashing.Hmac.Spec
+public import Library.Hashing.Words.Proof
+public import Library.Hashing.Sha2.Equiv.Common.Bytes
+public import Library.Hashing.Sha2.Equiv.Common.FromBits
+public import Library.Hashing.Sha2.Equiv.SHA256.Padding.ByteDecoding
+
+@[expose] public section
 
 /-! Facts that the HMAC-SHA-256 and HMAC-SHA-512 proofs share.  The first part concerns the bits
 of byte strings: their length, the bits of a concatenation, of appended zero bytes, and of a

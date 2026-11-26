@@ -1,4 +1,8 @@
-import Demos.Frames.Program
+module
+
+public import Demos.Frames.Program
+
+@[expose] public section
 
 /-!
 What an accepted result of each program states about the model.  `gmst_sound` states that the

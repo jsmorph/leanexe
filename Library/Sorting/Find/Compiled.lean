@@ -1,6 +1,10 @@
-import Library.Sorting.Find.Proof
-import Verified.Reflect.Command
-import Verified.Congr
+module
+
+public import Library.Sorting.Find.Proof
+public import Verified.Reflect.Command
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of selection.  The compiler translates the tail recursions of
 `scanUp`, `scanDown`, `part`, and `find` into loops, so the call stack does not grow.  `select`

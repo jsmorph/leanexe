@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-!
 # Loop unrolling helpers

@@ -1,4 +1,8 @@
-import Verified.Wasi.CommandIte
+module
+
+public import Verified.Wasi.CommandIte
+
+@[expose] public section
 
 namespace Verified.Wasi
 

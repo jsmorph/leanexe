@@ -1,5 +1,9 @@
-import Library.Sorting.Heapsort.Compiled
-import Verified.Master
+module
+
+public import Library.Sorting.Heapsort.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Sorting.Heapsort
 

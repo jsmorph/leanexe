@@ -1,6 +1,10 @@
-import Demos.RandomChoice.Native
-import Demos.RandomChoice.Output
-import Demos.RandomHistogram.NativeCounts
+module
+
+public import Demos.RandomChoice.Native
+public import Demos.RandomChoice.Output
+public import Demos.RandomHistogram.NativeCounts
+
+@[expose] public section
 
 /-! The unbiased random choice's corollary at the shim's specification level, over the layer events
 of a run under `linuxHost`.

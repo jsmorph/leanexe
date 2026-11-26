@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.WasiStubs
-import LeanExe.A64.WasiFiles
+module
+
+public import LeanExe.A64.Proof.WasiStubs
+public import LeanExe.A64.WasiFiles
+
+@[expose] public section
 
 /-!
 `run_zeroScan` and `run_pathCopy` follow, in the program's model, the two loops of the stub of

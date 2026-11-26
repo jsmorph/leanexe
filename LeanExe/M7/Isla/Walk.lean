@@ -1,6 +1,10 @@
-import LeanExe.M7.Isla.Check
-import LeanExe.M7.Isla.Profile
-import LeanExe.A64.Isla.Walk
+module
+
+public import LeanExe.M7.Isla.Check
+public import LeanExe.M7.Isla.Profile
+public import LeanExe.A64.Isla.Walk
+
+@[expose] public section
 
 /-!
 The walk of the traces of the Cortex-M7 model's branches, loads, and stores, which the modules

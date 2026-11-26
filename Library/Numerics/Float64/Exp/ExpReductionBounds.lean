@@ -1,6 +1,10 @@
-import CodeLib.IEEE64.Roundoff
-import LeanExe.ProofKit.RealExpError
-import Mathlib.Analysis.SpecialFunctions.Log.Basic
+module
+
+public import CodeLib.IEEE64.Roundoff
+public import LeanExe.ProofKit.RealExpError
+public import Mathlib.Analysis.SpecialFunctions.Log.Basic
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpReductionBounds
 open CodeLib.IEEE64

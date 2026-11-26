@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselBytes
-import Library.Numerics.Float64.Bessel.BesselNSpecial
-import Verified.Master
+module
+
+public import Library.Numerics.Float64.Bessel.BesselBytes
+public import Library.Numerics.Float64.Bessel.BesselNSpecial
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Bessel
 

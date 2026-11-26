@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Atan.AtanTheoremTail
-import LeanExe.ProofKit.F64Exact
-import LeanExe.ProofKit.F64UpperWord
+module
+
+public import Library.Numerics.Float64.Atan.AtanTheoremTail
+public import LeanExe.ProofKit.F64Exact
+public import LeanExe.ProofKit.F64UpperWord
+
+@[expose] public section
 
 /-!
 The reduced arguments of `Atan.atan` for `|x| ≥ 0.4375`, as approximations of their exact values.

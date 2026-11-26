@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Log2.Program
-import TestSupport.Numerics.WorstCases
-import Library.Numerics.Float64.Log10.Program
-import TestSupport.Numerics.PowerReference
+module
+
+public import Library.Numerics.Float64.Log2.Program
+public import TestSupport.Numerics.WorstCases
+public import Library.Numerics.Float64.Log10.Program
+public import TestSupport.Numerics.PowerReference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Log2.log2` and `Library.Numerics.Float64.Log10.log10` against references computed with Lean's integers
 through `PowerReference.log2` and `PowerReference.log10`, rounded to the nearest double.  Arm states

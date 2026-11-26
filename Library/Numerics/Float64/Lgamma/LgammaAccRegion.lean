@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccTail
-import Library.Numerics.Float64.Lgamma.LgammaAccLower
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccTail
+public import Library.Numerics.Float64.Lgamma.LgammaAccLower
+
+@[expose] public section
 
 /-!
 **`|log |Γ x|| ≥ 1/20` at the negative arguments from `-21/2` to `-1/4` where `Lgamma.accurate`

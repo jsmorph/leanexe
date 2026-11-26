@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpSpecialScale
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import Library.Numerics.Float64.Exp.ExpSpecialScale
+public import LeanExe.ProofKit.F64Magnitude
+
+@[expose] public section
 
 /-!
 The scale words of Arm's `exp2` and `exp10`.  The bits `ExpScaleBits.scaleBits ki` hold

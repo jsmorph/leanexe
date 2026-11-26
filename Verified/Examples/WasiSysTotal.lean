@@ -1,8 +1,12 @@
-import Verified.Examples.WasiSys
-import Verified.Wasi.BudgetTactics
-import Verified.Wasi.SysWords
-import Verified.Wasi.FunctionEntry
-import Verified.FieldsArgs
+module
+
+public import Verified.Examples.WasiSys
+public import Verified.Wasi.BudgetTactics
+public import Verified.Wasi.SysWords
+public import Verified.Wasi.FunctionEntry
+public import Verified.FieldsArgs
+
+@[expose] public section
 
 /-! `_start` of `Verified.Examples.WasiSys.command` exits with an accepted status for every host
 whose successful `args_sizes_get` replies ask for blocks of at most `limit` bytes, with `limit` at

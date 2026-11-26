@@ -1,7 +1,11 @@
-import LeanExe.A64.Stamp
-import LeanExe.A64.Linux
-import LeanExe.Linux.Trace
-import LeanExe.Area
+module
+
+public import LeanExe.A64.Stamp
+public import LeanExe.A64.Linux
+public import LeanExe.Linux.Trace
+public import LeanExe.Area
+
+@[expose] public section
 
 /-!
 The events of a run of the stamp program, the vocabulary of its theorem.  `ReadLoop` describes the

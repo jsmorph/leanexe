@@ -1,5 +1,9 @@
-import Demos.Bms.Spec
-import Library.Hashing.Crc.Proof
+module
+
+public import Demos.Bms.Spec
+public import Library.Hashing.Crc.Proof
+
+@[expose] public section
 
 /-!
 Theorems M1 to M12 of the BMS requirements about the machine of `Demos/Bms/Spec.lean`, each for

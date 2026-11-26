@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Exp2.Compiled
-import Library.Numerics.Float64.Exp.ExpIntegerSelection
-import LeanExe.ProofKit.F64BinadeWord
-import LeanExe.ProofKit.F64ErrorTrack
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import Library.Numerics.Float64.Exp2.Compiled
+public import Library.Numerics.Float64.Exp.ExpIntegerSelection
+public import LeanExe.ProofKit.F64BinadeWord
+public import LeanExe.ProofKit.F64ErrorTrack
+public import LeanExe.ProofKit.F64Magnitude
+
+@[expose] public section
 
 /-!
 The reduction of `Exp2.exp2Core`.  Adding `0x1.8p52 / 128 = 3 · 2 ^ 44` to `x` rounds `x` to the

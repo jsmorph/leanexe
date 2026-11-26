@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tan.TanOddStep
-import Library.Numerics.Float64.Tan.TanBigStep
-import Library.Numerics.Float64.Trig.TrigTheorem
-import LeanExe.ProofKit.F64Convert
+module
+
+public import Library.Numerics.Float64.Tan.TanOddStep
+public import Library.Numerics.Float64.Tan.TanBigStep
+public import Library.Numerics.Float64.Trig.TrigTheorem
+public import LeanExe.ProofKit.F64Convert
+
+@[expose] public section
 
 /-!
 The accuracy of `Tan.tan` for every finite input: the result lies within one step of the

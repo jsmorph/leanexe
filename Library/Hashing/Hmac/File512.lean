@@ -1,5 +1,9 @@
-import Library.Hashing.Hmac.Bytes
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Hashing.Hmac.Bytes
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/hmac_sha512.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Library/Hashing/Hmac/File512.lean`: the file holds

@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.GammaRel
-import Library.Numerics.Float64.Tgamma.GammaPi
-import Library.Numerics.Float64.Lgamma.Compiled
-import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+module
+
+public import LeanExe.ProofKit.GammaRel
+public import Library.Numerics.Float64.Tgamma.GammaPi
+public import Library.Numerics.Float64.Lgamma.Compiled
+public import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+
+@[expose] public section
 
 /-!
 The data of `cr_lgamma`'s piecewise polynomial on `[0.5, 8.29541]` (`lgamma.c` lines 759-870 and

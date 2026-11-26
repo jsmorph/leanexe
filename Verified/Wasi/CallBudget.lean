@@ -1,5 +1,9 @@
-import Verified.Wasi.CallFrame
-import Verified.Wasi.ResourceCompilerCost
+module
+
+public import Verified.Wasi.CallFrame
+public import Verified.Wasi.ResourceCompilerCost
+
+@[expose] public section
 
 namespace Verified.Wasi
 

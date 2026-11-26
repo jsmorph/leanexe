@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-!
 Array updates for execution tests of the compiler's update templates: chains of updates on an

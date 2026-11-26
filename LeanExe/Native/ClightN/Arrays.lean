@@ -1,6 +1,10 @@
-import LeanExe.Native.ClightN.Leaf
-import LeanExe.Native.Proof.Whole
-import LeanExe.Native.Proof.MemBytes
+module
+
+public import LeanExe.Native.ClightN.Leaf
+public import LeanExe.Native.Proof.Whole
+public import LeanExe.Native.Proof.MemBytes
+
+@[expose] public section
 
 /-!
 The bytes of N's arrays (`clightn/N.nsx`) in the memory of the Lean copy of Clight.

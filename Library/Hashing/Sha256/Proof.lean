@@ -1,5 +1,9 @@
-import Library.Hashing.Sha256.CompressProof
-import Library.Hashing.Sha256.PaddingProof
+module
+
+public import Library.Hashing.Sha256.CompressProof
+public import Library.Hashing.Sha256.PaddingProof
+
+@[expose] public section
 
 /-! SHA-256 and SHA-224 compute FIPS 180-4.  For a message of fewer than `2 ^ 61` bytes held in
 `msg`, the digest bytes of `sha256 msg n`, read most significant bit first, are the digest that

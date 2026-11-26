@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Bytes
+module
+
+public import LeanExe.Dialect.Bytes
+
+@[expose] public section
 
 /-! Reads of `Bytes`.  `Bytes.get` reads the byte that `ByteArray.get!` reads and the element of
 the byte list, zero past the end, and `ByteArray.get!` reads the element of the byte list. -/

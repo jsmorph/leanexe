@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccNorm
-import Library.Numerics.Float64.Tgamma.TgammaExpr
-import Library.Numerics.Float64.Tgamma.TgammaPolyLip
-import Library.Numerics.Float64.Lgamma.LgammaAsymSeries
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccNorm
+public import Library.Numerics.Float64.Tgamma.TgammaExpr
+public import Library.Numerics.Float64.Tgamma.TgammaPolyLip
+public import Library.Numerics.Float64.Lgamma.LgammaAsymSeries
+
+@[expose] public section
 
 /-!
 The tools for the polynomials of `Lgamma.accurate` about the negative zeros.  Each polynomial has

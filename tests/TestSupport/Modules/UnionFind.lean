@@ -1,5 +1,9 @@
-import Library.Graphs.UnionFind.Spec
-import TestSupport.Host
+module
+
+public import Library.Graphs.UnionFind.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of equivalence classes, and `leastLabels`, which
 computes their expected results by a search of the graph of the pairs, apart from the program. -/

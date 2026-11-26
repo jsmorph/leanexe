@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaLogdAcc
-import Library.Numerics.Float64.Lgamma.LgammaAsymRecip
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaLogdAcc
+public import Library.Numerics.Float64.Lgamma.LgammaAsymRecip
+
+@[expose] public section
 
 /-!
 The logarithm of `x = xh + xl` in `Lgamma.asLgammaAsymAccurate`, for `15/4 ≤ xh ≤ 2^120` and

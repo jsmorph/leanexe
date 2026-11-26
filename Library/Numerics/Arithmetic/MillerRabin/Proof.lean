@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.MillerRabin.Program
-import Library.Numerics.Arithmetic.MillerRabin.Spec
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Numerics.Arithmetic.MillerRabin.Program
+public import Library.Numerics.Arithmetic.MillerRabin.Spec
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! The proofs that the program computes `powModSpec` and `testSpec`, and that a prime passes the
 test for every base that it does not divide.  `addMod_spec` and `mulMod_spec` show that every

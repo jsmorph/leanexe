@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tgamma.Compiled
-import LeanExe.ProofKit.PolyBound
-import Mathlib.Analysis.SpecialFunctions.Gamma.Basic
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+module
+
+public import Library.Numerics.Float64.Tgamma.Compiled
+public import LeanExe.ProofKit.PolyBound
+public import Mathlib.Analysis.SpecialFunctions.Gamma.Basic
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+
+@[expose] public section
 
 /-!
 The approximation statements that the floating-point proof of `Tgamma.tgamma` takes as

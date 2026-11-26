@@ -1,6 +1,10 @@
-import LeanExe.M7.Div
-import LeanExe.M7.Proof.Straight
-import LeanExe.M7.Proof.Pair
+module
+
+public import LeanExe.M7.Div
+public import LeanExe.M7.Proof.Straight
+public import LeanExe.M7.Proof.Pair
+
+@[expose] public section
 
 /-!
 The theorem of `udivmod64`: from the routine's entry, with a nonzero divisor in r2 and r3, the

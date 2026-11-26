@@ -1,5 +1,9 @@
-import Examples.Shape.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Examples.Shape.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! How the shape theorems represent `Shape`: the constructor index, then the circle's radius,
 then the rectangle's sides, with zeros in the slots of the other constructors.  This instance

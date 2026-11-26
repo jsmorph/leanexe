@@ -1,4 +1,8 @@
-import LeanExe.M7.Machine
+module
+
+public import LeanExe.M7.Machine
+
+@[expose] public section
 
 /-!
 Values of 64-bit numbers in pairs of 32-bit words, and the results of the instruction sequences

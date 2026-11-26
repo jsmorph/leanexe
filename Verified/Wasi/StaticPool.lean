@@ -1,4 +1,8 @@
-import Verified.Wasi.AfterScratch
+module
+
+public import Verified.Wasi.AfterScratch
+
+@[expose] public section
 
 namespace Verified.Wasi
 

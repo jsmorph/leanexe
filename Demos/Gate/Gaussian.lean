@@ -1,8 +1,12 @@
-import Demos.Gate.Model
-import Demos.Gate.Mahalanobis
-import Mathlib.Probability.Distributions.Gaussian.Multivariate
-import Mathlib.Probability.Moments.ComplexMGF
-import Mathlib.Analysis.Complex.Convex
+module
+
+public import Demos.Gate.Model
+public import Demos.Gate.Mahalanobis
+public import Mathlib.Probability.Distributions.Gaussian.Multivariate
+public import Mathlib.Probability.Moments.ComplexMGF
+public import Mathlib.Analysis.Complex.Convex
+
+@[expose] public section
 
 /-!
 The law of the squared Mahalanobis distance under the Gaussian model.  For `d ≥ 1`, a positive

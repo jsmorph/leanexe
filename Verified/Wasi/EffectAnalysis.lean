@@ -1,5 +1,9 @@
-import Verified.Wasi.Source
-import Verified.CodeMask
+module
+
+public import Verified.Wasi.Source
+public import Verified.CodeMask
+
+@[expose] public section
 
 namespace Verified.Wasi
 

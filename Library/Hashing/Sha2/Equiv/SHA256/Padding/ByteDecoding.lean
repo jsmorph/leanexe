@@ -1,6 +1,10 @@
-import Library.Hashing.Sha2.Equiv.SHA256.Padding.Layout
-import Library.Hashing.Sha2.Equiv.Common.Bytes
-import Library.Hashing.Sha2.Spec.Preprocessing
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA256.Padding.Layout
+public import Library.Hashing.Sha2.Equiv.Common.Bytes
+public import Library.Hashing.Sha2.Spec.Preprocessing
+
+@[expose] public section
 
 /-! # SHA-256 padding: byte → bit decoding
 

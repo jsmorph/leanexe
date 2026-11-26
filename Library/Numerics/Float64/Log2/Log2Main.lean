@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Log2.Log2CoreStep
-import Library.Numerics.Float64.Log2.Log2Branches
-import Library.Numerics.Float64.Log.LogMain
+module
+
+public import Library.Numerics.Float64.Log2.Log2CoreStep
+public import Library.Numerics.Float64.Log2.Log2Branches
+public import Library.Numerics.Float64.Log.LogMain
+
+@[expose] public section
 
 /-!
 `Log2.log2` on positive normal arguments outside the path near 1, and on positive subnormal

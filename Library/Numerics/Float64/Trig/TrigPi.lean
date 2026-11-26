@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Trig.Compiled
-import Mathlib.Analysis.SpecialFunctions.Complex.Arctan
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
-import Mathlib.Analysis.SpecificLimits.Normed
+module
+
+public import Library.Numerics.Float64.Trig.Compiled
+public import Mathlib.Analysis.SpecialFunctions.Complex.Arctan
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
+public import Mathlib.Analysis.SpecificLimits.Normed
+
+@[expose] public section
 
 /-!
 Bounds on `π` from Machin's formula `π = 16 arctan (1/5) - 4 arctan (1/239)` and the alternating

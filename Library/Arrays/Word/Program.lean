@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Build
+module
+
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 namespace Library.Arrays.Word
 

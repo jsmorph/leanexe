@@ -1,6 +1,10 @@
-import TestSupport.Native.Common
-import Verified.Examples.Literals
-import Verified.Examples.Bytes
+module
+
+public import TestSupport.Native.Common
+public import Verified.Examples.Literals
+public import Verified.Examples.Bytes
+
+@[expose] public section
 
 /-!
 The theorems that `verified_compile` adds for the literal and byte examples.  The translation of

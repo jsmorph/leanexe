@@ -1,5 +1,9 @@
-import Demos.RandomChoice.Budget
-import Demos.RandomHistogram.Native
+module
+
+public import Demos.RandomChoice.Budget
+public import Demos.RandomHistogram.Native
+
+@[expose] public section
 
 /-! The footprint theorems of the unbiased random choice's command at the memory cap of a native
 executable.  The shim implements every flat call that the command imports, `args_sizes_get`,

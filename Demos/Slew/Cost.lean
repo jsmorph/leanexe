@@ -1,5 +1,9 @@
-import Demos.Slew.NanFree
-import Library.Numerics.Float64.Tanh.Expm1ReduceWords
+module
+
+public import Demos.Slew.NanFree
+public import Library.Numerics.Float64.Tanh.Expm1ReduceWords
+
+@[expose] public section
 
 /-! The cost of an edge of the slew planner's graph.  For an input that passes `validInput`, the
 duration of the rotation between two nodes in whole milliseconds, plus the settling time in

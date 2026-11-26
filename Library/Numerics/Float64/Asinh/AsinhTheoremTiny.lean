@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Asinh.AsinhTheoremBranches
-import Library.Numerics.Float64.Log1p.Log1pTheoremTail
-import LeanExe.ProofKit.F64WithinSelf
-import Mathlib.Analysis.SpecialFunctions.Arsinh
-import Mathlib.Analysis.SpecialFunctions.Artanh
+module
+
+public import Library.Numerics.Float64.Asinh.AsinhTheoremBranches
+public import Library.Numerics.Float64.Log1p.Log1pTheoremTail
+public import LeanExe.ProofKit.F64WithinSelf
+public import Mathlib.Analysis.SpecialFunctions.Arsinh
+public import Mathlib.Analysis.SpecialFunctions.Artanh
+
+@[expose] public section
 
 /-!
 `Asinh.asinh x` and `Asinh.atanh x` for `|x| < 2 ^ -28`, where both return `x`.  `arsinh x` and

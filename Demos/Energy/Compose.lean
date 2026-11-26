@@ -1,5 +1,9 @@
-import Demos.Energy.Operation
-import Demos.Energy.Window
+module
+
+public import Demos.Energy.Operation
+public import Demos.Energy.Window
+
+@[expose] public section
 
 /-! Consecutive windows.  `power_in_window` derives assumption A2 of an accepted window from the
 device's response and the gateway's rules, from the window's snapshot to the next.  `run_sound`

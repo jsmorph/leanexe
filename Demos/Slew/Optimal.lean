@@ -1,4 +1,8 @@
-import Demos.Slew.Cost
+module
+
+public import Demos.Slew.Cost
+
+@[expose] public section
 
 /-! Optimality of the slew planner.  The graph is the one that the program's own checks define
 (`Edge`): an edge joins node `u` to node `v` when both lie below `n`, both pass the static check

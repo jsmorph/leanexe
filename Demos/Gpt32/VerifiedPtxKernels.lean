@@ -1,5 +1,9 @@
-import Demos.Gpt32.VerifiedPtx
-import Demos.Gpt32.HostProgram
+module
+
+public import Demos.Gpt32.VerifiedPtx
+public import Demos.Gpt32.HostProgram
+
+@[expose] public section
 
 namespace Demos.Gpt32.VerifiedPtx
 

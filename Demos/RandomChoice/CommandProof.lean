@@ -1,8 +1,12 @@
-import Demos.RandomChoice.Command
-import Demos.RandomChoice.CommandSpec
-import Demos.RandomChoice.PicksProof
-import Demos.RandomChoice.Unbiased
-import Demos.RandomHistogram.CommandProof
+module
+
+public import Demos.RandomChoice.Command
+public import Demos.RandomChoice.CommandSpec
+public import Demos.RandomChoice.PicksProof
+public import Demos.RandomChoice.Unbiased
+public import Demos.RandomHistogram.CommandProof
+
+@[expose] public section
 
 /-! Every run of the command's `main` followed by its exit, under every host, that ends with an
 exit status meets the request (`exec_main`): its events are those of `Meets` followed by the exit.

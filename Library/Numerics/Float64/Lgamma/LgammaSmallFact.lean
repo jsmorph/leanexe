@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaSmallFactA
-import Library.Numerics.Float64.Lgamma.LgammaSmallFactB
-import Library.Numerics.Float64.Lgamma.LgammaSmallFactC
-import Library.Numerics.Float64.Lgamma.LgammaSmallFactD
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaSmallFactA
+public import Library.Numerics.Float64.Lgamma.LgammaSmallFactB
+public import Library.Numerics.Float64.Lgamma.LgammaSmallFactC
+public import Library.Numerics.Float64.Lgamma.LgammaSmallFactD
+
+@[expose] public section
 
 /-!
 `LgammaApprox.SmallFact`: CORE-MATH's polynomial for `log Γ (1 + x)/x` on `|x| ≤ 1/32` (`lgamma.c`

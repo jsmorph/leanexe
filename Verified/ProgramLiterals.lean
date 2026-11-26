@@ -1,5 +1,9 @@
-import Verified.ProgramAppend
-import Verified.LiteralCoverage
+module
+
+public import Verified.ProgramAppend
+public import Verified.LiteralCoverage
+
+@[expose] public section
 
 namespace Verified
 

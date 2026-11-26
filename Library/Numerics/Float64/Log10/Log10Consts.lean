@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Log2.Log2KernelPoly
-import Library.Numerics.Float64.Log.LogTables
-import Library.Numerics.Float64.Log1p.Log1pKernelPoly
-import LeanExe.ProofKit.LogRatioRemainder
+module
+
+public import Library.Numerics.Float64.Log2.Log2KernelPoly
+public import Library.Numerics.Float64.Log.LogTables
+public import Library.Numerics.Float64.Log1p.Log1pKernelPoly
+public import LeanExe.ProofKit.LogRatioRemainder
+
+@[expose] public section
 
 /-!
 The constants of fdlibm's `log10` against `log 10`.  `log 10 = 3 log 2 + log (5/4)`, and

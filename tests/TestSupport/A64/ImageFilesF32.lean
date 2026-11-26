@@ -1,8 +1,12 @@
-import TestSupport.A64.Programs
-import TestSupport.A64.GptLayer32Runs
-import TestSupport.A64.Conv32Runs
-import LeanExe.A64.File
-import LeanExe.A64.Proof.ImageTheorem
+module
+
+public import TestSupport.A64.Programs
+public import TestSupport.A64.GptLayer32Runs
+public import TestSupport.A64.Conv32Runs
+public import LeanExe.A64.File
+public import LeanExe.A64.Proof.ImageTheorem
+
+@[expose] public section
 
 /-!
 The theorems of the binary32 Images, `gptlayer32.img` and `conv32.img`, which `a64-programs emit`

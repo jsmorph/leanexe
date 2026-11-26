@@ -1,4 +1,8 @@
-import Demos.Drone.Costs
+module
+
+public import Demos.Drone.Costs
+
+@[expose] public section
 
 /-! Bellman's invariant for the rows of `advance`: every finite choice is the cost of a flight
 to its state, and no flight to a state costs less.  `layers` is the sequence of rows that

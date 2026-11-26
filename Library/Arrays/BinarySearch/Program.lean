@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! Binary search, Algorithm B of TAOCP §6.2.1, in the form that returns the least index whose
 element is at least the key.  Indices start at 0, and the half-open range `[lo, hi)` holds Knuth's

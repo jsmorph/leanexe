@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Trig.TrigNear
-import Library.Numerics.Float64.Bessel.Compiled
-import LeanExe.ProofKit.F64HalfUlp
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64RoundFinish
-import LeanExe.ProofKit.F64Exact
+module
+
+public import Library.Numerics.Float64.Trig.TrigNear
+public import Library.Numerics.Float64.Bessel.Compiled
+public import LeanExe.ProofKit.F64HalfUlp
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64RoundFinish
+public import LeanExe.ProofKit.F64Exact
+
+@[expose] public section
 
 /-!
 The pairs `(cc, ss)` of `Bessel.asym0` and `Bessel.asym1` for `x ≥ 2`, as distances from

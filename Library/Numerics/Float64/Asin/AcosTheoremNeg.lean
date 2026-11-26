@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Asin.AcosTheoremSmall
+module
+
+public import Library.Numerics.Float64.Asin.AcosTheoremSmall
+
+@[expose] public section
 
 /-!
 `Asin.acos x` for `-1 < x ≤ -1/2`: `π - 2 (s + (r s - pio2_lo))` with the exact

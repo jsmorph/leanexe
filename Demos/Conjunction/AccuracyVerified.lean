@@ -1,6 +1,10 @@
-import Demos.Conjunction.Accuracy
-import Verified.Reflect.Command
-import Demos.Conjunction.AccuracyFlat
+module
+
+public import Demos.Conjunction.Accuracy
+public import Verified.Reflect.Command
+public import Demos.Conjunction.AccuracyFlat
+
+@[expose] public section
 
 namespace Demos.Conjunction.Accuracy
 

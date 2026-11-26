@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.GammaSubnormalA
-import LeanExe.ProofKit.GammaSubnormalB
-import LeanExe.ProofKit.GammaSubnormalC
+module
+
+public import LeanExe.ProofKit.GammaSubnormalA
+public import LeanExe.ProofKit.GammaSubnormalB
+public import LeanExe.ProofKit.GammaSubnormalC
+
+@[expose] public section
 
 /-!
 Every double in `(-184, -170)` is `-m/2 ^ 45` for an integer `m`, and `|Γ|` there stays `2 ^ -48`

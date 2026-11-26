@@ -1,5 +1,9 @@
-import TestSupport.Numerics.Reference
-import TestSupport.Numerics.ArcReference
+module
+
+public import TestSupport.Numerics.Reference
+public import TestSupport.Numerics.ArcReference
+
+@[expose] public section
 
 /-! Integer references for the Bessel functions of the first and second kinds, for the checks of
 `Bessel`, in fixed point: `v` stands for `v · 2 ^ -q`.  Below 300 the power series give `J 0`,

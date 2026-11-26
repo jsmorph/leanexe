@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaReflMid
-import Library.Numerics.Float64.Lgamma.LgammaZeroBase
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaReflMid
+public import Library.Numerics.Float64.Lgamma.LgammaZeroBase
+
+@[expose] public section
 
 /-!
 `FastSpec` for the reflection of `Lgamma.lgammaWith` from `x = -4` to `-2`, where `ln |Γ x|` has

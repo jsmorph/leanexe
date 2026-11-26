@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.Compiled
-import LeanExe.ProofKit.PolyBound
-import LeanExe.ProofKit.F64Order
+module
+
+public import Library.Numerics.Float64.Tgamma.Compiled
+public import LeanExe.ProofKit.PolyBound
+public import LeanExe.ProofKit.F64Order
+
+@[expose] public section
 
 /-!
 The argument reduction of `Tgamma.asLogd`: for every mantissa `m` of a normal double, the index

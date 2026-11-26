@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import Library.Sorting.Heapsort.Program
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import Library.Sorting.Heapsort.Program
+
+@[expose] public section
 
 /-! Random shuffling, Algorithm P of TAOCP §3.4.2, on an array of words, in place, with indices
 from 0.  The random numbers are words `u` of an array that the caller supplies, read as fractions

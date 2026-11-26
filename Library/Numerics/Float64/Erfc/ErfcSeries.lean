@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.PolyCalculus
-import LeanExe.ProofKit.PolyCalc
-import LeanExe.ProofKit.RealErf
-import LeanExe.ProofKit.BesselConstants
+module
+
+public import LeanExe.ProofKit.PolyCalculus
+public import LeanExe.ProofKit.PolyCalc
+public import LeanExe.ProofKit.RealErf
+public import LeanExe.ProofKit.BesselConstants
+
+@[expose] public section
 
 /-!
 Bounds on `erf` near a rational center `c` from its series at 0, for the certificates of the

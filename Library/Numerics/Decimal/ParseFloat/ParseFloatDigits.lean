@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.ParseFloat.ParseFloatScan
-import Library.Numerics.Arithmetic.Uscale.UscaleDiv
+module
+
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatScan
+public import Library.Numerics.Arithmetic.Uscale.UscaleDiv
+
+@[expose] public section
 
 /-!
 The significand's digits as the parsers read them.  The digits of a significand are the list

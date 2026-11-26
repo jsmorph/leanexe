@@ -1,5 +1,9 @@
-import LeanExe.A64.Isla.Float
-import LeanExe.A64.Isla.Linux
+module
+
+public import LeanExe.A64.Isla.Float
+public import LeanExe.A64.Isla.Linux
+
+@[expose] public section
 
 /-!
 Theorems of `AgreesAll` for `FCMP Dn, Dm` of `LeanExe/A64/Machine.lean`, the comparison of two

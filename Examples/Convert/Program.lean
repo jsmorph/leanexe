@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-!
 Conversions between `Int64` and the floats.  `toDouble` and `toSingle` round a signed integer to

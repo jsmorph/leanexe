@@ -1,6 +1,10 @@
-import LeanExe.Base
-import Mathlib.Tactic
-import Mathlib.Analysis.Real.Sqrt
+module
+
+public import LeanExe.Base
+public import Mathlib.Tactic
+public import Mathlib.Analysis.Real.Sqrt
+
+@[expose] public section
 
 /-! The relative error of a square root whose input has a relative error. -/
 

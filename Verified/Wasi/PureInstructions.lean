@@ -1,6 +1,10 @@
-import Verified.Wasi.PureInstructionsInteger
-import Verified.Wasi.PureInstructionsFloat
-import Verified.Wasi.PureInstructionsState
+module
+
+public import Verified.Wasi.PureInstructionsInteger
+public import Verified.Wasi.PureInstructionsFloat
+public import Verified.Wasi.PureInstructionsState
+
+@[expose] public section
 
 namespace Verified.Wasi.PureTransport
 

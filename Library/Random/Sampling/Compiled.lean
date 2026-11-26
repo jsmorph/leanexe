@@ -1,5 +1,9 @@
-import Library.Random.Sampling.Reservoir
-import Verified.Reflect.Command
+module
+
+public import Library.Random.Sampling.Reservoir
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of Algorithms P, S, and R.  `shuffle` borrows the word array and
 consumes the array it shuffles, which the caller moves as `Moved (Array UInt64)`: every

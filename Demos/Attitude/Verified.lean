@@ -1,6 +1,10 @@
-import Demos.Attitude.Program
-import Verified.Reflect.Command
-import Demos.Attitude.Flat
+module
+
+public import Demos.Attitude.Program
+public import Verified.Reflect.Command
+public import Demos.Attitude.Flat
+
+@[expose] public section
 
 namespace Demos.Attitude
 

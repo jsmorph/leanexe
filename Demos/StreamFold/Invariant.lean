@@ -1,5 +1,9 @@
-import Demos.StreamFold.Buffer
-import Demos.StreamFold.StreamHost
+module
+
+public import Demos.StreamFold.Buffer
+public import Demos.StreamFold.StreamHost
+
+@[expose] public section
 
 namespace Demos.StreamFold
 

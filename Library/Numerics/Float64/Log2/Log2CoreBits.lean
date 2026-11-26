@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log2.Compiled
-import Library.Numerics.Float64.Log.LogCoreBits
+module
+
+public import Library.Numerics.Float64.Log2.Compiled
+public import Library.Numerics.Float64.Log.LogCoreBits
+
+@[expose] public section
 
 /-!
 The word arithmetic of `Log2.log2Core`.  The reduction is that of `Log.logCore`, with the

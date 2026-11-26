@@ -1,4 +1,8 @@
-import Verified.TailRun
+module
+
+public import Verified.TailRun
+
+@[expose] public section
 
 namespace Verified.Tail
 

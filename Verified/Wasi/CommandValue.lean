@@ -1,5 +1,9 @@
-import Verified.Wasi.CommandBind
-import Verified.Locals
+module
+
+public import Verified.Wasi.CommandBind
+public import Verified.Locals
+
+@[expose] public section
 
 namespace Verified.Wasi
 

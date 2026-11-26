@@ -1,6 +1,10 @@
-import Demos.PassiveSafety.Program
-import Verified.Reflect.Command
-import Demos.PassiveSafety.Flat
+module
+
+public import Demos.PassiveSafety.Program
+public import Verified.Reflect.Command
+public import Demos.PassiveSafety.Flat
+
+@[expose] public section
 
 namespace Demos.PassiveSafety
 

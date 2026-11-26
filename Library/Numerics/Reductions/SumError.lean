@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Mathlib.Tactic
+module
+
+public import LeanExe.Base
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-!
 The rounding error of a left-to-right floating-point sum, for any binary format.  An `Adder`

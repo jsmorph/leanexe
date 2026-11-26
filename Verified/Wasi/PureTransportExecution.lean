@@ -1,4 +1,8 @@
-import Verified.Wasi.PureInstructions
+module
+
+public import Verified.Wasi.PureInstructions
+
+@[expose] public section
 
 namespace Verified.Wasi.PureTransport
 

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselCombine
+module
+
+public import Library.Numerics.Float64.Bessel.BesselCombine
+
+@[expose] public section
 
 /-!
 One case of the path from 2: given the rounded `P̂`, `Q̂`, `ĉc`, and `ŝs` with their errors and

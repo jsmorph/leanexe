@@ -1,6 +1,10 @@
-import Library.Hashing.Sha3.Compiled
-import Library.Hashing.Sha3.ShakeProof
-import Verified.Call
+module
+
+public import Library.Hashing.Sha3.Compiled
+public import Library.Hashing.Sha3.ShakeProof
+public import Verified.Call
+
+@[expose] public section
 
 /-! The bytes of the module `sha3` compute the SHA-3 functions of FIPS 202.  A hash entry, called
 from a ready store with a borrowed array `msg` and a byte count `n < 2 ^ 61`, returns without a

@@ -1,7 +1,11 @@
-import LeanExe.M7.Proof.Store
-import LeanExe.M7.Div
-import LeanExe.ProofKit.AlignedDefs
-import LeanExe.M7.Cost
+module
+
+public import LeanExe.M7.Proof.Store
+public import LeanExe.M7.Div
+public import LeanExe.ProofKit.AlignedDefs
+public import LeanExe.M7.Cost
+
+@[expose] public section
 
 /-!
 The simulation of Talos's `execOne` and `exec` by the generated Cortex-M7 code, as the AArch64

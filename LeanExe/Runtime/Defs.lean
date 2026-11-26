@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.FixedArrayAllocate
+module
+
+public import LeanExe.ProofKit.FixedArrayAllocate
+
+@[expose] public section
 
 /-!
 # Runtime functions

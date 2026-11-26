@@ -1,6 +1,10 @@
-import Verified.Reflect.Definitions
-import Verified.Reflect.TailListLemmas
-import Verified.Reflect.TailModes
+module
+
+public import Verified.Reflect.Definitions
+public import Verified.Reflect.TailListLemmas
+public import Verified.Reflect.TailModes
+
+@[expose] public section
 
 namespace Verified.Reflect
 

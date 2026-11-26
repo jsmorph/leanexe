@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! Kadane's algorithm for the maximum segment sum in the verified compiler's dialect: one pass
 over an array of `Int64` values from the left.  The sums wrap modulo `2^64`, and `Proof.lean` proves

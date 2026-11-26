@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64MulBounds
-import LeanExe.ProofKit.F64AddBounds
-import LeanExe.ProofKit.F64DivBounds
-import LeanExe.ProofKit.RealRoundedError
+module
+
+public import LeanExe.ProofKit.F64MulBounds
+public import LeanExe.ProofKit.F64AddBounds
+public import LeanExe.ProofKit.F64DivBounds
+public import LeanExe.ProofKit.RealRoundedError
+
+@[expose] public section
 
 /-!
 One rounded operation on approximations of real numbers.  Each lemma takes words `a` and `b`

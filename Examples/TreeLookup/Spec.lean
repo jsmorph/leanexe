@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! The specification of the request in `Examples/TreeLookup/request.txt`.
 Nodes are numbered 0 to 6 in breadth-first order: node `j` has its key at `2j + 1` and its

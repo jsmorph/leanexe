@@ -1,10 +1,14 @@
-import Library.Numerics.Float64.Lgamma.LgammaPolyDDSteps
-import Library.Numerics.Float64.Lgamma.LgammaApprox
-import Library.Numerics.Float64.Tgamma.TgammaWords
-import Library.Numerics.Float64.Tgamma.TgammaExpr
-import Library.Numerics.Float64.Tgamma.TgammaPolyLip
-import Library.Numerics.Float64.Tgamma.TgammaMainRed
-import Library.Numerics.Float64.Tgamma.TgammaFloor
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPolyDDSteps
+public import Library.Numerics.Float64.Lgamma.LgammaApprox
+public import Library.Numerics.Float64.Tgamma.TgammaWords
+public import Library.Numerics.Float64.Tgamma.TgammaExpr
+public import Library.Numerics.Float64.Tgamma.TgammaPolyLip
+public import Library.Numerics.Float64.Tgamma.TgammaMainRed
+public import Library.Numerics.Float64.Tgamma.TgammaFloor
+
+@[expose] public section
 
 /-!
 The kernels of `Lgamma.asSinpipidAccurate`: the double-double polynomials `polyDD` at word 143

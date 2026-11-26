@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log1p.Log1pTheoremReduce
-import LeanExe.ProofKit.F64ErrorTrack
+module
+
+public import Library.Numerics.Float64.Log1p.Log1pTheoremReduce
+public import LeanExe.ProofKit.F64ErrorTrack
+
+@[expose] public section
 
 /-!
 The correction `c/u` of `Log1p.log1p` against `t = (1 + x - u)/u`, the relative rounding error of

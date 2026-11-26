@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaSinpidLow
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidLow
+
+@[expose] public section
 
 /-!
 The two products of `Tgamma.asSinpid` before their sum.  The sine product `C1 = (qh + ql') (ch + cl)`,

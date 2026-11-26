@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64Horner
-import LeanExe.ProofKit.F64DivApprox
-import LeanExe.ProofKit.PolyChecks
-import LeanExe.ProofKit.PolyCalculus
+module
+
+public import LeanExe.ProofKit.F64Horner
+public import LeanExe.ProofKit.F64DivApprox
+public import LeanExe.ProofKit.PolyChecks
+public import LeanExe.ProofKit.PolyCalculus
+
+@[expose] public section
 
 /-!
 The rounded quotient `R(ẑ)/S(ẑ)` of two Horner evaluations, as a distance from `R(z)/S(z)` for a

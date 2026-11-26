@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.Sequencing
+module
+
+public import LeanExe.ProofKit.Sequencing
+
+@[expose] public section
 
 namespace Wasm
 

@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 Arrays of records.  An array of a structure, sum, or enumeration is stored as its elements'

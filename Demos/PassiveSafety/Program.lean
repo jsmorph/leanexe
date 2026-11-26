@@ -1,6 +1,10 @@
-import Demos.PassiveSafety.Closed
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.RepeatWhile
+module
+
+public import Demos.PassiveSafety.Closed
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.RepeatWhile
+
+@[expose] public section
 
 /-!
 The passive-safety check of `requirements.md`.  `checkWith` validates the input, and for each

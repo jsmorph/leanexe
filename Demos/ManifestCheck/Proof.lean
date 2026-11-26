@@ -1,7 +1,11 @@
-import Demos.ManifestCheck.Program
-import Demos.ManifestCheck.Spec
-import LeanExe.Dialect.BytesLemmas
-import LeanExe.Dialect.Lemmas
+module
+
+public import Demos.ManifestCheck.Program
+public import Demos.ManifestCheck.Spec
+public import LeanExe.Dialect.BytesLemmas
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! The pure core equals its specification: `parse_eq`, `hexMatches_eq`, and `render_eq`, each for a
 byte string whose size leaves room for the program's positions below `2^64`.

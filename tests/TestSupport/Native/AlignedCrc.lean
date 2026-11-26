@@ -1,5 +1,9 @@
-import Library.Hashing.Crc.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Hashing.Crc.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-!
 The CRC programs of `Library/Hashing/Crc/Compiled.lean` compiled with

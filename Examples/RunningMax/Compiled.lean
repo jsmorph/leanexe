@@ -1,6 +1,10 @@
-import Examples.RunningMax.Proof
-import Verified.Call
-import Verified.Reflect.Command
+module
+
+public import Examples.RunningMax.Proof
+public import Verified.Call
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `compute`.  `compute_callSpec` composes the generated
 `compiled.compute.trapFree` with `compute_eq`: from a ready store with room for the generated bound,

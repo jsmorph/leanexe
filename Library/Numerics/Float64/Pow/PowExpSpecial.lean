@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowExpPaths
+module
+
+public import Library.Numerics.Float64.Pow.PowExpPaths
+
+@[expose] public section
 
 /-!
 The special paths of `Pow.powExp` with `signBias = 0`, for `512 ≤ |x| < 1024`.  Up to 768 the

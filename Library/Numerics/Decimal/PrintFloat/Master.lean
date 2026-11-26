@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatBytes
-import Verified.Master
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatBytes
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Decimal.PrintFloat
 

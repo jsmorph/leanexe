@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64RoundingResidual
-import LeanExe.ProofKit.RealProductError
+module
+
+public import LeanExe.ProofKit.F64RoundingResidual
+public import LeanExe.ProofKit.RealProductError
+
+@[expose] public section
 
 /-! The propagation of input errors through exact addition, subtraction, and multiplication. -/
 

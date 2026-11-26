@@ -1,6 +1,10 @@
-import Library.Graphs.Dijkstra.Proof
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Graphs.Dijkstra.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-! The verified compiler's module of the least walk lengths from one vertex by Dijkstra's
 algorithm.  By the compiler's rules, which the verified compiler's manual states, the compiler

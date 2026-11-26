@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaPiece10Base
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPiece10Base
+
+@[expose] public section
 
 /-!
 The kernel checks `nege_0` and `nege_1` of piece 10 of `cr_lgamma`'s piecewise polynomial

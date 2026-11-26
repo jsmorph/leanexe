@@ -1,5 +1,9 @@
-import LeanExe.WGSL.Events
-import LeanExe.ProofKit.Writes
+module
+
+public import LeanExe.WGSL.Events
+public import LeanExe.ProofKit.Writes
+
+@[expose] public section
 
 /-!
 Properties of the event semantics of `Events.lean` under every oracle.  A result's events extend

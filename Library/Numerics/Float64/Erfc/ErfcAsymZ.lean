@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Erfc.ErfcAsymPoly
-import Library.Numerics.Float64.Erfc.ErfcAsymPlan
-import LeanExe.ProofKit.F64DivApprox
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAsymPoly
+public import Library.Numerics.Float64.Erfc.ErfcAsymPlan
+public import LeanExe.ProofKit.F64DivApprox
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 The polynomial of a row of `T` at the computed `U ≈ 1/x²`.  `asym_core_pr` bounds the rounding

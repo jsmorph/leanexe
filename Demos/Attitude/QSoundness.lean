@@ -1,10 +1,14 @@
-import Demos.Attitude.QProgram
-import Demos.Attitude.Eigen
-import Demos.Attitude.Soundness
-import LeanExe.Dialect.Lemmas
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64UpperWord
+module
+
+public import Demos.Attitude.QProgram
+public import Demos.Attitude.Eigen
+public import Demos.Attitude.Soundness
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64UpperWord
+
+@[expose] public section
 
 /-!
 Soundness of the q-method program.  `qmethod_sound` (Q4) states what a result of status 0

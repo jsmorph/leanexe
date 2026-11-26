@@ -1,4 +1,8 @@
-import TestSupport.Conjunction.AccuracyCases
+module
+
+public import TestSupport.Conjunction.AccuracyCases
+
+@[expose] public section
 
 /-! The cases of the module `accuracy` alone, for `tests/verified/run.sh --cases accuracy`.  With
 the argument `--bits`, it prints the lines that `tests/conjunction/accuracy.py` reads. -/

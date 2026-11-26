@@ -1,7 +1,11 @@
-import Verified.Wasi.ResourceRules
-import Verified.ChargeFacts
-import Verified.Wasi.Observed
-import LeanExe.Wasi.PrefixProgress
+module
+
+public import Verified.Wasi.ResourceRules
+public import Verified.ChargeFacts
+public import Verified.Wasi.Observed
+public import LeanExe.Wasi.PrefixProgress
+
+@[expose] public section
 
 /-! The premises of the resource rule of a `sys` command.  The rule bounds the command's charge on
 every run and every prefix that the host permits.  A charge that does not depend on the trace, as

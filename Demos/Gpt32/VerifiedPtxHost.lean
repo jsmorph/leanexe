@@ -1,6 +1,10 @@
-import Demos.Gpt32.VerifiedPtxKernels
-import Demos.Gpt32.Compose
-import LeanExe.PTX.Launch
+module
+
+public import Demos.Gpt32.VerifiedPtxKernels
+public import Demos.Gpt32.Compose
+public import LeanExe.PTX.Launch
+
+@[expose] public section
 
 /-!
 The device of `leanexe-cuda-host session` with the PTX kernels of `kernelMap`, and the host theorem

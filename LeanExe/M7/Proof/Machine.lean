@@ -1,4 +1,8 @@
-import LeanExe.M7.Encode
+module
+
+public import LeanExe.M7.Encode
+
+@[expose] public section
 
 /-!
 Facts about runs of the Cortex-M7 model that the proofs about emitted code use: `Reach`, the states

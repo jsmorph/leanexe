@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Exp.ExpTight
-import Library.Numerics.Float64.Exp.ExpSpecialPositive
-import Library.Numerics.Float64.Exp.ExpNegativeFinal
-import LeanExe.ProofKit.F64NearestHalf
-import LeanExe.ProofKit.F64NearestScale
+module
+
+public import Library.Numerics.Float64.Exp.ExpTight
+public import Library.Numerics.Float64.Exp.ExpSpecialPositive
+public import Library.Numerics.Float64.Exp.ExpNegativeFinal
+public import LeanExe.ProofKit.F64NearestHalf
+public import LeanExe.ProofKit.F64NearestScale
+
+@[expose] public section
 
 /-!
 Tight error bounds for `Exp.exp`, which is `Exp.expWith Exp.expTable`.  For

@@ -1,5 +1,9 @@
-import Demos.Sgp4.Program
-import TestSupport.Host
+module
+
+public import Demos.Sgp4.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the SGP4 module.  `cases` prints the module cases of `init`, `propagate`, and `sgp4`
 for `tests/verified/run.sh`.  `states` reads lines of the bit patterns

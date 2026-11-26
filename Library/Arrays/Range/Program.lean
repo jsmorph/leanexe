@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 namespace Library.Arrays.Range
 

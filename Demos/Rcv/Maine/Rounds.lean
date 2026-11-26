@@ -1,4 +1,8 @@
-import Demos.Rcv.Maine.Stability
+module
+
+public import Demos.Rcv.Maine.Stability
+
+@[expose] public section
 
 /-!
 The theorems of the rounds of [the requirements](requirements.md), section "Theorems", for the

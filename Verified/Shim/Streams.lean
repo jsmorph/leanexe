@@ -1,4 +1,8 @@
-import Verified.Shim.Footprint
+module
+
+public import Verified.Shim.Footprint
+
+@[expose] public section
 
 /-!
 Runs that make no flat call.  `StreamTrace T` states that the WASI trace `T` holds no flat call,

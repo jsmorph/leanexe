@@ -1,5 +1,9 @@
-import Library.HashTables.LinearProbing.Compiled
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.HashTables.LinearProbing.Compiled
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/hashTable.wasm`: the file holds
 `encode compiled.module`, and it decodes to the module of `compiled.bytes`. -/

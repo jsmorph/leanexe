@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpReductionBounds
-import LeanExe.ProofKit.F64MulBounds
+module
+
+public import Library.Numerics.Float64.Exp.ExpReductionBounds
+public import LeanExe.ProofKit.F64MulBounds
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpHighPartBounds
 open CodeLib.IEEE64

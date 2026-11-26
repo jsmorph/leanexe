@@ -1,5 +1,9 @@
-import Demos.OrderBook.Program
-import Demos.OrderBook.Spec
+module
+
+public import Demos.OrderBook.Program
+public import Demos.OrderBook.Spec
+
+@[expose] public section
 
 /-! The specification's book that a book of [the program](Program.lean) represents.  The bids are
 the chains of the levels of prices 1,023 down to 1 concatenated, and the asks the chains of the

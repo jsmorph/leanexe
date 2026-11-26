@@ -1,4 +1,8 @@
-import Verified.Shim.Host
+module
+
+public import Verified.Shim.Host
+
+@[expose] public section
 
 /-!
 The shim's stream functions as Talos host functions, and their proofs against the host's

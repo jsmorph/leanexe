@@ -1,4 +1,8 @@
-import Demos.Euler.ReconstructedProgram
+module
+
+public import Demos.Euler.ReconstructedProgram
+
+@[expose] public section
 
 /-! `euler-native N FILE` runs the first-order solver natively on the N × N grid and writes
 the words of `solve N` to FILE, little-endian, eight bytes each.  `euler-native N FILE TRIALS`

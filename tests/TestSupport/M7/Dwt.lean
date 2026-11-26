@@ -1,8 +1,12 @@
-import TestSupport.M7.Nucleo
-import TestSupport.M7.GwImages
-import TestSupport.M7.CrcImages
-import TestSupport.M7.ShaImages
-import TestSupport.M7.BmsImages
+module
+
+public import TestSupport.M7.Nucleo
+public import TestSupport.M7.GwImages
+public import TestSupport.M7.CrcImages
+public import TestSupport.M7.ShaImages
+public import TestSupport.M7.BmsImages
+
+@[expose] public section
 
 /-!
 The cycle measurements of the Cortex-M7 back end on the NUCLEO-F767ZI, in images apart from the

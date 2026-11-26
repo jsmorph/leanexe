@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.Linux
-import LeanExe.A64.Proof.MachineSim
-import LeanExe.A64.Proof.Function
+module
+
+public import LeanExe.A64.Proof.Linux
+public import LeanExe.A64.Proof.MachineSim
+public import LeanExe.A64.Proof.Function
+
+@[expose] public section
 
 /-!
 A test of the interface of `Machine` on a process model whose steps impose conditions that the

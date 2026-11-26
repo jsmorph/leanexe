@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Pow.PowExpCore
-import Library.Numerics.Float64.Pow.PowExpBranches
-import Library.Numerics.Float64.Exp2.Exp2Theorem
+module
+
+public import Library.Numerics.Float64.Pow.PowExpCore
+public import Library.Numerics.Float64.Pow.PowExpBranches
+public import Library.Numerics.Float64.Exp2.Exp2Theorem
+
+@[expose] public section
 
 /-!
 The paths of `Pow.powExp` with `signBias = 0` against `exp L` for a target `L` near `x + xtail`.

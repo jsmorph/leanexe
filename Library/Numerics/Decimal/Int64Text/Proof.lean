@@ -1,7 +1,11 @@
-import Library.Numerics.Decimal.Int64Text.Program
-import Library.Numerics.Decimal.Int64Text.Inverse
-import LeanExe.Dialect.Lemmas
-import LeanExe.ProofKit.Signed64
+module
+
+public import Library.Numerics.Decimal.Int64Text.Program
+public import Library.Numerics.Decimal.Int64Text.Inverse
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.ProofKit.Signed64
+
+@[expose] public section
 
 /-!
 The program equals the specification: `printInt64_eq` and `readInt64_eq`.  The printer's proof

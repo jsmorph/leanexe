@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowNegBase
+module
+
+public import Library.Numerics.Float64.Pow.PowNegBase
+
+@[expose] public section
 
 /-!
 The special cases of `Pow.pow`, against C99 Annex F.9.4.4.  `infnanY` is the block of

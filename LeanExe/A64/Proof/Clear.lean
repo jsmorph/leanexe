@@ -1,5 +1,9 @@
-import LeanExe.A64.Clear
-import LeanExe.A64.Proof.Memory
+module
+
+public import LeanExe.A64.Clear
+public import LeanExe.A64.Proof.Memory
+
+@[expose] public section
 
 /-!
 `run_clearCheck` runs the comparison and the conditional branch of `clearLoop`, `run_clearPass`

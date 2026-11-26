@@ -1,5 +1,9 @@
-import Library.Hashing.Sha256.Program
-import Library.Hashing.Sha512.Program
+module
+
+public import Library.Hashing.Sha256.Program
+public import Library.Hashing.Sha512.Program
+
+@[expose] public section
 
 /-! HMAC-SHA-256 and HMAC-SHA-512 of FIPS 198-1 for a key of `kn` bytes and a message of `n`
 bytes, each packed eight to a word as `Library.Hashing.Words` describes.  A program forms the key

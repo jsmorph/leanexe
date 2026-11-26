@@ -1,4 +1,8 @@
-import Demos.Gpt32.Driver
+module
+
+public import Demos.Gpt32.Driver
+
+@[expose] public section
 
 /-!
 `tools/leanrun --timeout 30m lake env lean --run tests/gpt32/VerifiedNative.lean TARGET HOST DIR`

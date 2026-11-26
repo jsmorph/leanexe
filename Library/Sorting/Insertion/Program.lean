@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.InsertErase
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.InsertErase
+
+@[expose] public section
 
 namespace Library.Sorting.Insertion
 

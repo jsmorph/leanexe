@@ -1,5 +1,9 @@
-import Lean
-import LeanExe.Native.Translate
+module
+
+public import Lean
+public import LeanExe.Native.Translate
+
+@[expose] public section
 
 /-!
 The loading of a module constant that `native-verified` and `native-bare` share.  `loadCap`

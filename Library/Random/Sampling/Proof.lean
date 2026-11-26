@@ -1,13 +1,17 @@
-import Library.Random.Sampling.Program
-import Library.Random.Sampling.Spec
-import Library.Random.Sampling.Scale
-import Library.Sorting.Heapsort.Proof
-import LeanExe.Dialect.Lemmas
-import Mathlib.Algebra.Order.BigOperators.Group.Finset
-import Mathlib.Algebra.Order.BigOperators.GroupWithZero.Finset
-import Mathlib.Algebra.BigOperators.Fin
-import Mathlib.Algebra.BigOperators.Intervals
-import Mathlib.Data.Fintype.BigOperators
+module
+
+public import Library.Random.Sampling.Program
+public import Library.Random.Sampling.Spec
+public import Library.Random.Sampling.Scale
+public import Library.Sorting.Heapsort.Proof
+public import LeanExe.Dialect.Lemmas
+public import Mathlib.Algebra.Order.BigOperators.Group.Finset
+public import Mathlib.Algebra.Order.BigOperators.GroupWithZero.Finset
+public import Mathlib.Algebra.BigOperators.Fin
+public import Mathlib.Algebra.BigOperators.Intervals
+public import Mathlib.Data.Fintype.BigOperators
+
+@[expose] public section
 
 /-! The proof that `shuffle` satisfies `Shuffles`.  `byIndices k m a` is Algorithm P with given
 indices: for `j` from `m` down to 1 it exchanges the words at `k j` and `j`.  With indices

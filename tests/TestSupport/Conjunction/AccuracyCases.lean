@@ -1,5 +1,9 @@
-import Demos.Conjunction.Accuracy
-import TestSupport.Host
+module
+
+public import Demos.Conjunction.Accuracy
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the accuracy module.  `cases` prints the module cases of `circularError` and
 `linearError` for `tests/verified/run.sh`, and `bits` prints the bit patterns of the inputs and

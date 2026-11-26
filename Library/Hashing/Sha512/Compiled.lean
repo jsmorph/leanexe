@@ -1,6 +1,10 @@
-import Library.Hashing.Sha512.Program
-import Library.Hashing.Words.Encoding
-import Verified.Reflect.Command
+module
+
+public import Library.Hashing.Sha512.Program
+public import Library.Hashing.Words.Encoding
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Hashing.Sha512
 

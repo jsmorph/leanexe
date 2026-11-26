@@ -1,5 +1,9 @@
-import Verified.Wasi.ProcessFacts
-import Verified.Wasi.ProcessRunProofs
+module
+
+public import Verified.Wasi.ProcessFacts
+public import Verified.Wasi.ProcessRunProofs
+
+@[expose] public section
 
 namespace Verified.Wasi
 

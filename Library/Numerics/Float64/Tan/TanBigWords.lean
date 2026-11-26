@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tan.TanBigReal
-import Library.Numerics.Float64.Tan.TanEven
-import Library.Numerics.Float64.Trig.TrigReduce
+module
+
+public import Library.Numerics.Float64.Tan.TanBigReal
+public import Library.Numerics.Float64.Tan.TanEven
+public import Library.Numerics.Float64.Trig.TrigReduce
+
+@[expose] public section
 
 /-!
 The steps of `Tan.kernelTan` from `0x3FE59428` on, on words.  `arg_spec` bounds the argument

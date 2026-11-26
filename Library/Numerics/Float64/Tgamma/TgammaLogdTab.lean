@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Tgamma.TgammaLogdCheck
-import Library.Numerics.Float64.Tgamma.TgammaFloor
-import LeanExe.ProofKit.F64ExactProduct
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64Exact
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaLogdCheck
+public import Library.Numerics.Float64.Tgamma.TgammaFloor
+public import LeanExe.ProofKit.F64ExactProduct
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64Exact
+
+@[expose] public section
 
 /-!
 The word checks of `Tgamma.logdTable` and the exact operations that `Tgamma.asLogd` uses.  `tabOK`

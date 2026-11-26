@@ -1,5 +1,9 @@
-import Demos.Screening.Flat
-import Verified.Reflect.Command
+module
+
+public import Demos.Screening.Flat
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The screening program of `Demos/Screening/Program.lean`, compiled by the verified compiler with
 the interval operations, the library's `sin` and `cos`, and the enclosure of Kepler's equation.

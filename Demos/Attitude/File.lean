@@ -1,5 +1,9 @@
-import Demos.Attitude.Verified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Attitude.Verified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/attitude.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Demos/Attitude/File.lean`: the file holds

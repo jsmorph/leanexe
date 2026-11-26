@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tanh.Expm1ReduceConst
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64Sign
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1ReduceConst
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64Sign
+
+@[expose] public section
 
 /-!
 Word facts of the reduction in fdlibm's `expm1`.  `diff_exact` and `sum_exact`: a difference or

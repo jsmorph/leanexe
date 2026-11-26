@@ -1,4 +1,8 @@
-import Library.Hashing.Sha2.Spec
+module
+
+public import Library.Hashing.Sha2.Spec
+
+@[expose] public section
 
 /-! HMAC of FIPS 198-1, *The Keyed-Hash Message Authentication Code*, July 2008, transcribed from
 §2.3 and from Table 1 of §4.  Messages are the bit strings of `Library.Hashing.Sha2.Spec`, most

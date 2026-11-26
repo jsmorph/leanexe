@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Erfc.ErfcAsymPlan
-import Library.Numerics.Float64.Erf.ErfTailPieces0
-import Library.Numerics.Float64.Erf.ErfTailPieces1
-import Library.Numerics.Float64.Erf.ErfTailPieces2
-import Library.Numerics.Float64.Erf.ErfTailPieces3
-import Library.Numerics.Float64.Erf.ErfTailPieces4
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAsymPlan
+public import Library.Numerics.Float64.Erf.ErfTailPieces0
+public import Library.Numerics.Float64.Erf.ErfTailPieces1
+public import Library.Numerics.Float64.Erf.ErfTailPieces2
+public import Library.Numerics.Float64.Erf.ErfTailPieces3
+public import Library.Numerics.Float64.Erf.ErfTailPieces4
+
+@[expose] public section
 
 /-!
 Rows 0 to 4 of `Tacc` of `Erfc` against the models of `erfcxN`, as `ErfcAsymRowsT`.

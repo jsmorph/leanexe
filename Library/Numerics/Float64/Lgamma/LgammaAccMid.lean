@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.GammaFits
-import Library.Numerics.Float64.Tgamma.TgammaFactsBase
-import Library.Numerics.Float64.Lgamma.Compiled
-import Library.Numerics.Float64.Tgamma.GammaPi
+module
+
+public import LeanExe.ProofKit.GammaFits
+public import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+public import Library.Numerics.Float64.Lgamma.Compiled
+public import Library.Numerics.Float64.Tgamma.GammaPi
+
+@[expose] public section
 
 /-!
 The accurate path's polynomial of `cr_lgamma` near `3/2` (`lgamma.c`, commit `ff2f71f6`), read

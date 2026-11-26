@@ -1,5 +1,9 @@
-import Demos.Sgp4.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Demos.Sgp4.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 namespace Demos.Sgp4
 

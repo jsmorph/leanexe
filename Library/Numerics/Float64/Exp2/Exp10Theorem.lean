@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp2.Exp10Paths
-import Library.Numerics.Float64.Exp2.Exp2Theorem
+module
+
+public import Library.Numerics.Float64.Exp2.Exp10Paths
+public import Library.Numerics.Float64.Exp2.Exp2Theorem
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Exp2.exp10`.  For every finite binary64 input `a`, the result lies

@@ -1,5 +1,9 @@
-import Library.Hashing.SipHash.Program
-import TestSupport.Hashing.Packing
+module
+
+public import Library.Hashing.SipHash.Program
+public import TestSupport.Hashing.Packing
+
+@[expose] public section
 
 /-! A check of the SipHash transcription `Library.Hashing.SipHash.Spec` and the programs of
 `Library.Hashing.SipHash`.  The transcription runs the example of Appendix A of the SipHash paper

@@ -1,4 +1,8 @@
-import LeanExe.A64.WasiStrings
+module
+
+public import LeanExe.A64.WasiStrings
+
+@[expose] public section
 
 /-!
 The preopened directory of a WASI command as a Linux executable for AArch64: the startup's check

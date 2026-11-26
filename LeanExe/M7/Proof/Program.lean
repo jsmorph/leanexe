@@ -1,4 +1,8 @@
-import LeanExe.M7.Proof.Function
+module
+
+public import LeanExe.M7.Proof.Function
+
+@[expose] public section
 
 /-!
 The simulation of the step that the generator's program calls, as `LeanExe/A64/Proof/Program.lean`

@@ -1,5 +1,9 @@
-import Demos.Euler.Reference.Internal
-import LeanExe.ProofKit.F64OrderComplete
+module
+
+public import Demos.Euler.Reference.Internal
+public import LeanExe.ProofKit.F64OrderComplete
+
+@[expose] public section
 
 namespace Demos.Euler.Reference
 open CodeLib.IEEE64

@@ -1,9 +1,13 @@
-import Library.Random.ParkMiller.Program
-import Library.Random.Orbit.Basic
-import Mathlib.FieldTheory.Finite.Basic
-import Mathlib.NumberTheory.LucasPrimality
-import Mathlib.Tactic.ReduceModChar
-import Mathlib.Tactic.NormNum.Prime
+module
+
+public import Library.Random.ParkMiller.Program
+public import Library.Random.Orbit.Basic
+public import Mathlib.FieldTheory.Finite.Basic
+public import Mathlib.NumberTheory.LucasPrimality
+public import Mathlib.Tactic.ReduceModChar
+public import Mathlib.Tactic.NormNum.Prime
+
+@[expose] public section
 
 /-! The period of Park and Miller's generator of `Library/Random/ParkMiller/Program.lean`.  The modulus
 `2^31 - 1` is prime, by Lucas's test with the witness 16807, and 16807 has order `2^31 - 2` modulo

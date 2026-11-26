@@ -1,4 +1,8 @@
-import Demos.Energy.Spec
+module
+
+public import Demos.Energy.Spec
+
+@[expose] public section
 
 /-! The gateway's operation over consecutive windows.  A run lists the accepted authorizations in
 order of time: the snapshot of each and its accepted limits.  `OperatesIn` states, for one

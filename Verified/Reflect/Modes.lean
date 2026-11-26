@@ -1,4 +1,8 @@
-import Verified.Compile
+module
+
+public import Verified.Compile
+
+@[expose] public section
 
 /-! The modes that the reflector chooses for a function's parameters.  The choice is not trusted:
 the correctness theorem holds for every choice of modes.  A parameter that holds an array, a

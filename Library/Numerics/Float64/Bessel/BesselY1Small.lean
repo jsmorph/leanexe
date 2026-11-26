@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Bessel.BesselSmallY1
-import Library.Numerics.Float64.Bessel.BesselJ1Small
-import Library.Numerics.Float64.Bessel.BesselModSmall1
-import Library.Numerics.Float64.Bessel.BesselY0Small
+module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallY1
+public import Library.Numerics.Float64.Bessel.BesselJ1Small
+public import Library.Numerics.Float64.Bessel.BesselModSmall1
+public import Library.Numerics.Float64.Bessel.BesselY0Small
+
+@[expose] public section
 
 /-!
 `Bessel.y1 x` for `2^-1022 ≤ x < 2`: the result lies within `12 · 2^-53 · √(J₁(x)² + Y₁(x)²)` of

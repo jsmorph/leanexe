@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.BesselJ0Large
-import Library.Numerics.Float64.Bessel.BesselSpecial
+module
+
+public import Library.Numerics.Float64.Bessel.BesselJ0Large
+public import Library.Numerics.Float64.Bessel.BesselSpecial
+
+@[expose] public section
 
 /-!
 `Bessel.y0 x` for `x ≥ 2`: the result lies within `10 · 2^-53 · √(J₀(x)² + Y₀(x)²)` of `Y₀(x)`

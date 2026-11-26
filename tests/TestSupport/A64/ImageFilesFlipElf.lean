@@ -1,5 +1,9 @@
-import TestSupport.A64.FlipElf
-import LeanExe.A64.File
+module
+
+public import TestSupport.A64.FlipElf
+public import LeanExe.A64.File
+
+@[expose] public section
 
 /-!
 The theorems of the Linux executable that `a64-elf emit` writes for `flip`, a function over bytes

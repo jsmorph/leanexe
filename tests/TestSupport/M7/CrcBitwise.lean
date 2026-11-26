@@ -1,6 +1,10 @@
-import Library.Hashing.Crc.Bitwise.Compiled
-import LeanExe.M7.Proof.Program
-import LeanExe.M7.Proof.Bound
+module
+
+public import Library.Hashing.Crc.Bitwise.Compiled
+public import LeanExe.M7.Proof.Program
+public import LeanExe.M7.Proof.Bound
+
+@[expose] public section
 
 /-!
 The bitwise CRC-32 of `Library.Hashing.Crc.Bitwise` on the Cortex-M7 back end.  The functions

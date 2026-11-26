@@ -1,4 +1,8 @@
-import Demos.Slew.Hypot
+module
+
+public import Demos.Slew.Hypot
+
+@[expose] public section
 
 /-! The decisions of the edge check.  A comparison of floats that holds implies that neither operand
 is NaN and orders their values (`le_val_of_le`), and Lean's `max a b`, `if a ≤ b then b else a`,

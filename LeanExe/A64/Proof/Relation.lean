@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.Machine
-import LeanExe.ProofKit.Typed
-import Interpreter.Wasm.Semantics
+module
+
+public import LeanExe.A64.Proof.Machine
+public import LeanExe.ProofKit.Typed
+public import Interpreter.Wasm.Semantics
+
+@[expose] public section
 
 /-!
 The relation of the simulation proof between a Talos frame and a state of the AArch64 model, at

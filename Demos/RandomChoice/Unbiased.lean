@@ -1,11 +1,15 @@
-import Demos.RandomChoice.Spec
-import Mathlib.Algebra.BigOperators.Ring.Finset
-import Mathlib.Data.Fintype.BigOperators
-import Mathlib.Data.FinEnum
-import Mathlib.Data.Nat.Count
-import Mathlib.Data.Int.CardIntervalMod
-import Mathlib.Data.UInt
-import Mathlib.Tactic
+module
+
+public import Demos.RandomChoice.Spec
+public import Mathlib.Algebra.BigOperators.Ring.Finset
+public import Mathlib.Data.Fintype.BigOperators
+public import Mathlib.Data.FinEnum
+public import Mathlib.Data.Nat.Count
+public import Mathlib.Data.Int.CardIntervalMod
+public import Mathlib.Data.UInt
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-! Counting theorems of `pickSpec`, which state that the choice is unbiased.  They count words
 and sequences of words and assume no probability.

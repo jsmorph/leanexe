@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Exp.ExpTightPoly
-import Library.Numerics.Float64.Exp.ExpSpecialReconstruction
-import LeanExe.ProofKit.F64ApproxStages
-import LeanExe.ProofKit.F64NearestSum
+module
+
+public import Library.Numerics.Float64.Exp.ExpTightPoly
+public import Library.Numerics.Float64.Exp.ExpSpecialReconstruction
+public import LeanExe.ProofKit.F64ApproxStages
+public import LeanExe.ProofKit.F64NearestSum
+
+@[expose] public section
 
 /-!
 A tight bound for the reconstruction of Arm's `exp`.  The final operation `s + s w` of the code

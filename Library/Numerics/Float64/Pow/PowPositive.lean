@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowSubnormal
+module
+
+public import Library.Numerics.Float64.Pow.PowSubnormal
+
+@[expose] public section
 
 /-!
 `Pow.pow` for a positive finite `x` and a finite `y`: the result lies within one step of the

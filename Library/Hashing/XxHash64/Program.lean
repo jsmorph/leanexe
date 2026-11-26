@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Loop
-import Library.Hashing.XxHash64.Spec
+module
+
+public import LeanExe.Dialect.Loop
+public import Library.Hashing.XxHash64.Spec
+
+@[expose] public section
 
 /-! XXH64 of `Library.Hashing.XxHash64.Spec` for a message of `n` bytes packed eight to a word as
 `Library.Hashing.Words` describes, and a seed.  The packing makes the lanes of the stripes and the

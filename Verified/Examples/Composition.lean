@@ -1,5 +1,9 @@
-import Verified.Examples.CompositionBase
-import Verified.ModuleComposition
+module
+
+public import Verified.Examples.CompositionBase
+public import Verified.ModuleComposition
+
+@[expose] public section
 
 namespace Verified.Examples.Composition
 

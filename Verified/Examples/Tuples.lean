@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: arrays of tuples, whose elements occupy
 several consecutive words.  Lean has no `Represent` instance for an array of pairs, so the

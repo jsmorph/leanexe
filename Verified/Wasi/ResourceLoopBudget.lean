@@ -1,4 +1,8 @@
-import Verified.Wasi.ResourceBudget
+module
+
+public import Verified.Wasi.ResourceBudget
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

@@ -1,4 +1,8 @@
-import Demos.Rcv.Maine.RefineRule
+module
+
+public import Demos.Rcv.Maine.RefineRule
+
+@[expose] public section
 
 /-!
 The refinement of the Maine count over words: `count_eq` states that

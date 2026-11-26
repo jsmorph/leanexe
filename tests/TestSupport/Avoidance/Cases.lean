@@ -1,5 +1,9 @@
-import Demos.Avoidance.Program
-import TestSupport.Host
+module
+
+public import Demos.Avoidance.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the avoidance module for `tests/verified/run.sh --cases avoidance`: the inputs of the
 oracle `tests/avoidance/oracle.py` with at most 200 values, other than those with tightened

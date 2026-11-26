@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log.LogTheorem
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Numerics.Float64.Log.LogTheorem
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/log.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Library/Numerics/Float64/Log/LogFile.lean`: the file holds

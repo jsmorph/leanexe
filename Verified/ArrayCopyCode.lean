@@ -1,4 +1,8 @@
-import LeanExe.Runtime.Defs
+module
+
+public import LeanExe.Runtime.Defs
+
+@[expose] public section
 
 /-! The code that allocates and copies arrays, which the copy of values and the copy of trees
 both use. -/

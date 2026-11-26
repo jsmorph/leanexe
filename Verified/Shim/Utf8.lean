@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-!
 Core decides `ByteArray.IsValidUTF8` with `ByteArray.validateUTF8`, which checks each character of

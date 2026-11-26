@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Main
+module
+
+public import LeanExe.Native.Proof.Main
+
+@[expose] public section
 
 /-!
 The run of `main` with input (`inMain` of `LeanExe/Native/Bare.lean`), statement by statement.

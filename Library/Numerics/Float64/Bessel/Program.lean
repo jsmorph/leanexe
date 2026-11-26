@@ -1,10 +1,14 @@
-import Library.Numerics.Float64.Trig.Program
-import Library.Numerics.Float64.Log.Program
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
-import LeanExe.Dialect.InsertErase
-import LeanExe.Dialect.Float32
+module
+
+public import Library.Numerics.Float64.Trig.Program
+public import Library.Numerics.Float64.Log.Program
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+public import LeanExe.Dialect.InsertErase
+public import LeanExe.Dialect.Float32
+
+@[expose] public section
 
 /-! A program of the verified compiler: the Bessel functions `j0`, `j1`, `y0`, `y1`,
 `jn`, and `yn`, ported from fdlibm as FreeBSD's `lib/msun/src` has it at commit

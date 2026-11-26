@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.GammaSubnormalBase
+module
+
+public import LeanExe.ProofKit.GammaSubnormalBase
+
+@[expose] public section
 
 /-!
 Point bounds of `lgamma` at the doubles next to the crossings of `2 ^ -1022` by `|Γ|` in the

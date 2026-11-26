@@ -1,4 +1,8 @@
-import LeanExe.WGSL.Parse
+module
+
+public import LeanExe.WGSL.Parse
+
+@[expose] public section
 
 /-!
 The parser reads every printed kernel back as itself: `Module.parse_print` states

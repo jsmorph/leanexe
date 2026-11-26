@@ -1,5 +1,9 @@
-import Demos.Geolocation.Verified
-import Verified.Call
+module
+
+public import Demos.Geolocation.Verified
+public import Verified.Call
+
+@[expose] public section
 
 /-! The call of the compiled geolocation program (C1).  `locate_callSpec` states that function
 97, the export `locate`, returns `locate xs` without a trap from every ready store in which the

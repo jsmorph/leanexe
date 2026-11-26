@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erfc.ErfcHardRows
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcHardRows
+
+@[expose] public section
 
 /-!
 The 17 hard cases of `Erfc` for negative `x` (the table at offset 66 of `excTable`): for each

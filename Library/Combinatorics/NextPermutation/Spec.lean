@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Mathlib.Data.List.Sort
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.List.Sort
+
+@[expose] public section
 
 /-! The specification of the next arrangement.  Arrangements are compared in the lexicographic order
 of Lean's lists, `<` on `List UInt64`, with words compared as unsigned numbers.  An arrangement of

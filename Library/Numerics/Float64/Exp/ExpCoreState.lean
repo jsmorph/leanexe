@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Exp.ExpScaleBits
+module
+
+public import Library.Numerics.Float64.Exp.ExpScaleBits
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpCoreState
 open CodeLib.IEEE64

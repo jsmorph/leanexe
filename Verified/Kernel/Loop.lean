@@ -1,4 +1,8 @@
-import Verified.Kernel.LoopBody
+module
+
+public import Verified.Kernel.LoopBody
+
+@[expose] public section
 
 namespace Verified.Kernel
 

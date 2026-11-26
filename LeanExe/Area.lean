@@ -1,5 +1,9 @@
-import Interpreter.Wasm.Syntax
-import LeanExe.A64.Machine
+module
+
+public import Interpreter.Wasm.Syntax
+public import LeanExe.A64.Machine
+
+@[expose] public section
 
 /-!
 The area that holds a module's store in a back end's memory: a header of 4,096 bytes and then

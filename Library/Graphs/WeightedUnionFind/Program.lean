@@ -1,4 +1,8 @@
-import Library.Graphs.UnionFind.Program
+module
+
+public import Library.Graphs.UnionFind.Program
+
+@[expose] public section
 
 /-! Equivalence classes by the trees of Algorithm E of TAOCP §2.3.3 with path compression and union
 by size, as Tarjan analyzed them in 1975.  `root` is the step of Algorithm E that follows the links

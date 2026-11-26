@@ -1,6 +1,10 @@
-import LeanExe.M7.Setup
-import LeanExe.M7.Proof.Store
-import LeanExe.M7.Proof.Init
+module
+
+public import LeanExe.M7.Setup
+public import LeanExe.M7.Proof.Store
+public import LeanExe.M7.Proof.Init
+
+@[expose] public section
 
 /-!
 The run of the setup of `LeanExe/M7/Setup.lean`.  `run_clearLoop` runs `clearLoop` by induction

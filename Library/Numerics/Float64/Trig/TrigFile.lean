@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Trig.TrigTheorem
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Numerics.Float64.Trig.TrigTheorem
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/trig.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Library/Numerics/Float64/Trig/TrigFile.lean`: the file holds

@@ -1,4 +1,8 @@
-import Demos.Drone.Planner
+module
+
+public import Demos.Drone.Planner
+
+@[expose] public section
 
 /-! The forward pass: `validHeights` checks every height, and `forward` leaves a table whose
 row `m` is the row of station `m` that `advance` builds from `initial`, for every station of the

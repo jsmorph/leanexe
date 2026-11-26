@@ -1,9 +1,13 @@
-import Library.Numerics.Bounds.Proof
-import Demos.Euler.ReconstructedSpec
-import Demos.Euler.Words
-import Demos.Euler.RealState
-import LeanExe.ProofKit.F64OutwardAccepted
-import LeanExe.ProofKit.F64AdjacentSigned
+module
+
+public import Library.Numerics.Bounds.Proof
+public import Demos.Euler.ReconstructedSpec
+public import Demos.Euler.Words
+public import Demos.Euler.RealState
+public import LeanExe.ProofKit.F64OutwardAccepted
+public import LeanExe.ProofKit.F64AdjacentSigned
+
+@[expose] public section
 
 /-! Real-number bounds for the reconstructed Euler solver: its outward operations agree with
 the word-level outward operations of `LeanExe.ProofKit.F64Outward`, whose results bound the exact

@@ -1,5 +1,9 @@
-import CodeLib.Entry
-import LeanExe.ProofKit.CallRemainder
+module
+
+public import CodeLib.Entry
+public import LeanExe.ProofKit.CallRemainder
+
+@[expose] public section
 
 /-! `ReturnsOrAborts`: every run with enough fuel either returns values that satisfy the
 postcondition or traps at an `unreachable` instruction.  The compiler emits `unreachable`

@@ -15,7 +15,7 @@ package leanexe where
   leanOptions := if fast then #[⟨`debug.skipKernelTC, true⟩] else #[]
 
 /-- The revision of Talos that supplies both CodeLib and WasmInterpreterLean. -/
-def talosRev : String := "61a12ff7170e2e94115c9b527d8e9687f2e50c6a"
+def talosRev : String := "c0069522ea7fe1e09825dc87ee708ba67a42c789"
 
 -- CodeLib requires WasmInterpreterLean by the path `../interpreter`.  Lake would record that
 -- package in this manifest at `.lake/packages/CodeLib/codelib/../interpreter`, and a workspace

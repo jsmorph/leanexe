@@ -1,6 +1,10 @@
-import Demos.Gpt.Program
-import LeanExe.Dialect.Build
-import Verified.Reflect.Command
+module
+
+public import Demos.Gpt.Program
+public import LeanExe.Dialect.Build
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-!
 A GPT-2 kernel in binary64 as a bare-metal program for AArch64: `Demos.Gpt.scores`, which a host

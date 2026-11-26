@@ -1,6 +1,10 @@
-import LeanExe.Base
-import Mathlib.Data.Finset.Powerset
-import Mathlib.Order.Interval.Finset.Nat
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.Finset.Powerset
+public import Mathlib.Order.Interval.Finset.Nat
+
+@[expose] public section
 
 /-! The specification of exact cover.  The first word of the input is the number of items `N`, read
 as `x.getD 0 0`, so the empty array has no items.  The options are the maximal runs of nonzero words

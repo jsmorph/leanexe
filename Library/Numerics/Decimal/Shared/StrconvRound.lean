@@ -1,6 +1,10 @@
-import Library.Numerics.Decimal.Shared.StrconvGrammar
-import Library.Numerics.Decimal.Shared.StrconvBinary32
-import LeanExe.ProofKit.F64PositiveRounding
+module
+
+public import Library.Numerics.Decimal.Shared.StrconvGrammar
+public import Library.Numerics.Decimal.Shared.StrconvBinary32
+public import LeanExe.ProofKit.F64PositiveRounding
+
+@[expose] public section
 
 /-!
 The meaning of a number for binary64 and binary32, and the definition of the shortest decimal.

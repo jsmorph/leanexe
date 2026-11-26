@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.StampLoops
+module
+
+public import LeanExe.A64.Proof.StampLoops
+
+@[expose] public section
 
 /-!
 The stages of the stamp program's routine after the allocation, with the block's address in

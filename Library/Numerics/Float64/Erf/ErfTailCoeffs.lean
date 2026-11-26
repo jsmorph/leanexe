@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erf.ErfTailBase
+module
+
+public import Library.Numerics.Float64.Erf.ErfTailBase
+
+@[expose] public section
 
 /-!
 The coefficients of the two tail rational functions of `s_erf.c`, as `Erf.erfTail` holds them,

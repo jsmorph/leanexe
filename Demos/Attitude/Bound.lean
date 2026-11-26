@@ -1,4 +1,8 @@
-import Demos.Attitude.Model
+module
+
+public import Demos.Attitude.Model
+
+@[expose] public section
 
 /-! The deterministic error bound of TRIAD.  For observations whose images under the true attitude
 lie within `ε1` and `ε2` of their references, `triad_error` bounds the angle between TRIAD's

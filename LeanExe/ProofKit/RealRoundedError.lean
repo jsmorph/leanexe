@@ -1,7 +1,11 @@
-import LeanExe.Base
-import Mathlib.Data.Real.Basic
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.Ring
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.Real.Basic
+public import Mathlib.Tactic.Linarith
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-!
 Errors of sums and products whose operands have errors, and the magnitude of a value within a

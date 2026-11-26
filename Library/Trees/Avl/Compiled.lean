@@ -1,7 +1,11 @@
-import Library.Trees.Avl.Proof
-import Library.Trees.Avl.Reflected
-import Verified.Reflect.Command
-import Verified.Congr
+module
+
+public import Library.Trees.Avl.Proof
+public import Library.Trees.Avl.Reflected
+public import Verified.Reflect.Command
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of balanced tree search and insertion.  By the compiler's rules,
 which the verified compiler's manual states, the compiler translates the tail recursions of

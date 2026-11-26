@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! Updates of a buffer with `LeanExe.Bytes.set`, which `tests/wasi/run.sh` and
 `tests/native/bytes.sh` run with the cases of `tests/wasi/bytes-set.tsv`.  `setByte` takes its

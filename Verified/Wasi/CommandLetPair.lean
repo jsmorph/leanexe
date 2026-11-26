@@ -1,6 +1,10 @@
-import Verified.AlignedCorrect
-import Verified.Wasi.CommandBindValueSpec
-import Verified.Wasi.CostBindValue
+module
+
+public import Verified.AlignedCorrect
+public import Verified.Wasi.CommandBindValueSpec
+public import Verified.Wasi.CostBindValue
+
+@[expose] public section
 
 /-! The rules of `Command.letPair`, whose code is that of `Expr.letPair (.var pair)`: the pair's
 code, which moves an owned pair that dies there and copies one that stays live, the stores of its

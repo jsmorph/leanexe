@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.Memory
+module
+
+public import LeanExe.ProofKit.Memory
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.ArrayFold
 

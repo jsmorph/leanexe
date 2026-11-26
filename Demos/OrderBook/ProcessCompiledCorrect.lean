@@ -1,8 +1,12 @@
-import Demos.OrderBook.ProcessCharges
-import Demos.OrderBook.ProcessCorrect
-import Demos.OrderBook.ProcessTermination
-import Demos.StreamFold.Observed
-import Verified.Wasi.ProcessEntryProofs
+module
+
+public import Demos.OrderBook.ProcessCharges
+public import Demos.OrderBook.ProcessCorrect
+public import Demos.OrderBook.ProcessTermination
+public import Demos.StreamFold.Observed
+public import Verified.Wasi.ProcessEntryProofs
+
+@[expose] public section
 
 /-! The correctness of the compiled process.  Under StreamFold's host assumptions, a Talos host
 that satisfies the three import specifications, a host that accepts the exit statuses 0 and 28, and

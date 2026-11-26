@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Exp2.Exp2Core
+module
+
+public import Library.Numerics.Float64.Exp2.Exp2Core
+
+@[expose] public section
 
 /-!
 The three paths of `Exp2.exp2Core` on `Exp.expTable`, each within one step of the reference of

@@ -1,6 +1,10 @@
-import Library.Numerics.Decimal.PrintFloat.Compiled
-import Library.Numerics.Decimal.ParseFloat.ParseFloatDec
-import Library.Numerics.Decimal.PrintFloat.PrintFloatShort
+module
+
+public import Library.Numerics.Decimal.PrintFloat.Compiled
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatDec
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatShort
+
+@[expose] public section
 
 /-!
 The printers' quotients.  `quotAt N sn sd jb` is the quotient of `num N sn j = N · 2 ^ sn · 10 ^ -j`

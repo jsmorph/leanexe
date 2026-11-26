@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Asin.AcosTheoremBranches
+module
+
+public import Library.Numerics.Float64.Asin.AcosTheoremBranches
+
+@[expose] public section
 
 /-!
 `Asin.acos x` for `|x| < 1/2`.  Below `2 ^ -57` the code returns `pio2_hi + pio2_lo`, and from

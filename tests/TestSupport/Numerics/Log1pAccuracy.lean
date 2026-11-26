@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Log1p.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.Reference
+module
+
+public import Library.Numerics.Float64.Log1p.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Log1p.log1p` against a reference computed with Lean's integers, rounded to
 the nearest double.  fdlibm states an error below one unit in the last place, so each result must

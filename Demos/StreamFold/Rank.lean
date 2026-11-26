@@ -1,4 +1,8 @@
-import Demos.StreamFold.Control
+module
+
+public import Demos.StreamFold.Control
+
+@[expose] public section
 
 namespace Demos.StreamFold
 

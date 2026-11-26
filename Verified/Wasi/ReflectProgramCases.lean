@@ -1,5 +1,9 @@
-import Verified.Wasi.ReflectProgram
-import LeanExe.Encoding.RoundTrip
+module
+
+public import Verified.Wasi.ReflectProgram
+public import LeanExe.Encoding.RoundTrip
+
+@[expose] public section
 
 namespace Verified.Wasi.ReflectProgramCases
 

@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Exp.ExpSpecialPositive
-import Library.Numerics.Float64.Exp.ExpTableReconstruction
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.RealRoundedError
+module
+
+public import Library.Numerics.Float64.Exp.ExpSpecialPositive
+public import Library.Numerics.Float64.Exp.ExpTableReconstruction
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.RealRoundedError
+
+@[expose] public section
 
 /-!
 The negative special path of `Exp.exp`.  For finite `-768 ≤ a ≤ -512`, the reconstruction `y`

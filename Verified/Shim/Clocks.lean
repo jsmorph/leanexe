@@ -1,4 +1,8 @@
-import Verified.Shim.SysEnv
+module
+
+public import Verified.Shim.SysEnv
+
+@[expose] public section
 
 /-!
 The shim's `clock_time_get` and `random_get`.  `clockInvoke` answers clocks 0 and 1 with one

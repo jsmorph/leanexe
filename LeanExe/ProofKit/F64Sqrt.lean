@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64SqrtFinite
-import LeanExe.ProofKit.F64Add
+module
+
+public import LeanExe.ProofKit.F64SqrtFinite
+public import LeanExe.ProofKit.F64Add
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Sqrt
 open Float.Model Float.Model.UnpackedFloat F64Encoding F64Packing F64Decoded F64SqrtFinite FloatCommon

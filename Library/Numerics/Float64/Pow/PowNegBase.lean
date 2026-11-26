@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Pow.PowMainSign
-import Library.Numerics.Float64.Pow.PowCheckint
+module
+
+public import Library.Numerics.Float64.Pow.PowMainSign
+public import Library.Numerics.Float64.Pow.PowCheckint
+
+@[expose] public section
 
 /-!
 `Pow.pow` for a negative finite `x` and a finite nonzero `y`.  A `y` that is not an integer gives

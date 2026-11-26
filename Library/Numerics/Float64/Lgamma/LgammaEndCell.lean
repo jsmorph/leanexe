@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaWalk
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaWalk
+
+@[expose] public section
 
 /-!
 The rounding test of the fast path of `Lgamma.lgammaWith` when the exact results of both of its

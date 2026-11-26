@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiReflect
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiReflect
+
+@[expose] public section
 
 /-!
 The reflected kernels of `Sinpi` on `[0, 1)`, each against `sin`, `cos`, or `tan` of `π a`: the

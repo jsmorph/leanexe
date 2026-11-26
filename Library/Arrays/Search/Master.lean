@@ -1,7 +1,11 @@
-import Library.Arrays.Search.Compiled
-import Library.Arrays.Search.Proof
-import LeanExe.Dialect.ArrayLemmas
-import Verified.Master
+module
+
+public import Library.Arrays.Search.Compiled
+public import Library.Arrays.Search.Proof
+public import LeanExe.Dialect.ArrayLemmas
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Arrays.Search
 

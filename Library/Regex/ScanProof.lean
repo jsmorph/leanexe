@@ -1,4 +1,8 @@
-import Library.Regex.RunProof
+module
+
+public import Library.Regex.RunProof
+
+@[expose] public section
 
 /-! The invariant of the pass `scan` over the pattern words.  For the stack of expressions that
 `Spec.run` builds, listed from the bottom, entry `e` of the program's stack holds the

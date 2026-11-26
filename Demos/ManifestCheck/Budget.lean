@@ -1,8 +1,12 @@
-import Demos.ManifestCheck.CommandStart
-import Demos.ManifestCheck.Compiled
-import Verified.Examples.WasiSysTotal
-import Verified.Wasi.BudgetTactics
-import Verified.Wasi.ResourceRulesAt
+module
+
+public import Demos.ManifestCheck.CommandStart
+public import Demos.ManifestCheck.Compiled
+public import Verified.Examples.WasiSysTotal
+public import Verified.Wasi.BudgetTactics
+public import Verified.Wasi.ResourceRulesAt
+
+@[expose] public section
 
 /-! The resource model's charge of the manifest checker's `main`, the budget that the generated
 `command.total` takes as a bound on every prefix of `main`.

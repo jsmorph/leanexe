@@ -1,9 +1,13 @@
-import TestSupport.Native.Common
-import Verified.Examples.Arrays
-import Verified.Examples.Loops
-import Library.Lists.Word.Compiled
-import Library.Sorting.Insertion.Compiled
-import Library.Hashing.Crc.Compiled
+module
+
+public import TestSupport.Native.Common
+public import Verified.Examples.Arrays
+public import Verified.Examples.Loops
+public import Library.Lists.Word.Compiled
+public import Library.Sorting.Insertion.Compiled
+public import Library.Hashing.Crc.Compiled
+
+@[expose] public section
 
 /-!
 The translations of the array, loop, list, sorting, and CRC examples, with `lx_mem` of `cap`

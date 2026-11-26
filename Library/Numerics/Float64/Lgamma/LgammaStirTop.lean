@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaStir
-import Library.Numerics.Float64.Tgamma.TgammaDDTop
-import Library.Numerics.Float64.Lgamma.LgammaFastPos
-import LeanExe.ProofKit.GammaThresholds
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaStir
+public import Library.Numerics.Float64.Tgamma.TgammaDDTop
+public import Library.Numerics.Float64.Lgamma.LgammaFastPos
+public import LeanExe.ProofKit.GammaThresholds
+
+@[expose] public section
 
 /-!
 The fast path's Stirling series of `Lgamma.lgammaWith` from `2^800` to the overflow threshold of

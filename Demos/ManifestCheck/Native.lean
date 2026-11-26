@@ -1,7 +1,11 @@
-import Demos.ManifestCheck.Budget
-import Verified.Shim
-import Verified.Shim.Args
-import Verified.ShimA64.Elf
+module
+
+public import Demos.ManifestCheck.Budget
+public import Verified.Shim
+public import Verified.Shim.Args
+public import Verified.ShimA64.Elf
+
+@[expose] public section
 
 /-! The footprint theorems of the manifest checker's command at the memory cap of a native
 executable.  The shim implements every flat call that the command imports (`calls_supported`).  A

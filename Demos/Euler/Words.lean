@@ -1,5 +1,9 @@
-import Library.Numerics.Bounds.Proof
-import LeanExe.ProofKit.F64Bits
+module
+
+public import Library.Numerics.Bounds.Proof
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-! The bits of the Euler solvers' float constants and of a float's magnitude, and words that are
 not NaN patterns. -/

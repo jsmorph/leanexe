@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaPolyMain
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaPolyMain
+
+@[expose] public section
 
 /-!
 The bound of `TgammaPolyMain.gamma_main` on the interval `|d| ≤ 1/2 + 2 ^ -50`.  The code's

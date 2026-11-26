@@ -1,5 +1,9 @@
-import Library.Numerics.Interval.EncloseAttr
-import Library.Numerics.Interval.FunctionsProof
+module
+
+public import Library.Numerics.Interval.EncloseAttr
+public import Library.Numerics.Interval.FunctionsProof
+
+@[expose] public section
 
 /-!
 One source for a real function and its interval program.

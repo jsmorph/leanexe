@@ -1,9 +1,13 @@
-import Library.Hashing.Sha2.Equiv.SHA512.Lift
-import Library.Hashing.Sha2.Equiv.SHA512.Functions
-import Library.Hashing.Sha2.Equiv.SHA512.Constants
-import Library.Hashing.Sha2.Equiv.SHA512.Foldl.Fused
-import Library.Hashing.Sha2.Equiv.SHA512.Compress.Impl
-import Mathlib.Tactic.IntervalCases
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA512.Lift
+public import Library.Hashing.Sha2.Equiv.SHA512.Functions
+public import Library.Hashing.Sha2.Equiv.SHA512.Constants
+public import Library.Hashing.Sha2.Equiv.SHA512.Foldl.Fused
+public import Library.Hashing.Sha2.Equiv.SHA512.Compress.Impl
+public import Mathlib.Tactic.IntervalCases
+
+@[expose] public section
 
 /-! # SHA-512 compression equivalence — spec ↔ impl bridge
 

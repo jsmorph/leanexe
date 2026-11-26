@@ -1,5 +1,9 @@
-import Library.Sorting.StraightInsertion.Spec
-import TestSupport.Modules.Heapsort
+module
+
+public import Library.Sorting.StraightInsertion.Spec
+public import TestSupport.Modules.Heapsort
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of straight insertion. -/
 

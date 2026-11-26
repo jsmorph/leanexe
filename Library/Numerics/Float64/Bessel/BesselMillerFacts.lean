@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.BesselMillerReal
-import Library.Numerics.Float64.Bessel.BesselMillerCF
+module
+
+public import Library.Numerics.Float64.Bessel.BesselMillerReal
+public import Library.Numerics.Float64.Bessel.BesselMillerCF
+
+@[expose] public section
 
 /-!
 The facts about `J_i(x)` for `0 < x < 2` that the backward recurrence of `jn` uses: the recurrence

@@ -1,6 +1,10 @@
-import Demos.RandomChoice.PicksSpec
-import Demos.RandomChoice.Proof
-import Demos.RandomHistogram.CommandProof
+module
+
+public import Demos.RandomChoice.PicksSpec
+public import Demos.RandomChoice.Proof
+public import Demos.RandomHistogram.CommandProof
+
+@[expose] public section
 
 /-! `putPicks` equals its specification on every draw of fewer than `2^32` bytes
 (`putPicks_eq`).

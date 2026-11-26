@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaMul
-import Library.Numerics.Float64.Tgamma.TgammaLogdTab
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaMul
+public import Library.Numerics.Float64.Tgamma.TgammaLogdTab
+
+@[expose] public section
 
 /-!
 `Tgamma.fastSum` with a zero first operand.  `fastSum_spec'` extends `TgammaDD.fastSum_spec` to

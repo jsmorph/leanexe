@@ -1,5 +1,9 @@
-import Verified.Wasi.ResourceCost
-import LeanExe.Wasi.Prefix
+module
+
+public import Verified.Wasi.ResourceCost
+public import LeanExe.Wasi.Prefix
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

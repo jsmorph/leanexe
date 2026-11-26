@@ -1,4 +1,8 @@
-import LeanExe.Requests.Records
+module
+
+public import LeanExe.Requests.Records
+
+@[expose] public section
 
 /-!
 Records delimited by zero bytes over a UART, through the program with requests.  Each record

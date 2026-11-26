@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccNegAsym
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccNegAsym
+
+@[expose] public section
 
 /-!
 **Stirling's series at a negative argument from -21/2 down**, through the reflection.

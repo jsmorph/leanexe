@@ -1,6 +1,10 @@
-import Demos.Slew.Program
-import LeanExe.Dialect.Lemmas
-import LeanExe.ProofKit.F64Bits
+module
+
+public import Demos.Slew.Program
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-! The path structure of the search.  `Inv` holds of every state of `search`: a node other than
 the start that has a finite cost or is finalized has a finalized parent, and `edgeOk` accepted

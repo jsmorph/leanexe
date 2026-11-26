@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64DyadicBounds
-import CodeLib.IEEE64.Operations
+module
+
+public import LeanExe.ProofKit.F64DyadicBounds
+public import CodeLib.IEEE64.Operations
+
+@[expose] public section
 
 /-! Rounded halving of a nonnegative factor at most 1/2 keeps it finite, nonnegative, at most
 1/2, and no larger than before. -/

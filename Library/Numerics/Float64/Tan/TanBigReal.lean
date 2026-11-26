@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tan.TanOdd
+module
+
+public import Library.Numerics.Float64.Tan.TanOdd
+
+@[expose] public section
 
 /-!
 The error of `Tan.kernelTan` from `0x3FE59428` on, in real numbers: with `x'` the argument,

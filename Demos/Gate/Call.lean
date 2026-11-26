@@ -1,6 +1,10 @@
-import Demos.Gate.Verified
-import Demos.Gate.Soundness
-import Verified.Call
+module
+
+public import Demos.Gate.Verified
+public import Demos.Gate.Soundness
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 Call theorems of the module `chisquare`.  A call of the export `tail`, `cdf`, or `quantile` from a

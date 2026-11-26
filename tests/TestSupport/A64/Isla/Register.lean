@@ -1,5 +1,9 @@
-import LeanExe.A64.Isla.Check
-import LeanExe.A64.Isla.Profile
+module
+
+public import LeanExe.A64.Isla.Check
+public import LeanExe.A64.Isla.Profile
+
+@[expose] public section
 
 /-!
 Theorems of `Agrees` for the register forms of `LeanExe/A64/Machine.lean`: ADD, SUB, AND, EOR,

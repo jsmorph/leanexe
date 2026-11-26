@@ -1,4 +1,8 @@
-import Demos.OrderBook.Process
+module
+
+public import Demos.OrderBook.Process
+
+@[expose] public section
 
 /-! The order book's process on the real stdin and stdout.  Reads use Running sum's
 [POSIX reader](../RunningSum/read.c), which returns after one successful `read` of file

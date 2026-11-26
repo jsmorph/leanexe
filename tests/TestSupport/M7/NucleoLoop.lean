@@ -1,6 +1,10 @@
-import TestSupport.M7.Nucleo
-import TestSupport.M7.Step
-import LeanExe.M7.Proof.Board
+module
+
+public import TestSupport.M7.Nucleo
+public import TestSupport.M7.Step
+public import LeanExe.M7.Proof.Board
+
+@[expose] public section
 
 /-!
 The loop theorem of the echo of `usart3Tick` on the NUCLEO-F767ZI, from reset, and the registers

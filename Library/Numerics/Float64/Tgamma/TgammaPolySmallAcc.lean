@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaPolySmall
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaPolySmall
+
+@[expose] public section
 
 /-!
 A bound on CORE-MATH's accurate polynomial for `Γ x - 1/x` on `|x| < 1/4` (`tgamma.c` lines

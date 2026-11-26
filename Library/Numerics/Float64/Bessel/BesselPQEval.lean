@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselRatioEval
-import Library.Numerics.Float64.Bessel.BesselCS
-import LeanExe.ProofKit.BesselRatio
+module
+
+public import Library.Numerics.Float64.Bessel.BesselRatioEval
+public import Library.Numerics.Float64.Bessel.BesselCS
+public import LeanExe.ProofKit.BesselRatio
+
+@[expose] public section
 
 /-!
 The evaluation of fdlibm's rational functions in `z = 1/x²` for `x ≥ 2`, as `Bessel.pAsym` and

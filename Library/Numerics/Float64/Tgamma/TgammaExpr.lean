@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaDD
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaDD
+
+@[expose] public section
 
 /-!
 Error bounds for straight-line double arithmetic in one variable.  `FE` is an expression over a

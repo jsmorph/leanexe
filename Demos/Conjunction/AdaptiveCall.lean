@@ -1,6 +1,10 @@
-import Demos.Conjunction.AdaptiveVerified
-import Demos.Conjunction.AdaptiveSoundness
-import Verified.Call
+module
+
+public import Demos.Conjunction.AdaptiveVerified
+public import Demos.Conjunction.AdaptiveSoundness
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 Call theorems of the module `adaptive`.  A call of the export `pcAdaptive` or

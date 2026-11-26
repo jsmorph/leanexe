@@ -1,7 +1,11 @@
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Bytes
-import LeanExe.Dialect.Loop
-import Library.Hashing.Words.Program
+module
+
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Bytes
+public import LeanExe.Dialect.Loop
+public import Library.Hashing.Words.Program
+
+@[expose] public section
 
 /-! The pure core of the manifest checker in the verified compiler's dialect.
 

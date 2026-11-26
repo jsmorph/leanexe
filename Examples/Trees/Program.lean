@@ -1,5 +1,9 @@
-import Library.Trees.WordTree.Program
-import LeanExe.Dialect.Loop
+module
+
+public import Library.Trees.WordTree.Program
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 Binary trees of words declared by the program, held on the heap as records: a leaf is the

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack2
-import LeanExe.ProofKit.PolyBound
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack2
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 The rounding error of `Erfc.erfFastMain`, `cr_erf_fast` from `1/16` on, against the polynomial of

@@ -1,4 +1,8 @@
-import Verified.TailRelocation
+module
+
+public import Verified.TailRelocation
+
+@[expose] public section
 
 namespace Verified
 

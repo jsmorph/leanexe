@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Exp.ExpFarRange
-import LeanExe.ProofKit.F64Magnitude
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Exp.ExpFarRange
+public import LeanExe.ProofKit.F64Magnitude
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Exp.exp`.  For every finite binary64 input `a`, the result is a

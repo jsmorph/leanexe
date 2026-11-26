@@ -1,5 +1,9 @@
-import Examples.Binary32.Cases
-import LeanExe.WGSL.Build
+module
+
+public import Examples.Binary32.Cases
+public import LeanExe.WGSL.Build
+
+@[expose] public section
 
 /-! The GPU cases of the verified compiler's kernels of `scale32`, `axpyArray32`, `matVec32`, and
 `condMix32`, in the format of `tests/wgsl/run.sh`: `kernel|workgroups|initial output|inputs|expected

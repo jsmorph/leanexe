@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Pow.Compiled
-import Library.Numerics.Float64.Log.LogTables
-import Library.Numerics.Float64.Exp.ExpReductionBounds
+module
+
+public import Library.Numerics.Float64.Pow.Compiled
+public import Library.Numerics.Float64.Log.LogTables
+public import Library.Numerics.Float64.Exp.ExpReductionBounds
+
+@[expose] public section
 
 /-!
 Facts about the 128 entries of `Pow.powLogTable`, checked by the kernel over the rationals, and

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselSmallJ0
+module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallJ0
+
+@[expose] public section
 
 /-!
 The second form of `Bessel.j0`, `(1 + x/2)(1 - x/2) + z (z R(z)/S(z))` with `z = x x`, which the

@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.LinuxProgram
-import LeanExe.A64.Proof.BytesRuns
+module
+
+public import LeanExe.A64.Proof.LinuxProgram
+public import LeanExe.A64.Proof.BytesRuns
+
+@[expose] public section
 
 /-!
 The theorems of the programs of Linux executables that run a function over bytes on standard input.

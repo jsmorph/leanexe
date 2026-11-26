@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaLogAccKern
-import Library.Numerics.Float64.Lgamma.LgammaLogAccRed
-import Library.Numerics.Float64.Tgamma.TgammaAcc2
-import Library.Numerics.Float64.Tgamma.TgammaLogdKernel
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaLogAccKern
+public import Library.Numerics.Float64.Lgamma.LgammaLogAccRed
+public import Library.Numerics.Float64.Tgamma.TgammaAcc2
+public import Library.Numerics.Float64.Tgamma.TgammaLogdKernel
+
+@[expose] public section
 
 /-!
 The tail of `Lgamma.asLogdAccurate` after the reduction `Lgamma.logReduce`: the kernel `X · logAccPoly X` of `LgammaLogAccKern`, the sums of the table's

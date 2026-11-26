@@ -1,5 +1,9 @@
-import Demos.RunningSum.Spec
-import Mathlib.Data.Nat.Digits.Defs
+module
+
+public import Demos.RunningSum.Spec
+public import Mathlib.Data.Nat.Digits.Defs
+
+@[expose] public section
 
 namespace Demos.RunningSum.Magnitude
 

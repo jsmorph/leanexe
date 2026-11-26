@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.BesselSmallJ0
-import LeanExe.ProofKit.F64NearestScale
+module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallJ0
+public import LeanExe.ProofKit.F64NearestScale
+
+@[expose] public section
 
 /-!
 `Bessel.j1 x` for `|x| < 2`: the code computes `x/2 + x z R(z)/S(z)` with `z = x x` from

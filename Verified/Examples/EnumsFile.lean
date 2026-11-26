@@ -1,5 +1,9 @@
-import Verified.Examples.Enums
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Enums
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/enums.wasm`: the file holds
 `encode Enums.compiled.module`, and it decodes to the module of `Enums.compiled.bytes`. -/

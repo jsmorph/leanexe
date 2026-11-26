@@ -1,5 +1,9 @@
-import Library.Sorting.MergeSort.Compiled
-import Verified.Master
+module
+
+public import Library.Sorting.MergeSort.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Sorting.MergeSort
 

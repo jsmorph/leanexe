@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.GammaThresholds
+module
+
+public import LeanExe.ProofKit.GammaThresholds
+
+@[expose] public section
 
 /-!
 `Γ` at the double before `tgamma`'s overflow threshold `0x1.573fae561f648p+7`

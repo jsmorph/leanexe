@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-!
 A model of the Thumb-2 instructions that the Cortex-M7 back end emits, for a program in Thread

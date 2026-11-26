@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.RealErfScaled
-import LeanExe.ProofKit.PolyCalculus
-import Library.Numerics.Float64.Erf.ErfKernelSmall
+module
+
+public import LeanExe.ProofKit.RealErfScaled
+public import LeanExe.ProofKit.PolyCalculus
+public import Library.Numerics.Float64.Erf.ErfKernelSmall
+
+@[expose] public section
 
 /-!
 General lemmas for the tail kernels of `s_erf.c`.  On `[1.25, 28)` the code computes

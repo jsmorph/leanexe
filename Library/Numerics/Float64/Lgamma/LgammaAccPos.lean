@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccPair
-import Library.Numerics.Float64.Lgamma.LgammaAccWinSmall
-import Library.Numerics.Float64.Lgamma.LgammaAccGrowth
-import Library.Numerics.Float64.Lgamma.LgammaAsymAcc
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccPair
+public import Library.Numerics.Float64.Lgamma.LgammaAccWinSmall
+public import Library.Numerics.Float64.Lgamma.LgammaAccGrowth
+public import Library.Numerics.Float64.Lgamma.LgammaAsymAcc
+
+@[expose] public section
 
 /-!
 **The triple of `Lgamma.accurate` at a positive argument**, before the renormalization.

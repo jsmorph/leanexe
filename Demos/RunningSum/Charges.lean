@@ -1,8 +1,12 @@
-import Demos.RunningSum.Limits
-import Demos.RunningSum.Module
-import Verified.ChargeFacts
-import Verified.Wasi.BudgetTactics
-import Verified.Wasi.ResourceRules
+module
+
+public import Demos.RunningSum.Limits
+public import Demos.RunningSum.Module
+public import Verified.ChargeFacts
+public import Verified.Wasi.BudgetTactics
+public import Verified.Wasi.ResourceRules
+
+@[expose] public section
 
 /-! The allocation charges of the integer running sum's `begin` and steps, and their bounds for
 states within the limits. -/

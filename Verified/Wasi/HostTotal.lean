@@ -1,4 +1,8 @@
-import Verified.Wasi.OracleHost
+module
+
+public import Verified.Wasi.OracleHost
+
+@[expose] public section
 
 /-! When `hostSpec host` can be satisfied.  `Host.Total` states that `host` permits a reply to every
 read and write request and either accepts or rejects every exit.  A total host has a Talos host

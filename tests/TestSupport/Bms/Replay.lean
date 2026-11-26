@@ -1,4 +1,8 @@
-import Demos.Bms.Stream
+module
+
+public import Demos.Bms.Stream
+
+@[expose] public section
 
 /-!
 The native replay of the logs of `tests/baremetal/uart_bms.py` against the specification of

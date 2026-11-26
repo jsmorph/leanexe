@@ -1,4 +1,8 @@
-import LeanExe.PTX.MemoryModel
+module
+
+public import LeanExe.PTX.MemoryModel
+
+@[expose] public section
 
 /-!
 A race-free launch under the memory model of `MemoryModel.lean`.  In every consistent execution

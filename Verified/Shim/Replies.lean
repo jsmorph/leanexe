@@ -1,6 +1,10 @@
-import LeanExe.Linux.Replies
-import Verified.Shim.Memory
-import Verified.Wasi.NestedBytes
+module
+
+public import LeanExe.Linux.Replies
+public import Verified.Shim.Memory
+public import Verified.Wasi.NestedBytes
+
+@[expose] public section
 
 /-!
 The WASI replies that the shim builds from the results of its Linux calls, and the parameters

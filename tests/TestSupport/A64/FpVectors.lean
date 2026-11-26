@@ -1,6 +1,10 @@
-import TestSupport.A64.Cosim
-import LeanExe.A64.Startup
-import LeanExe.A64.Table
+module
+
+public import TestSupport.A64.Cosim
+public import LeanExe.A64.Startup
+public import LeanExe.A64.Table
+
+@[expose] public section
 
 /-!
 The test of the floating-point forms' meanings: for `FADD`, `FSUB`, `FMUL`, `FDIV`, `FSQRT`,

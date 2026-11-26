@@ -1,7 +1,11 @@
-import Library.Graphs.Dijkstra.Program
-import Library.Sorting.Heapsort.Proof
-import Library.Queues.BinaryHeap.Proof
-import Mathlib.Data.List.FinRange
+module
+
+public import Library.Graphs.Dijkstra.Program
+public import Library.Sorting.Heapsort.Proof
+public import Library.Queues.BinaryHeap.Proof
+public import Mathlib.Data.List.FinRange
+
+@[expose] public section
 
 /-! The heap of Dijkstra's algorithm: keys in `hk` and vertices in `hv`, with entry `i` the pair
 `(hk[i], hv[i])`, node `i` the parent of nodes `2i + 1` and `2i + 2`, and the least key at the root.

@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F32Decoded
+module
+
+public import LeanExe.ProofKit.F32Decoded
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32Add
 open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32AddFinite F32Decoded FloatCommon

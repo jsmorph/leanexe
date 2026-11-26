@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import Library.Numerics.Arithmetic.Uscale.Program
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import Library.Numerics.Arithmetic.Uscale.Program
+
+@[expose] public section
 
 /-! Multiple-precision arithmetic, Algorithms A, S, M, and D of TAOCP §4.3.1, on arrays of digits in
 base `b = 2^32`, least significant first, one digit to a word.  A word holds the product of two

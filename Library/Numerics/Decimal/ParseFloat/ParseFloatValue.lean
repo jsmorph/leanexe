@@ -1,6 +1,10 @@
-import Library.Numerics.Decimal.ParseFloat.ParseFloatHexParse
-import Library.Numerics.Decimal.ParseFloat.ParseFloatDec
-import Library.Numerics.Decimal.Shared.StrconvTruncate
+module
+
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatHexParse
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatDec
+public import Library.Numerics.Decimal.Shared.StrconvTruncate
+
+@[expose] public section
 
 /-!
 From the scanners' outputs to the value of the significand.  For the digits `L = i ++ f` with `z`

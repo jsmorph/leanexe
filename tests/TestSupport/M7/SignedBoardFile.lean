@@ -1,4 +1,8 @@
-import TestSupport.M7.SignedLoop
+module
+
+public import TestSupport.M7.SignedLoop
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of the signed step of `sgUsart3Tick` for the NUCLEO-F767ZI that

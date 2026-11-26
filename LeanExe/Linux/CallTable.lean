@@ -1,4 +1,8 @@
-import LeanExe.Linux.Call
+module
+
+public import LeanExe.Linux.Call
+
+@[expose] public section
 
 /-!
 The described calls of the Linux call layer and the layouts of the structures that they name,

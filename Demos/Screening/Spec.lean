@@ -1,6 +1,10 @@
-import Library.Numerics.Interval.Enclose
-import Demos.Screening.KeplerBox
-import Demos.Screening.Model
+module
+
+public import Library.Numerics.Interval.Enclose
+public import Demos.Screening.KeplerBox
+public import Demos.Screening.Model
+
+@[expose] public section
 
 /-!
 The parts of the two-body model that the program evaluates on intervals.  Each `enclosure_def`

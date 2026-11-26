@@ -1,7 +1,11 @@
-import Verified.Bytes.Release
-import Verified.Bytes.Code
-import Verified.LocalFrame
-import LeanExe.TalosCompat
+module
+
+public import Verified.Bytes.Release
+public import Verified.Bytes.Code
+public import Verified.LocalFrame
+public import LeanExe.TalosCompat
+
+@[expose] public section
 
 namespace Verified.Bytes
 

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselSmallJ0Form2
+module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallJ0Form2
+
+@[expose] public section
 
 /-!
 `Bessel.j0 x` for `|x| < 2`: the result is finite and lies within `(235/100) u` of `J₀(x)`, with

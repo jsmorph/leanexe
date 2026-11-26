@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaExpr
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaExpr
+
+@[expose] public section
 
 /-!
 Bounds of a polynomial `PolyBound.eval l` on `[-r, r]` that the kernel computes in `ℚ`: the value

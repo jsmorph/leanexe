@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Atan.AtanTheoremSpecial
-import Library.Numerics.Float64.Atan.AtanTwoTheorem
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Atan.AtanTheoremSpecial
+public import Library.Numerics.Float64.Atan.AtanTwoTheorem
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorems for the module of `Atan.lean`, whose exports `atan` (function 2) and `atan2`

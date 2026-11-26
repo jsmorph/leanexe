@@ -1,4 +1,8 @@
-import LeanExe.Pipeline.FlatRecords
+module
+
+public import LeanExe.Pipeline.FlatRecords
+
+@[expose] public section
 
 /-!
 A tuple or a structure that the caller moves to a call, for a parameter of a tuple type that

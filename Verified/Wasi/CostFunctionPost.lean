@@ -1,6 +1,10 @@
-import Verified.Wasi.FunctionDispatcher
-import Verified.Wasi.FunctionRun
-import Verified.Wasi.CostResults
+module
+
+public import Verified.Wasi.FunctionDispatcher
+public import Verified.Wasi.FunctionRun
+public import Verified.Wasi.CostResults
+
+@[expose] public section
 
 namespace Verified.Wasi
 

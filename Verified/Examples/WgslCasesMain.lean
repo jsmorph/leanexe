@@ -1,5 +1,9 @@
-import Verified.Examples.WgslCases
-import Examples.Binary32.VerifiedGpuCases
+module
+
+public import Verified.Examples.WgslCases
+public import Examples.Binary32.VerifiedGpuCases
+
+@[expose] public section
 
 def main : IO Unit := do
   Verified.Examples.WgslCases.runCases true

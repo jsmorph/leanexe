@@ -1,5 +1,9 @@
-import LeanExe.Area
-import LeanExe.M7.Boot
+module
+
+public import LeanExe.Area
+public import LeanExe.M7.Boot
+
+@[expose] public section
 
 /-!
 The setup of the area of a module's store in the Cortex-M7's memory, which an image with linear

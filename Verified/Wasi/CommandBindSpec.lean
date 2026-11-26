@@ -1,6 +1,10 @@
-import Verified.Wasi.CommandCodeSpec
-import Verified.Wasi.CompilerFacts
-import Verified.Wasi.CommandBind
+module
+
+public import Verified.Wasi.CommandCodeSpec
+public import Verified.Wasi.CompilerFacts
+public import Verified.Wasi.CommandBind
+
+@[expose] public section
 
 namespace Verified.Wasi
 

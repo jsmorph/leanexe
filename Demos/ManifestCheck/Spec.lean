@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Bytes
-import Library.Hashing.Words.Bytes
+module
+
+public import LeanExe.Dialect.Bytes
+public import Library.Hashing.Words.Bytes
+
+@[expose] public section
 
 /-! The specifications of the pure core of the request in `Demos/ManifestCheck/request.txt`:
 `parseSpec`, the lines of a manifest in `sha256sum`'s format, `hexMatchesSpec`, whether a line's hex

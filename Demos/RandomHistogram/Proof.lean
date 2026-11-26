@@ -1,8 +1,12 @@
-import Demos.RandomHistogram.Program
-import Demos.RandomHistogram.Spec
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
-import Library.Numerics.Decimal.Int64Text.Proof
+module
+
+public import Demos.RandomHistogram.Program
+public import Demos.RandomHistogram.Spec
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+public import Library.Numerics.Decimal.Int64Text.Proof
+
+@[expose] public section
 
 /-! The programs of the pure core equal their specifications: `parseN_eq`, `histogram_eq`, and
 `render_eq`, and the counts of `histogramSpec` sum to the number of words (`histogramSpec_sum`).

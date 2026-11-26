@@ -1,4 +1,8 @@
-import Verified.Examples.Wgsl
+module
+
+public import Verified.Examples.Wgsl
+
+@[expose] public section
 
 namespace Verified.Examples.Wgsl
 

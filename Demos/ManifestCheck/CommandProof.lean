@@ -1,10 +1,14 @@
-import Demos.ManifestCheck.Command
-import Demos.ManifestCheck.CommandSpec
-import Demos.ManifestCheck.Proof
-import Library.Hashing.Sha256.StreamProof
-import Verified.Wasi.FunctionEntry
-import Verified.Wasi.Handles
-import LeanExe.Wasi.Bind
+module
+
+public import Demos.ManifestCheck.Command
+public import Demos.ManifestCheck.CommandSpec
+public import Demos.ManifestCheck.Proof
+public import Library.Hashing.Sha256.StreamProof
+public import Verified.Wasi.FunctionEntry
+public import Verified.Wasi.Handles
+public import LeanExe.Wasi.Bind
+
+@[expose] public section
 
 /-! Every run of the command's `main` followed by its exit, under every host, that ends with an
 exit status meets the request (`exec_main`): its events are those of `Meets` followed by the exit.

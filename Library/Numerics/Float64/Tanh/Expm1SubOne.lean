@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.Expm1FormWords
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1FormWords
+
+@[expose] public section
 
 /-!
 Subtracting 1 from a nonnegative word of value at least `2 ^ 55` returns the word, in every binade

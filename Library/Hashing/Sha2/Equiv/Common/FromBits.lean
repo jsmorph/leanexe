@@ -1,7 +1,11 @@
-import Library.Hashing.Sha2.Spec.Setup
-import Mathlib.Data.List.Induction
-import Mathlib.Tactic.Ring
-import Mathlib.Tactic.Linarith
+module
+
+public import Library.Hashing.Sha2.Spec.Setup
+public import Mathlib.Data.List.Induction
+public import Mathlib.Tactic.Ring
+public import Mathlib.Tactic.Linarith
+
+@[expose] public section
 
 /-! # Common: `Word.fromBits` structural lemmas
 

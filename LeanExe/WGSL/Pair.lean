@@ -1,4 +1,8 @@
-import LeanExe.WGSL.Kernel
+module
+
+public import LeanExe.WGSL.Kernel
+
+@[expose] public section
 
 /-!
 `u64` addition and multiplication on `vec2<u32>` pairs, least significant half first.  WGSL has

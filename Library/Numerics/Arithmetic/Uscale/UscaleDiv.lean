@@ -1,4 +1,8 @@
-import Library.Numerics.Arithmetic.Uscale.UscaleArith
+module
+
+public import Library.Numerics.Arithmetic.Uscale.UscaleArith
+
+@[expose] public section
 
 /-!
 The values of `Uscale`'s restoring division, its unrounded scaling, and its powers of ten.  After

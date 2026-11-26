@@ -1,5 +1,9 @@
-import Verified.TailBound
-import Verified.FunRenameBound
+module
+
+public import Verified.TailBound
+public import Verified.FunRenameBound
+
+@[expose] public section
 
 namespace Verified
 

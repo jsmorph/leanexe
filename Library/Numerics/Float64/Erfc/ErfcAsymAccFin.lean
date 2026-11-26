@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Erfc.ErfcAsymAccHL
-import Library.Numerics.Float64.Erfc.ErfcTest
-import Library.Numerics.Float64.Erfc.ErfcCast
-import LeanExe.ProofKit.F64MulBounds
-import LeanExe.ProofKit.F64NearestSteps
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAsymAccHL
+public import Library.Numerics.Float64.Erfc.ErfcTest
+public import Library.Numerics.Float64.Erfc.ErfcCast
+public import LeanExe.ProofKit.F64MulBounds
+public import LeanExe.ProofKit.F64NearestSteps
+
+@[expose] public section
 
 /-!
 The final scaling of `erfc_asympt_accurate`: `res = ldexp (h + l, K)`, and for a subnormal `res`

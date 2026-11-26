@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! The specification of topological sorting.  The input `xs` holds the vertex count `n = xs[0]`
 and then pairs `xs[2e + 1], xs[2e + 2]`, the relation `e`, which states that its first vertex comes

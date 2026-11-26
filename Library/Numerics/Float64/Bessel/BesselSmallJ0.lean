@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.BesselSmallEval
-import Library.Numerics.Float64.Bessel.BesselJ0Large
+module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallEval
+public import Library.Numerics.Float64.Bessel.BesselJ0Large
+
+@[expose] public section
 
 /-!
 Parts of `Bessel.j0` below 2.  The code has four paths by the high word of `|x|`: 1 below `2^-27`,

@@ -1,4 +1,8 @@
-import Demos.Rcv.Cases
+module
+
+public import Demos.Rcv.Cases
+
+@[expose] public section
 
 /-!
 Native tests of the statements of T4, T5, T6, T7, and T9 of `Demos/Rcv/Rounds.lean`, which ran

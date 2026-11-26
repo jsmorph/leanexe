@@ -1,4 +1,8 @@
-import LeanExe.M7.Board
+module
+
+public import LeanExe.M7.Board
+
+@[expose] public section
 
 /-!
 The diagnostic image of the NUCLEO-F767ZI's debug state at reset, which `m7-windows diag` writes,

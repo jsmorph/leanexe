@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Tgamma.TgammaReflPath
-import Library.Numerics.Float64.Tgamma.TgammaSmallPath
-import Library.Numerics.Float64.Tgamma.TgammaMainPath
-import Library.Numerics.Float64.Tgamma.TgammaEdge
-import Library.Numerics.Float64.Tgamma.TgammaInt
-import Library.Numerics.Float64.Tgamma.TgammaBranches
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaReflPath
+public import Library.Numerics.Float64.Tgamma.TgammaSmallPath
+public import Library.Numerics.Float64.Tgamma.TgammaMainPath
+public import Library.Numerics.Float64.Tgamma.TgammaEdge
+public import Library.Numerics.Float64.Tgamma.TgammaInt
+public import Library.Numerics.Float64.Tgamma.TgammaBranches
+
+@[expose] public section
 
 /-!
 The tests of `tgammaWith` in terms of the value of a finite `x`: the threshold `2 ^ -112` of the

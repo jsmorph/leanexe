@@ -1,6 +1,10 @@
-import Verified.Wasi.CommandSpec
-import Verified.Wasi.AfterScratch
-import LeanExe.ProofKit.Sequencing
+module
+
+public import Verified.Wasi.CommandSpec
+public import Verified.Wasi.AfterScratch
+public import LeanExe.ProofKit.Sequencing
+
+@[expose] public section
 
 namespace Verified.Wasi
 

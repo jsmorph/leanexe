@@ -1,6 +1,10 @@
-import Demos.Rcv.Process
-import LeanExe.Pipeline.Implements
-import Verified.Source
+module
+
+public import Demos.Rcv.Process
+public import LeanExe.Pipeline.Implements
+public import Verified.Source
+
+@[expose] public section
 
 /-! The representation of the tabulators' process state, which the Oakland process of
 `Demos/Rcv/ProcessWasi.lean` and the Maine process of `Demos/Rcv/Maine/ProcessWasi.lean` share: the

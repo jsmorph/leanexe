@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaSinpidLow
-import Library.Numerics.Float64.Tgamma.TgammaMul
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidLow
+public import Library.Numerics.Float64.Tgamma.TgammaMul
+
+@[expose] public section
 
 /-!
 The double-double steps of `Lgamma.asSinpipidAccurate` after its kernels: `A = d P` (`mulDDD`),

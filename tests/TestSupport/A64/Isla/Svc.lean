@@ -1,6 +1,10 @@
-import LeanExe.A64.Isla.Float
-import LeanExe.A64.Isla.Linux
-import LeanExe.A64.Linux
+module
+
+public import LeanExe.A64.Isla.Float
+public import LeanExe.A64.Isla.Linux
+public import LeanExe.A64.Linux
+
+@[expose] public section
 
 /-!
 Theorems of the traces of `SVC #0` of a Linux process at EL0, `tests/isla/linux-vhe/svc` under the

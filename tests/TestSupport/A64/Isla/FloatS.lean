@@ -1,5 +1,9 @@
-import LeanExe.A64.Isla.Float
-import LeanExe.A64.Isla.Linux
+module
+
+public import LeanExe.A64.Isla.Float
+public import LeanExe.A64.Isla.Linux
+
+@[expose] public section
 
 /-!
 Theorems of `AgreesAll`, or of `Agrees` for `FMOV Wd, Sn`, for the single-precision forms of

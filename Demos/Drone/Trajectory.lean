@@ -1,5 +1,9 @@
-import Demos.Drone.Safety
-import Demos.Drone.Gluing
+module
+
+public import Demos.Drone.Safety
+public import Demos.Drone.Gluing
+
+@[expose] public section
 
 namespace Demos.Drone.Trajectory
 open Demos.Drone Arithmetic Output Dynamics Safety Planner Forward

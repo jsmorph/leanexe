@@ -1,4 +1,8 @@
-import LeanExe.Pipeline.Implements
+module
+
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! The `records-u64` form of `build/tools/leanexe-wasmtime-host` for a value of a recursive
 type: `.` for null, and for a record its width, its mask, and its slots in preorder, separated

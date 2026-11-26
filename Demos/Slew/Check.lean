@@ -1,6 +1,10 @@
-import Demos.Slew.Decide
-import Demos.Slew.Cone
-import LeanExe.Dialect.Lemmas
+module
+
+public import Demos.Slew.Decide
+public import Demos.Slew.Cone
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! Soundness of the edge check and the static check.  `coneEdge` and `coneStatic` are the checks
 of one cone that `edgeOk` and `attitudeOk` evaluate in their loops, which `edgeOk_eq` and

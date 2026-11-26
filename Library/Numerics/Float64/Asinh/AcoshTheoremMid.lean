@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Asinh.AsinhTheoremMid
+module
+
+public import Library.Numerics.Float64.Asinh.AsinhTheoremMid
+
+@[expose] public section
 
 /-!
 The middle branch of `Asinh.acosh`, `2 ≤ x ≤ 2 ^ 28`: the code computes

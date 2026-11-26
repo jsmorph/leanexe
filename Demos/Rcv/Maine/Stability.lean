@@ -1,5 +1,9 @@
-import Demos.Rcv.Maine.Spec
-import Demos.Rcv.Batch
+module
+
+public import Demos.Rcv.Maine.Spec
+public import Demos.Rcv.Batch
+
+@[expose] public section
 
 /-!
 T8 of [the requirements](requirements.md), section "Theorems", for the Maine interpretation, and

@@ -1,6 +1,10 @@
-import LeanExe.M7.Board
-import TestSupport.M7.Qemu
-import Demos.Bms.Compiled
+module
+
+public import LeanExe.M7.Board
+public import TestSupport.M7.Qemu
+public import Demos.Bms.Compiled
+
+@[expose] public section
 
 /-!
 The images of the BMS step of `Demos/Bms/Program.lean`, both from the state `bmsInit`: the

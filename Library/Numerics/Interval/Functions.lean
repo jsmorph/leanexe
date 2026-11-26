@@ -1,6 +1,10 @@
-import Library.Numerics.Interval.Program
-import Library.Numerics.Float64.Trig.Program
-import Library.Numerics.Float64.Pow.Program
+module
+
+public import Library.Numerics.Interval.Program
+public import Library.Numerics.Float64.Trig.Program
+public import Library.Numerics.Float64.Pow.Program
+
+@[expose] public section
 
 /-!
 Further interval operations: integer constants and their ratios, the maximum, a selection by the

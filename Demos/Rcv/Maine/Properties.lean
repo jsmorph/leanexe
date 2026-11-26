@@ -1,5 +1,9 @@
-import Demos.Rcv.Maine.Holder
-import Demos.Rcv.Properties
+module
+
+public import Demos.Rcv.Maine.Holder
+public import Demos.Rcv.Properties
+
+@[expose] public section
 
 /-!
 T12 Majority criterion, T13 Condorcet loser, T14 Later-no-harm, and T15 Monotonicity fails of

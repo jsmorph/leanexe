@@ -1,4 +1,8 @@
-import Verified.Shim.Host
+module
+
+public import Verified.Shim.Host
+
+@[expose] public section
 
 /-!
 The images of a WASI trace under the shim's host as lists of layer events.  `images_split` splits

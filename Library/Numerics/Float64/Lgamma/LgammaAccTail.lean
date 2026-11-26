@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccRoot
-import Library.Numerics.Float64.Lgamma.LgammaAccWalk
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccRoot
+public import Library.Numerics.Float64.Lgamma.LgammaAccWalk
+
+@[expose] public section
 
 /-!
 **The last two steps of `Lgamma.accurate`**: the polynomials about the negative zeros and the

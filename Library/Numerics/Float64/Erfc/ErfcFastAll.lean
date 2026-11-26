@@ -1,17 +1,21 @@
-import Library.Numerics.Float64.Erfc.ErfcFastRows0
-import Library.Numerics.Float64.Erfc.ErfcFastRows1
-import Library.Numerics.Float64.Erfc.ErfcFastRows2
-import Library.Numerics.Float64.Erfc.ErfcFastRows3
-import Library.Numerics.Float64.Erfc.ErfcFastRows4
-import Library.Numerics.Float64.Erfc.ErfcFastRows5
-import Library.Numerics.Float64.Erfc.ErfcFastRows6
-import Library.Numerics.Float64.Erfc.ErfcFastRows7
-import Library.Numerics.Float64.Erfc.ErfcFastRows8
-import Library.Numerics.Float64.Erfc.ErfcFastRows9
-import Library.Numerics.Float64.Erfc.ErfcFastRows10
-import Library.Numerics.Float64.Erfc.ErfcFastRows11
-import Library.Numerics.Float64.Erfc.ErfcFastTiny
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcFastRows0
+public import Library.Numerics.Float64.Erfc.ErfcFastRows1
+public import Library.Numerics.Float64.Erfc.ErfcFastRows2
+public import Library.Numerics.Float64.Erfc.ErfcFastRows3
+public import Library.Numerics.Float64.Erfc.ErfcFastRows4
+public import Library.Numerics.Float64.Erfc.ErfcFastRows5
+public import Library.Numerics.Float64.Erfc.ErfcFastRows6
+public import Library.Numerics.Float64.Erfc.ErfcFastRows7
+public import Library.Numerics.Float64.Erfc.ErfcFastRows8
+public import Library.Numerics.Float64.Erfc.ErfcFastRows9
+public import Library.Numerics.Float64.Erfc.ErfcFastRows10
+public import Library.Numerics.Float64.Erfc.ErfcFastRows11
+public import Library.Numerics.Float64.Erfc.ErfcFastTiny
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 `cr_erf_fast` for `0 ≤ z < 95/16`.  `rows_ok` collects the 94 row checks, and `erfFast_err` bounds

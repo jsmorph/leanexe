@@ -1,5 +1,9 @@
-import Verified.TailSource
-import Verified.Reflect.Modes
+module
+
+public import Verified.TailSource
+public import Verified.Reflect.Modes
+
+@[expose] public section
 
 namespace Verified
 

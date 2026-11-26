@@ -1,5 +1,9 @@
-import Verified.Wasi.GuestFrame
-import Verified.Bytes.Basic
+module
+
+public import Verified.Wasi.GuestFrame
+public import Verified.Bytes.Basic
+
+@[expose] public section
 
 namespace Verified.Wasi
 

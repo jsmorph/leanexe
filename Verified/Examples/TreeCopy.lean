@@ -1,6 +1,10 @@
-import Verified.Compile
-import Verified.TreeCopyCode
-import Verified.TreeHeaderCode
+module
+
+public import Verified.Compile
+public import Verified.TreeCopyCode
+public import Verified.TreeHeaderCode
+
+@[expose] public section
 
 namespace Verified.Examples.TreeCopy
 

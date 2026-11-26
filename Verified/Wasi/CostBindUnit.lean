@@ -1,8 +1,12 @@
-import Verified.Wasi.CostCodeSpec
-import Verified.Wasi.CompilerFacts
-import Verified.Wasi.CommandBind
-import Verified.Wasi.LoopAfter
-import Verified.Wasi.ResourceBudget
+module
+
+public import Verified.Wasi.CostCodeSpec
+public import Verified.Wasi.CompilerFacts
+public import Verified.Wasi.CommandBind
+public import Verified.Wasi.LoopAfter
+public import Verified.Wasi.ResourceBudget
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,5 +1,9 @@
-import TestSupport.M7.Asm
-import LeanExe.M7.Div
+module
+
+public import TestSupport.M7.Asm
+public import LeanExe.M7.Div
+
+@[expose] public section
 
 /-!
 The co-simulation of the Cortex-M7 model of `LeanExe/M7/Machine.lean` against QEMU's `mps2-an500`,

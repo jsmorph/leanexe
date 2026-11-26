@@ -1,6 +1,10 @@
-import Verified.Bytes.Memory
-import LeanExe.Pipeline.RuntimeSpec
-import LeanExe.Pipeline.Bytes
+module
+
+public import Verified.Bytes.Memory
+public import LeanExe.Pipeline.RuntimeSpec
+public import LeanExe.Pipeline.Bytes
+
+@[expose] public section
 
 namespace Verified.Bytes
 

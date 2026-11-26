@@ -1,4 +1,8 @@
-import Demos.OrderBook.Spec
+module
+
+public import Demos.OrderBook.Spec
+
+@[expose] public section
 
 /-! Command streams that exercise each case of [the requirements](requirements.md).  Each sample
 has a setup stream, whose events are not shown, and a stream whose events are shown.  Accounts are

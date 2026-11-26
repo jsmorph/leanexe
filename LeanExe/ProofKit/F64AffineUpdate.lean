@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64ArithmeticBounds
-import LeanExe.ProofKit.RealAffineError
+module
+
+public import LeanExe.ProofKit.F64ArithmeticBounds
+public import LeanExe.ProofKit.RealAffineError
+
+@[expose] public section
 
 /-! The error of the rounded update `state - ratio · (fluxR - fluxL)` against the exact update, for
 a ratio in `[0, 1]`. -/

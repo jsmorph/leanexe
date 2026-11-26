@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccTail
-import Library.Numerics.Float64.Lgamma.LgammaAccNorm
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccTail
+public import Library.Numerics.Float64.Lgamma.LgammaAccNorm
+
+@[expose] public section
 
 /-!
 **From a triple to the pair of `LgammaAccTail.AccPair`**, through the renormalization of

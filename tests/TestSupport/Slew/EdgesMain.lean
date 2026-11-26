@@ -1,4 +1,8 @@
-import TestSupport.Slew.Edges
+module
+
+public import TestSupport.Slew.Edges
+
+@[expose] public section
 
 /-! Writes the host session of the single-cone edge cases and native Lean's results, for
 `tests/slew/edges.sh`. -/

@@ -1,6 +1,10 @@
-import Verified.Examples.RecursiveTypes
-import Examples.Words.Cases
-import Examples.Trees.Cases
+module
+
+public import Verified.Examples.RecursiveTypes
+public import Examples.Words.Cases
+public import Examples.Trees.Cases
+
+@[expose] public section
 
 namespace Verified.Examples.RecursiveTypes
 

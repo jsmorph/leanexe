@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Atan.AtanTheoremPoly
-import LeanExe.ProofKit.F64UpperWord
+module
+
+public import Library.Numerics.Float64.Atan.AtanTheoremPoly
+public import LeanExe.ProofKit.F64UpperWord
+
+@[expose] public section
 
 /-!
 The branches of `Atan.atan` as equations.  `ixOf x` is the high word of `|x|`.  From `2 ^ 66` on the

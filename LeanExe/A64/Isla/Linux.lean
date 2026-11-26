@@ -1,4 +1,8 @@
-import LeanExe.A64.Isla.Profile
+module
+
+public import LeanExe.A64.Isla.Profile
+
+@[expose] public section
 
 /-!
 The profile of the traces of a Linux process at EL0, those of `tests/isla/linux-traces.sh`, which

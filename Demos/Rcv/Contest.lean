@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-!
 The contest structure of [the requirements](requirements.md), section "The contest structure": the

@@ -1,4 +1,8 @@
-import LeanExe.PTX.Det
+module
+
+public import LeanExe.PTX.Det
+
+@[expose] public section
 
 /-!
 Executions of a launch under the PTX memory consistency model (PTX ISA chapter 8).

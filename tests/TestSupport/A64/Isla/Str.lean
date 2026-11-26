@@ -1,4 +1,8 @@
-import LeanExe.A64.Isla.Walk
+module
+
+public import LeanExe.A64.Isla.Walk
+
+@[expose] public section
 
 /-!
 Theorems of `Agrees` for `STR Xt, [Xn|SP, #(8 * imm)]` of `LeanExe/A64/Machine.lean` with every

@@ -1,5 +1,9 @@
-import Demos.PassiveSafety.Program
-import TestSupport.Host
+module
+
+public import Demos.PassiveSafety.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the passive-safety module.  `cases` prints the module cases of `check` for
 `tests/verified/run.sh`, and `bits` prints, for each case, its name, its expected status and

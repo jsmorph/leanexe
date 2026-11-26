@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! The modular inverse by the extended Euclidean algorithm, Algorithm X of TAOCP §4.5.2, with
 Knuth's `u = m` and `v = a`, keeping only the coefficient of `a`.  The remainders `r0 > r1`,

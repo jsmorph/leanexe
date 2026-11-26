@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.Sim
-import LeanExe.ProofKit.Exec
+module
+
+public import LeanExe.A64.Proof.Sim
+public import LeanExe.ProofKit.Exec
+
+@[expose] public section
 
 /-!
 The simulation over a machine.  A `Machine` runs the generated code: its states hold the

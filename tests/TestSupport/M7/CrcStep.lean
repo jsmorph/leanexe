@@ -1,6 +1,10 @@
-import LeanExe.M7.Proof.Step
-import LeanExe.M7.Proof.Bound
-import TestSupport.M7.Crc
+module
+
+public import LeanExe.M7.Proof.Step
+public import LeanExe.M7.Proof.Bound
+public import TestSupport.M7.Crc
+
+@[expose] public section
 
 /-!
 The step theorems of the CRC-32 step on the Cortex-M7: the calls of `crcUsart3Tick`, function 5

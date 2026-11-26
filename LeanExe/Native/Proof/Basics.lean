@@ -1,4 +1,8 @@
-import LeanExe.Native.Clight.Bigstep
+module
+
+public import LeanExe.Native.Clight.Bigstep
+
+@[expose] public section
 
 /-!
 Facts about the Lean copy of Clight that the translator's proof uses: lookups in temporary

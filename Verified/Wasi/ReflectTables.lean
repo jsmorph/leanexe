@@ -1,5 +1,9 @@
-import Verified.Reflect.Command
-import Lean.Meta.Transform
+module
+
+public import Verified.Reflect.Command
+public import Lean.Meta.Transform
+
+@[expose] public section
 
 namespace Verified.Wasi.Reflect
 

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp2.Exp10Theorem
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Exp2.Exp10Theorem
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorems for the module of `Exp2.lean`, whose exports `exp2` (function 7) and `exp10`

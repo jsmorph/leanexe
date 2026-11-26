@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: floats.  The programs use the arithmetic
 operations, the square root, the absolute value, negation, comparisons as conditions and as

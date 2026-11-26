@@ -1,6 +1,10 @@
-import Lean
-import LeanExe.Encoding.Completeness.Writes
-import LeanExe.Encoding.Spec.Validity
+module
+
+public import Lean
+public import LeanExe.Encoding.Completeness.Writes
+public import LeanExe.Encoding.Spec.Validity
+
+@[expose] public section
 
 namespace Wasm.Encoding.ValidityProof
 

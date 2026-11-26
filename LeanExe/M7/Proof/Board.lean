@@ -1,7 +1,11 @@
-import LeanExe.M7.Board
-import LeanExe.M7.Proof.Init
-import LeanExe.M7.Proof.Runs
-import LeanExe.M7.Proof.Setup
+module
+
+public import LeanExe.M7.Board
+public import LeanExe.M7.Proof.Init
+public import LeanExe.M7.Proof.Runs
+public import LeanExe.M7.Proof.Setup
+
+@[expose] public section
 
 /-!
 The run of a program with requests on the NUCLEO-F767ZI from reset, in the model.  `Flash code n

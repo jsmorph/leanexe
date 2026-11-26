@@ -1,5 +1,9 @@
-import LeanExe.Encoding.Spec.Modules
-import LeanExe.Encoding.Values
+module
+
+public import LeanExe.Encoding.Spec.Modules
+public import LeanExe.Encoding.Values
+
+@[expose] public section
 
 namespace Wasm.Encoding
 

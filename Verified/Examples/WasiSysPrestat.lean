@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 /-! A command that reads the name of the preopened directory and then opens a file in it.  `main`
 reads the record of the preopened directory with `fdPrestatGet` and its name with

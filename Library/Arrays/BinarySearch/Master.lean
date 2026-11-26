@@ -1,5 +1,9 @@
-import Library.Arrays.BinarySearch.Compiled
-import Verified.Master
+module
+
+public import Library.Arrays.BinarySearch.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Arrays.BinarySearch
 

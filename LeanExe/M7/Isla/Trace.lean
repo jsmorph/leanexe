@@ -1,5 +1,9 @@
-import LeanExe.A64.Isla.Trace
-import LeanExe.M7.Machine
+module
+
+public import LeanExe.A64.Isla.Trace
+public import LeanExe.M7.Machine
+
+@[expose] public section
 
 /-!
 The traces that Isla computes for the Thumb forms of `LeanExe/M7/Machine.lean` from the A-profile

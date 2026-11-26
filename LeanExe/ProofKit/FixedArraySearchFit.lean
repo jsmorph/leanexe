@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.FixedArraySearchNone
-import LeanExe.ProofKit.FixedArrayReuse
-import LeanExe.ProofKit.FreeListMemory
+module
+
+public import LeanExe.ProofKit.FixedArraySearchNone
+public import LeanExe.ProofKit.FixedArrayReuse
+public import LeanExe.ProofKit.FreeListMemory
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArraySearch
 open Wasm LeanExe.Runtime LeanExe.ProofKit.Memory

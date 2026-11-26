@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-!
 The Linux call layer, which depends on no architecture.  A described call has a name, its numbers

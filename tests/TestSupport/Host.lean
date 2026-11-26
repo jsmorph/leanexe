@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! Arguments and results in the kinds of `build/tools/leanexe-wasmtime-host`, for programs on
 words and word arrays: a word is one `i64` argument, an array one `array-u64` argument, and a

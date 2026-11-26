@@ -1,6 +1,10 @@
-import Demos.Gpt32.Verified
-import Demos.Gpt32.HostProgram
-import LeanExe.WGSL.Workgroup
+module
+
+public import Demos.Gpt32.Verified
+public import Demos.Gpt32.HostProgram
+public import LeanExe.WGSL.Workgroup
+
+@[expose] public section
 
 namespace Demos.Gpt32.Verified
 

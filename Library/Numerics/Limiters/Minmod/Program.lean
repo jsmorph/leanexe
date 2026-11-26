@@ -1,4 +1,8 @@
-import Library.Numerics.Bounds.Program
+module
+
+public import Library.Numerics.Bounds.Program
+
+@[expose] public section
 
 namespace Library.Numerics.Limiters.Minmod
 

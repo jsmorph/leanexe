@@ -1,6 +1,10 @@
-import LeanExe.Base
-import Interpreter.Wasm.Syntax
-import Interpreter.Wasm.IEEE64
+module
+
+public import LeanExe.Base
+public import Interpreter.Wasm.Syntax
+public import Interpreter.Wasm.IEEE64
+
+@[expose] public section
 
 /-!
 The source language of GPU kernels: scalar types and their values, the word, binary64, and

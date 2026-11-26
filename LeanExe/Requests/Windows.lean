@@ -1,4 +1,8 @@
-import LeanExe.Native.Requests
+module
+
+public import LeanExe.Native.Requests
+
+@[expose] public section
 
 /-!
 The windows of a program with requests, whatever its back end.  `main` runs a step function

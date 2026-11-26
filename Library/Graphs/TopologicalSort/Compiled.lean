@@ -1,6 +1,10 @@
-import Library.Graphs.TopologicalSort.Proof
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Graphs.TopologicalSort.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-! The verified compiler's module of topological sorting.  `topoSort_call` states the call of the
 export from the generated `compiled.topoSort.trapFree`: from a ready store with room for the

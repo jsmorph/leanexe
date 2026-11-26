@@ -1,6 +1,10 @@
-import Examples.ArrayCall
-import Examples.Below100.Proof
-import Verified.Reflect.Command
+module
+
+public import Examples.ArrayCall
+public import Examples.Below100.Proof
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `keep` and `compute`.  `below100_call` composes the generated
 `compiled.compute.trapFree` with `compute_eq`: from a store in which `top` can rise by 712 bytes,

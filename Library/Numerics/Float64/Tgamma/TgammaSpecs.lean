@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tgamma.TgammaRefl4
-import Library.Numerics.Float64.Tgamma.TgammaAsym1
-import Library.Numerics.Float64.Tgamma.TgammaSinpid
-import Library.Numerics.Float64.Tgamma.TgammaLogd
-import Library.Numerics.Arithmetic.Fma.FmaSpecTheorem
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRefl4
+public import Library.Numerics.Float64.Tgamma.TgammaAsym1
+public import Library.Numerics.Float64.Tgamma.TgammaSinpid
+public import Library.Numerics.Float64.Tgamma.TgammaLogd
+public import Library.Numerics.Arithmetic.Fma.FmaSpecTheorem
+
+@[expose] public section
 
 /-!
 The specifications that the tgamma paths take as hypotheses:

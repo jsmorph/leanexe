@@ -1,5 +1,9 @@
-import Examples.Words.Program
-import TestSupport.Host
+module
+
+public import Examples.Words.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The conversions between lists and `Words`, which the verified compiler's cases use. -/
 

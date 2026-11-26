@@ -1,6 +1,10 @@
-import Library.Queues.BinaryHeap.Proof
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Queues.BinaryHeap.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-! The verified compiler's module of the binary heap.  The compiler unfolds `step` into the loop of
 `heapQueue`, whose state owns the outputs and the heap's array, so each insertion and removal

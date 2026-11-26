@@ -1,5 +1,9 @@
-import Verified.Reflect.Command
-import Demos.OrderBook.Flat
+module
+
+public import Verified.Reflect.Command
+public import Demos.OrderBook.Flat
+
+@[expose] public section
 
 /-! The order book of `Demos/OrderBook/Program.lean`, compiled by the verified compiler.  The export
 `run` takes the book's seven arrays, which it consumes, its next id, its count, and a command

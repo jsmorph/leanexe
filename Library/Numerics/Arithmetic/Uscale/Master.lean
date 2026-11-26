@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.Uscale.Compiled
-import Library.Numerics.Arithmetic.Uscale.UscaleDiv
-import Verified.Master
+module
+
+public import Library.Numerics.Arithmetic.Uscale.Compiled
+public import Library.Numerics.Arithmetic.Uscale.UscaleDiv
+public import Verified.Master
+
+@[expose] public section
 
 /-! The master theorems of `Uscale`.  Each states the value of an array of limbs, least significant
 first, as `Nat.ofDigits (2 ^ 32)` of its elements, which `val_eq` proves equal to

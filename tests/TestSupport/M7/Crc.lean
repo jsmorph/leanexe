@@ -1,7 +1,11 @@
-import Library.Hashing.Crc.Program
-import LeanExe.Native.Requests
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Hashing.Crc.Program
+public import LeanExe.Native.Requests
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 A CRC-32 step over a UART for the Cortex-M7 back end, a program with requests whose table lies

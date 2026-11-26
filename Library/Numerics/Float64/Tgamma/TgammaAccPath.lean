@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccUpCase
-import Library.Numerics.Float64.Tgamma.TgammaAccDownCase
-import Library.Numerics.Float64.Tgamma.TgammaAccSmallPath
-import Library.Numerics.Float64.Tgamma.TgammaFinal
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccUpCase
+public import Library.Numerics.Float64.Tgamma.TgammaAccDownCase
+public import Library.Numerics.Float64.Tgamma.TgammaAccSmallPath
+public import Library.Numerics.Float64.Tgamma.TgammaFinal
+
+@[expose] public section
 
 /-!
 **The accurate path of `Tgamma`** within one step of `Γ`.  From `1/4` on, `accurate_range_eq`

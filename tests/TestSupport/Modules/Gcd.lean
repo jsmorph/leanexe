@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.Gcd.Program
-import Library.Numerics.Arithmetic.Gcd.Spec
-import TestSupport.Host
+module
+
+public import Library.Numerics.Arithmetic.Gcd.Program
+public import Library.Numerics.Arithmetic.Gcd.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `gcd`. -/
 

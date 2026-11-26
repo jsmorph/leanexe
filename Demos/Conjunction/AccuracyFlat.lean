@@ -1,5 +1,9 @@
-import Demos.Conjunction.Accuracy
-import Demos.Conjunction.Flat
+module
+
+public import Demos.Conjunction.Accuracy
+public import Demos.Conjunction.Flat
+
+@[expose] public section
 
 namespace Demos.Conjunction.Accuracy
 

@@ -1,7 +1,11 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatShortest
-import Library.Numerics.Decimal.PrintFloat.PrintFloatLayout
-import Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
-import Library.Numerics.Decimal.Shared.StrconvInterval
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatShortest
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatLayout
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
+public import Library.Numerics.Decimal.Shared.StrconvInterval
+
+@[expose] public section
 
 /-!
 The binary64 words of the printers.  For a finite nonzero word `w` of magnitude bits

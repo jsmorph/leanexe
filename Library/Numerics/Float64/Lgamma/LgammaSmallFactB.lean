@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaSmallFactBase
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaSmallFactBase
+
+@[expose] public section
 
 /-!
 The kernel checks `neg_3` and `negc` and `pos_0` of `LgammaSmallFact`.  Each module holds checks of

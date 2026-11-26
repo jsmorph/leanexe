@@ -1,7 +1,11 @@
-import Verified.AlignedCall
-import Verified.AlignedTreeFields
-import Verified.TreeSlotCode
-import Verified.TreeAllocate
+module
+
+public import Verified.AlignedCall
+public import Verified.AlignedTreeFields
+public import Verified.TreeSlotCode
+public import Verified.TreeAllocate
+
+@[expose] public section
 
 /-!
 The accesses to a record's header and slots under the flag, which the construction, the match,

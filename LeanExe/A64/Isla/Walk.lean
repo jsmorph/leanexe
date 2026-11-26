@@ -1,5 +1,9 @@
-import LeanExe.A64.Isla.Check
-import LeanExe.A64.Isla.Profile
+module
+
+public import LeanExe.A64.Isla.Check
+public import LeanExe.A64.Isla.Profile
+
+@[expose] public section
 
 /-!
 The walk of the traces of the load and store forms, which the theorems of `LDR`, `LDR Wt`, `STR`,

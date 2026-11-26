@@ -1,4 +1,8 @@
-import Demos.Euler.Reference.Pressure
+module
+
+public import Demos.Euler.Reference.Pressure
+
+@[expose] public section
 
 namespace Demos.Euler.Reference
 open CodeLib.IEEE64

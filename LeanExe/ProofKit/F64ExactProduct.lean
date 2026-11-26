@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64PackRelative
-import LeanExe.ProofKit.F64GridExact
-import CodeLib.IEEE64.Operations
+module
+
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64PackRelative
+public import LeanExe.ProofKit.F64GridExact
+public import CodeLib.IEEE64.Operations
+
+@[expose] public section
 
 /-!
 Exact products of binary64 words.  When the scaled magnitudes are `ma 2 ^ sa` and `mb 2 ^ sb`

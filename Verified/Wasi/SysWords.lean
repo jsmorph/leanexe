@@ -1,4 +1,8 @@
-import Verified.Wasi.HostSpec
+module
+
+public import Verified.Wasi.HostSpec
+
+@[expose] public section
 
 /-! The result words of a flat call: a word that the host leaves at a scratch address loads as
 the little-endian value of the reply's output, and the regions of a call lie inside the scratch

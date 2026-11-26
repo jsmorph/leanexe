@@ -1,4 +1,8 @@
-import Demos.Rcv.Batch
+module
+
+public import Demos.Rcv.Batch
+
+@[expose] public section
 
 /-!
 T11 of [the requirements](requirements.md), section "Theorems", which relates the count to the

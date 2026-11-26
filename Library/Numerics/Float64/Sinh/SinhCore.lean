@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinh.SinhWords
+module
+
+public import Library.Numerics.Float64.Sinh.SinhWords
+
+@[expose] public section
 
 /-!
 Real bounds for `sinh` below 22.  With `τ = exp a - 1`, `2 sinh a = f τ` for

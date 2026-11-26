@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaRecip
-import Library.Numerics.Float64.Tgamma.TgammaFloor
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRecip
+public import Library.Numerics.Float64.Tgamma.TgammaFloor
+
+@[expose] public section
 
 /-!
 The reciprocal of a double-double `wh + wl` in `tgammaWith` on `(-3, 4)`: `rh = 1/wh` and the

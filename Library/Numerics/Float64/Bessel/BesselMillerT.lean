@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.BesselMillerDepth
-import Library.Numerics.Float64.Bessel.BesselJnTiny
+module
+
+public import Library.Numerics.Float64.Bessel.BesselMillerDepth
+public import Library.Numerics.Float64.Bessel.BesselJnTiny
+
+@[expose] public section
 
 /-!
 The evaluation of the continued fraction in `jn`'s backward recurrence: for the depth `K` of

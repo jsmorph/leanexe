@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaFactsBase
-import Library.Numerics.Float64.Lgamma.Compiled
-import Library.Numerics.Float64.Tgamma.GammaPi
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+public import Library.Numerics.Float64.Lgamma.Compiled
+public import Library.Numerics.Float64.Tgamma.GammaPi
+
+@[expose] public section
 
 /-!
 Definitions shared by the modules of RootFact: the stored zero `-x0` and the polynomial of each range

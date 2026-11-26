@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import Mathlib.Tactic
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-! Lemmas about the combinators `LeanExe.loop` and `LeanExe.build`. -/
 

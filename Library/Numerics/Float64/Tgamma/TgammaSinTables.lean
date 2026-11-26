@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaKernelBase
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaKernelBase
+
+@[expose] public section
 
 /-!
 Bounds on `as_sinpid`'s table and kernels (`tgamma.c`, commit `ff2f71f6`): `sin (k π/128)`

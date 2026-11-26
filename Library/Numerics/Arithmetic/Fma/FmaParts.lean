@@ -1,4 +1,8 @@
-import Library.Numerics.Arithmetic.Fma.FmaDecode
+module
+
+public import Library.Numerics.Arithmetic.Fma.FmaDecode
+
+@[expose] public section
 
 /-!
 `Fma.fmaBits` written with named parts (`fmaBits_eq`): `sigWord` and `expWord` decode an operand,

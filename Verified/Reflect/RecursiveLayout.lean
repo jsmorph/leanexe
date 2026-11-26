@@ -1,5 +1,9 @@
-import Verified.Tree
-import Lean
+module
+
+public import Verified.Tree
+public import Lean
+
+@[expose] public section
 
 namespace Verified.Reflect
 

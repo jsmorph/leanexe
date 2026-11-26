@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.GammaRoot
-import Library.Numerics.Float64.Lgamma.LgammaRootBase
+module
+
+public import LeanExe.ProofKit.GammaRoot
+public import Library.Numerics.Float64.Lgamma.LgammaRootBase
+
+@[expose] public section
 
 /-!
 `RootFact` on the range 9 of `LgammaApprox.rootRanges`, `(-7, -13 / 2)`.  `LgammaRootD` imports this

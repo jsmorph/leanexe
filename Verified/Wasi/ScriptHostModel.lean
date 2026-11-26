@@ -1,5 +1,9 @@
-import LeanExe.Wasi.Semantics
-import Verified.Wasi.HostBytes
+module
+
+public import LeanExe.Wasi.Semantics
+public import Verified.Wasi.HostBytes
+
+@[expose] public section
 
 namespace Verified.Wasi.ScriptHost
 

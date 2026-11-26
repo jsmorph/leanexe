@@ -1,6 +1,10 @@
-import Verified.Reflect.Command
-import Demos.Euler.Flat
-import Demos.Euler.Buffered
+module
+
+public import Verified.Reflect.Command
+public import Demos.Euler.Flat
+public import Demos.Euler.Buffered
+
+@[expose] public section
 
 /-! The verified compilation of the Euler solvers.  The exports `solve` and `reconstructedSolve` are
 the buffered solvers of `Demos.Euler.Buffered`, which equal `Demos.Euler.solve` and

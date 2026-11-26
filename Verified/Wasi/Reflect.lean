@@ -1,7 +1,11 @@
-import Verified.Wasi.ReflectDefinitions
-import Verified.Wasi.EffectAnalysis
-import Verified.Wasi.ReflectSysCalls
-import Verified.Wasi.ReflectBracket
+module
+
+public import Verified.Wasi.ReflectDefinitions
+public import Verified.Wasi.EffectAnalysis
+public import Verified.Wasi.ReflectSysCalls
+public import Verified.Wasi.ReflectBracket
+
+@[expose] public section
 
 namespace Verified.Wasi.Reflect
 

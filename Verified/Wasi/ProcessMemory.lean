@@ -1,5 +1,9 @@
-import Verified.Wasi.ProcessState
-import Verified.Bytes.LiteralFrame
+module
+
+public import Verified.Wasi.ProcessState
+public import Verified.Bytes.LiteralFrame
+
+@[expose] public section
 
 namespace Verified.Wasi
 

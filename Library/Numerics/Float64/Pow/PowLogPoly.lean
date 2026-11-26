@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowLogSum
+module
+
+public import Library.Numerics.Float64.Pow.PowLogSum
+
+@[expose] public section
 
 /-!
 The evaluation of `p` in `Pow.powLog`: `ar2 = r ar`, `ar3 = r ar2`, and

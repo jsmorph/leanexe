@@ -1,10 +1,14 @@
-import Library.Numerics.Float64.Erfc.ErfcFastPath
-import Library.Numerics.Float64.Erfc.ErfcAccAll
-import Library.Numerics.Float64.Erfc.ErfcAsymAccFin
-import Library.Numerics.Float64.Erfc.ErfcHardNeg
-import Library.Numerics.Float64.Erfc.ErfcHardPos
-import Library.Numerics.Float64.Erfc.ErfcHardAsym
-import Library.Numerics.Float64.Erfc.ErfcSpecial
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcFastPath
+public import Library.Numerics.Float64.Erfc.ErfcAccAll
+public import Library.Numerics.Float64.Erfc.ErfcAsymAccFin
+public import Library.Numerics.Float64.Erfc.ErfcHardNeg
+public import Library.Numerics.Float64.Erfc.ErfcHardPos
+public import Library.Numerics.Float64.Erfc.ErfcHardAsym
+public import Library.Numerics.Float64.Erfc.ErfcSpecial
+
+@[expose] public section
 
 /-!
 `cr_erfc_accurate` within one step of `erfc x` for `-47/8 < x < 0` and

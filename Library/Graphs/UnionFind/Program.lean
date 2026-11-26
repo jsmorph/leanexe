@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 /-! Equivalence classes by Knuth's Algorithm E of TAOCP §2.3.3, with elements from 0 and a root
 marked as its own parent, where Knuth marks a root with the parent 0.  `root` is step E3, `merge`

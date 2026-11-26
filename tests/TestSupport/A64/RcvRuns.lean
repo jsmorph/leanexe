@@ -1,8 +1,12 @@
-import TestSupport.A64.Rcv
-import TestSupport.A64.Flip
-import Demos.Rcv.TabulateCall
-import Demos.Rcv.TabulateBound
-import LeanExe.A64.Proof.BytesRuns
+module
+
+public import TestSupport.A64.Rcv
+public import TestSupport.A64.Flip
+public import Demos.Rcv.TabulateCall
+public import Demos.Rcv.TabulateBound
+public import LeanExe.A64.Proof.BytesRuns
+
+@[expose] public section
 
 /-!
 The theorem of the tabulator's bare-metal program of `TestSupport.A64.Rcv`.  `rcv_runs` states it

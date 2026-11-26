@@ -1,4 +1,8 @@
-import Demos.Energy.Site
+module
+
+public import Demos.Energy.Site
+
+@[expose] public section
 
 /-! The worked example of `Demos/Energy/README.md`, evaluated by the kernel under the test site's
 profile table.  Every input has snapshot time 0 and the mode word 0.  Except where a theorem's

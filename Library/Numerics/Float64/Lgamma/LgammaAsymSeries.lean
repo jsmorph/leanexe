@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaPolyIv
-import Library.Numerics.Float64.Tgamma.TgammaPolyLip
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPolyIv
+public import Library.Numerics.Float64.Tgamma.TgammaPolyLip
+
+@[expose] public section
 
 /-!
 The series term of `Lgamma.asLgammaAsymAccurate`: from `zh + zl ≈ Z = 1/x` (`LgammaAsymRecip`),

@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! SHA-3 of FIPS 202, *SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions*,
 August 2015, transcribed from §2.3, §3, §4, §5, §6, and Appendix B.1.  A string is a list of bits

@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.PolyBound
+module
+
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 Copies of `Lgamma.mainTable` and `Lgamma.accurateTable` from the port `Library.Numerics.Float64.Lgamma`

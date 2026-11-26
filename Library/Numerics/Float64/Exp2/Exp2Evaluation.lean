@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Exp2.Exp2Approximation
-import LeanExe.ProofKit.F64ErrorTrack
-import LeanExe.ProofKit.F64Bits
+module
+
+public import Library.Numerics.Float64.Exp2.Exp2Approximation
+public import LeanExe.ProofKit.F64ErrorTrack
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-!
 The evaluation of `Exp2.exp2Core`'s polynomial on words: `tmp = t + r C1 + r ^ 2 (C2 + r C3) +

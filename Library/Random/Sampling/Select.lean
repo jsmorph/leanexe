@@ -1,4 +1,8 @@
-import Library.Random.Sampling.Proof
+module
+
+public import Library.Random.Sampling.Proof
+
+@[expose] public section
 
 /-! The proof that `sample` satisfies `Samples`.  The loop of `sample` keeps `m`, the number of
 records chosen, and an array of `k` words whose first `m` words are the records chosen so far,

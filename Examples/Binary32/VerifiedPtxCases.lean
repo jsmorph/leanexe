@@ -1,5 +1,9 @@
-import Examples.Binary32.Cases
-import Examples.Binary32.CompiledPtx
+module
+
+public import Examples.Binary32.Cases
+public import Examples.Binary32.CompiledPtx
+
+@[expose] public section
 
 /-! The PTX cases of the verified compiler's kernels of `scale32`, `axpyArray32`, `matVec32`, and
 `condMix32`, in the format of `tests/ptx/Cases.lean`: `kernel|blocks|initial output|inputs|expected

@@ -1,5 +1,9 @@
-import Demos.Gate.Assignment
-import LeanExe.Pipeline.Int64
+module
+
+public import Demos.Gate.Assignment
+public import LeanExe.Pipeline.Int64
+
+@[expose] public section
 
 namespace Demos.Gate.Assignment
 

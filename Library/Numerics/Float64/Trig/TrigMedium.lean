@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Trig.TrigMediumA
-import Library.Numerics.Float64.Trig.TrigMediumC
-import Library.Numerics.Float64.Trig.TrigWords
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64PositiveOrder
+module
+
+public import Library.Numerics.Float64.Trig.TrigMediumA
+public import Library.Numerics.Float64.Trig.TrigMediumC
+public import Library.Numerics.Float64.Trig.TrigWords
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64PositiveOrder
+
+@[expose] public section
 
 /-!
 The accuracy of `Trig.remMedium`.  For a positive double `x` with `1 ≤ x` and high word below

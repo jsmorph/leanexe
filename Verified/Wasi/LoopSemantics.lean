@@ -1,5 +1,9 @@
-import Verified.Wasi.LoopControl
-import LeanExe.Wasi.Prefix
+module
+
+public import Verified.Wasi.LoopControl
+public import LeanExe.Wasi.Prefix
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,7 +1,11 @@
-import Library.Hashing.Crc.Division
-import Library.Hashing.Crc.Program
-import Library.Hashing.Crc.Bitwise.Program
-import TestSupport.Hashing.Packing
+module
+
+public import Library.Hashing.Crc.Division
+public import Library.Hashing.Crc.Program
+public import Library.Hashing.Crc.Bitwise.Program
+public import TestSupport.Hashing.Packing
+
+@[expose] public section
 
 /-! A check of the CRC transcription and the programs of `Library.Hashing.Crc` on the vectors of
 `data/hashing/crc/vectors.txt`: CRC-32 by zlib and CRC-32C by the Linux kernel, for the check

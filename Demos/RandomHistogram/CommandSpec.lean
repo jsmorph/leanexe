@@ -1,7 +1,11 @@
-import Demos.RandomHistogram.Spec
-import LeanExe.Wasi.Sys
-import LeanExe.Wasi.Semantics
-import LeanExe.Wasi.WriteAll
+module
+
+public import Demos.RandomHistogram.Spec
+public import LeanExe.Wasi.Sys
+public import LeanExe.Wasi.Semantics
+public import LeanExe.Wasi.WriteAll
+
+@[expose] public section
 
 /-! The specification of the runs of the random-residue histogram's WASI command, in terms of the
 events of a run, `LeanExe.Wasi.Event`, which record each call with the reply that the host gave.

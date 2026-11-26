@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaRefl7
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRefl7
+
+@[expose] public section
 
 /-!
 The tail of the path of `tgammaWith` below `-3`, after the quotient `rh + rl` with the sign of

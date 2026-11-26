@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tgamma.Compiled
-import LeanExe.ProofKit.F64TwoSum
-import LeanExe.ProofKit.F64UpperWord
-import LeanExe.ProofKit.F64Sign
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import Library.Numerics.Float64.Tgamma.Compiled
+public import LeanExe.ProofKit.F64TwoSum
+public import LeanExe.ProofKit.F64UpperWord
+public import LeanExe.ProofKit.F64Sign
+public import LeanExe.ProofKit.F64Magnitude
+
+@[expose] public section
 
 /-!
 `Tgamma.roundEven` on finite inputs, and `Tgamma.floorF` on finite inputs below `2 ^ 52` in magnitude.  Below

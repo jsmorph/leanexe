@@ -1,7 +1,11 @@
-import Library.Queues.BinaryHeap.Program
-import Library.Queues.BinaryHeap.Spec
-import Library.Sorting.Heapsort.Proof
-import LeanExe.Dialect.ArrayLemmas
+module
+
+public import Library.Queues.BinaryHeap.Program
+public import Library.Queues.BinaryHeap.Spec
+public import Library.Sorting.Heapsort.Proof
+public import LeanExe.Dialect.ArrayLemmas
+
+@[expose] public section
 
 /-! The proof that the binary heap computes the outputs of the list queue.  `Agrees` states the
 invariant of the loop: the prefix `h[0, n)` of the array is a heap, `HeapFrom` of heapsort's proof,

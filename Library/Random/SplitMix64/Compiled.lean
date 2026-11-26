@@ -1,5 +1,9 @@
-import Library.Random.SplitMix64.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Random.SplitMix64.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `splitMix` and `unitFloat`.  `prng_module` combines the
 module's bytes with the generated `compiled.splitMix.pure` and `compiled.unitFloat.pure`. -/

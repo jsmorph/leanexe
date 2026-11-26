@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.Expm1ReduceWords
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1ReduceWords
+
+@[expose] public section
 
 /-!
 The reduced argument of fdlibm's `expm1`.  `yc_spec`: from the exact `hi` and the small `lo`, the

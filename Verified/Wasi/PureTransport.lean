@@ -1,6 +1,10 @@
-import LeanExe.Base
-import Interpreter.Wasm.Host.Registry
-import Interpreter.Wasm.Semantics.Lemmas
+module
+
+public import LeanExe.Base
+public import Interpreter.Wasm.Host.Registry
+public import Interpreter.Wasm.Semantics.Lemmas
+
+@[expose] public section
 
 namespace Verified.Wasi.PureTransport
 

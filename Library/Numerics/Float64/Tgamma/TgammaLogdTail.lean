@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaLogdParts
-import Library.Numerics.Float64.Tgamma.TgammaExpr
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaLogdParts
+public import Library.Numerics.Float64.Tgamma.TgammaExpr
+
+@[expose] public section
 
 /-!
 The code of `Tgamma.asLogd` after the reduction, as `logTail`, and its error.  `logTail_spec`

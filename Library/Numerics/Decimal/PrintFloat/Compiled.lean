@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.PrintFloat.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Decimal.PrintFloat.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Numerics.Decimal.PrintFloat
 

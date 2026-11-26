@@ -1,6 +1,10 @@
-import Library.Numerics.Decimal.Int64Text.Compiled
-import LeanExe.A64.Proof.ProgramRuns
-import LeanExe.Native.Bare
+module
+
+public import Library.Numerics.Decimal.Int64Text.Compiled
+public import LeanExe.A64.Proof.ProgramRuns
+public import LeanExe.Native.Bare
+
+@[expose] public section
 
 /-!
 The theorem of the bare-metal program of `Library.Numerics.Decimal.Int64Text` for AArch64, in the

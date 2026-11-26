@@ -1,5 +1,9 @@
-import Verified.Wasi.ReadCode
-import Verified.Wasi.SysForm
+module
+
+public import Verified.Wasi.ReadCode
+public import Verified.Wasi.SysForm
+
+@[expose] public section
 
 /-! The code of a `sys` command, which the compiler places in the calling function.  It reads the
 argument words from the locals of the argument variables, the root and the length of each input

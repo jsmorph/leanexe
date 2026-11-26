@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Log.Compiled
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64Sign
+module
+
+public import Library.Numerics.Float64.Log.Compiled
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64Sign
+
+@[expose] public section
 
 /-!
 The paths of `Log.logWith` by the bits of the argument, and the exact results outside the

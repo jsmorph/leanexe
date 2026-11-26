@@ -1,6 +1,10 @@
-import Library.Hashing.XxHash64.Compiled
-import Library.Hashing.XxHash64.Proof
-import Verified.Call
+module
+
+public import Library.Hashing.XxHash64.Compiled
+public import Library.Hashing.XxHash64.Proof
+public import Verified.Call
+
+@[expose] public section
 
 /-! The bytes of the module `xxhash64` compute XXH64.  The entry, called from a ready store with a
 borrowed array `msg`, a byte count `n`, and a seed, returns without a trap the word that the

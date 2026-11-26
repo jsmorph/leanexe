@@ -1,4 +1,8 @@
-import TestSupport.Numerics.Reference
+module
+
+public import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! Exact references for the exponentials and logarithms in bases 2 and 10 and for `pow`, computed
 with Lean's integers in the fixed point of `Reference`.  `ln 10` comes from

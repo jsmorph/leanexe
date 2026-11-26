@@ -1,5 +1,9 @@
-import Demos.Attitude.QProgram
-import TestSupport.Attitude.Cases
+module
+
+public import Demos.Attitude.QProgram
+public import TestSupport.Attitude.Cases
+
+@[expose] public section
 
 /-! Cases of the q-method module.  `cases` prints the module cases of `qmethod` for
 `tests/verified/run.sh`, and `bits` prints, for each input, its class, the number of input

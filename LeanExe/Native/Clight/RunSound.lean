@@ -1,4 +1,8 @@
-import LeanExe.Native.Clight.Run
+module
+
+public import LeanExe.Native.Clight.Run
+
+@[expose] public section
 
 /-!
 The soundness of `run` against the big-step semantics: an `.ok` result of `exec_fn` or

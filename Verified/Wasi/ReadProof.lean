@@ -1,5 +1,9 @@
-import Verified.Wasi.ReadCall
-import Verified.Wasi.Write
+module
+
+public import Verified.Wasi.ReadCall
+public import Verified.Wasi.Write
+
+@[expose] public section
 
 namespace Verified.Wasi
 

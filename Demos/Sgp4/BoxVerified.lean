@@ -1,6 +1,10 @@
-import Demos.Sgp4.Tle
-import Verified.Reflect.Command
-import Demos.Sgp4.BoxFlat
+module
+
+public import Demos.Sgp4.Tle
+public import Verified.Reflect.Command
+public import Demos.Sgp4.BoxFlat
+
+@[expose] public section
 
 namespace Demos.Sgp4
 

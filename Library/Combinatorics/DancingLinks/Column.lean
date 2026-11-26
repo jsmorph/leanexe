@@ -1,5 +1,9 @@
-import Library.Combinatorics.DancingLinks.Walk
-import Mathlib.Data.Finset.Sort
+module
+
+public import Library.Combinatorics.DancingLinks.Walk
+public import Mathlib.Data.Finset.Sort
+
+@[expose] public section
 
 /-! The loops of Knuth's `cover(i)` and `uncover(i)` over a column.  `colList Q` lists the present
 nodes of a column in increasing order, and `nxt` and `prv` step along it.  `hideColumn i` hides the

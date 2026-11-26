@@ -1,5 +1,9 @@
-import Demos.Geolocation.Program
-import TestSupport.Host
+module
+
+public import Demos.Geolocation.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the geolocation module for `tests/verified/run.sh --cases geolocation`: an emitter on
 the ellipsoid seen by four receivers at medium altitude with time differences, frequency

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.Program
-import LeanExe.ProofKit.PolyBound
-import LeanExe.ProofKit.GammaBasic
+module
+
+public import Library.Numerics.Float64.Lgamma.Program
+public import LeanExe.ProofKit.PolyBound
+public import LeanExe.ProofKit.GammaBasic
+
+@[expose] public section
 
 /-!
 The approximation statements that the floating-point proof of `Lgamma.lgammaR` takes as

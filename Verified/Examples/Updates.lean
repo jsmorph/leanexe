@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: in-place updates with `xs.set! i.toNat v`.  The
 array operand is owned and dies at the update when it comes from a `build`, a `let` of an owned

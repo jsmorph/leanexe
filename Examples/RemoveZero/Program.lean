@@ -1,6 +1,10 @@
-import Library.Arrays.Search.Program
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Loop
+module
+
+public import Library.Arrays.Search.Program
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 An array of at most eight words without its first

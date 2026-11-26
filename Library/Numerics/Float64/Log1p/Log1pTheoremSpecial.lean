@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log1p.Log1pTheorem
-import Library.Numerics.Float64.Atan.AtanTheoremReduce
+module
+
+public import Library.Numerics.Float64.Log1p.Log1pTheorem
+public import Library.Numerics.Float64.Atan.AtanTheoremReduce
+
+@[expose] public section
 
 /-!
 The exceptional inputs of `Log1p.log1p` as words: `-1` gives `-∞`, `+∞` gives `+∞`, `±0` give

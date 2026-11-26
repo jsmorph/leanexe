@@ -1,4 +1,8 @@
-import Demos.Avoidance.TwoBody
+module
+
+public import Demos.Avoidance.TwoBody
+
+@[expose] public section
 
 /-!
 The encounter plane of the model.  `plane_eq` writes the miss vector and the projected covariance

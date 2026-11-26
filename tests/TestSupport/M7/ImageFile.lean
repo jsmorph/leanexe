@@ -1,5 +1,9 @@
-import TestSupport.M7.Step
-import TestSupport.M7.Windows
+module
+
+public import TestSupport.M7.Step
+public import TestSupport.M7.Windows
+
+@[expose] public section
 
 /-!
 The kernel's check of the code of the echo for USART3 that `m7-windows image echo-usart3` writes.

@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tgamma.TgammaRecipDD
-import Library.Numerics.Float64.Tgamma.TgammaMul
-import Library.Numerics.Float64.Tgamma.TgammaMainRed
-import Library.Numerics.Float64.Tgamma.TgammaTiny
-import Library.Numerics.Float64.Tgamma.TgammaApprox
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRecipDD
+public import Library.Numerics.Float64.Tgamma.TgammaMul
+public import Library.Numerics.Float64.Tgamma.TgammaMainRed
+public import Library.Numerics.Float64.Tgamma.TgammaTiny
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+
+@[expose] public section
 
 /-!
 The first product of `Tgamma.asLgammaAsym`: `(x - 1/2)(log xh - 1 + l + dz)` with `x = xh + xl`,

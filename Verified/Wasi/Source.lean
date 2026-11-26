@@ -1,6 +1,10 @@
-import Verified.Source
-import LeanExe.Wasi.ReadAll
-import Verified.Wasi.SysForm
+module
+
+public import Verified.Source
+public import LeanExe.Wasi.ReadAll
+public import Verified.Wasi.SysForm
+
+@[expose] public section
 
 namespace Verified.Wasi
 

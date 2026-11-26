@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.MemoryGrowth
-import LeanExe.ProofKit.Frame
+module
+
+public import LeanExe.ProofKit.MemoryGrowth
+public import LeanExe.ProofKit.Frame
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.MemoryGrowth
 open Wasm

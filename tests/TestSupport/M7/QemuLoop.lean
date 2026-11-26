@@ -1,6 +1,10 @@
-import TestSupport.M7.Qemu
-import TestSupport.M7.Step
-import LeanExe.M7.Proof.Boot
+module
+
+public import TestSupport.M7.Qemu
+public import TestSupport.M7.Step
+public import LeanExe.M7.Proof.Boot
+
+@[expose] public section
 
 /-!
 The loop theorem of the echo of `cmsdkTick` on QEMU's `mps2-an500`, from reset.  `devWindow`,

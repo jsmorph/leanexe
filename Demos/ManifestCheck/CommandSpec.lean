@@ -1,9 +1,13 @@
-import Demos.ManifestCheck.Spec
-import Library.Hashing.Sha2.Equiv.SHA256.Main
-import LeanExe.Wasi.Bracket
-import LeanExe.Wasi.Semantics
-import LeanExe.Wasi.Sys
-import LeanExe.Wasi.WriteAll
+module
+
+public import Demos.ManifestCheck.Spec
+public import Library.Hashing.Sha2.Equiv.SHA256.Main
+public import LeanExe.Wasi.Bracket
+public import LeanExe.Wasi.Semantics
+public import LeanExe.Wasi.Sys
+public import LeanExe.Wasi.WriteAll
+
+@[expose] public section
 
 /-! The specification of the runs of the manifest checker's WASI command, in terms of the events of
 a run, `LeanExe.Wasi.Event`, which record each call with the reply that the host gave.

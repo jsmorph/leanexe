@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-!
 The word forms of Lean's `Int64` operations and their equations.  An `Int64` is the word

@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Bytes
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Bytes
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 The reader of the canonical ballot file in the verified compiler's dialect.  `readContest` reads a

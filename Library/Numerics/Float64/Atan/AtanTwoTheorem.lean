@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Atan.AtanTwoBits
+module
+
+public import Library.Numerics.Float64.Atan.AtanTwoBits
+
+@[expose] public section
 
 /-!
 `Atan.atan2 y x` within two steps of `Complex.arg (x + y i)` for finite `x` and finite nonzero

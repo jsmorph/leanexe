@@ -1,7 +1,11 @@
-import Demos.Bms.Program
-import Demos.Bms.Stream
-import Library.Hashing.Crc.Bitwise.Proof
-import LeanExe.Requests.DelimitedSteps
+module
+
+public import Demos.Bms.Program
+public import Demos.Bms.Stream
+public import Library.Hashing.Crc.Bitwise.Proof
+public import LeanExe.Requests.DelimitedSteps
+
+@[expose] public section
 
 /-!
 The BMS step of `Demos/Bms/Program.lean` against the machine of `Demos/Bms/Spec.lean` and the

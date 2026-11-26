@@ -1,6 +1,10 @@
-import TestSupport.A64.WasiElf
-import TestSupport.A64.WasiStringEdges
-import LeanExe.Encoding.Decode
+module
+
+public import TestSupport.A64.WasiElf
+public import TestSupport.A64.WasiStringEdges
+public import LeanExe.Encoding.Decode
+
+@[expose] public section
 
 /-!
 The command `a64-wasi emit DIR` writes the AArch64 back end's WASI executables, which

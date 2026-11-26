@@ -1,5 +1,9 @@
-import Verified.Examples.Floats32
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Floats32
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/floats32.wasm`: the file holds
 `encode Floats32.compiled.module`, and it decodes to the module of `Floats32.compiled.bytes`. -/

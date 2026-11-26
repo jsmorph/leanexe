@@ -1,5 +1,9 @@
-import LeanExe.Native.Proof.Ops
-import LeanExe.ProofKit.Memory
+module
+
+public import LeanExe.Native.Proof.Ops
+public import LeanExe.ProofKit.Memory
+
+@[expose] public section
 
 /-!
 Bytes in the two memories.  `nbyte x j` is byte `j` of the number `x`, little-endian.  On Talos's

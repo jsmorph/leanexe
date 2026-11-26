@@ -1,5 +1,9 @@
-import Verified.Wasi.ABI
-import LeanExe.Wasi.Action
+module
+
+public import Verified.Wasi.ABI
+public import LeanExe.Wasi.Action
+
+@[expose] public section
 
 namespace Verified.Wasi
 

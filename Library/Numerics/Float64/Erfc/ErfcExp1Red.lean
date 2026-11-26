@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack4
-import Library.Numerics.Float64.Erfc.ErfcFastMain
-import Library.Numerics.Float64.Erfc.ErfcExpBits
-import Library.Numerics.Float64.Tanh.Expm1ReduceConst
-import LeanExe.ProofKit.F64Sterbenz
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack4
+public import Library.Numerics.Float64.Erfc.ErfcFastMain
+public import Library.Numerics.Float64.Erfc.ErfcExpBits
+public import Library.Numerics.Float64.Tanh.Expm1ReduceConst
+public import LeanExe.ProofKit.F64Sterbenz
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 The reduction of `exp_1` in `Erfc`: for `X = xh + xl` with `-700 ≤ xh ≤ -8`, the code rounds

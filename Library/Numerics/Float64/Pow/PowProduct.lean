@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Pow.PowLogSum
-import Library.Numerics.Float64.Pow.PowExpPaths
+module
+
+public import Library.Numerics.Float64.Pow.PowLogSum
+public import Library.Numerics.Float64.Pow.PowExpPaths
+
+@[expose] public section
 
 /-!
 The product `y log x` of `Pow.powMain` as `ehi + elo`.  `yhi` and `lhi` keep the top 26

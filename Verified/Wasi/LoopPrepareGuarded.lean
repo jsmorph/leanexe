@@ -1,7 +1,11 @@
-import Verified.Wasi.LoopPrepareCode
-import Verified.Wasi.LoopAfter
-import Verified.Wasi.CommandValue
-import Verified.Wasi.Return
+module
+
+public import Verified.Wasi.LoopPrepareCode
+public import Verified.Wasi.LoopAfter
+public import Verified.Wasi.CommandValue
+public import Verified.Wasi.Return
+
+@[expose] public section
 
 namespace Verified.Wasi
 

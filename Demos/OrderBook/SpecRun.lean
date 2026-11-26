@@ -1,4 +1,8 @@
-import Demos.OrderBook.Samples
+module
+
+public import Demos.OrderBook.Samples
+
+@[expose] public section
 
 /-! Prints each sample's records, the events that `Spec.step` gives for each shown record, and the
 book before and after the shown records.  Run with `lake env lean --run`. -/

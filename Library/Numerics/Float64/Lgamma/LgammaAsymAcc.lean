@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaAsymKern
-import Library.Numerics.Float64.Lgamma.LgammaAsymLog
-import Library.Numerics.Float64.Lgamma.LgammaAsymProd
-import Library.Numerics.Float64.Lgamma.LgammaFastWalk
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAsymKern
+public import Library.Numerics.Float64.Lgamma.LgammaAsymLog
+public import Library.Numerics.Float64.Lgamma.LgammaAsymProd
+public import Library.Numerics.Float64.Lgamma.LgammaFastWalk
+
+@[expose] public section
 
 /-!
 `Lgamma.asLgammaAsymAccurate` below `2^120`, against CORE-MATH's Stirling sum

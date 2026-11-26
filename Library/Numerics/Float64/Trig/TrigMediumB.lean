@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Trig.TrigMediumCases
+module
+
+public import Library.Numerics.Float64.Trig.TrigMediumCases
+
+@[expose] public section
 
 /-!
 The second outcome of the medium reduction: when the first step cancels below `x / 2 ^ 16` and

@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.Shared.StrconvGrammar
+module
+
+public import Library.Numerics.Decimal.Shared.StrconvGrammar
+
+@[expose] public section
 
 /-!
 The specification of the decimal printer and reader of `Int64`.  A text is an array of words that

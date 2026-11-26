@@ -1,6 +1,10 @@
-import Verified.Wasi.ResourceCoverage
-import Verified.Wasi.ResourcePrefix
-import Verified.Wasi.ResourceNativePrefix
+module
+
+public import Verified.Wasi.ResourceCoverage
+public import Verified.Wasi.ResourcePrefix
+public import Verified.Wasi.ResourceNativePrefix
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

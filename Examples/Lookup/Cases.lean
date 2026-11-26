@@ -1,5 +1,9 @@
-import Examples.Lookup.Spec
-import TestSupport.Host
+module
+
+public import Examples.Lookup.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `lookup`. -/
 

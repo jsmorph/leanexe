@@ -1,4 +1,8 @@
-import Verified.TailBind
+module
+
+public import Verified.TailBind
+
+@[expose] public section
 
 namespace Verified
 

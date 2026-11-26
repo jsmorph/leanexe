@@ -1,5 +1,9 @@
-import Examples.SumArray.Program
-import Verified.Reflect.Command
+module
+
+public import Examples.SumArray.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's modules of the library's word reductions: `compiledSum` holds
 `sumArray`, and `compiledFolds` holds `productArray` and `xorArray`.  The folds allocate nothing,

@@ -1,10 +1,14 @@
-import Library.Numerics.Float64.Bessel.BesselOrderLoops
-import Library.Numerics.Float64.Bessel.BesselMillerFinal
-import Library.Numerics.Float64.Bessel.BesselOrderHuge
-import Library.Numerics.Float64.Bessel.BesselJnTiny
-import Library.Numerics.Float64.Bessel.BesselJ0Theorem
-import Library.Numerics.Float64.Bessel.BesselJ1Theorem
-import Library.Numerics.Float64.Bessel.BesselSpecial
+module
+
+public import Library.Numerics.Float64.Bessel.BesselOrderLoops
+public import Library.Numerics.Float64.Bessel.BesselMillerFinal
+public import Library.Numerics.Float64.Bessel.BesselOrderHuge
+public import Library.Numerics.Float64.Bessel.BesselJnTiny
+public import Library.Numerics.Float64.Bessel.BesselJ0Theorem
+public import Library.Numerics.Float64.Bessel.BesselJ1Theorem
+public import Library.Numerics.Float64.Bessel.BesselSpecial
+
+@[expose] public section
 
 /-!
 **The accuracy theorem for `Bessel.jn`** (`jn_accuracy`): for every finite `x` and every order

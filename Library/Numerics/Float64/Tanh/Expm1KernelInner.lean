@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tanh.Expm1KernelPoly
-import LeanExe.ProofKit.F64ApproxStages
-import LeanExe.ProofKit.F64NearestSum
-import LeanExe.ProofKit.F64PowerScale
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1KernelPoly
+public import LeanExe.ProofKit.F64ApproxStages
+public import LeanExe.ProofKit.F64NearestSum
+public import LeanExe.ProofKit.F64PowerScale
+
+@[expose] public section
 
 /-!
 The rounding errors of the shared part of fdlibm's `expm1` kernel, for `abs(x) ≤ 0.3466`: `x/2`,

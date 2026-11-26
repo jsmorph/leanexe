@@ -1,6 +1,10 @@
-import Library.Hashing.Sha2.Equiv.Common.Loop
-import Library.Hashing.Sha2.Impl.SHA256
-import Library.Hashing.Sha2.Spec.HashAlgorithms
+module
+
+public import Library.Hashing.Sha2.Equiv.Common.Loop
+public import Library.Hashing.Sha2.Impl.SHA256
+public import Library.Hashing.Sha2.Spec.HashAlgorithms
+
+@[expose] public section
 
 -- Bounds discharge inside `for h : t in [a:b] do` ranges.  Range
 -- membership (`Std.Legacy.Range`) carries `.upper` / `.lower`; extract

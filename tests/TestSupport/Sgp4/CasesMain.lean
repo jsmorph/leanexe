@@ -1,4 +1,8 @@
-import TestSupport.Sgp4.Cases
+module
+
+public import TestSupport.Sgp4.Cases
+
+@[expose] public section
 
 /-! The cases of the module `sgp4` alone, for `tests/verified/run.sh --cases sgp4`.  With the
 argument `--states`, it serves `tests/sgp4/reference.py`. -/

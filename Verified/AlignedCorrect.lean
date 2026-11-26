@@ -1,5 +1,9 @@
-import Verified.AlignedTailEntry
-import Verified.TailSpec
+module
+
+public import Verified.AlignedTailEntry
+public import Verified.TailSpec
+
+@[expose] public section
 
 /-!
 `Prog.calls` under the flag.  `CallsX strict` is `Calls` with `FunSpecX strict`, and

@@ -1,7 +1,11 @@
-import LeanExe.A64.Proof.BytesProgram
-import LeanExe.A64.Proof.InputRuns
-import LeanExe.Pipeline.Bytes
-import LeanExe.Pipeline.RuntimeSpec
+module
+
+public import LeanExe.A64.Proof.BytesProgram
+public import LeanExe.A64.Proof.InputRuns
+public import LeanExe.Pipeline.Bytes
+public import LeanExe.Pipeline.RuntimeSpec
+
+@[expose] public section
 
 /-!
 The theorems of the programs and images that read a message from the UART and run a function

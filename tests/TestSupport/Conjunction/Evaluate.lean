@@ -1,4 +1,8 @@
-import Demos.Conjunction.Adaptive
+module
+
+public import Demos.Conjunction.Adaptive
+
+@[expose] public section
 
 /-! `run FILE` evaluates `Demos.Conjunction.pc` and `Demos.Conjunction.Adaptive.pcAdaptive` in
 native Lean on the inputs of `FILE`, for `tests/conjunction/benchmark.sh`, which calls it as

@@ -1,6 +1,10 @@
-import Verified.Examples.WasiReadAllShim
-import Verified.Examples.WasiReadAllSteady
-import Verified.ShimA64.Elf
+module
+
+public import Verified.Examples.WasiReadAllShim
+public import Verified.Examples.WasiReadAllSteady
+public import Verified.ShimA64.Elf
+
+@[expose] public section
 
 /-!
 The footprint theorem for the readAll command at the memory cap of a native executable.  The

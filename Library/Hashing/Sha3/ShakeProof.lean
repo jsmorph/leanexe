@@ -1,4 +1,8 @@
-import Library.Hashing.Sha3.Proof
+module
+
+public import Library.Hashing.Sha3.Proof
+
+@[expose] public section
 
 /-! The SHAKE programs compute SHAKE128 and SHAKE256 of the transcription.  The squeeze of
 Algorithm 8, steps 7 to 10, is the first `d` bits of the first `r` bits of the states

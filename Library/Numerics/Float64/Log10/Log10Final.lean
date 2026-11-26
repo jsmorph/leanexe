@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Log10.Log10Kernel
-import LeanExe.ProofKit.F64RoundedStep
-import LeanExe.ProofKit.F64Sterbenz
-import LeanExe.ProofKit.F64HighWord
+module
+
+public import Library.Numerics.Float64.Log10.Log10Kernel
+public import LeanExe.ProofKit.F64RoundedStep
+public import LeanExe.ProofKit.F64Sterbenz
+public import LeanExe.ProofKit.F64HighWord
+
+@[expose] public section
 
 /-!
 One step for `Log10Bits.tailWord`, the arithmetic of `Log10.log10` after `f = x' - 1` and the

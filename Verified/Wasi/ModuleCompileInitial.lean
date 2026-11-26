@@ -1,5 +1,9 @@
-import Verified.Wasi.ModuleInitial
-import Verified.Instantiate
+module
+
+public import Verified.Wasi.ModuleInitial
+public import Verified.Instantiate
+
+@[expose] public section
 
 namespace Verified.Wasi.Module
 

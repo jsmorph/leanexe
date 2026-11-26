@@ -1,9 +1,13 @@
-import Library.Arrays.MaxSegmentSum.Proof
-import Verified.Reflect.Command
-import LeanExe.A64.Proof.BytesRuns
-import LeanExe.Dialect.Lemmas
-import TestSupport.A64.Programs
-import TestSupport.A64.Flip
+module
+
+public import Library.Arrays.MaxSegmentSum.Proof
+public import Verified.Reflect.Command
+public import LeanExe.A64.Proof.BytesRuns
+public import LeanExe.Dialect.Lemmas
+public import TestSupport.A64.Programs
+public import TestSupport.A64.Flip
+
+@[expose] public section
 
 /-!
 Kadane's maximum segment sum as a bare-metal program that reads its input from the UART.

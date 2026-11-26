@@ -1,4 +1,8 @@
-import Demos.Rcv.Contest
+module
+
+public import Demos.Rcv.Contest
+
+@[expose] public section
 
 /-!
 The count of the Oakland ranked-choice tabulator that [the requirements](requirements.md) state,

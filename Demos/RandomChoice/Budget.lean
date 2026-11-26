@@ -1,6 +1,10 @@
-import Demos.RandomChoice.CommandStart
-import Demos.RandomHistogram.Budget
-import Verified.Wasi.BudgetTactics
+module
+
+public import Demos.RandomChoice.CommandStart
+public import Demos.RandomHistogram.Budget
+public import Verified.Wasi.BudgetTactics
+
+@[expose] public section
 
 /-! The resource model's charge of the random choice's `main`, the budget that the generated
 `command.total` takes as a bound on every prefix of `main`, and the accepted exit of every run for

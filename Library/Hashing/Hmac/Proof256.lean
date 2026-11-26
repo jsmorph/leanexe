@@ -1,5 +1,9 @@
-import Library.Hashing.Hmac.Bits
-import Library.Hashing.Sha256.Proof
+module
+
+public import Library.Hashing.Hmac.Bits
+public import Library.Hashing.Sha256.Proof
+
+@[expose] public section
 
 /-! HMAC-SHA-256 computes FIPS 198-1.  `implHmac256` is HMAC computed with the copied byte-level
 implementation `SHS.SHA256.Impl.sha256`.  `implHmac256_spec` shows that its digest is the

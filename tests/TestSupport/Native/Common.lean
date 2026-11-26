@@ -1,5 +1,9 @@
-import Verified.Native
-import Verified.Instantiate
+module
+
+public import Verified.Native
+public import Verified.Instantiate
+
+@[expose] public section
 
 /-!
 What the translator's tests share: the number of pages `cap` of `lx_mem` and `start`, the state

@@ -1,5 +1,9 @@
-import Verified.Wasi.SysRule
-import Verified.Wasi.BudgetAttr
+module
+
+public import Verified.Wasi.SysRule
+public import Verified.Wasi.BudgetAttr
+
+@[expose] public section
 
 /-! Tactics for the budget proofs of WASI commands, which bound the charge of a command's body by
 the rules of `Verified/Wasi/ResourceRules.lean`.  `envGet` reads a variable of an environment

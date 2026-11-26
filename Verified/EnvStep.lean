@@ -1,4 +1,8 @@
-import Verified.Potential
+module
+
+public import Verified.Potential
+
+@[expose] public section
 
 namespace Verified
 

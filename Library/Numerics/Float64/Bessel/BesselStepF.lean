@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Bessel.BesselForward
-import Library.Numerics.Float64.Bessel.BesselPQEval
-import Library.Numerics.Float64.Log.LogCoreBits
-import LeanExe.ProofKit.F64Convert
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.RepeatWhile
+module
+
+public import Library.Numerics.Float64.Bessel.BesselForward
+public import Library.Numerics.Float64.Bessel.BesselPQEval
+public import Library.Numerics.Float64.Log.LogCoreBits
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.RepeatWhile
+
+@[expose] public section
 
 /-!
 The floating-point facts that the loops of `jn` and `yn` share.  A word whose value is below

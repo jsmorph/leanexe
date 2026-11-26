@@ -1,4 +1,8 @@
-import Demos.Gpt.Causal
+module
+
+public import Demos.Gpt.Causal
+
+@[expose] public section
 
 /-! The cached step computes `forward`'s rows exactly.  `step` run on tokens `0` to `p`
 from an empty cache, followed by `scores`, gives row `p` of `forward`'s scores bit for

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erf.ErfPositive
-import LeanExe.ProofKit.F64NegateOps
+module
+
+public import Library.Numerics.Float64.Erf.ErfPositive
+public import LeanExe.ProofKit.F64NegateOps
+
+@[expose] public section
 
 /-!
 One step for `Erf.erfWith Exp.expTable x` for finite `x` with the sign bit set.  The code computes

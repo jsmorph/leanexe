@@ -1,6 +1,10 @@
-import Library.Sorting.Shellsort.Spec
-import TestSupport.Modules.Quicksort
-import Library.Random.SplitMix64.Program
+module
+
+public import Library.Sorting.Shellsort.Spec
+public import TestSupport.Modules.Quicksort
+public import Library.Random.SplitMix64.Program
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of Shellsort. -/
 

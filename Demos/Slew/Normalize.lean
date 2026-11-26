@@ -1,4 +1,8 @@
-import Demos.Slew.Arc
+module
+
+public import Demos.Slew.Arc
+
+@[expose] public section
 
 /-! The normalization of the inputs.  The specification states the cones for the normalized
 axis `ū`, body vector `b̄`, and attitude `q̄`, while the program computes with the inputs as given,

@@ -1,6 +1,10 @@
-import Library.Sorting.RadixSort.Spec
-import Library.Random.SplitMix64.Program
-import TestSupport.Modules.Quicksort
+module
+
+public import Library.Sorting.RadixSort.Spec
+public import Library.Random.SplitMix64.Program
+public import TestSupport.Modules.Quicksort
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of radix sort. -/
 

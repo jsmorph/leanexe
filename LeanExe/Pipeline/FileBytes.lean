@@ -1,5 +1,9 @@
-import Lean
-import LeanExe.Encoding.RoundTrip
+module
+
+public import Lean
+public import LeanExe.Encoding.RoundTrip
+
+@[expose] public section
 
 /-! `binary_file% "path"` elaborates to the bytes of the file at `path`, relative to the
 directory of the source file, as a `ByteArray` term.  Lean's `include_str` reads a text

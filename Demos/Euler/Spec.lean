@@ -1,5 +1,9 @@
-import Demos.Euler.Program
-import Demos.Euler.RealState
+module
+
+public import Demos.Euler.Program
+public import Demos.Euler.RealState
+
+@[expose] public section
 
 /-! Properties of the first-order Euler solver's Lean definitions.  A run that returns status 0
 ends at time 0.8 with every cell admissible: status 0, density and pressure positive and finite,

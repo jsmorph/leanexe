@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Trig.TrigSinTail
-import LeanExe.ProofKit.F64SignedNearestSum
-import LeanExe.ProofKit.F64ValueExact
-import LeanExe.ProofKit.F64ExactProduct
+module
+
+public import Library.Numerics.Float64.Trig.TrigSinTail
+public import LeanExe.ProofKit.F64SignedNearestSum
+public import LeanExe.ProofKit.F64ValueExact
+public import LeanExe.ProofKit.F64ExactProduct
+
+@[expose] public section
 
 /-!
 The rounding error of `Trig.kernelCos x y`.  For `2 ^ -70 ≤ |x| ≤ 0.78541` and

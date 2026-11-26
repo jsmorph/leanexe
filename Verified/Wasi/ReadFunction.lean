@@ -1,4 +1,8 @@
-import Verified.Wasi.ReadProof
+module
+
+public import Verified.Wasi.ReadProof
+
+@[expose] public section
 
 namespace Verified.Wasi
 

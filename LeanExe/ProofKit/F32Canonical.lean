@@ -1,6 +1,10 @@
-import LeanExe.Source.Syntax
-import LeanExe.ProofKit.F32Bits
-import LeanExe.ProofKit.F32Nearest
+module
+
+public import LeanExe.Source.Syntax
+public import LeanExe.ProofKit.F32Bits
+public import LeanExe.ProofKit.F32Nearest
+
+@[expose] public section
 
 /-!
 Talos's binary32 operations give the canonical NaN `0x7fc00000` for every NaN result:

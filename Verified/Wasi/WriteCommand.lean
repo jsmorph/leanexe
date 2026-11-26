@@ -1,8 +1,12 @@
-import Verified.Wasi.WriteHelper
-import Verified.Wasi.AfterScratch
-import Verified.Wasi.CommandSpec
-import Verified.Wasi.PurePrefix
-import Verified.AlignedControl
+module
+
+public import Verified.Wasi.WriteHelper
+public import Verified.Wasi.AfterScratch
+public import Verified.Wasi.CommandSpec
+public import Verified.Wasi.PurePrefix
+public import Verified.AlignedControl
+
+@[expose] public section
 
 namespace Verified.Wasi
 

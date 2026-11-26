@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Tgamma.TgammaMainRed
-import Library.Numerics.Float64.Tgamma.TgammaMainPoly
-import Library.Numerics.Float64.Tgamma.TgammaMainLoop
-import Library.Numerics.Float64.Tgamma.TgammaRecipDD
-import Library.Numerics.Float64.Tgamma.TgammaBranches
-import LeanExe.ProofKit.GammaBasic
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaMainRed
+public import Library.Numerics.Float64.Tgamma.TgammaMainPoly
+public import Library.Numerics.Float64.Tgamma.TgammaMainLoop
+public import Library.Numerics.Float64.Tgamma.TgammaRecipDD
+public import Library.Numerics.Float64.Tgamma.TgammaBranches
+public import LeanExe.ProofKit.GammaBasic
+
+@[expose] public section
 
 /-!
 **The path of `tgammaWith` on `(-3, 4)`** within one step of `Γ`.  With `I = roundEven (x - 7/2)`,

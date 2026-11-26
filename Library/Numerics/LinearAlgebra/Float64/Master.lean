@@ -1,8 +1,12 @@
-import Library.Numerics.LinearAlgebra.Float64.Compiled
-import Library.Numerics.Reductions.Binary64
-import LeanExe.Dialect.ArrayLemmas
-import LeanExe.Dialect.Lemmas
-import Verified.Master
+module
+
+public import Library.Numerics.LinearAlgebra.Float64.Compiled
+public import Library.Numerics.Reductions.Binary64
+public import LeanExe.Dialect.ArrayLemmas
+public import LeanExe.Dialect.Lemmas
+public import Verified.Master
+
+@[expose] public section
 
 /-!
 The master theorems of the binary64 linear algebra.  Each entry of `dot`, `matVec`, `matMul`, and

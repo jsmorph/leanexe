@@ -1,5 +1,9 @@
-import Demos.Energy.Gateway
-import Demos.Energy.Words
+module
+
+public import Demos.Energy.Gateway
+public import Demos.Energy.Words
+
+@[expose] public section
 
 /-! Theorems about the gateway of `Demos/Energy/Gateway.lean`.  Each concerns one tick, from a
 state `g` and an input record `i`.  `tickClock g i` is the tick's clock, and `tickStart g i` the

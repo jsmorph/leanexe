@@ -1,4 +1,8 @@
-import LeanExe.A64.Startup
+module
+
+public import LeanExe.A64.Startup
+
+@[expose] public section
 
 /-!
 The startup's instructions as `startupCode` gives them, with the fields of its branches and the

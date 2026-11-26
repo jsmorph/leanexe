@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Tan.Program
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
-import LeanExe.Dialect.InsertErase
-import LeanExe.Dialect.Float32
+module
+
+public import Library.Numerics.Float64.Tan.Program
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+public import LeanExe.Dialect.InsertErase
+public import LeanExe.Dialect.Float32
+
+@[expose] public section
 
 /-! A program of the verified compiler: `sinpi`, `cospi`, and `tanpi`, the sine,
 cosine, and tangent of `π x`, ported from FreeBSD's `lib/msun/src` at commit

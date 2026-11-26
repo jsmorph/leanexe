@@ -1,7 +1,11 @@
-import LeanExe.M7.Isla.Trace
-import LeanExe.M7.Encode
-import LeanExe.M7.Isla.Profile
-import LeanExe.A64.Isla.Check
+module
+
+public import LeanExe.M7.Isla.Trace
+public import LeanExe.M7.Encode
+public import LeanExe.M7.Isla.Profile
+public import LeanExe.A64.Isla.Check
+
+@[expose] public section
 
 /-!
 Checks of the model's `exec` against Isla's traces of the A-profile Sail model in AArch32 Thumb

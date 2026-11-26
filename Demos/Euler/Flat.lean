@@ -1,6 +1,10 @@
-import Library.Numerics.Bounds.Encoding
-import Demos.Euler.ReconstructedProgram
-import LeanExe.Pipeline.Implements
+module
+
+public import Library.Numerics.Bounds.Encoding
+public import Demos.Euler.ReconstructedProgram
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 namespace Demos.Euler
 

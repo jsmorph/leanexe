@@ -1,8 +1,12 @@
-import Library.Hashing.Sha2.Impl.SHA256
-import Library.Hashing.Sha2.Equiv.SHA256.Lift
-import Library.Hashing.Sha2.Equiv.SHA256.ToU32s
-import Library.Hashing.Sha2.Equiv.Common.ByteArray
-import Library.Hashing.Sha2.Equiv.Common.ArrayFold
+module
+
+public import Library.Hashing.Sha2.Impl.SHA256
+public import Library.Hashing.Sha2.Equiv.SHA256.Lift
+public import Library.Hashing.Sha2.Equiv.SHA256.ToU32s
+public import Library.Hashing.Sha2.Equiv.Common.ByteArray
+public import Library.Hashing.Sha2.Equiv.Common.ArrayFold
+
+@[expose] public section
 
 /-! # SHA-256 padding: byte-level layout
 

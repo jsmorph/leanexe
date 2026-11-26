@@ -1,5 +1,9 @@
-import Verified.WGSL.Kernel
-import LeanExe.WGSL.MemoryModelProof
+module
+
+public import Verified.WGSL.Kernel
+public import LeanExe.WGSL.MemoryModelProof
+
+@[expose] public section
 
 namespace Verified.WGSL
 

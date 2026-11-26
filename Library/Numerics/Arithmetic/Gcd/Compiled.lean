@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.Gcd.Proof
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Numerics.Arithmetic.Gcd.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-! The verified compiler's module of `gcd`.  The compiler translates the tail recursion into a
 loop, and the generated `compiled.gcd.pure` states that function 2 computes `gcd` from every store

@@ -1,8 +1,12 @@
-import Demos.Euler.ReconstructedProgram
-import Demos.Euler.RealState
-import LeanExe.ProofKit.F64AddEnclosure
-import LeanExe.ProofKit.F64MulEnclosure
-import LeanExe.ProofKit.F64AdjacentSigned
+module
+
+public import Demos.Euler.ReconstructedProgram
+public import Demos.Euler.RealState
+public import LeanExe.ProofKit.F64AddEnclosure
+public import LeanExe.ProofKit.F64MulEnclosure
+public import LeanExe.ProofKit.F64AdjacentSigned
+
+@[expose] public section
 
 /-! Conservation balance of a sweep.  A sweep updates each component of a cell by
 `u' = u - r (F_right - F_left)` in three rounded operations, and the two cells beside a face

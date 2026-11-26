@@ -1,5 +1,9 @@
-import Library.Hashing.Hmac.Bytes
-import Verified.Master
+module
+
+public import Library.Hashing.Hmac.Bytes
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Hashing.Hmac
 

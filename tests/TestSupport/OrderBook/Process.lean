@@ -1,5 +1,9 @@
-import Demos.OrderBook.ProcessCodec
-import TestSupport.OrderBook.Edges
+module
+
+public import Demos.OrderBook.ProcessCodec
+public import TestSupport.OrderBook.Edges
+
+@[expose] public section
 
 /-! The scripted-host tests of [the order book's process](../../../Demos/OrderBook/Process.lean).
 Each case runs `Process.runFrom` with a host that returns reads of a fixed number of bytes,

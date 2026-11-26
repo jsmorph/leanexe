@@ -1,6 +1,10 @@
-import Demos.Gate.Program
-import Verified.Reflect.Command
-import Demos.Gate.Flat
+module
+
+public import Demos.Gate.Program
+public import Verified.Reflect.Command
+public import Demos.Gate.Flat
+
+@[expose] public section
 
 namespace Demos.Gate
 

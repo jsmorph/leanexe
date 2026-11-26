@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Exp.ExpOneStep
-import Library.Numerics.Float64.Exp.ExpTableBounds
-import LeanExe.ProofKit.F64SignedRounding
+module
+
+public import Library.Numerics.Float64.Exp.ExpOneStep
+public import Library.Numerics.Float64.Exp.ExpTableBounds
+public import LeanExe.ProofKit.F64SignedRounding
+
+@[expose] public section
 
 /-!
 The reconstruction `s + s · w` shared by Arm's `exp2` and `exp10`, for any polynomial word `w`.

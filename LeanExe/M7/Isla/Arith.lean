@@ -1,5 +1,9 @@
-import LeanExe.M7.Isla.Check
-import LeanExe.M7.Proof.Pair
+module
+
+public import LeanExe.M7.Isla.Check
+public import LeanExe.M7.Proof.Pair
+
+@[expose] public section
 
 /-!
 Lemmas and tactics for the theorems of `Agrees` of the forms that compute `AddWithCarry` and of

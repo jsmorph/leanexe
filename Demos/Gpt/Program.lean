@@ -1,7 +1,11 @@
-import Library.Numerics.LinearAlgebra.Float64.Program
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import Library.Random.SplitMix64.Program
+module
+
+public import Library.Numerics.LinearAlgebra.Float64.Program
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import Library.Random.SplitMix64.Program
+
+@[expose] public section
 
 namespace Demos.Gpt
 

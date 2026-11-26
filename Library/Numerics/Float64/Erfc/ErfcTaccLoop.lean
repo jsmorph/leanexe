@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack5
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack5
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 The two loops of the polynomial of `erfc_asympt_accurate`, for any number of steps.  The bounds

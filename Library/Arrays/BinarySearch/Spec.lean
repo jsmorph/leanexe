@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! The specification of binary search.  Indices start at 0.  For an array sorted in nondecreasing
 order, the elements less than the key form a prefix, so the least index whose element is at least

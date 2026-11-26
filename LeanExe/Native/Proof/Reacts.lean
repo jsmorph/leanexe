@@ -1,5 +1,9 @@
-import LeanExe.Native.Proof.Export
-import LeanExe.Native.Proof.Rename
+module
+
+public import LeanExe.Native.Proof.Export
+public import LeanExe.Native.Proof.Rename
+
+@[expose] public section
 
 /-!
 The judgment of a `main` that runs forever: `LoopReacts A X p t0 W` states that `main` runs

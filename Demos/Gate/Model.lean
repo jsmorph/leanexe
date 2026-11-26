@@ -1,8 +1,12 @@
-import LeanExe.ProofKit.RealErf
-import Mathlib.Probability.Distributions.Gamma
-import Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral
-import Mathlib.MeasureTheory.Integral.DominatedConvergence
-import Mathlib.Topology.Order.IntermediateValue
+module
+
+public import LeanExe.ProofKit.RealErf
+public import Mathlib.Probability.Distributions.Gamma
+public import Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral
+public import Mathlib.MeasureTheory.Integral.DominatedConvergence
+public import Mathlib.Topology.Order.IntermediateValue
+
+@[expose] public section
 
 /-!
 The chi-square distribution.  `chiSquare k` is Mathlib's Gamma distribution with shape `k/2` and

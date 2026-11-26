@@ -1,5 +1,9 @@
-import Demos.Gate.AssignmentVerified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Gate.AssignmentVerified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/assignment.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Demos/Gate/AssignmentFile.lean`: the file holds

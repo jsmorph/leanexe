@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.WasiPreopen
-import LeanExe.A64.Proof.WasiClocks
-import LeanExe.A64.WasiFiles
+module
+
+public import LeanExe.A64.Proof.WasiPreopen
+public import LeanExe.A64.Proof.WasiClocks
+public import LeanExe.A64.WasiFiles
+
+@[expose] public section
 
 /-!
 The runs of the parts of the stubs of `LeanExe/A64/WasiFiles.lean` in the program's model.

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Atan.AtanTheoremCases
-import LeanExe.ProofKit.F64WithinSelf
+module
+
+public import Library.Numerics.Float64.Atan.AtanTheoremCases
+public import LeanExe.ProofKit.F64WithinSelf
+
+@[expose] public section
 
 /-!
 `Atan.atan` below `0.4375` in magnitude.  Below `2 ^ -27` the result is `x`, which lies within

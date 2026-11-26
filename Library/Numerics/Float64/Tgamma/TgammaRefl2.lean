@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaRefl1
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRefl1
+
+@[expose] public section
 
 /-!
 The quotient `π/(lh + ll)` of the path of `tgammaWith` below `-3`, as the double-double

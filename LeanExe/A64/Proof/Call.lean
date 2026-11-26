@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.Arith
-import LeanExe.A64.Proof.MachineSim
+module
+
+public import LeanExe.A64.Proof.Arith
+public import LeanExe.A64.Proof.MachineSim
+
+@[expose] public section
 
 /-!
 The simulation of a call.  The caller stores the operand registers below the arguments into its

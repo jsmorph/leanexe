@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erf.ErfSmallBase
-import LeanExe.ProofKit.F64ExactProduct
-import Mathlib.Analysis.Complex.ExponentialBounds
+module
+
+public import Library.Numerics.Float64.Erf.ErfSmallBase
+public import LeanExe.ProofKit.F64ExactProduct
+public import Mathlib.Analysis.Complex.ExponentialBounds
+
+@[expose] public section
 
 /-!
 One step for `erf` on the ranges where `s_erf.c` uses no rational function, for positive

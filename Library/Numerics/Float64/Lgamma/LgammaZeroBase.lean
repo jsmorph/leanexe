@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.GammaReflect
-import LeanExe.ProofKit.GammaConvex
-import LeanExe.ProofKit.F64Grid
-import Library.Numerics.Float64.Tgamma.GammaPi
+module
+
+public import LeanExe.ProofKit.GammaReflect
+public import LeanExe.ProofKit.GammaConvex
+public import LeanExe.ProofKit.F64Grid
+public import Library.Numerics.Float64.Tgamma.GammaPi
+
+@[expose] public section
 
 /-!
 Lower bounds on `|lgamma|` at the doubles of an interval `(-n - 1, -n)`, from the values of

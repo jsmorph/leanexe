@@ -1,6 +1,10 @@
-import Verified.Wasi.ProcessCompact
-import Verified.Wasi.ProcessLoop
-import Verified.Wasi.CallHelper
+module
+
+public import Verified.Wasi.ProcessCompact
+public import Verified.Wasi.ProcessLoop
+public import Verified.Wasi.CallHelper
+
+@[expose] public section
 
 namespace Verified.Wasi
 

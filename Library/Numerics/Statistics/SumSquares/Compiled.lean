@@ -1,5 +1,9 @@
-import Library.Numerics.Statistics.SumSquares.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Statistics.SumSquares.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `sumSquares`.  The function allocates nothing, so the
 generated `compiled.sumSquares.implements` states that function 2 computes `sumSquares` without a

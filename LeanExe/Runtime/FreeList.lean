@@ -1,5 +1,9 @@
-import LeanExe.Runtime.Tree
-import LeanExe.ProofKit.Memory
+module
+
+public import LeanExe.Runtime.Tree
+public import LeanExe.ProofKit.Memory
+
+@[expose] public section
 
 namespace LeanExe.Runtime
 

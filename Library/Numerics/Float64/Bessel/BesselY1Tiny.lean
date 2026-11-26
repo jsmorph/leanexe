@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Bessel.BesselDivTop
-import LeanExe.ProofKit.F64NegateOps
-import LeanExe.ProofKit.F64NearestRelative
-import Library.Numerics.Float64.Bessel.BesselY1Small
+module
+
+public import Library.Numerics.Float64.Bessel.BesselDivTop
+public import LeanExe.ProofKit.F64NegateOps
+public import LeanExe.ProofKit.F64NearestRelative
+public import Library.Numerics.Float64.Bessel.BesselY1Small
+
+@[expose] public section
 
 /-!
 `Bessel.y1 x` for positive `x` on the code's first path, below about `2^-54`, subnormal arguments

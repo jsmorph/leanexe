@@ -1,5 +1,9 @@
-import LeanExe.Base
-import CodeLib.IEEE64.Roundoff
+module
+
+public import LeanExe.Base
+public import CodeLib.IEEE64.Roundoff
+
+@[expose] public section
 
 namespace Demos.Euler.Reference
 open CodeLib.IEEE64

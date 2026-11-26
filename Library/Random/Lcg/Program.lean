@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-! A linear congruential generator modulo `2^64`: each step replaces the state `x` with
 `a * x + c`, with arithmetic that wraps modulo `2^64`.  `step` uses the multiplier

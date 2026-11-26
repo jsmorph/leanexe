@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Constructs
+module
+
+public import LeanExe.Native.Proof.Constructs
+
+@[expose] public section
 
 /-!
 The simulation of `block`, `iff`, and `loop`.

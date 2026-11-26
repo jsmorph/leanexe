@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.Constructs
+module
+
+public import LeanExe.A64.Proof.Constructs
+
+@[expose] public section
 
 /-!
 The simulation of a function.  The prologue compares the bytes from the stack's limit in X18 up

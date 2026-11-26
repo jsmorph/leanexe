@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Atan.AtanTwoBranches
-import LeanExe.ProofKit.F64DivBounds
-import LeanExe.ProofKit.F64RoundDouble
+module
+
+public import Library.Numerics.Float64.Atan.AtanTwoBranches
+public import LeanExe.ProofKit.F64DivBounds
+public import LeanExe.ProofKit.F64RoundDouble
+
+@[expose] public section
 
 /-!
 The argument `q = |y/x|` of `atan` in `Atan.atan2`: a finite word within `2 ^ -53 Q + 2 ^ -1075`

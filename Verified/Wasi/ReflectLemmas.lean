@@ -1,6 +1,10 @@
-import Verified.Wasi.Source
-import Verified.Wasi.Results
-import LeanExe.Wasi.Related
+module
+
+public import Verified.Wasi.Source
+public import Verified.Wasi.Results
+public import LeanExe.Wasi.Related
+
+@[expose] public section
 
 namespace Verified.Wasi.Reflect
 

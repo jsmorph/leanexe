@@ -1,5 +1,9 @@
-import Library.Hashing.XxHash64.Program
-import TestSupport.Hashing.Packing
+module
+
+public import Library.Hashing.XxHash64.Program
+public import TestSupport.Hashing.Packing
+
+@[expose] public section
 
 /-! A check of the XXH64 transcription `Library.Hashing.XxHash64.Spec` and the program of
 `Library.Hashing.XxHash64` on the 8,322 vectors of `data/hashing/xxhash64/xxh64.txt`, taken from

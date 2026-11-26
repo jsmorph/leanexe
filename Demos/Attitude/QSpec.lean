@@ -1,4 +1,8 @@
-import Library.Numerics.Interval.Enclose
+module
+
+public import Library.Numerics.Interval.Enclose
+
+@[expose] public section
 
 /-!
 The q-method's formulas over the real numbers, each with its interval program.  Each

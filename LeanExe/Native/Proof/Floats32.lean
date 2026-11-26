@@ -1,6 +1,10 @@
-import LeanExe.Native.Proof.Floats
-import LeanExe.ProofKit.F32Bits
-import LeanExe.ProofKit.F32Sign
+module
+
+public import LeanExe.Native.Proof.Floats
+public import LeanExe.ProofKit.F32Bits
+public import LeanExe.ProofKit.F32Sign
+
+@[expose] public section
 
 /-!
 The simulation of the binary32 forms other than `sqrt` and `nearest`, in the pattern of

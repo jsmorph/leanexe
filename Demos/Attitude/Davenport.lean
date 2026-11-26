@@ -1,4 +1,8 @@
-import Demos.Attitude.Bound
+module
+
+public import Demos.Attitude.Bound
+
+@[expose] public section
 
 /-! Davenport's matrix of Wahba's problem.  A quaternion is a vector of `ℝ⁴` with the inner product
 `qdot`, and `Sym4` is a symmetric 4×4 matrix of reals by its entries on and above the diagonal.

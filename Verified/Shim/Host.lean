@@ -1,6 +1,10 @@
-import LeanExe.Linux.Replies
-import LeanExe.Wasi.CallTable
-import Verified.Shim.Replies
+module
+
+public import LeanExe.Linux.Replies
+public import LeanExe.Wasi.CallTable
+public import Verified.Shim.Replies
+
+@[expose] public section
 
 /-!
 The WASI host that the shim implements with the Linux call layer, for the stream functions

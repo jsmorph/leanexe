@@ -1,5 +1,9 @@
-import Library.Hashing.SipHash.Spec
-import LeanExe.Pipeline.Implements
+module
+
+public import Library.Hashing.SipHash.Spec
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! The state is represented as the tuple of its fields, in declaration order. -/
 

@@ -1,6 +1,10 @@
-import Verified.Wasi.FunctionRun
-import Verified.Wasi.LoopAfter
-import Verified.Wasi.CommandValue
+module
+
+public import Verified.Wasi.FunctionRun
+public import Verified.Wasi.LoopAfter
+public import Verified.Wasi.CommandValue
+
+@[expose] public section
 
 namespace Verified.Wasi
 

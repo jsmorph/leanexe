@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.Bessel
-import Mathlib.Analysis.SpecialFunctions.Sqrt
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+module
+
+public import LeanExe.ProofKit.Bessel
+public import Mathlib.Analysis.SpecialFunctions.Sqrt
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+
+@[expose] public section
 
 /-!
 The functions `P` and `Q` of the large-argument form of the Bessel functions

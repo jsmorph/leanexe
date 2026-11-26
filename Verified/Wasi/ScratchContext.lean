@@ -1,5 +1,9 @@
-import Verified.Wasi.After
-import Verified.Wasi.GuestFrame
+module
+
+public import Verified.Wasi.After
+public import Verified.Wasi.GuestFrame
+
+@[expose] public section
 
 namespace Verified
 

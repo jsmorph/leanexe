@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack3
-import Library.Numerics.Float64.Erfc.ErfcFastMain
-import Library.Numerics.Float64.Erfc.ErfcRound
-import LeanExe.ProofKit.PolyBound
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack3
+public import Library.Numerics.Float64.Erfc.ErfcFastMain
+public import Library.Numerics.Float64.Erfc.ErfcRound
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 The rounding error of `cr_erf_accurate` from `1/8` on (`Erfc.erfAccurate`), against the

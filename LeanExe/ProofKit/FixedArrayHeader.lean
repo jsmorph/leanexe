@@ -1,6 +1,10 @@
-import LeanExe.Common
-import LeanExe.ProofKit.Memory
-import LeanExe.ProofKit.Allocation
+module
+
+public import LeanExe.Common
+public import LeanExe.ProofKit.Memory
+public import LeanExe.ProofKit.Allocation
+
+@[expose] public section
 
 namespace LeanExe.ProofKit
 

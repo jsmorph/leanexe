@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
-import LeanExe.ProofKit.BorrowedKept
+module
+
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
+public import LeanExe.ProofKit.BorrowedKept
+
+@[expose] public section
 
 /-!
 The byte theorems for the module of `ParseFloat.lean`, whose exports `parse64` (function 35) and

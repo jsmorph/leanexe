@@ -1,4 +1,8 @@
-import Library.Trees.Avl.Program
+module
+
+public import Library.Trees.Avl.Program
+
+@[expose] public section
 
 /-! Deletion from a balanced tree, on the `AvlTree` of Algorithm A.  A node with an empty subtree
 gives way to its other subtree, and a node with two subtrees takes the key of the leftmost node of

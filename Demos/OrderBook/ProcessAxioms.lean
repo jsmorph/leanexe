@@ -1,4 +1,8 @@
-import Demos.OrderBook.ProcessCompiledCorrect
+module
+
+public import Demos.OrderBook.ProcessCompiledCorrect
+
+@[expose] public section
 
 /-! The axiom audit of the order book's process, native and compiled: every theorem in the
 namespace `Demos.OrderBook.Process`, which holds the native proofs, the declarations that

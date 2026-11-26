@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.BesselMillerCF
-import Library.Numerics.Float64.Bessel.BesselOrderLoops
+module
+
+public import Library.Numerics.Float64.Bessel.BesselMillerCF
+public import Library.Numerics.Float64.Bessel.BesselOrderLoops
+
+@[expose] public section
 
 /-!
 The depth loop of `jn`'s backward recurrence as a whole.  The start `(w, w (w + h) - 1, w + h, 1)`

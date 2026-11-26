@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 The input `#[query, key1, value1, …, key10, value10]`

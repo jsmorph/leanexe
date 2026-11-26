@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccFin
-import Library.Numerics.Float64.Tgamma.TgammaAccCrr
-import Library.Numerics.Float64.Tgamma.TgammaAccBounds
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccFin
+public import Library.Numerics.Float64.Tgamma.TgammaAccCrr
+public import Library.Numerics.Float64.Tgamma.TgammaAccBounds
+
+@[expose] public section
 
 /-!
 The end of the accurate path of `Tgamma` from `1/4`, common to its three cases.  The double-double

@@ -1,5 +1,9 @@
-import Demos.Gpt32.VerifiedDispatch
-import Verified.WgslPtx
+module
+
+public import Demos.Gpt32.VerifiedDispatch
+public import Verified.WgslPtx
+
+@[expose] public section
 
 /-!
 The PTX kernels of the binary32 GPT-2 demo, which `Verified.PTX.compile` translates from the bodies

@@ -1,6 +1,10 @@
-import Library.Hashing.SipHash.Program
-import Library.Bytes.LittleEndian
-import Mathlib.Tactic
+module
+
+public import Library.Hashing.SipHash.Program
+public import Library.Bytes.LittleEndian
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-! The SipHash programs compute the transcription.  The program's rotation by shifts is the
 transcription's `BitVec` rotation at each of SipRound's amounts, so `sipRound` is SipRound, and the

@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-!
 The PTX subset of the kernels.  A kernel has one entry point whose parameters are 64-bit pointers

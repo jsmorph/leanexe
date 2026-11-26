@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.AlignedFlag
-import LeanExe.ProofKit.Sequencing
+module
+
+public import LeanExe.ProofKit.AlignedFlag
+public import LeanExe.ProofKit.Sequencing
+
+@[expose] public section
 
 /-!
 Code without a 64-bit access or a call.  `freeCode` holds of code none of whose instructions, in

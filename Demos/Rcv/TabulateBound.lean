@@ -1,7 +1,11 @@
-import Demos.Rcv.TabulateCall
-import Demos.Rcv.VerifiedCall
-import Verified.ChargeFacts
-import LeanExe.Native.Proof.MemOps
+module
+
+public import Demos.Rcv.TabulateCall
+public import Demos.Rcv.VerifiedCall
+public import Verified.ChargeFacts
+public import LeanExe.Native.Proof.MemOps
+
+@[expose] public section
 
 /-!
 The closed form of the generated bound of `tabulate`.  `compiled.tabulate.bound b`, the number of

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaFinal
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64ExactProduct
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaFinal
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64ExactProduct
+
+@[expose] public section
 
 /-!
 Exact operations on dyadic grids for the accurate path of `Tgamma`.  A sum of two doubles that is a

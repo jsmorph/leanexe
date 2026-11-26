@@ -1,6 +1,10 @@
-import LeanExe.Base
-import Mathlib.Algebra.Polynomial.Div
-import Mathlib.Data.ZMod.Defs
+module
+
+public import LeanExe.Base
+public import Mathlib.Algebra.Polynomial.Div
+public import Mathlib.Data.ZMod.Defs
+
+@[expose] public section
 
 /-! CRC-32 and CRC-32C as polynomial remainders over GF(2), transcribed from ITU-T V.42 (03/2002)
 §8.1.1.6.2 and §8.1.2, and from RFC 3720 §2.3.3 and §12.1.  A message is a string of bits, and

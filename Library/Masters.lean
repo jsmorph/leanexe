@@ -1,90 +1,94 @@
-import Library.Arrays.BinarySearch.Master
-import Library.Arrays.Filter.Master
-import Library.Arrays.MaxSegmentSum.Master
-import Library.Arrays.Range.Master
-import Library.Arrays.Repeat.Master
-import Library.Arrays.Search.Master
-import Library.Arrays.Word.Master
-import Library.Combinatorics.DancingLinks.Master
-import Library.Combinatorics.NextPermutation.Master
-import Library.Graphs.Dijkstra.Master
-import Library.Graphs.TopologicalSort.Master
-import Library.Graphs.UnionFind.Master
-import Library.Graphs.WeightedUnionFind.Master
-import Library.HashTables.LinearProbing.Master
-import Library.Hashing.Crc.Bitwise.Master
-import Library.Hashing.Crc.Master
-import Library.Hashing.Hmac.Master
-import Library.Hashing.Sha256.Master
-import Library.Hashing.Sha3.Master
-import Library.Hashing.Sha512.Master
-import Library.Hashing.SipHash.Master
-import Library.Hashing.XxHash64.Master
-import Library.Lists.Word.Master
-import Library.Numerics.Arithmetic.BinaryGcd.Master
-import Library.Numerics.Arithmetic.CeilSqrt.Master
-import Library.Numerics.Arithmetic.Fma.Master
-import Library.Numerics.Arithmetic.Gcd.Master
-import Library.Numerics.Arithmetic.MillerRabin.Master
-import Library.Numerics.Arithmetic.ModInverse.Master
-import Library.Numerics.Arithmetic.PrimeFactors.Master
-import Library.Numerics.Arithmetic.Sieve.Master
-import Library.Numerics.Arithmetic.Uscale.Master
-import Library.Numerics.Bounds.Master
-import Library.Numerics.Decimal.Int64Text.Master
-import Library.Numerics.Decimal.ParseFloat.Master
-import Library.Numerics.Decimal.PrintFloat.Master
-import Library.Numerics.Filters.Cic.Master
-import Library.Numerics.Float64.Asin.Master
-import Library.Numerics.Float64.Asinh.Master
-import Library.Numerics.Float64.Atan.Master
-import Library.Numerics.Float64.Bessel.Master
-import Library.Numerics.Float64.Erf.Master
-import Library.Numerics.Float64.Erfc.Master
-import Library.Numerics.Float64.Exp.Master
-import Library.Numerics.Float64.Exp2.Master
-import Library.Numerics.Float64.Lgamma.Master
-import Library.Numerics.Float64.Log.Master
-import Library.Numerics.Float64.Log10.Master
-import Library.Numerics.Float64.Log1p.Master
-import Library.Numerics.Float64.Log2.Master
-import Library.Numerics.Float64.Pow.Master
-import Library.Numerics.Float64.Sinh.Master
-import Library.Numerics.Float64.Sinpi.Master
-import Library.Numerics.Float64.Tan.Master
-import Library.Numerics.Float64.Tanh.Master
-import Library.Numerics.Float64.Tgamma.Master
-import Library.Numerics.Float64.Trig.Master
-import Library.Numerics.Fourier.Master
-import Library.Numerics.Interval.Master
-import Library.Numerics.Limiters.Minmod.Master
-import Library.Numerics.LinearAlgebra.Binary32.Master
-import Library.Numerics.LinearAlgebra.Float64.Master
-import Library.Numerics.MultiPrecision.Master
-import Library.Numerics.Reductions.Float64.Master
-import Library.Numerics.Reductions.Word.Master
-import Library.Numerics.Statistics.Mean.Master
-import Library.Numerics.Statistics.SumSquares.Master
-import Library.Queues.BinaryHeap.Master
-import Library.Random.Lcg.Master
-import Library.Random.ParkMiller.Master
-import Library.Random.Sampling.Master
-import Library.Random.SplitMix64.Master
-import Library.Random.Xorshift.Master
-import Library.Regex.Master
-import Library.Sorting.Find.Master
-import Library.Sorting.Heapsort.Master
-import Library.Sorting.Insertion.Master
-import Library.Sorting.MergeSort.Master
-import Library.Sorting.Quicksort.Master
-import Library.Sorting.RadixSort.Master
-import Library.Sorting.Shellsort.Master
-import Library.Sorting.StraightInsertion.Master
-import Library.Strings.Kmp.Master
-import Library.Trees.Avl.Master
-import Library.Trees.AvlDelete.Master
-import Library.Trees.Search.Master
-import Library.Trees.WordTree.Master
+module
+
+public import Library.Arrays.BinarySearch.Master
+public import Library.Arrays.Filter.Master
+public import Library.Arrays.MaxSegmentSum.Master
+public import Library.Arrays.Range.Master
+public import Library.Arrays.Repeat.Master
+public import Library.Arrays.Search.Master
+public import Library.Arrays.Word.Master
+public import Library.Combinatorics.DancingLinks.Master
+public import Library.Combinatorics.NextPermutation.Master
+public import Library.Graphs.Dijkstra.Master
+public import Library.Graphs.TopologicalSort.Master
+public import Library.Graphs.UnionFind.Master
+public import Library.Graphs.WeightedUnionFind.Master
+public import Library.HashTables.LinearProbing.Master
+public import Library.Hashing.Crc.Bitwise.Master
+public import Library.Hashing.Crc.Master
+public import Library.Hashing.Hmac.Master
+public import Library.Hashing.Sha256.Master
+public import Library.Hashing.Sha3.Master
+public import Library.Hashing.Sha512.Master
+public import Library.Hashing.SipHash.Master
+public import Library.Hashing.XxHash64.Master
+public import Library.Lists.Word.Master
+public import Library.Numerics.Arithmetic.BinaryGcd.Master
+public import Library.Numerics.Arithmetic.CeilSqrt.Master
+public import Library.Numerics.Arithmetic.Fma.Master
+public import Library.Numerics.Arithmetic.Gcd.Master
+public import Library.Numerics.Arithmetic.MillerRabin.Master
+public import Library.Numerics.Arithmetic.ModInverse.Master
+public import Library.Numerics.Arithmetic.PrimeFactors.Master
+public import Library.Numerics.Arithmetic.Sieve.Master
+public import Library.Numerics.Arithmetic.Uscale.Master
+public import Library.Numerics.Bounds.Master
+public import Library.Numerics.Decimal.Int64Text.Master
+public import Library.Numerics.Decimal.ParseFloat.Master
+public import Library.Numerics.Decimal.PrintFloat.Master
+public import Library.Numerics.Filters.Cic.Master
+public import Library.Numerics.Float64.Asin.Master
+public import Library.Numerics.Float64.Asinh.Master
+public import Library.Numerics.Float64.Atan.Master
+public import Library.Numerics.Float64.Bessel.Master
+public import Library.Numerics.Float64.Erf.Master
+public import Library.Numerics.Float64.Erfc.Master
+public import Library.Numerics.Float64.Exp.Master
+public import Library.Numerics.Float64.Exp2.Master
+public import Library.Numerics.Float64.Lgamma.Master
+public import Library.Numerics.Float64.Log.Master
+public import Library.Numerics.Float64.Log10.Master
+public import Library.Numerics.Float64.Log1p.Master
+public import Library.Numerics.Float64.Log2.Master
+public import Library.Numerics.Float64.Pow.Master
+public import Library.Numerics.Float64.Sinh.Master
+public import Library.Numerics.Float64.Sinpi.Master
+public import Library.Numerics.Float64.Tan.Master
+public import Library.Numerics.Float64.Tanh.Master
+public import Library.Numerics.Float64.Tgamma.Master
+public import Library.Numerics.Float64.Trig.Master
+public import Library.Numerics.Fourier.Master
+public import Library.Numerics.Interval.Master
+public import Library.Numerics.Limiters.Minmod.Master
+public import Library.Numerics.LinearAlgebra.Binary32.Master
+public import Library.Numerics.LinearAlgebra.Float64.Master
+public import Library.Numerics.MultiPrecision.Master
+public import Library.Numerics.Reductions.Float64.Master
+public import Library.Numerics.Reductions.Word.Master
+public import Library.Numerics.Statistics.Mean.Master
+public import Library.Numerics.Statistics.SumSquares.Master
+public import Library.Queues.BinaryHeap.Master
+public import Library.Random.Lcg.Master
+public import Library.Random.ParkMiller.Master
+public import Library.Random.Sampling.Master
+public import Library.Random.SplitMix64.Master
+public import Library.Random.Xorshift.Master
+public import Library.Regex.Master
+public import Library.Sorting.Find.Master
+public import Library.Sorting.Heapsort.Master
+public import Library.Sorting.Insertion.Master
+public import Library.Sorting.MergeSort.Master
+public import Library.Sorting.Quicksort.Master
+public import Library.Sorting.RadixSort.Master
+public import Library.Sorting.Shellsort.Master
+public import Library.Sorting.StraightInsertion.Master
+public import Library.Strings.Kmp.Master
+public import Library.Trees.Avl.Master
+public import Library.Trees.AvlDelete.Master
+public import Library.Trees.Search.Master
+public import Library.Trees.WordTree.Master
+
+@[expose] public section
 
 /-! The registry of the library's master theorems: one `Verified.Master` statement for each
 function of the library sections of the algorithm index.  `master_registry` checks that each name

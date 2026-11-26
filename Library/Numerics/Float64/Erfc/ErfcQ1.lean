@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack4
-import Library.Numerics.Float64.Erfc.ErfcFastMain
-import Library.Numerics.Float64.Erfc.ErfcRound
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack4
+public import Library.Numerics.Float64.Erfc.ErfcFastMain
+public import Library.Numerics.Float64.Erfc.ErfcRound
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 `q_1` of `Erfc`: `exp z` for the double-double `z = zh + zl` with `|z| < 0.000130273`, as

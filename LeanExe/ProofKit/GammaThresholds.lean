@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.GammaStirling
-import LeanExe.ProofKit.RatExpLog
-import Mathlib.Analysis.Real.Pi.Bounds
+module
+
+public import LeanExe.ProofKit.GammaStirling
+public import LeanExe.ProofKit.RatExpLog
+public import Mathlib.Analysis.Real.Pi.Bounds
+
+@[expose] public section
 
 /-!
 The overflow thresholds of CORE-MATH's `tgamma` and `lgamma`, from Stirling's series with twelve

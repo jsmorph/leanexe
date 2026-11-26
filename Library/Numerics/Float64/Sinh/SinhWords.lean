@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Sinh.Compiled
-import Library.Numerics.Float64.Exp.ExpTightFloat
-import Library.Numerics.Float64.Tanh.TanhWords
+module
+
+public import Library.Numerics.Float64.Sinh.Compiled
+public import Library.Numerics.Float64.Exp.ExpTightFloat
+public import Library.Numerics.Float64.Tanh.TanhWords
+
+@[expose] public section
 
 /-!
 Words and real facts for the proofs about `Sinh.sinh` and `Sinh.cosh`: the word of `0.5`, exact

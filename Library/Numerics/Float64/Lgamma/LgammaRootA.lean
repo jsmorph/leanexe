@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaRootA0
-import Library.Numerics.Float64.Lgamma.LgammaRootA1
-import Library.Numerics.Float64.Lgamma.LgammaRootA2
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaRootA0
+public import Library.Numerics.Float64.Lgamma.LgammaRootA1
+public import Library.Numerics.Float64.Lgamma.LgammaRootA2
+
+@[expose] public section
 
 /-!
 RootFact on the ranges 0, 1, 2 of `Library.Numerics.Float64.Lgamma.LgammaApprox.rootRanges` (`lgamma.c`, commit `ff2f71f6`).  On

@@ -1,5 +1,9 @@
-import LeanExe.M7.Boot
-import LeanExe.M7.Proof.Main
+module
+
+public import LeanExe.M7.Boot
+public import LeanExe.M7.Proof.Main
+
+@[expose] public section
 
 /-!
 Reset, the image's bytes, and the run of a program from reset.  `Reset code vtor b` is a state

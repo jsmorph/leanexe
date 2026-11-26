@@ -1,5 +1,9 @@
-import Demos.Attitude.QVerified
-import Verified.Call
+module
+
+public import Demos.Attitude.QVerified
+public import Verified.Call
+
+@[expose] public section
 
 /-! The call of the compiled q-method (Q5).  `qmethod_bound` bounds the bytes by which a call can
 raise the allocator's `top` by a constant, since the program allocates only its result.

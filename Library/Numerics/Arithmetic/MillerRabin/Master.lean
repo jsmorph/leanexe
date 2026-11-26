@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.MillerRabin.Compiled
-import Verified.Master
+module
+
+public import Library.Numerics.Arithmetic.MillerRabin.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Arithmetic.MillerRabin
 

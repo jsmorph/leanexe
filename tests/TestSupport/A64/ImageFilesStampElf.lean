@@ -1,6 +1,10 @@
-import TestSupport.A64.StampElf
-import LeanExe.A64.File
-import LeanExe.A64.Proof.StampImage
+module
+
+public import TestSupport.A64.StampElf
+public import LeanExe.A64.File
+public import LeanExe.A64.Proof.StampImage
+
+@[expose] public section
 
 /-!
 The theorems of the stamp executable that `a64-elf emit` writes for `flipBit5`, which reads the

@@ -1,8 +1,12 @@
-import LeanExe.ProofKit.F64NearestDiv
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64NearestSteps
-import LeanExe.ProofKit.F64Source
-import LeanExe.ProofKit.PolyBound
+module
+
+public import LeanExe.ProofKit.F64NearestDiv
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64NearestSteps
+public import LeanExe.ProofKit.F64Source
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 Rounded division with a quotient from `2 ^ 1022` up, which `F64NearestDiv.div_nearest` leaves out.

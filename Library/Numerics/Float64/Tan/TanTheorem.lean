@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tan.TanWith
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Tan.TanWith
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Tan.tan`.  For every finite binary64 input, the result lies within one

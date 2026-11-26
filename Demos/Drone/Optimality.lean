@@ -1,6 +1,10 @@
-import LeanExe.Base
-import Mathlib.Data.List.Basic
-import Lean.Elab.Tactic.Omega
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.List.Basic
+public import Lean.Elab.Tactic.Omega
+
+@[expose] public section
 
 /-! Reusable shortest-path certificate theorem for a layered graph.
 A certificate is a lower-bound potential at every node. Its local inequalities

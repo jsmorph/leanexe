@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.TaylorModel
+module
+
+public import LeanExe.ProofKit.TaylorModel
+
+@[expose] public section
 
 /-!
 A kernel check that an expression stays within `ε` of zero on `[-r, r]`: `exprOk c E ε depth`

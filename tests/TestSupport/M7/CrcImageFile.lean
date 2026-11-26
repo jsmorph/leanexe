@@ -1,5 +1,9 @@
-import TestSupport.M7.CrcStep
-import TestSupport.M7.Windows
+module
+
+public import TestSupport.M7.CrcStep
+public import TestSupport.M7.Windows
+
+@[expose] public section
 
 /-!
 The kernel's check of the code of the CRC-32 step for USART3 that `m7-windows image crc-usart3`

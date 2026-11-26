@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Erfc.ErfcEAccPoly
-import Library.Numerics.Float64.Tanh.Expm1ReduceConst
-import LeanExe.ProofKit.TaylorRemainder
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcEAccPoly
+public import Library.Numerics.Float64.Tanh.Expm1ReduceConst
+public import LeanExe.ProofKit.TaylorRemainder
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 `exp_accurate` of `Erfc` for `-742 ≤ xh ≤ -2` and `|xl| ≤ 2^-40`.  The code rounds `xh log2 e` to

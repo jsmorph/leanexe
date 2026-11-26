@@ -1,5 +1,9 @@
-import Demos.Frames.Enclose
-import Demos.Geolocation.Model
+module
+
+public import Demos.Frames.Enclose
+public import Demos.Geolocation.Model
+
+@[expose] public section
 
 /-!
 The Earth-fixed state of a receiver given in the TEME frame, over the real numbers.  `theta` is

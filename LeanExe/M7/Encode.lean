@@ -1,4 +1,8 @@
-import LeanExe.M7.Machine
+module
+
+public import LeanExe.M7.Machine
+
+@[expose] public section
 
 /-!
 The encoder of the model's instruction forms and the lemmas that tie it to the decoder.

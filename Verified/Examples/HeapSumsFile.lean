@@ -1,5 +1,9 @@
-import Verified.Examples.HeapSums
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.HeapSums
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/heapsums.wasm`: the file holds
 `encode HeapSums.compiled.module`, and it decodes to the module of `HeapSums.compiled.bytes`. -/

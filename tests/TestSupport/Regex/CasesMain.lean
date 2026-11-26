@@ -1,4 +1,8 @@
-import TestSupport.Regex.Cases
+module
+
+public import TestSupport.Regex.Cases
+
+@[expose] public section
 
 /-! The cases of the module `regex` alone, for `tests/verified/run.sh --cases regex`. -/
 

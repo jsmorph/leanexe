@@ -1,4 +1,8 @@
-import Library.Hashing.Sha2.Equiv.SHA256.Bridge
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA256.Bridge
+
+@[expose] public section
 
 /-!
 # Bridge lemmas for the SHA-256 round functions

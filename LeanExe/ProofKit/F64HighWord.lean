@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64Sterbenz
+module
+
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64Sterbenz
+
+@[expose] public section
 
 /-!
 The high word of a binary64 value: `w &&& 0xFFFFFFFF00000000` clears the low 32 bits of the

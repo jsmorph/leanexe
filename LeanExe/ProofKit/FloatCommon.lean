@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.FloatShift
-import CodeLib.IEEE32.Roundoff
+module
+
+public import LeanExe.ProofKit.FloatShift
+public import CodeLib.IEEE32.Roundoff
+
+@[expose] public section
 
 /-!
 Lemmas about Lean's float model and the exact rounding helpers that hold for

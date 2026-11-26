@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaRefl3
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRefl3
+
+@[expose] public section
 
 /-!
 The word operations of the path of `tgammaWith` below `-170`.  `and_high` and `and_low` compute the

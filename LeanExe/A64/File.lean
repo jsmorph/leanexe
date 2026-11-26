@@ -1,5 +1,9 @@
-import LeanExe.FileNat
-import LeanExe.A64.Image
+module
+
+public import LeanExe.FileNat
+public import LeanExe.A64.Image
+
+@[expose] public section
 
 /-!
 The comparison of the AArch64 back end's code with the bytes of a file, which `file_nat%` and

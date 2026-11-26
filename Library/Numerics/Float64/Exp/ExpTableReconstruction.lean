@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Exp.ExpReducedReconstruction
-import Library.Numerics.Float64.Exp.ExpTableBounds
-import LeanExe.ProofKit.RealExpError
+module
+
+public import Library.Numerics.Float64.Exp.ExpReducedReconstruction
+public import Library.Numerics.Float64.Exp.ExpTableBounds
+public import LeanExe.ProofKit.RealExpError
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpTableReconstruction
 open CodeLib.IEEE64

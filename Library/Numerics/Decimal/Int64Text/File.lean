@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.Int64Text.Compiled
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Numerics.Decimal.Int64Text.Compiled
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/int64Text.wasm`: the file holds
 `encode compiled.module`, and it decodes to the module of `compiled.bytes`. -/

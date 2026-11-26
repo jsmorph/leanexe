@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tanh.Expm1KernelInner
-import LeanExe.ProofKit.F64NearestScale
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1KernelInner
+public import LeanExe.ProofKit.F64NearestScale
+
+@[expose] public section
 
 /-!
 Words of the scaling forms of fdlibm's `expm1`.  The kernel builds `2 ^ k`, `1 - 2 ^ -k`, and

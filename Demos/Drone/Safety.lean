@@ -1,5 +1,9 @@
-import Demos.Drone.Correct
-import Demos.Drone.Kinematics
+module
+
+public import Demos.Drone.Correct
+public import Demos.Drone.Kinematics
+
+@[expose] public section
 
 /-! Each pair of words that `compute` returns is a planner state, adjacent pairs are joined by
 an admitted edge, and so each segment of the returned flight clears the floor, keeps the speed

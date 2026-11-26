@@ -1,5 +1,9 @@
-import Examples.Bucket.Program
-import Verified.Reflect.Command
+module
+
+public import Examples.Bucket.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `bucket`.  The function allocates nothing, so the generated
 `compiled.bucket.implements` states that function 2 computes `bucket` without a trap. -/

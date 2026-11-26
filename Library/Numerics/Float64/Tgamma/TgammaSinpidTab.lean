@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaLogdParts
-import Library.Numerics.Float64.Tgamma.TgammaApprox
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaLogdParts
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+
+@[expose] public section
 
 /-!
 The word checks of the tables of `Tgamma.asSinpid`.  `sinTabOK` checks, for each row

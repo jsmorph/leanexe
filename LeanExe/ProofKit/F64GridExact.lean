@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64DyadicBounds
-import LeanExe.ProofKit.F64AddBounds
-import LeanExe.ProofKit.F64RoundingScale
-import CodeLib.IEEE64.Operations
+module
+
+public import LeanExe.ProofKit.F64DyadicBounds
+public import LeanExe.ProofKit.F64AddBounds
+public import LeanExe.ProofKit.F64RoundingScale
+public import CodeLib.IEEE64.Operations
+
+@[expose] public section
 
 /-!
 Exact and binade-local rounding of binary64 sums.  A sum on the grid of `2 ^ shift` with at most

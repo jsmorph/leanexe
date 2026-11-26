@@ -1,5 +1,9 @@
-import LeanExe.Runtime.FreeList
-import LeanExe.ProofKit.FixedArrayHeader
+module
+
+public import LeanExe.Runtime.FreeList
+public import LeanExe.ProofKit.FixedArrayHeader
+
+@[expose] public section
 
 namespace LeanExe.ProofKit
 

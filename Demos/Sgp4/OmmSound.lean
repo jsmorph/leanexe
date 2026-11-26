@@ -1,7 +1,11 @@
-import Demos.Sgp4.Omm
-import Demos.Sgp4.BoxSound
-import Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
-import Library.Numerics.Decimal.Shared.StrconvRound
+module
+
+public import Demos.Sgp4.Omm
+public import Demos.Sgp4.BoxSound
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
+public import Library.Numerics.Decimal.Shared.StrconvRound
+
+@[expose] public section
 
 /-!
 Soundness of the reader of decimal values.  `around_encloses` states that the interval from one

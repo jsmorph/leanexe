@@ -1,5 +1,9 @@
-import Library.Trees.AvlDelete.Spec
-import TestSupport.Modules.Avl
+module
+
+public import Library.Trees.AvlDelete.Spec
+public import TestSupport.Modules.Avl
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of deletion from a balanced tree. -/
 

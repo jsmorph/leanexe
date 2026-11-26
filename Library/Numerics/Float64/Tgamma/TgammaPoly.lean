@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaDD
-import LeanExe.ProofKit.PolyBound
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaDD
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 `Tgamma.polyDDD`, the double-double Horner scheme, with an error bound.  The coefficients are the

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Trig.TrigPi
+module
+
+public import Library.Numerics.Float64.Trig.TrigPi
+
+@[expose] public section
 
 /-!
 The three windows that `Trig.remLarge` reads from `Trig.invPi`.  For each exponent field `E` of

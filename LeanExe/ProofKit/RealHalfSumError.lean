@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Mathlib.Tactic
+module
+
+public import LeanExe.Base
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-! The error of `total - (x + y) / 2` computed from approximations of `x` and `y`. -/
 

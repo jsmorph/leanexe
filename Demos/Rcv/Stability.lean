@@ -1,4 +1,8 @@
-import Demos.Rcv.Rounds
+module
+
+public import Demos.Rcv.Rounds
+
+@[expose] public section
 
 /-!
 T8 of [the requirements](requirements.md), section "Theorems", and the lemmas about the counts of

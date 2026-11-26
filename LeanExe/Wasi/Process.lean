@@ -1,4 +1,8 @@
-import LeanExe.Wasi.Interpreter
+module
+
+public import LeanExe.Wasi.Interpreter
+
+@[expose] public section
 
 namespace LeanExe.Wasi
 

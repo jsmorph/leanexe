@@ -1,5 +1,9 @@
-import Library.HashTables.LinearProbing.Spec
-import TestSupport.Host
+module
+
+public import Library.HashTables.LinearProbing.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of the hash table. -/
 

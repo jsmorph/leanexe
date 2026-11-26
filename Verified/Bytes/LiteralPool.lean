@@ -1,4 +1,8 @@
-import Verified.Bytes.Memory
+module
+
+public import Verified.Bytes.Memory
+
+@[expose] public section
 
 namespace Verified.Bytes
 

@@ -1,7 +1,11 @@
-import Library.Numerics.Interval.Compiled
-import Library.Numerics.Interval.Proof
-import Library.Numerics.Bounds.Master
-import Verified.Master
+module
+
+public import Library.Numerics.Interval.Compiled
+public import Library.Numerics.Interval.Proof
+public import Library.Numerics.Bounds.Master
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Interval
 

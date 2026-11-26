@@ -1,6 +1,10 @@
-import Library.Hashing.Sha512.CompressProof
-import Library.Hashing.Sha512.PaddingProof
-import Library.Hashing.Sha2.Equiv.SHA512.Main
+module
+
+public import Library.Hashing.Sha512.CompressProof
+public import Library.Hashing.Sha512.PaddingProof
+public import Library.Hashing.Sha2.Equiv.SHA512.Main
+
+@[expose] public section
 
 /-! The SHA-512 family computes FIPS 180-4.  For a message of fewer than `2 ^ 61` bytes held in
 `msg`, the digest bytes of `sha512 msg n`, read most significant bit first, are the digest that

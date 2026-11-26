@@ -1,7 +1,11 @@
-import Verified.Kernel.Lower
-import Verified.Kernel.Initial
-import Verified.Kernel.Counter
-import Verified.Kernel.Output
+module
+
+public import Verified.Kernel.Lower
+public import Verified.Kernel.Initial
+public import Verified.Kernel.Counter
+public import Verified.Kernel.Output
+
+@[expose] public section
 
 /-!
 The plan of a build kernel, which both GPU targets translate: the parameters, the count, the

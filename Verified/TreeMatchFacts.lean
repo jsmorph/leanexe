@@ -1,6 +1,10 @@
-import Verified.TreeMatchPotential
-import Verified.OwnedExpr
-import Verified.ExprSpec
+module
+
+public import Verified.TreeMatchPotential
+public import Verified.OwnedExpr
+public import Verified.ExprSpec
+
+@[expose] public section
 
 namespace Verified
 

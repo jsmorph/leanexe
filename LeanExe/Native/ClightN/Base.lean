@@ -1,4 +1,8 @@
-import LeanExe.Native.Clight.Bigstep
+module
+
+public import LeanExe.Native.Clight.Bigstep
+
+@[expose] public section
 
 /-!
 The Lean meaning of the symbols of the neutral specification `clightn/N.nsx`, the twin of

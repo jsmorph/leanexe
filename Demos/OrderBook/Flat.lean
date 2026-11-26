@@ -1,5 +1,9 @@
-import Demos.OrderBook.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Demos.OrderBook.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! Representations for the verified compiler: a book is the tuple of its seven arrays, its next
 id, and its count, and the state of matching is the tuple of its fields. -/

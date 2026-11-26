@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F32Packing
-import LeanExe.ProofKit.FloatRounding
+module
+
+public import LeanExe.ProofKit.F32Packing
+public import LeanExe.ProofKit.FloatRounding
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32RoundScaled
 open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing FloatRounding FloatCommon

@@ -1,6 +1,10 @@
-import Verified.Literals
-import Verified.Rename
-import Verified.FunRename
+module
+
+public import Verified.Literals
+public import Verified.Rename
+public import Verified.FunRename
+
+@[expose] public section
 
 namespace Verified
 

@@ -1,5 +1,9 @@
-import Library.Hashing.Sha256.WordProof
-import Library.Hashing.Sha2.Equiv.SHA256.Padding.Layout
+module
+
+public import Library.Hashing.Sha256.WordProof
+public import Library.Hashing.Sha2.Equiv.SHA256.Padding.Layout
+
+@[expose] public section
 
 /-! `paddedWord` reads the 32-bit words of the padded message.  For a message `pre ++ m` of fewer
 than `2 ^ 61` bytes, where `pre` holds `p` whole blocks and `m` is the `n` bytes of `msg`, the

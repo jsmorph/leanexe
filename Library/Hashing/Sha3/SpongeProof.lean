@@ -1,6 +1,10 @@
-import Library.Hashing.Sha3.RoundProof
-import Library.Bytes.Packed
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Hashing.Sha3.RoundProof
+public import Library.Bytes.Packed
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! The lane program's sponge computes Algorithm 8 of the transcription.  The string of a state of
 lanes is `toBits (toState s)`, whose bit `t` is bit `t % 64` of lane `t / 64`.  KECCAK-p[1600, 24]

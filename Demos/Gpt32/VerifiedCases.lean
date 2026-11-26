@@ -1,6 +1,10 @@
-import Demos.Gpt32.Program
-import LeanExe.WGSL.Build
-import LeanExe.PTX.Build
+module
+
+public import Demos.Gpt32.Program
+public import LeanExe.WGSL.Build
+public import LeanExe.PTX.Build
+
+@[expose] public section
 
 namespace Demos.Gpt32.VerifiedCases
 

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Trig.TrigWords
-import Library.Numerics.Float64.Trig.TrigWindows
+module
+
+public import Library.Numerics.Float64.Trig.TrigWords
+public import Library.Numerics.Float64.Trig.TrigWindows
+
+@[expose] public section
 
 /-!
 The integer stages of `Trig.remLarge`.  `stage1` forms the low 192 bits `V` of the product of the

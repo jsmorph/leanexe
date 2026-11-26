@@ -1,5 +1,9 @@
-import TestSupport.A64.RcvMaineRuns
-import LeanExe.A64.File
+module
+
+public import TestSupport.A64.RcvMaineRuns
+public import LeanExe.A64.File
+
+@[expose] public section
 
 /-!
 The theorems of the arm64 Image that `a64-rcv emit` writes for the Maine tabulator, which reads a

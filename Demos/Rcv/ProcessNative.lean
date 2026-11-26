@@ -1,4 +1,8 @@
-import Demos.Rcv.Process
+module
+
+public import Demos.Rcv.Process
+
+@[expose] public section
 
 /-! The tabulator's process on the real stdin and stdout.  Reads use Running sum's
 [POSIX reader](../RunningSum/read.c), which returns after one successful `read` of file

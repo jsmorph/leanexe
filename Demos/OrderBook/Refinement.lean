@@ -1,5 +1,9 @@
-import Demos.OrderBook.RefineStep
-import Demos.OrderBook.RefineStream
+module
+
+public import Demos.OrderBook.RefineStep
+public import Demos.OrderBook.RefineStream
+
+@[expose] public section
 
 /-! The refinement of [the specification](Spec.lean) by [the program](Program.lean), under the
 invariant of [the representation](Invariant.lean).  `step_eq` of [the step's

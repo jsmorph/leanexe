@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaLogdParts
-import Library.Numerics.Float64.Sinpi.SinpiFloor
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaLogdParts
+public import Library.Numerics.Float64.Sinpi.SinpiFloor
+
+@[expose] public section
 
 /-!
 The argument reduction of `Tgamma.asSinpid` for `x = n/2^53` with `0 < n < 2^53`, the form of

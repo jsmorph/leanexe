@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.Memory32
-import LeanExe.A64.Proof.StampStages
-import LeanExe.A64.Wasi
+module
+
+public import LeanExe.A64.Proof.Memory32
+public import LeanExe.A64.Proof.StampStages
+public import LeanExe.A64.Wasi
+
+@[expose] public section
 
 /-!
 The runs of the parts of the stubs of `LeanExe/A64/Wasi.lean` in the program's model.

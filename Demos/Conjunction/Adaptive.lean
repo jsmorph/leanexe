@@ -1,4 +1,8 @@
-import Demos.Conjunction.Accuracy
+module
+
+public import Demos.Conjunction.Accuracy
+
+@[expose] public section
 
 /-!
 The probability of the disk and the circular error with adaptive panels.  `march` covers `[-r, r]`

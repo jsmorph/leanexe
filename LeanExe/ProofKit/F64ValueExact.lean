@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64ErrorTrack
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import LeanExe.ProofKit.F64ErrorTrack
+public import LeanExe.ProofKit.F64Magnitude
+
+@[expose] public section
 
 /-!
 Exactness of sums and differences stated with values.  A finite word of magnitude at least

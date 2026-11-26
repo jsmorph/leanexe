@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.WasiFiles
-import LeanExe.A64.Proof.WasiPath
+module
+
+public import LeanExe.A64.Proof.WasiFiles
+public import LeanExe.A64.Proof.WasiPath
+
+@[expose] public section
 
 /-!
 The stub of `path_open` of `LeanExe/A64/WasiFiles.lean` in the program's model: its pieces at

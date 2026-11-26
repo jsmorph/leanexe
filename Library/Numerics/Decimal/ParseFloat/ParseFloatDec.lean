@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.ParseFloat.ParseFloatRound
-import Library.Numerics.Arithmetic.Uscale.UscaleDiv
+module
+
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatRound
+public import Library.Numerics.Arithmetic.Uscale.UscaleDiv
+
+@[expose] public section
 
 /-!
 `ParseFloat.decRound` gives the nearest-even encoding of a positive decimal `V · 10 ^ q`, where

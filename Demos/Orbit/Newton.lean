@@ -1,8 +1,12 @@
-import Demos.Orbit.Gibbs
-import Mathlib.Analysis.Calculus.Deriv.Mul
-import Mathlib.Analysis.Calculus.Deriv.Inv
-import Mathlib.Analysis.SpecialFunctions.Sqrt
-import Mathlib.Analysis.Calculus.MeanValue
+module
+
+public import Demos.Orbit.Gibbs
+public import Mathlib.Analysis.Calculus.Deriv.Mul
+public import Mathlib.Analysis.Calculus.Deriv.Inv
+public import Mathlib.Analysis.SpecialFunctions.Sqrt
+public import Mathlib.Analysis.Calculus.MeanValue
+
+@[expose] public section
 
 /-!
 Newton's two-body equation `r'' = -μ r/|r|³` conserves the angular momentum `r × r'` and the

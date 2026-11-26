@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.Sim
-import LeanExe.A64.Proof.Bits
+module
+
+public import LeanExe.A64.Proof.Sim
+public import LeanExe.A64.Proof.Bits
+
+@[expose] public section
 
 /-!
 The simulation of the instructions that store locals and push constants: `localSet`,

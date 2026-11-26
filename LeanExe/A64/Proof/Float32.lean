@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.Float
+module
+
+public import LeanExe.A64.Proof.Float
+
+@[expose] public section
 
 /-!
 The simulation of the f32 forms.  An f32 value lies in the register of its height as its 32-bit

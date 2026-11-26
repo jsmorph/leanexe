@@ -1,4 +1,8 @@
-import TestSupport.M7.ShaLoop
+module
+
+public import TestSupport.M7.ShaLoop
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of the SHA-256 step `shaCmsdkTick` for QEMU's `mps2-an500` that

@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Log2.Log2CoreFinal
-import Library.Numerics.Float64.Log2.Log2Tables
-import Library.Numerics.Float64.Log2.Log2KernelPoly
-import Library.Numerics.Float64.Log.LogCoreStep
-import LeanExe.ProofKit.F64RelativeStepWide
+module
+
+public import Library.Numerics.Float64.Log2.Log2CoreFinal
+public import Library.Numerics.Float64.Log2.Log2Tables
+public import Library.Numerics.Float64.Log2.Log2KernelPoly
+public import Library.Numerics.Float64.Log.LogCoreStep
+public import LeanExe.ProofKit.F64RelativeStepWide
+
+@[expose] public section
 
 /-!
 One step for `Log2.log2Core` on every argument that reaches it.  The argument word stands for

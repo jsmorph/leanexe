@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tanh.TanhBranches
-import Library.Numerics.Float64.Tanh.Expm1Near
-import LeanExe.ProofKit.F64NearestDiv
-import LeanExe.ProofKit.F64NearestRelative
+module
+
+public import Library.Numerics.Float64.Tanh.TanhBranches
+public import Library.Numerics.Float64.Tanh.Expm1Near
+public import LeanExe.ProofKit.F64NearestDiv
+public import LeanExe.ProofKit.F64NearestRelative
+
+@[expose] public section
 
 /-!
 Facts for fdlibm's `tanh`: the absolute value and the doubled argument on words, the forms

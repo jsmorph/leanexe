@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Bytes
-import LeanExe.ProofKit.MemoryFrame
+module
+
+public import LeanExe.Dialect.Bytes
+public import LeanExe.ProofKit.MemoryFrame
+
+@[expose] public section
 
 namespace Verified.Bytes
 

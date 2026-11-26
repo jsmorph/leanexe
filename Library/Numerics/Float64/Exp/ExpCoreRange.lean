@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Exp.ExpCoreBounds
+module
+
+public import Library.Numerics.Float64.Exp.ExpCoreBounds
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpCoreRange
 open CodeLib.IEEE64

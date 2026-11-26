@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64RoundingScale
-import LeanExe.ProofKit.F64PackingModel
-import Library.Numerics.Float64.Exp.ExpReductionExact
+module
+
+public import LeanExe.ProofKit.F64RoundingScale
+public import LeanExe.ProofKit.F64PackingModel
+public import Library.Numerics.Float64.Exp.ExpReductionExact
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpIntegerSelection
 open CodeLib.IEEE64

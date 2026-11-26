@@ -1,5 +1,9 @@
-import LeanExe.Native.Proof.Relation
-import LeanExe.ProofKit.Locals
+module
+
+public import LeanExe.Native.Proof.Relation
+public import LeanExe.ProofKit.Locals
+
+@[expose] public section
 
 /-!
 The simulation of the instructions that do not branch or call: locals, globals, constants, the

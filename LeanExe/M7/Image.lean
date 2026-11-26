@@ -1,5 +1,9 @@
-import LeanExe.FileNat
-import LeanExe.M7.Gen
+module
+
+public import LeanExe.FileNat
+public import LeanExe.M7.Gen
+
+@[expose] public section
 
 /-!
 The bytes of generated Thumb-2 code.  `imageBytes` lays out each instruction's halfwords, the first

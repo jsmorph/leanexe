@@ -1,6 +1,10 @@
-import Verified.Wasi.LoopInvariant
-import Verified.Wasi.ResourceLoopHead
-import Verified.ExprSpec
+module
+
+public import Verified.Wasi.LoopInvariant
+public import Verified.Wasi.ResourceLoopHead
+public import Verified.ExprSpec
+
+@[expose] public section
 
 namespace Verified.Wasi
 

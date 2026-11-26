@@ -1,5 +1,9 @@
-import Verified.Examples.Pairs
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Pairs
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/pairs.wasm`: the file holds
 `encode Pairs.compiled.module`, and it decodes to the module of `Pairs.compiled.bytes`. -/

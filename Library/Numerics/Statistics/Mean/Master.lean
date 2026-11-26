@@ -1,7 +1,11 @@
-import Library.Numerics.Statistics.Mean.Compiled
-import Library.Numerics.Reductions.Binary64
-import LeanExe.Dialect.ArrayLemmas
-import Verified.Master
+module
+
+public import Library.Numerics.Statistics.Mean.Compiled
+public import Library.Numerics.Reductions.Binary64
+public import LeanExe.Dialect.ArrayLemmas
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Statistics.Mean
 

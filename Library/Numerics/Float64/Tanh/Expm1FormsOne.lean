@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tanh.Expm1FormBase
-import Library.Numerics.Float64.Tanh.Expm1FormWords
-import LeanExe.ProofKit.F64GridExact
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1FormBase
+public import Library.Numerics.Float64.Tanh.Expm1FormWords
+public import LeanExe.ProofKit.F64GridExact
+
+@[expose] public section
 
 /-!
 The three forms of fdlibm's `expm1` for `k = ±1`, each within one step of `2 ^ k exp r - 1`.

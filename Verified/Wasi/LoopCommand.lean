@@ -1,6 +1,10 @@
-import Verified.Wasi.LoopAfter
-import Verified.Wasi.LoopSemantics
-import Verified.Wasi.CommandSpec
+module
+
+public import Verified.Wasi.LoopAfter
+public import Verified.Wasi.LoopSemantics
+public import Verified.Wasi.CommandSpec
+
+@[expose] public section
 
 namespace Verified.Wasi
 

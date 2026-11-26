@@ -1,4 +1,8 @@
-import Verified.ArrayFold
+module
+
+public import Verified.ArrayFold
+
+@[expose] public section
 
 namespace Verified
 

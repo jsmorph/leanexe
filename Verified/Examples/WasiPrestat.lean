@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 /-! A command that writes what the host answers about the preopened directory, each number as
 eight little-endian bytes: the errno, the tag, and the name's length of `fd_prestat_get`, and then,

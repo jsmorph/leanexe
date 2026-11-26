@@ -1,4 +1,8 @@
-import LeanExe.Linux.CallTable
+module
+
+public import LeanExe.Linux.CallTable
+
+@[expose] public section
 
 /-!
 The bytes that a trace of the Linux call layer's events moved through a descriptor: `readData fd`

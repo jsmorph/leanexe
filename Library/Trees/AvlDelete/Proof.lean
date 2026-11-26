@@ -1,6 +1,10 @@
-import Library.Trees.AvlDelete.Program
-import Library.Trees.AvlDelete.Spec
-import Library.Trees.Avl.Proof
+module
+
+public import Library.Trees.AvlDelete.Program
+public import Library.Trees.AvlDelete.Spec
+public import Library.Trees.Avl.Proof
+
+@[expose] public section
 
 /-! The proofs that `delete` computes `deleteA` and that `deleteA` satisfies `Removes` on every
 balanced binary search tree.  `descendDel_eq` and `minDel_eq` state the link reversal: each loop

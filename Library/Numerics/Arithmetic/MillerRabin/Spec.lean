@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Mathlib.NumberTheory.Padics.PadicVal.Basic
+module
+
+public import LeanExe.Base
+public import Mathlib.NumberTheory.Padics.PadicVal.Basic
+
+@[expose] public section
 
 /-! The specification of modular exponentiation and of the strong probable-prime test.
 `powModSpec (x, n, m)` is `x^n mod m`, and 0 for `m = 0` as the request states, where Lean's

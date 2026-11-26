@@ -1,5 +1,9 @@
-import Verified.Examples.Fold
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Fold
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/fold.wasm`: the file holds
 `encode Fold.compiled.module`, and it decodes to the module of `Fold.compiled.bytes`. -/

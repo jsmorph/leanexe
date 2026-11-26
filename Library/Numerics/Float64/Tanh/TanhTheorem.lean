@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.TanhLarge
+module
+
+public import Library.Numerics.Float64.Tanh.TanhLarge
+
+@[expose] public section
 
 /-!
 `Tanh.tanh` lies within three steps of `tanh x` on every finite input.  The ranges reach: one

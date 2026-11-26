@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowLogPoly
+module
+
+public import Library.Numerics.Float64.Pow.PowLogPoly
+
+@[expose] public section
 
 /-!
 Three rounded combinations of `Pow.powLog` with relative bounds: `lo3 = rlo (ar + arhi)`, the

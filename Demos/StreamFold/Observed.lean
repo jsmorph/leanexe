@@ -1,5 +1,9 @@
-import Demos.StreamFold.StreamHost
-import Verified.Wasi.Observed
+module
+
+public import Demos.StreamFold.StreamHost
+public import Verified.Wasi.Observed
+
+@[expose] public section
 
 namespace Demos.StreamFold
 

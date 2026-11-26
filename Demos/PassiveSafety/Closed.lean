@@ -1,4 +1,8 @@
-import Library.Numerics.Interval.Enclose
+module
+
+public import Library.Numerics.Interval.Enclose
+
+@[expose] public section
 
 /-!
 The closed form of `Model.lean` in interval arithmetic, and the Taylor forms of the squared

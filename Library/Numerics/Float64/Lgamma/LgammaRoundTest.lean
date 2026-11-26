@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64RoundNearest
-import LeanExe.ProofKit.F64TwoSum
+module
+
+public import LeanExe.ProofKit.F64RoundNearest
+public import LeanExe.ProofKit.F64TwoSum
+
+@[expose] public section
 
 /-!
 The rounding test of CORE-MATH's fast paths.  The code returns `ub = fh + (fl + eps)` when it

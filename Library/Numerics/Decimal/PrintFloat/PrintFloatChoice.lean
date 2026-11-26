@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatPick
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatPick
+
+@[expose] public section
 
 /-!
 The choice of `PrintFloat.shortest` at the top exponent `J`.  `range_inside` reads the multipliers

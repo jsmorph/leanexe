@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Sinh.CoshSmall
-import Library.Numerics.Float64.Sinh.CoshMid
-import Library.Numerics.Float64.Sinh.SinhLdexp
+module
+
+public import Library.Numerics.Float64.Sinh.CoshSmall
+public import Library.Numerics.Float64.Sinh.CoshMid
+public import Library.Numerics.Float64.Sinh.SinhLdexp
+
+@[expose] public section
 
 /-!
 `Sinh.cosh` within one step of `cosh x` on every finite input, and its exceptional results.  The

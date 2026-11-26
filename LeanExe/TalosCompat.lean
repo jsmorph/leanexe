@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Interpreter.Wasm.Wp.Tactic
+module
+
+public import LeanExe.Base
+public import Interpreter.Wasm.Wp.Tactic
+
+@[expose] public section
 
 /-!
 # Talos compatibility declarations

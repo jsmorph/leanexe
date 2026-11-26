@@ -1,6 +1,10 @@
-import Demos.Orbit.GibbsBox
-import Verified.Reflect.Command
-import Demos.Orbit.Flat
+module
+
+public import Demos.Orbit.GibbsBox
+public import Verified.Reflect.Command
+public import Demos.Orbit.Flat
+
+@[expose] public section
 
 namespace Demos.Orbit
 

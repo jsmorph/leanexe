@@ -1,5 +1,9 @@
-import Demos.Orbit.GibbsBox
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Orbit.GibbsBox
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Orbit
 

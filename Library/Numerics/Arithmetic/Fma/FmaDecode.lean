@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.Fma.FmaWords
-import LeanExe.ProofKit.F64Exact
+module
+
+public import Library.Numerics.Arithmetic.Fma.FmaWords
+public import LeanExe.ProofKit.F64Exact
+
+@[expose] public section
 
 /-!
 The fields of an operand as `Fma.fmaBits` decodes them, and the value of a finite operand.  A

@@ -1,9 +1,13 @@
-import Library.Hashing.Sha2.Equiv.SHA256.Padding.Layout
-import Library.Hashing.Sha2.Equiv.SHA256.Padding.ByteDecoding
-import Library.Hashing.Sha2.Equiv.SHA256.Padding.Parsing
-import Library.Hashing.Sha2.Equiv.SHA256.Digest
-import Library.Hashing.Sha2.Equiv.SHA256.ToU32s
-import Library.Hashing.Sha2.Equiv.Common.ArrayFold
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA256.Padding.Layout
+public import Library.Hashing.Sha2.Equiv.SHA256.Padding.ByteDecoding
+public import Library.Hashing.Sha2.Equiv.SHA256.Padding.Parsing
+public import Library.Hashing.Sha2.Equiv.SHA256.Digest
+public import Library.Hashing.Sha2.Equiv.SHA256.ToU32s
+public import Library.Hashing.Sha2.Equiv.Common.ArrayFold
+
+@[expose] public section
 
 /-! # SHA-256 padding: streaming refactor of `Impl.sha256`
 

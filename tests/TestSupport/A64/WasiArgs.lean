@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 /-!
 A command that writes its arguments, for the runs of the stubs of `args_sizes_get` and `args_get`

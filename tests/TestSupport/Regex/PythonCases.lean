@@ -1,4 +1,8 @@
-import TestSupport.Regex.Generate
+module
+
+public import TestSupport.Regex.Generate
+
+@[expose] public section
 
 /-! Writes cases for `tests/regex/python_check.py`: one line per pattern and input, with the
 pattern's postfix words, the input's bytes in hexadecimal, and the answer of

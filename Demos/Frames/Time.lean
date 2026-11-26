@@ -1,5 +1,9 @@
-import Library.Numerics.Interval.Functions
-import LeanExe.Dialect.Loop
+module
+
+public import Library.Numerics.Interval.Functions
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 TAI, TT, and UT1 from UTC with a leap-second table, as `requirements.md` states.  `timeScales`

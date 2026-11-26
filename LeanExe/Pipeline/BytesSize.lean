@@ -1,4 +1,8 @@
-import LeanExe.Pipeline.Bytes
+module
+
+public import LeanExe.Pipeline.Bytes
+
+@[expose] public section
 
 /-! The size of a buffer that a store holds, which the call theorems of functions on buffers use
 to meet the size premises of their programs' equations. -/

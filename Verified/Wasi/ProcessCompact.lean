@@ -1,6 +1,10 @@
-import Verified.Wasi.ProcessMemory
-import Verified.Wasi.CompactHeap
-import Verified.Wasi.PurePrefix
+module
+
+public import Verified.Wasi.ProcessMemory
+public import Verified.Wasi.CompactHeap
+public import Verified.Wasi.PurePrefix
+
+@[expose] public section
 
 /-! The process state between steps, and the compaction in the process module. -/
 

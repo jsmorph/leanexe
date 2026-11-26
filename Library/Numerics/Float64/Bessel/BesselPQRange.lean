@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselPQEval
+module
+
+public import Library.Numerics.Float64.Bessel.BesselPQEval
+
+@[expose] public section
 
 /-!
 `Bessel.pAsym` and the `Q` term of the code on one of fdlibm's ranges, from the checks of

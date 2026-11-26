@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log.LogTheorem
-import Verified.Master
+module
+
+public import Library.Numerics.Float64.Log.LogTheorem
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Log
 

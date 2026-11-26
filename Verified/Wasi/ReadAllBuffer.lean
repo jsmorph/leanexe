@@ -1,5 +1,9 @@
-import Verified.Wasi.ReadSteps
-import LeanExe.Wasi.ReadAll
+module
+
+public import Verified.Wasi.ReadSteps
+public import LeanExe.Wasi.ReadAll
+
+@[expose] public section
 
 /-! The buffer of `readAll` across one read into its tail.  The host writes only the scratch
 bytes and the 4,096 bytes after the bytes held, which lie inside the buffer's payload, so the

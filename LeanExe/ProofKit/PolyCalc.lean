@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.AsinRemainder
-import LeanExe.ProofKit.PolyCalculus
+module
+
+public import LeanExe.ProofKit.AsinRemainder
+public import LeanExe.ProofKit.PolyCalculus
+
+@[expose] public section
 
 /-!
 Exact rational evaluation of `PolyBound` polynomials, for proofs whose constants and residuals the

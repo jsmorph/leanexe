@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Bytes
+module
+
+public import LeanExe.Dialect.Bytes
+
+@[expose] public section
 
 /-!
 Flat descriptions of WASI Preview 1 functions.  A description lists the core WebAssembly form of

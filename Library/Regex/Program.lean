@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Pipeline.Implements
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! A matcher for the regular expressions of `Library.Regex.Spec`, by the position automaton of
 McNaughton and Yamada and of Glushkov.  Each set of bytes in a pattern is a position, numbered

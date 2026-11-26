@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.ModInverse.Proof
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Numerics.Arithmetic.ModInverse.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-! The verified compiler's module of the modular inverse.  The compiler translates the tail
 recursion of `euclid` into a loop.  `modInverse_callSpec` composes the generated

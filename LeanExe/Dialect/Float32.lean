@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Init.Data.SInt.Float32
+module
+
+public import LeanExe.Base
+public import Init.Data.SInt.Float32
+
+@[expose] public section
 
 namespace LeanExe.Float32
 

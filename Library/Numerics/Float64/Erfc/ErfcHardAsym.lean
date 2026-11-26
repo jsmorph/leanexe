@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcHardRows
-import Library.Numerics.Float64.Erfc.ErfcHardAsym0
-import Library.Numerics.Float64.Erfc.ErfcHardAsym1
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcHardRows
+public import Library.Numerics.Float64.Erfc.ErfcHardAsym0
+public import Library.Numerics.Float64.Erfc.ErfcHardAsym1
+
+@[expose] public section
 
 /-!
 The 22 hard cases of `Erfc` for `x > 0x1.b59ffb450828cp+0` (the table at offset 0 of

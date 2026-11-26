@@ -1,6 +1,10 @@
-import Verified.Wasi.HandleCheck
-import Verified.Wasi.SysWords
-import LeanExe.Wasi.Bracket
+module
+
+public import Verified.Wasi.HandleCheck
+public import Verified.Wasi.SysWords
+public import LeanExe.Wasi.Bracket
+
+@[expose] public section
 
 /-! The theorems of the handle check.  `Command.handles` states that the meaning of a command
 that passes the check keeps the discipline of `withOpen` from every stack of open brackets that

@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.WasiStubs
-import LeanExe.A64.WasiClocks
+module
+
+public import LeanExe.A64.Proof.WasiStubs
+public import LeanExe.A64.WasiClocks
+
+@[expose] public section
 
 /-!
 The runs of the stubs of `LeanExe/A64/WasiClocks.lean` in the program's model, between the calls

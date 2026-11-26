@@ -1,4 +1,8 @@
-import Verified.AlignedCopy
+module
+
+public import Verified.AlignedCopy
+
+@[expose] public section
 
 /-!
 The unflagged theorems whose flagged counterparts take `CopyCodeX` or `ReadReleaseX` and are in

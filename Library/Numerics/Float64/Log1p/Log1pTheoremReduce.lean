@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log1p.Log1pTheoremTail
-import LeanExe.ProofKit.F64ExactProduct
+module
+
+public import Library.Numerics.Float64.Log1p.Log1pTheoremTail
+public import LeanExe.ProofKit.F64ExactProduct
+
+@[expose] public section
 
 /-!
 The normalization in `Log1pTheoremBranches.mainTail`.  For a positive normal `u` with exponent

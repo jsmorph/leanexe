@@ -1,5 +1,9 @@
-import Demos.Rcv.ReadProgram
-import Library.Numerics.Decimal.Int64Text.Program
+module
+
+public import Demos.Rcv.ReadProgram
+public import Library.Numerics.Decimal.Int64Text.Program
+
+@[expose] public section
 
 /-!
 The report's printer in the verified compiler's dialect.  `printReport b n res` prints the report of

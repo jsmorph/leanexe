@@ -1,5 +1,9 @@
-import LeanExe.M7.Init
-import LeanExe.M7.Proof.Boot
+module
+
+public import LeanExe.M7.Init
+public import LeanExe.M7.Proof.Boot
+
+@[expose] public section
 
 /-!
 The run of a board's initialization of `LeanExe/M7/Init.lean`.  `run_op` runs the code of one

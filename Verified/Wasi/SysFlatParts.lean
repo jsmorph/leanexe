@@ -1,8 +1,12 @@
-import Verified.Wasi.SysFlatLoads
-import Verified.Wasi.ReadReady
-import Verified.Wasi.ReadDiscard
-import Verified.Wasi.ReadProof
-import Verified.Wasi.RuntimeFrame
+module
+
+public import Verified.Wasi.SysFlatLoads
+public import Verified.Wasi.ReadReady
+public import Verified.Wasi.ReadDiscard
+public import Verified.Wasi.ReadProof
+public import Verified.Wasi.RuntimeFrame
+
+@[expose] public section
 
 /-! Parts of a flat call: the capacity of its output, and the output and the frame that the host
 call leaves. -/

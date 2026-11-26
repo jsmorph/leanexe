@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaDD
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaDD
+
+@[expose] public section
 
 /-!
 `Tgamma.mulDD`, the product of two double-doubles: `a = ch xh` rounded, and the low part

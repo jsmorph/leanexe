@@ -1,7 +1,11 @@
-import Library.Numerics.Reductions.Float64.Compiled
-import Library.Numerics.Reductions.Binary64
-import LeanExe.Dialect.ArrayLemmas
-import Verified.Master
+module
+
+public import Library.Numerics.Reductions.Float64.Compiled
+public import Library.Numerics.Reductions.Binary64
+public import LeanExe.Dialect.ArrayLemmas
+public import Verified.Master
+
+@[expose] public section
 
 /-!
 The master theorems of the binary64 reductions.  `total` and `select` are left-to-right sums,

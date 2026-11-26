@@ -1,4 +1,8 @@
-import Verified.Call
+module
+
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The master statement of an export of a verified compilation.  `Master m tables name B D R` states

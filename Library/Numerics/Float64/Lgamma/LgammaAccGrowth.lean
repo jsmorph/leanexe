@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccLower
-import Mathlib.Analysis.Complex.ExponentialBounds
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccLower
+public import Mathlib.Analysis.Complex.ExponentialBounds
+
+@[expose] public section
 
 /-!
 Lower bounds on `log Γ y` that turn the absolute part `y ε` of the error of

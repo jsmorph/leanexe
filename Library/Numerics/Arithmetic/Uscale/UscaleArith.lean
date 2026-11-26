@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.Uscale.UscaleBase
-import Mathlib.Data.Nat.Size
+module
+
+public import Library.Numerics.Arithmetic.Uscale.UscaleBase
+public import Mathlib.Data.Nat.Size
+
+@[expose] public section
 
 /-!
 The values of `Uscale`'s shift, comparison, subtraction, and bit lengths.  `shl a k` is the product

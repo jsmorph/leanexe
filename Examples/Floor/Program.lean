@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-!
 Floor division and the floor of the mean on `Int64`.  `floorDiv` corrects Lean's truncating

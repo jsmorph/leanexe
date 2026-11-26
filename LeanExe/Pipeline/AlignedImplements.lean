@@ -1,5 +1,9 @@
-import LeanExe.Pipeline.Implements
-import LeanExe.Pipeline.AlignedHeap
+module
+
+public import LeanExe.Pipeline.Implements
+public import LeanExe.Pipeline.AlignedHeap
+
+@[expose] public section
 
 /-!
 The alignment predicates between the compiler and the translator to C.  `AlignedInput` is the

@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.GammaFits
+module
+
+public import LeanExe.ProofKit.GammaFits
+
+@[expose] public section
 
 /-!
 CORE-MATH's Stirling fits from a threshold `X ≥ 16` on, with the fit's constant and its polynomial

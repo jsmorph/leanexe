@@ -1,4 +1,8 @@
-import LeanExe.M7.Proof.Machine
+module
+
+public import LeanExe.M7.Proof.Machine
+
+@[expose] public section
 
 /-!
 Runs of straight-line code and of branches in the Cortex-M7 model.  `execSeq` executes a list of

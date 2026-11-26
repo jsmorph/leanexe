@@ -1,5 +1,9 @@
-import Verified.Wasi.PureTransportExecution
-import LeanExe.Pipeline.Aborts
+module
+
+public import Verified.Wasi.PureTransportExecution
+public import LeanExe.Pipeline.Aborts
+
+@[expose] public section
 
 namespace Verified.Wasi.PureTransport
 

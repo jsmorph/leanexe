@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaSpecial
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64TwoSum
-import LeanExe.ProofKit.GammaBasic
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaSpecial
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64TwoSum
+public import LeanExe.ProofKit.GammaBasic
+
+@[expose] public section
 
 /-!
 The second result of `Lgamma.lgammaR` is the sign of `Γ x` at every finite input other than zero

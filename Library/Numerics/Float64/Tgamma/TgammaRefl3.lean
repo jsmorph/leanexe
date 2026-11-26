@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaRefl2
-import LeanExe.ProofKit.F64RelativeSteps
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRefl2
+public import LeanExe.ProofKit.F64RelativeSteps
+
+@[expose] public section
 
 /-!
 The word operations of the path of `tgammaWith` below `-3`, and one step for results of any size.

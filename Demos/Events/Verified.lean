@@ -1,5 +1,9 @@
-import Demos.Events.Flat
-import Verified.Reflect.Command
+module
+
+public import Demos.Events.Flat
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The event-window program of `Demos/Events/Program.lean`, compiled by the verified compiler
 with the interval operations, the library's `sin` and `cos`, the enclosure of Kepler's equation,

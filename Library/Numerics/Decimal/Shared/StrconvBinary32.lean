@@ -1,6 +1,10 @@
-import LeanExe.Base
-import CodeLib.IEEE32.Roundoff
-import Mathlib.Data.Finset.Max
+module
+
+public import LeanExe.Base
+public import CodeLib.IEEE32.Roundoff
+public import Mathlib.Data.Finset.Max
+
+@[expose] public section
 
 /-!
 The nearest-even binary32 reference, defined as ProofKit defines the binary64 one in

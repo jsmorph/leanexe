@@ -1,7 +1,11 @@
-import Library.Numerics.MultiPrecision.Program
-import Library.Numerics.MultiPrecision.Spec
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
+module
+
+public import Library.Numerics.MultiPrecision.Program
+public import Library.Numerics.MultiPrecision.Spec
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+
+@[expose] public section
 
 /-! The proofs that Algorithms A, S, and M compute the digits of the sum, the difference, and the
 product.  `prefixValue u q` is the number of the first `q` digits of `u`.  Each loop keeps an

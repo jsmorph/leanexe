@@ -1,6 +1,10 @@
-import Demos.RandomHistogram.Program
-import Verified.Wasi
-import LeanExe.Wasi.WriteAll
+module
+
+public import Demos.RandomHistogram.Program
+public import Verified.Wasi
+public import LeanExe.Wasi.WriteAll
+
+@[expose] public section
 
 /-! The WASI command of the random-residue histogram.  `main` reads the arguments with `args` and N
 from them with `parseN`.  It then draws N words with `randomGet` into a buffer of 4,096 bytes, at

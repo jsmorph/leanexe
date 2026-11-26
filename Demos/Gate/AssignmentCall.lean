@@ -1,6 +1,10 @@
-import Demos.Gate.AssignmentVerified
-import Demos.Gate.AssignmentSoundness
-import Verified.Call
+module
+
+public import Demos.Gate.AssignmentVerified
+public import Demos.Gate.AssignmentSoundness
+public import Verified.Call
+
+@[expose] public section
 
 /-! The call of the module's export `check` and its composition with `check_sound`.
 `check_call` states that the export returns `check c perm u v` without a trap from every ready

@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.CeilSqrt.Compiled
-import Library.Numerics.Arithmetic.CeilSqrt.Proof
-import Verified.Master
+module
+
+public import Library.Numerics.Arithmetic.CeilSqrt.Compiled
+public import Library.Numerics.Arithmetic.CeilSqrt.Proof
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Arithmetic.CeilSqrt
 

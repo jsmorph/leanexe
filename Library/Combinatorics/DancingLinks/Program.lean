@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.RepeatWhile
+module
+
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.RepeatWhile
+
+@[expose] public section
 
 /-! Exact cover by Algorithm X with dancing links, TAOCP §7.2.2.1.  The input `x` holds the number
 of items `N = x[0]` and then the options, each a run of nonzero item numbers, the runs separated by

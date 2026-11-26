@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.RealExpError
-import LeanExe.ProofKit.F64AddBounds
-import LeanExe.ProofKit.F64NearestBinade
-import LeanExe.ProofKit.F64Bits
+module
+
+public import LeanExe.ProofKit.RealExpError
+public import LeanExe.ProofKit.F64AddBounds
+public import LeanExe.ProofKit.F64NearestBinade
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.ExpTinyError
 open CodeLib.IEEE64 F64NearestNonnegative F64NearestEven F64NearestBinade

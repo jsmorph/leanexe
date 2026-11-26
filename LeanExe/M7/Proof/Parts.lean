@@ -1,5 +1,9 @@
-import LeanExe.M7.Parts
-import LeanExe.M7.Proof.Boot
+module
+
+public import LeanExe.M7.Parts
+public import LeanExe.M7.Proof.Boot
+
+@[expose] public section
 
 /-!
 The checks of `LeanExe/M7/Parts.lean` give the generator's program and its bytes.  `slice_append`

@@ -1,7 +1,11 @@
-import Demos.Euler.Program
-import Demos.Euler.Words
-import LeanExe.ProofKit.F64Admissibility
-import Demos.Euler.Equations.Flux
+module
+
+public import Demos.Euler.Program
+public import Demos.Euler.Words
+public import LeanExe.ProofKit.F64Admissibility
+public import Demos.Euler.Equations.Flux
+
+@[expose] public section
 
 /-! The solvers' state guard implies an admissible real state: positive density and positive
 pressure in exact arithmetic with γ = 7/5.  The narrow guard compares words.  The energy guard

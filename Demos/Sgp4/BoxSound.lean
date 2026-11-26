@@ -1,5 +1,9 @@
-import Demos.Sgp4.Box
-import Demos.Sgp4.Model
+module
+
+public import Demos.Sgp4.Box
+public import Demos.Sgp4.Model
+
+@[expose] public section
 
 /-!
 Soundness of the enclosing SGP4 program.  For intervals that contain an element set and a time,

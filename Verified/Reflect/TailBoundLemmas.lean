@@ -1,5 +1,9 @@
-import Verified.TailAllocExpand
-import Verified.TailTransport
+module
+
+public import Verified.TailAllocExpand
+public import Verified.TailTransport
+
+@[expose] public section
 
 namespace Verified
 

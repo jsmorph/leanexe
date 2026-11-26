@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.Compiled
-import Library.Numerics.Float64.Lgamma.LgammaWithin
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Lgamma.Compiled
+public import Library.Numerics.Float64.Lgamma.LgammaWithin
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorem for `lgamma` in the module of `Lgamma.lean`, whose export `lgamma` is function 44.

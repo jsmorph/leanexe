@@ -1,5 +1,9 @@
-import Library.Hashing.Sha2.Equiv.Common.Loop
-import Library.Hashing.Sha2.Spec.HashAlgorithms
+module
+
+public import Library.Hashing.Sha2.Equiv.Common.Loop
+public import Library.Hashing.Sha2.Spec.HashAlgorithms
+
+@[expose] public section
 
 -- Bounds discharge inside `for h : t in [a:b] do` ranges; see the
 -- matching note in `equiv/SHA256/Foldl/Schedule.lean`.

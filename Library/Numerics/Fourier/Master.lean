@@ -1,5 +1,9 @@
-import Library.Numerics.Fourier.Transform
-import Verified.Master
+module
+
+public import Library.Numerics.Fourier.Transform
+public import Verified.Master
+
+@[expose] public section
 
 /-!
 The master theorems of the discrete Fourier transform.  A signal of `n` complex values

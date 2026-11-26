@@ -1,7 +1,11 @@
-import Verified.Wasi.OwnedScratch
-import Verified.Wasi.Code
-import Verified.Bytes.StaticInput
-import Verified.Wasi.Cleanup
+module
+
+public import Verified.Wasi.OwnedScratch
+public import Verified.Wasi.Code
+public import Verified.Bytes.StaticInput
+public import Verified.Wasi.Cleanup
+
+@[expose] public section
 
 namespace Verified.Wasi
 

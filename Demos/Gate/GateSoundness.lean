@@ -1,6 +1,10 @@
-import Demos.Gate.GateProgram
-import Demos.Gate.Soundness
-import Demos.Gate.Mahalanobis
+module
+
+public import Demos.Gate.GateProgram
+public import Demos.Gate.Soundness
+public import Demos.Gate.Mahalanobis
+
+@[expose] public section
 
 /-!
 Soundness of the gate.  `gate_sound` states that an accepted result of `gate` belongs to a

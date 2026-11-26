@@ -1,7 +1,11 @@
-import Library.Numerics.Interval.Program
-import Library.Numerics.Float64.Erf.Program
-import Library.Numerics.Float64.Erfc.Program
-import LeanExe.Dialect.Loop
+module
+
+public import Library.Numerics.Interval.Program
+public import Library.Numerics.Float64.Erf.Program
+public import Library.Numerics.Float64.Erfc.Program
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 The two-dimensional probability of collision as an interval.  `pcWith` splits `[-r, r]` into `n`

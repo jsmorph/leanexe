@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Sinpi.SinpiTinySplit
-import Library.Numerics.Float64.Sinpi.SinpiTinyReal
-import LeanExe.ProofKit.F64RelativeStepLow
-import Library.Numerics.Float64.Sinpi.SinpiSin
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiTinySplit
+public import Library.Numerics.Float64.Sinpi.SinpiTinyReal
+public import LeanExe.ProofKit.F64RelativeStepLow
+public import Library.Numerics.Float64.Sinpi.SinpiSin
+
+@[expose] public section
 
 /-!
 `Sinpi.sinpi` and `Sinpi.tanpi` below `2 ^ -29` in magnitude: within one step of `sin (π x)` and

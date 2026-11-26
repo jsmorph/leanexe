@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack
+
+@[expose] public section
 
 /-!
 The stages of `cr_erf_fast` below `1/16` (`Erfc.erfFastTiny`), in the form of `ErfcTrack`.  The

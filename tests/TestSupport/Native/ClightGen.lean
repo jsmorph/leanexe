@@ -1,5 +1,9 @@
-import LeanExe.Native.Clight.Run
-import LeanExe.Native.Print
+module
+
+public import LeanExe.Native.Clight.Run
+public import LeanExe.Native.Print
+
+@[expose] public section
 
 /-!
 Random Clight programs for the differential test of `LClight.run` against CompCert's reference

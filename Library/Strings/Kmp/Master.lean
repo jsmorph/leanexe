@@ -1,5 +1,9 @@
-import Library.Strings.Kmp.Compiled
-import Verified.Master
+module
+
+public import Library.Strings.Kmp.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Strings.Kmp
 

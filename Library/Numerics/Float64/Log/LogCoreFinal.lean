@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Log.LogCoreBits
-import LeanExe.ProofKit.F64ErrorTrack
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64PackRelative
-import LeanExe.ProofKit.PolyBound
-import LeanExe.ProofKit.F64ExactProduct
+module
+
+public import Library.Numerics.Float64.Log.LogCoreBits
+public import LeanExe.ProofKit.F64ErrorTrack
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64PackRelative
+public import LeanExe.ProofKit.PolyBound
+public import LeanExe.ProofKit.F64ExactProduct
+
+@[expose] public section
 
 /-!
 The error of `LogCoreBits.finalOf`, the arithmetic of `Log.logCore` after `r`, `kd`, and `logc`.

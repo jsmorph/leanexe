@@ -1,9 +1,13 @@
-import Demos.RunningSumFp.Limits
-import Demos.RunningSumFp.Module
-import Demos.RunningSumFp.ParseCharges
-import Verified.ChargeFacts
-import Verified.Wasi.BudgetTactics
-import Verified.Wasi.ResourceRules
+module
+
+public import Demos.RunningSumFp.Limits
+public import Demos.RunningSumFp.Module
+public import Demos.RunningSumFp.ParseCharges
+public import Verified.ChargeFacts
+public import Verified.Wasi.BudgetTactics
+public import Verified.Wasi.ResourceRules
+
+@[expose] public section
 
 /-! The allocation charges of the binary64 running sum's `begin` and steps, and their bounds for
 states within the limit. -/

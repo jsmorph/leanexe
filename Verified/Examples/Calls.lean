@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: functions, each of which may call the
 functions before it, with a call as the argument of another call and a call that returns a

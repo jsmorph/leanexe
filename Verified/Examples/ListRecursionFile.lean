@@ -1,5 +1,9 @@
-import Verified.Examples.ListRecursion
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.ListRecursion
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/listrecursion.wasm`: the file holds
 `encode ListRecursion.compiled.module`, and it decodes to the module of

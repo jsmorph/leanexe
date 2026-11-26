@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.GammaReflect
-import Library.Numerics.Float64.Lgamma.LgammaRootBase
+module
+
+public import LeanExe.ProofKit.GammaReflect
+public import Library.Numerics.Float64.Lgamma.LgammaRootBase
+
+@[expose] public section
 
 /-!
 `LgammaApprox.DbFact`: `lgamma` at each of the 19 hard cases of `Lgamma.database` (`lgamma.c`,

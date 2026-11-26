@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.GammaReflect
-import LeanExe.ProofKit.GammaConvex
-import LeanExe.ProofKit.PolyChecks
+module
+
+public import LeanExe.ProofKit.GammaReflect
+public import LeanExe.ProofKit.GammaConvex
+public import LeanExe.ProofKit.PolyChecks
+
+@[expose] public section
 
 /-!
 Taylor models of `lgamma` on intervals of negative numbers, and the kernel check of CORE-MATH's

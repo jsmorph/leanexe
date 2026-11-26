@@ -1,6 +1,10 @@
-import Demos.Gpt32.Program
-import LeanExe.Dialect.Build
-import Verified.Reflect.Command
+module
+
+public import Demos.Gpt32.Program
+public import LeanExe.Dialect.Build
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-!
 A layer of GPT-2 in binary32 as a bare-metal program for AArch64: the step of one transformer

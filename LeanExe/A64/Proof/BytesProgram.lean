@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.BytesMain
-import LeanExe.Runtime.Defs
+module
+
+public import LeanExe.A64.Proof.BytesMain
+public import LeanExe.Runtime.Defs
+
+@[expose] public section
 
 /-!
 The run of a program of `genBytesProgram`, which reads a length and a message from the UART,

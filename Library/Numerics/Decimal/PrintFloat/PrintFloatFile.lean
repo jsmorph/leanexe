@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatBytes
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatBytes
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `build/verified/printfloat.wasm` is written by `tools/Emit.lean`, with
 `tools/leanrun --timeout 10m lake env lean Library/Numerics/Decimal/PrintFloat/PrintFloatFile.lean`: the file holds

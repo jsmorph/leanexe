@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowPositive
+module
+
+public import Library.Numerics.Float64.Pow.PowPositive
+
+@[expose] public section
 
 /-!
 The accuracy theorem of `Pow.pow` for a positive finite `x` and a finite `y`:

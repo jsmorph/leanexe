@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Sinh.SinhWords
-import LeanExe.ProofKit.F64NearestBand
-import LeanExe.ProofKit.F64NearestDiv
+module
+
+public import Library.Numerics.Float64.Sinh.SinhWords
+public import LeanExe.ProofKit.F64NearestBand
+public import LeanExe.ProofKit.F64NearestDiv
+
+@[expose] public section
 
 /-!
 `Sinh.cosh` within one step of `cosh x` for `0.34657359 ≤ abs(x) < 22`, where the code returns

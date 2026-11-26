@@ -1,5 +1,9 @@
-import Demos.Events.Program
-import TestSupport.Host
+module
+
+public import Demos.Events.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the event-window module for `tests/verified/run.sh --cases events`: the shadow of a
 low orbit with the three cones and a padding, a geostationary orbit, an eccentric orbit, the

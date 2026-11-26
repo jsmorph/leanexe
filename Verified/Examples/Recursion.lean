@@ -1,5 +1,9 @@
-import Library.Numerics.Reductions.Float64.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Reductions.Float64.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: recursion.  Each definition recurses by
 well-founded recursion on a word measure, and its meaning is the definition itself, which solves

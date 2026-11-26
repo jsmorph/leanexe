@@ -1,4 +1,8 @@
-import Verified.FunRelocation
+module
+
+public import Verified.FunRelocation
+
+@[expose] public section
 
 namespace Verified
 

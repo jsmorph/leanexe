@@ -1,5 +1,9 @@
-import Verified.Kernel.Code
-import LeanExe.ProofKit.F32Bits
+module
+
+public import Verified.Kernel.Code
+public import LeanExe.ProofKit.F32Bits
+
+@[expose] public section
 
 namespace Verified.Kernel
 

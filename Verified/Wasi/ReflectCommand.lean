@@ -1,14 +1,18 @@
-import Verified.Wasi.ReflectProgram
-import Verified.Wasi.ReflectEncoding
-import Verified.Wasi.ReflectValidity
-import Verified.Wasi.SyntaxCheck
-import Verified.Wasi.Correct
-import Verified.Wasi.ProgramInitial
-import Verified.Wasi.StaticPool
-import Verified.Wasi.NativeTotal
-import Verified.Wasi.CommandTotal
-import Verified.Wasi.Stack
-import Verified.Wasi.Handles
+module
+
+public import Verified.Wasi.ReflectProgram
+public import Verified.Wasi.ReflectEncoding
+public import Verified.Wasi.ReflectValidity
+public import Verified.Wasi.SyntaxCheck
+public import Verified.Wasi.Correct
+public import Verified.Wasi.ProgramInitial
+public import Verified.Wasi.StaticPool
+public import Verified.Wasi.NativeTotal
+public import Verified.Wasi.CommandTotal
+public import Verified.Wasi.Stack
+public import Verified.Wasi.Handles
+
+@[expose] public section
 
 namespace Verified.Wasi.Reflect
 

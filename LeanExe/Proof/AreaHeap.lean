@@ -1,5 +1,9 @@
-import LeanExe.Proof.Area
-import LeanExe.Pipeline.Runtime
+module
+
+public import LeanExe.Proof.Area
+public import LeanExe.Pipeline.Runtime
+
+@[expose] public section
 
 /-!
 The allocator's facts at the store `initStore m cap` of `LeanExe/Proof/Area.lean`, the module's

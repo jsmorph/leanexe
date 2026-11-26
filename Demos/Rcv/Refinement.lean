@@ -1,4 +1,8 @@
-import Demos.Rcv.RefineRule
+module
+
+public import Demos.Rcv.RefineRule
+
+@[expose] public section
 
 /-!
 The refinement of the count over words: `count_eq` states that `Demos.Rcv.Program.count`, the

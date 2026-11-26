@@ -1,15 +1,19 @@
-import Library.Numerics.Float64.Tgamma.TgammaApprox
-import Library.Numerics.Float64.Tgamma.TgammaPolyMainEdge
-import Library.Numerics.Float64.Tgamma.TgammaPolySmall
-import Library.Numerics.Float64.Tgamma.TgammaPolySmallAcc
-import Library.Numerics.Float64.Tgamma.TgammaAccRangeA
-import Library.Numerics.Float64.Tgamma.TgammaAccRangeB
-import Library.Numerics.Float64.Tgamma.TgammaAccRangeC
-import Library.Numerics.Float64.Tgamma.TgammaAsymFitB
-import Library.Numerics.Float64.Tgamma.TgammaAsymFitC
-import Library.Numerics.Float64.Tgamma.TgammaLogTables
-import Library.Numerics.Float64.Tgamma.TgammaExpTables
-import Library.Numerics.Float64.Tgamma.TgammaSinTables
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+public import Library.Numerics.Float64.Tgamma.TgammaPolyMainEdge
+public import Library.Numerics.Float64.Tgamma.TgammaPolySmall
+public import Library.Numerics.Float64.Tgamma.TgammaPolySmallAcc
+public import Library.Numerics.Float64.Tgamma.TgammaAccRangeA
+public import Library.Numerics.Float64.Tgamma.TgammaAccRangeB
+public import Library.Numerics.Float64.Tgamma.TgammaAccRangeC
+public import Library.Numerics.Float64.Tgamma.TgammaAsymFitB
+public import Library.Numerics.Float64.Tgamma.TgammaAsymFitC
+public import Library.Numerics.Float64.Tgamma.TgammaLogTables
+public import Library.Numerics.Float64.Tgamma.TgammaExpTables
+public import Library.Numerics.Float64.Tgamma.TgammaSinTables
+
+@[expose] public section
 
 /-!
 Proofs of the approximation statements of `TgammaApprox`, which the floating-point proof of

@@ -1,5 +1,9 @@
-import LeanExe.M7.Isla.Arith
-import LeanExe.M7.Isla.Profile
+module
+
+public import LeanExe.M7.Isla.Arith
+public import LeanExe.M7.Isla.Profile
+
+@[expose] public section
 
 /-!
 Theorems of `Agrees` for the forms of `LeanExe/M7/Machine.lean` that compute `AddWithCarry`, from

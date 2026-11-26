@@ -1,6 +1,10 @@
-import LeanExe.Base
-import CodeLib.IEEE64.Roundoff
-import Mathlib.Data.Finset.Max
+module
+
+public import LeanExe.Base
+public import CodeLib.IEEE64.Roundoff
+public import Mathlib.Data.Finset.Max
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64NearestNonnegative
 open CodeLib.IEEE64

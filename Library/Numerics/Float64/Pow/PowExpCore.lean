@@ -1,10 +1,14 @@
-import Library.Numerics.Float64.Pow.PowExpEval
-import Library.Numerics.Float64.Exp.ArmTight
-import Library.Numerics.Float64.Exp.ExpResidualFloat
-import Library.Numerics.Float64.Exp.ExpEvaluationFloat
-import Library.Numerics.Float64.Exp.ExpCoreBounds
-import Library.Numerics.Float64.Exp.ExpFarRange
-import Library.Numerics.Float64.Pow.Compiled
+module
+
+public import Library.Numerics.Float64.Pow.PowExpEval
+public import Library.Numerics.Float64.Exp.ArmTight
+public import Library.Numerics.Float64.Exp.ExpResidualFloat
+public import Library.Numerics.Float64.Exp.ExpEvaluationFloat
+public import Library.Numerics.Float64.Exp.ExpCoreBounds
+public import Library.Numerics.Float64.Exp.ExpFarRange
+public import Library.Numerics.Float64.Pow.Compiled
+
+@[expose] public section
 
 /-!
 `Pow.powExpCore` on `Exp.expTable` with `signBias = 0`: Arm's `exp_inline` for `x + xtail`.  The

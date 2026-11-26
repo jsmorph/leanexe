@@ -1,22 +1,26 @@
-import Library.Numerics.Float64.Log1p.Program
-import Library.Numerics.Float64.Atan.Program
-import Library.Numerics.Float64.Asin.Program
-import Library.Numerics.Float64.Tan.Program
-import Library.Numerics.Float64.Sinh.Program
-import Library.Numerics.Float64.Asinh.Program
-import Library.Numerics.Float64.Exp2.Program
-import Library.Numerics.Float64.Log2.Program
-import Library.Numerics.Float64.Log10.Program
-import Library.Numerics.Float64.Pow.Program
-import Library.Numerics.Float64.Sinpi.Program
-import Library.Numerics.Float64.Erf.Program
-import Library.Numerics.Float64.Erfc.Program
-import Library.Numerics.Float64.Bessel.Program
-import Library.Numerics.Float64.Tgamma.Program
-import Library.Numerics.Float64.Lgamma.Program
-import Library.Numerics.Decimal.ParseFloat.Program
-import Library.Numerics.Decimal.PrintFloat.Program
-import TestSupport.Host
+module
+
+public import Library.Numerics.Float64.Log1p.Program
+public import Library.Numerics.Float64.Atan.Program
+public import Library.Numerics.Float64.Asin.Program
+public import Library.Numerics.Float64.Tan.Program
+public import Library.Numerics.Float64.Sinh.Program
+public import Library.Numerics.Float64.Asinh.Program
+public import Library.Numerics.Float64.Exp2.Program
+public import Library.Numerics.Float64.Log2.Program
+public import Library.Numerics.Float64.Log10.Program
+public import Library.Numerics.Float64.Pow.Program
+public import Library.Numerics.Float64.Sinpi.Program
+public import Library.Numerics.Float64.Erf.Program
+public import Library.Numerics.Float64.Erfc.Program
+public import Library.Numerics.Float64.Bessel.Program
+public import Library.Numerics.Float64.Tgamma.Program
+public import Library.Numerics.Float64.Lgamma.Program
+public import Library.Numerics.Decimal.ParseFloat.Program
+public import Library.Numerics.Decimal.PrintFloat.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Module cases of the numerical functions whose modules no other case file covers: each export
 at the special values, at points of its domain's boundary, and over a sweep of its range.  The

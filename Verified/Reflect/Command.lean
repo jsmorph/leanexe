@@ -1,14 +1,18 @@
-import LeanExe.Native.Subset
-import LeanExe.Native.Proof.Parts
-import Verified.Native
-import Verified.Reflect.Definitions
-import Verified.Reflect.TailDefinition
-import Verified.Reflect.TailOptions
-import Verified.Reflect.RecursiveTypes
-import Verified.Reflect.ScalarProof
-import Verified.ProgramStatic
-import Verified.AlignedProgram
-import Verified.AlignedNative
+module
+
+public import LeanExe.Native.Subset
+public import LeanExe.Native.Proof.Parts
+public import Verified.Native
+public import Verified.Reflect.Definitions
+public import Verified.Reflect.TailDefinition
+public import Verified.Reflect.TailOptions
+public import Verified.Reflect.RecursiveTypes
+public import Verified.Reflect.ScalarProof
+public import Verified.ProgramStatic
+public import Verified.AlignedProgram
+public import Verified.AlignedNative
+
+@[expose] public section
 
 namespace Verified.Reflect
 

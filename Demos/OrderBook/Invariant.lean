@@ -1,5 +1,9 @@
-import Demos.OrderBook.Abstract
-import Demos.OrderBook.Theorems
+module
+
+public import Demos.OrderBook.Abstract
+public import Demos.OrderBook.Theorems
+
+@[expose] public section
 
 /-! The representation invariant of [the program's](Program.lean) book and the refinement of one
 step.  `Inv` states what the program's book must satisfy: arrays of the program's sizes, the chain

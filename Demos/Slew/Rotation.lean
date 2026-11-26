@@ -1,5 +1,9 @@
-import Demos.Slew.Normalize
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+module
+
+public import Demos.Slew.Normalize
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+
+@[expose] public section
 
 /-! Rotations as quaternion actions.  `act q v` is the vector part of `q v q*`, which for a unit
 quaternion `q` equals the program's rotation formula `Quat.rot q v` (`rot_eq_act`).  The action

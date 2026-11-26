@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 A calculator over an enumeration of operations and a structure of state: the first

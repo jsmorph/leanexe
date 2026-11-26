@@ -1,5 +1,9 @@
-import Demos.Rcv.Spec
-import Demos.Rcv.Program
+module
+
+public import Demos.Rcv.Spec
+public import Demos.Rcv.Program
+
+@[expose] public section
 
 /-!
 Native runs of the specification on canonical ballot files and word arrays, for comparisons with

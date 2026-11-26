@@ -1,5 +1,9 @@
-import TestSupport.Host
-import Library.Random.SplitMix64.Program
+module
+
+public import TestSupport.Host
+public import Library.Random.SplitMix64.Program
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of shortest paths, and `shortest`, which computes
 their expected results by the algorithm of Bellman and Ford, apart from the program. -/

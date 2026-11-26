@@ -1,11 +1,15 @@
-import Library.Numerics.Float64.Lgamma.LgammaBranches
-import Library.Numerics.Float64.Tgamma.TgammaFloor
-import Library.Numerics.Float64.Tgamma.TgammaSpecial
-import LeanExe.ProofKit.F64Exact
-import LeanExe.ProofKit.F64PositiveSpacing
-import LeanExe.ProofKit.F64PositiveOrder
-import LeanExe.ProofKit.GammaThresholds
-import LeanExe.ProofKit.F64WithinSelf
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaBranches
+public import Library.Numerics.Float64.Tgamma.TgammaFloor
+public import Library.Numerics.Float64.Tgamma.TgammaSpecial
+public import LeanExe.ProofKit.F64Exact
+public import LeanExe.ProofKit.F64PositiveSpacing
+public import LeanExe.ProofKit.F64PositiveOrder
+public import LeanExe.ProofKit.GammaThresholds
+public import LeanExe.ProofKit.F64WithinSelf
+
+@[expose] public section
 
 /-!
 The exceptional values of `Lgamma.lgammaWith`, for any tables.  NaN gives the canonical NaN, and

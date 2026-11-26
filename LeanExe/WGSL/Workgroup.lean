@@ -1,4 +1,8 @@
-import LeanExe.WGSL.Build
+module
+
+public import LeanExe.WGSL.Build
+
+@[expose] public section
 
 namespace LeanExe.WGSL
 

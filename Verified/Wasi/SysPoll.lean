@@ -1,4 +1,8 @@
-import Verified.Wasi.SysPollParts
+module
+
+public import Verified.Wasi.SysPollParts
+
+@[expose] public section
 
 /-! The code of a `poll` call, from the argument test to the errno, the number of events, and the
 fields of the first event on the stack: the test of the fields' words, the locals of the result

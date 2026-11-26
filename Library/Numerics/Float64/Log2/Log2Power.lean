@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Log2.Log2Main
+module
+
+public import Library.Numerics.Float64.Log2.Log2Main
+
+@[expose] public section
 
 /-!
 `Log2.log2 (2 ^ k) = k` for every power of two `2 ^ k` other than 1, subnormal ones included.

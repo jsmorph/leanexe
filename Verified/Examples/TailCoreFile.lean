@@ -1,5 +1,9 @@
-import Verified.Examples.TailCore
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.TailCore
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/tailcore.wasm`: the file holds
 `encode TailCore.module`, and it decodes to `TailCore.module`, which has no bytes theorem. -/

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcAccPath
-import Library.Numerics.Float64.Erfc.ErfcAsymFast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAccPath
+public import Library.Numerics.Float64.Erfc.ErfcAsymFast
+
+@[expose] public section
 
 /-!
 The main path of `cr_erfc`, `Erfc.erfcMain`, within one step of `erfc x` for

@@ -1,5 +1,9 @@
-import Demos.Euler.Reference.Constants
-import LeanExe.ProofKit.F64PositiveArithmetic
+module
+
+public import Demos.Euler.Reference.Constants
+public import LeanExe.ProofKit.F64PositiveArithmetic
+
+@[expose] public section
 
 namespace Demos.Euler.Reference
 open CodeLib.IEEE64

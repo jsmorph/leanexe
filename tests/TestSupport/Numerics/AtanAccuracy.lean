@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Atan.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.ArcReference
+module
+
+public import Library.Numerics.Float64.Atan.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.ArcReference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Atan.atan` and `Library.Numerics.Float64.Atan.atan2` against references computed with Lean's integers
 through `ArcReference.atanQuotient`, rounded to the nearest double.  fdlibm states no error bound

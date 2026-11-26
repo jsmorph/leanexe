@@ -1,5 +1,9 @@
-import TestSupport.A64.Programs
-import LeanExe.A64.Proof.InputRuns
+module
+
+public import TestSupport.A64.Programs
+public import LeanExe.A64.Proof.InputRuns
+
+@[expose] public section
 
 /-!
 GCD's loop, entry 2 of `loopCompiled.module`, as a bare-metal program that reads its two arguments

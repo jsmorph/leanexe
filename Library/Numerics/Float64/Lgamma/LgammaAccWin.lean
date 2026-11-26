@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccAdd
-import Library.Numerics.Float64.Lgamma.LgammaAccRange
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccAdd
+public import Library.Numerics.Float64.Lgamma.LgammaAccRange
+
+@[expose] public section
 
 /-!
 The windows of `Lgamma.accurate` about 0.5, 1.5, 2.5, and 3.5, where the code evaluates the

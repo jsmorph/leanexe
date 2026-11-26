@@ -1,7 +1,11 @@
-import LeanExe.A64.Proof.ImageTheorem
-import LeanExe.A64.Image
-import LeanExe.Pipeline.Implements
-import LeanExe.Proof.AreaHeap
+module
+
+public import LeanExe.A64.Proof.ImageTheorem
+public import LeanExe.A64.Image
+public import LeanExe.Pipeline.Implements
+public import LeanExe.Proof.AreaHeap
+
+@[expose] public section
 
 /-!
 `ProgramRuns` from the compiler's theorem of the function that a program calls.  `program_runs`

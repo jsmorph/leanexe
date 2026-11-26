@@ -1,9 +1,13 @@
-import Library.Numerics.Arithmetic.Fma.Program
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
-import LeanExe.Dialect.InsertErase
-import LeanExe.Dialect.Float32
+module
+
+public import Library.Numerics.Arithmetic.Fma.Program
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+public import LeanExe.Dialect.InsertErase
+public import LeanExe.Dialect.Float32
+
+@[expose] public section
 
 /-! A program of the verified compiler: `tgamma`, CORE-MATH's correctly rounded `Γ`,
 ported from `src/binary64/tgamma/tgamma.c` at commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8` of

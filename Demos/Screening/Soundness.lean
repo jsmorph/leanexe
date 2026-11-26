@@ -1,4 +1,8 @@
-import Demos.Screening.Isolation
+module
+
+public import Demos.Screening.Isolation
+
+@[expose] public section
 
 /-!
 The theorems of `screen` over its input array.  For a valid input, `screen_cover` states that

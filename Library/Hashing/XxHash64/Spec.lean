@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! XXH64, transcribed from the "XXH64 Algorithm Description" of Y. Collet, "xxHash fast digest
 algorithm", version 0.2.0 (29/06/23), in the xxHash repository's `doc/xxhash_spec.md`.  The words

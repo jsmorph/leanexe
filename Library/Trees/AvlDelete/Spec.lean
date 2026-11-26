@@ -1,4 +1,8 @@
-import Library.Trees.Avl.Spec
+module
+
+public import Library.Trees.Avl.Spec
+
+@[expose] public section
 
 /-! The specification of deletion from a balanced tree, on the `AvlTree` of Algorithm A.
 `deleteA x t` states the deletion as a recursion on the tree and gives a flag and the tree

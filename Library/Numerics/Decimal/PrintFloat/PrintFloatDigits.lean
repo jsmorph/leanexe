@@ -1,7 +1,11 @@
-import Library.Numerics.Decimal.PrintFloat.Compiled
-import Library.Numerics.Decimal.PrintFloat.PrintFloatShort
-import Library.Numerics.Decimal.ParseFloat.ParseFloatScan
-import Library.Numerics.Arithmetic.Uscale.UscaleDiv
+module
+
+public import Library.Numerics.Decimal.PrintFloat.Compiled
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatShort
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatScan
+public import Library.Numerics.Arithmetic.Uscale.UscaleDiv
+
+@[expose] public section
 
 /-!
 The decimal digits of the printers.  `Library.Numerics.Decimal.Shared.StrconvRound.digitsOf n` has `dlen n` digits, digit `i`

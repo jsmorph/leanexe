@@ -1,4 +1,8 @@
-import Demos.OrderBook.RefineMatch
+module
+
+public import Demos.OrderBook.RefineMatch
+
+@[expose] public section
 
 /-! The refinement of one step of [the specification](Spec.lean) by [the program](Program.lean),
 and the program's top of the book and empty book.  `step_eq` follows the branches of

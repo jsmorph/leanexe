@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: pairs as parameters and results, built with
 `(a, b)` and destructured with `.1`, `.2`, and `match`, a pair inside a pair, and calls that pass

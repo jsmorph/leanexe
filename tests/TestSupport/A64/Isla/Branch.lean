@@ -1,6 +1,10 @@
-import LeanExe.A64.Isla.Check
-import LeanExe.A64.Isla.Linux
-import LeanExe.A64.Isla.Profile
+module
+
+public import LeanExe.A64.Isla.Check
+public import LeanExe.A64.Isla.Linux
+public import LeanExe.A64.Isla.Profile
+
+@[expose] public section
 
 /-!
 Theorems of `Agrees` for the branch forms of `LeanExe/A64/Machine.lean`, `B`, `BL`, `CBZ`,

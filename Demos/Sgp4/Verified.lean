@@ -1,6 +1,10 @@
-import Demos.Sgp4.Program
-import Verified.Reflect.Command
-import Demos.Sgp4.Flat
+module
+
+public import Demos.Sgp4.Program
+public import Verified.Reflect.Command
+public import Demos.Sgp4.Flat
+
+@[expose] public section
 
 namespace Demos.Sgp4
 

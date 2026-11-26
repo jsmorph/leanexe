@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaDD
-import Library.Numerics.Float64.Tgamma.TgammaWords
-import Library.Numerics.Float64.Tgamma.TgammaMainRed
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaDD
+public import Library.Numerics.Float64.Tgamma.TgammaWords
+public import Library.Numerics.Float64.Tgamma.TgammaMainRed
+
+@[expose] public section
 
 /-!
 The correction term of `Tgamma.accurate`.  CORE-MATH adds `fh jm crr` (for `jm ≤ 0`) or subtracts

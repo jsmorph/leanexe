@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.GammaRoot
-import Library.Numerics.Float64.Lgamma.LgammaRootBase
+module
+
+public import LeanExe.ProofKit.GammaRoot
+public import Library.Numerics.Float64.Lgamma.LgammaRootBase
+
+@[expose] public section
 
 /-!
 RootFact on the ranges 12, 13, 14 of `LgammaApprox.rootRanges` (`lgamma.c`, commit `ff2f71f6`).  On

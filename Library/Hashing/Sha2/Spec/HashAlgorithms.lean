@@ -1,5 +1,9 @@
 --#--
-import Library.Hashing.Sha2.Spec.Preprocessing
+module
+
+public import Library.Hashing.Sha2.Spec.Preprocessing
+
+@[expose] public section
 set_option autoImplicit true
 
 -- Bounds discharge for `Vector` accessors used inside the `for h : t in [a:b] do`

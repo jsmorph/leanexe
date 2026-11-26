@@ -1,4 +1,8 @@
-import Verified.Wasi.CompactMove
+module
+
+public import Verified.Wasi.CompactMove
+
+@[expose] public section
 
 /-! A value whose blocks move down by `d` bytes, and whose roots lose `d`, keeps its
 representation in a heap that ends past the moved blocks and has no free block. -/

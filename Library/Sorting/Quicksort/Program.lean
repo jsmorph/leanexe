@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Build
-import Library.Sorting.Heapsort.Program
-import Library.Sorting.StraightInsertion.Program
+module
+
+public import LeanExe.Dialect.Build
+public import Library.Sorting.Heapsort.Program
+public import Library.Sorting.StraightInsertion.Program
+
+@[expose] public section
 
 /-! Quicksort, Algorithm Q of TAOCP §5.2.2, on an array of words, in place, with indices from 0
 and subfiles written as half-open ranges `[l, e)`.  Steps Q2 to Q6 partition a subfile around its

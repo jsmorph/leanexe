@@ -1,5 +1,9 @@
-import LeanExe.Native.Translate
-import LeanExe.Native.Print
+module
+
+public import LeanExe.Native.Translate
+public import LeanExe.Native.Print
+
+@[expose] public section
 
 /-!
 The C text of a translated module: the printer of `Print.lean` with the names of the

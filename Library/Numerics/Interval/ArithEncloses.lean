@@ -1,4 +1,8 @@
-import Library.Numerics.Interval.Proof
+module
+
+public import Library.Numerics.Interval.Proof
+
+@[expose] public section
 
 /-!
 `Encloses i x` states that the interval `i` contains the real `x` when it is accepted.  Each

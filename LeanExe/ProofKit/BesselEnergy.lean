@@ -1,8 +1,12 @@
-import LeanExe.Base
-import Mathlib.Analysis.SpecialFunctions.Sqrt
-import Mathlib.Analysis.Calculus.MeanValue
-import Mathlib.Analysis.Convex.Deriv
-import Mathlib.Analysis.Calculus.Deriv.Inv
+module
+
+public import LeanExe.Base
+public import Mathlib.Analysis.SpecialFunctions.Sqrt
+public import Mathlib.Analysis.Calculus.MeanValue
+public import Mathlib.Analysis.Convex.Deriv
+public import Mathlib.Analysis.Calculus.Deriv.Inv
+
+@[expose] public section
 
 /-!
 Energy bounds for the error of an approximate solution of the system

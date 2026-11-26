@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.BesselStart
+module
+
+public import LeanExe.ProofKit.BesselStart
+
+@[expose] public section
 
 /-!
 `P1` and `Q1` on `[2, ∞)` within `2 ^ -80` of explicit approximations: Taylor polynomials of

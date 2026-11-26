@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tanh.Expm1Special
-import Library.Numerics.Float64.Tanh.TanhSpecial
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1Special
+public import Library.Numerics.Float64.Tanh.TanhSpecial
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorems for the module of `Tanh.lean`, whose exports `expm1` (function 3) and `tanh`

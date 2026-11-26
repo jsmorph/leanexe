@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaApprox
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaApprox
+
+@[expose] public section
 
 /-!
 The piece index of `Lgamma.piece`.  For the top bits `au` of a double from 0.5 to 8.29541, the code

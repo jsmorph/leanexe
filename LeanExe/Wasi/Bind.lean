@@ -1,4 +1,8 @@
-import LeanExe.Wasi.Semantics
+module
+
+public import LeanExe.Wasi.Semantics
+
+@[expose] public section
 
 namespace LeanExe.Wasi
 

@@ -1,7 +1,11 @@
-import Library.Sorting.Find.Program
-import Library.Sorting.Find.Spec
-import Library.Sorting.Quicksort.Proof
-import Library.Sorting.Sorted
+module
+
+public import Library.Sorting.Find.Program
+public import Library.Sorting.Find.Spec
+public import Library.Sorting.Quicksort.Proof
+public import Library.Sorting.Sorted
+
+@[expose] public section
 
 /-! The proof that FIND returns the word of rank `k`.  Steps Q3 to Q6 put the partitioning word `K`
 at its final position `j`, every word of the subfile before `j` at most `K`, and every word after

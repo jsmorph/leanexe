@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.GammaReference
+module
+
+public import Library.Numerics.Float64.Lgamma.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.GammaReference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Lgamma.lgammaR` against the reference of `GammaReference`, rounded to the
 nearest double.  CORE-MATH's `lgamma` is correctly rounded, and the check requires one unit in the

@@ -1,6 +1,10 @@
-import Library.Random.Sampling.Program
-import Library.Random.SplitMix64.Program
-import TestSupport.Host
+module
+
+public import Library.Random.Sampling.Program
+public import Library.Random.SplitMix64.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of the sampling module. -/
 

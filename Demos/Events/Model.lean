@@ -1,4 +1,8 @@
-import Demos.Screening.Model
+module
+
+public import Demos.Screening.Model
+
+@[expose] public section
 
 /-!
 The model of the event-window demo over the real numbers.  The spacecraft follows the Kepler

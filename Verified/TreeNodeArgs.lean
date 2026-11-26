@@ -1,5 +1,9 @@
-import Verified.FieldsArgs
-import Verified.WordCode
+module
+
+public import Verified.FieldsArgs
+public import Verified.WordCode
+
+@[expose] public section
 
 namespace Verified
 

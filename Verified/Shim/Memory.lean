@@ -1,5 +1,9 @@
-import LeanExe.Linux.CallTable
-import Verified.Wasi.HostMemory
+module
+
+public import LeanExe.Linux.CallTable
+public import Verified.Wasi.HostMemory
+
+@[expose] public section
 
 /-!
 The guest's linear memory and the shim's scratch as the Linux call layer sees them.  `ShimLayout`

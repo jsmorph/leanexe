@@ -1,5 +1,9 @@
-import LeanExe.M7.Proof.Main
-import Demos.Bms.Compiled
+module
+
+public import LeanExe.M7.Proof.Main
+public import Demos.Bms.Compiled
+
+@[expose] public section
 
 /-!
 The step theorems of the BMS step of `Demos/Bms/Program.lean` on the Cortex-M7: the calls of

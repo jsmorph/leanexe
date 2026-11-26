@@ -1,5 +1,9 @@
-import Demos.Rcv.Maine.TabulateProgram
-import Verified.Reflect.Command
+module
+
+public import Demos.Rcv.Maine.TabulateProgram
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-!
 The Maine module of the tabulator compiled by the verified compiler.  `compiled.module` exports

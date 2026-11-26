@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaReflWin
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaReflWin
+
+@[expose] public section
 
 /-!
 The bounds on the positive leaf `(fh, fl, eps)` that the fast path of `Lgamma.lgammaWith` computes

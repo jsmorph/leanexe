@@ -1,5 +1,9 @@
-import Examples.Lists.Compiled
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Examples.Lists.Compiled
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/exampleLists.wasm`: the file holds
 `encode compiled.module`, and it decodes to the module of `compiled.bytes`. -/

@@ -1,6 +1,10 @@
-import Verified.Wasi.PureInstructionsLocals
-import Verified.Wasi.PureInstructionsMemory
-import Verified.Wasi.PureInstructionsGrowth
+module
+
+public import Verified.Wasi.PureInstructionsLocals
+public import Verified.Wasi.PureInstructionsMemory
+public import Verified.Wasi.PureInstructionsGrowth
+
+@[expose] public section
 
 namespace Verified.Wasi.PureTransport
 

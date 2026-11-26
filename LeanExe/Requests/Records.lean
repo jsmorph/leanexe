@@ -1,4 +1,8 @@
-import LeanExe.Requests.Windows
+module
+
+public import LeanExe.Requests.Windows
+
+@[expose] public section
 
 /-!
 Records of words over a UART, through the program with requests.  `frameTick` is a step that

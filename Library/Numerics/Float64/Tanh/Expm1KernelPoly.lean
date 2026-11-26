@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.TaylorRemainder
-import Library.Numerics.Float64.Tanh.Expm1Words
+module
+
+public import LeanExe.ProofKit.TaylorRemainder
+public import Library.Numerics.Float64.Tanh.Expm1Words
+
+@[expose] public section
 
 /-!
 The approximation error of fdlibm's `expm1` kernel in exact arithmetic.  With `P` the polynomial

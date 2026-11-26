@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.Compiled
+module
+
+public import Library.Numerics.Float64.Lgamma.Compiled
+
+@[expose] public section
 
 /-!
 The selection of the branches of `Lgamma.lgammaWith`.  `bigPath` repeats the code of the branch for

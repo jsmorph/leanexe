@@ -1,5 +1,9 @@
-import LeanExe.A64.Boot
-import LeanExe.A64.Encode
+module
+
+public import LeanExe.A64.Boot
+public import LeanExe.A64.Encode
+
+@[expose] public section
 
 /-!
 Facts about runs of the boot model.  `BootReach.trans` joins runs.  While the MMU is off in both

@@ -1,6 +1,10 @@
-import LeanExe.Native.Proof.Input
-import LeanExe.Native.Proof.Reacts
-import LeanExe.Requests.Windows
+module
+
+public import LeanExe.Native.Proof.Input
+public import LeanExe.Native.Proof.Reacts
+public import LeanExe.Requests.Windows
+
+@[expose] public section
 
 /-!
 The controller's program (`ctlMain` of `LeanExe/Native/Bare.lean`), which runs a step function

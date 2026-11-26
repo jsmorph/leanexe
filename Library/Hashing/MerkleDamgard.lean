@@ -1,9 +1,13 @@
-import Library.Hashing.Sha2.Spec
-import Library.Hashing.Sha2.Equiv.Common.Chunks
-import Library.Hashing.Sha2.Equiv.Common.FromBits
-import Library.Hashing.Sha2.Equiv.SHA256.Pipeline
-import Library.Hashing.Sha2.Equiv.SHA512.Pipeline
-import Mathlib.Tactic.IntervalCases
+module
+
+public import Library.Hashing.Sha2.Spec
+public import Library.Hashing.Sha2.Equiv.Common.Chunks
+public import Library.Hashing.Sha2.Equiv.Common.FromBits
+public import Library.Hashing.Sha2.Equiv.SHA256.Pipeline
+public import Library.Hashing.Sha2.Equiv.SHA512.Pipeline
+public import Mathlib.Tactic.IntervalCases
+
+@[expose] public section
 
 /-! The Merkle–Damgård reduction for SHA-256 and SHA-512 of FIPS 180-4: two distinct messages with
 equal digests give two distinct pairs of a hash value and a block on which the compression function

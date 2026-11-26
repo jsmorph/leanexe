@@ -1,6 +1,10 @@
-import Demos.Rcv.Maine.Process
-import Demos.Rcv.Maine.TabulateBound
-import Demos.Rcv.ProcessCorrect
+module
+
+public import Demos.Rcv.Maine.Process
+public import Demos.Rcv.Maine.TabulateBound
+public import Demos.Rcv.ProcessCorrect
+
+@[expose] public section
 
 /-! The invariant of [the Maine process](Process.lean) and what its `begin` does under StreamFold's
 host assumptions.  `Future` is the Oakland process's invariant `Demos.Rcv.Process.Writes` for the

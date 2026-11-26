@@ -1,6 +1,10 @@
-import Verified.Reflect.Command
-import Demos.Energy.Flat
-import Demos.Energy.Site
+module
+
+public import Verified.Reflect.Command
+public import Demos.Energy.Flat
+public import Demos.Energy.Site
+
+@[expose] public section
 
 /-! The energy authorizer of `Demos/Energy/Program.lean`, compiled by the verified compiler with
 the test site's profile table.  `authorize` is a wrapper that passes the table `site` to

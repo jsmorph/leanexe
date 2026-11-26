@@ -1,4 +1,8 @@
-import TestSupport.Gate.GateCases
+module
+
+public import TestSupport.Gate.GateCases
+
+@[expose] public section
 
 /-! The cases of the module `gate` alone, for `tests/verified/run.sh --cases gate`.  With the
 argument `--bits`, it prints the lines that `tests/gate/gate.py` reads. -/

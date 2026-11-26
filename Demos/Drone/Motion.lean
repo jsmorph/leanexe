@@ -1,9 +1,13 @@
-import LeanExe.Base
-import Mathlib.Data.Real.Basic
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.Ring
-import Mathlib.Tactic.FieldSimp
-import Mathlib.Tactic.Positivity
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.Real.Basic
+public import Mathlib.Tactic.Linarith
+public import Mathlib.Tactic.Ring
+public import Mathlib.Tactic.FieldSimp
+public import Mathlib.Tactic.Positivity
+
+@[expose] public section
 
 /-! Continuous safety of the drone's motion primitives. These theorems are
 mathematical: the separate word-arithmetic and execution layers must establish

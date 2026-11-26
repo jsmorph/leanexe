@@ -1,4 +1,8 @@
-import Verified.Wasi.ReflectCommand
+module
+
+public import Verified.Wasi.ReflectCommand
+
+@[expose] public section
 
 namespace Verified.Examples.WasiRetain
 

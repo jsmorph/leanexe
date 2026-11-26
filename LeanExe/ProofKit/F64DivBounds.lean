@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64RationalBounds
-import CodeLib.IEEE64.Operations
+module
+
+public import LeanExe.ProofKit.F64RationalBounds
+public import CodeLib.IEEE64.Operations
+
+@[expose] public section
 
 /-! Error bounds of rounded binary64 division, relative and mixed absolute-relative. -/
 

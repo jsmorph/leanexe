@@ -1,5 +1,9 @@
-import LeanExe.Base
-import CodeLib.IEEE64.Roundoff
+module
+
+public import LeanExe.Base
+public import CodeLib.IEEE64.Roundoff
+
+@[expose] public section
 
 /-! Packing an integer magnitude into a binary64 word: the packed value's relative error,
 `signed_pack_relative`. -/

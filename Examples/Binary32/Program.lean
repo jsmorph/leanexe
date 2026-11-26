@@ -1,6 +1,10 @@
-import Library.Numerics.LinearAlgebra.Binary32.Program
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
+module
+
+public import Library.Numerics.LinearAlgebra.Binary32.Program
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 namespace Examples.Binary32
 

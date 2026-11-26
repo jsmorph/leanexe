@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tgamma.TgammaMul
-import Library.Numerics.Float64.Tgamma.TgammaMainRed
-import Library.Numerics.Float64.Tgamma.TgammaApprox
-import Library.Numerics.Float64.Tgamma.TgammaWords
-import Library.Numerics.Float64.Tgamma.TgammaSmall
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaMul
+public import Library.Numerics.Float64.Tgamma.TgammaMainRed
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+public import Library.Numerics.Float64.Tgamma.TgammaWords
+public import Library.Numerics.Float64.Tgamma.TgammaSmall
+
+@[expose] public section
 
 /-!
 The argument reduction of `Tgamma.asExpd` for `1 ≤ x + l ≤ 1001` and `|l| ≤ 2 ^ -14`.  The product

@@ -1,5 +1,9 @@
-import Verified.Potential
-import Verified.ArgumentMoves
+module
+
+public import Verified.Potential
+public import Verified.ArgumentMoves
+
+@[expose] public section
 
 namespace Verified
 

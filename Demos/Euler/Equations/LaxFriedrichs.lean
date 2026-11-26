@@ -1,7 +1,11 @@
-import LeanExe.Base
-import Mathlib.Data.Real.Basic
-import Mathlib.Tactic.FieldSimp
-import Mathlib.Tactic.Ring
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.Real.Basic
+public import Mathlib.Tactic.FieldSimp
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-! The local Lax–Friedrichs numerical flux with speed `a`, for any flux `F` over any index type, and
 its two-wave form: a jump splits into a left-going and a right-going wave, whose weighted sum is the

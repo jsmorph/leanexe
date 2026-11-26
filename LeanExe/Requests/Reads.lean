@@ -1,4 +1,8 @@
-import LeanExe.Requests.Records
+module
+
+public import LeanExe.Requests.Records
+
+@[expose] public section
 
 /-!
 The rate of the framing's reads of the receive register, and the records that the bytes encode.

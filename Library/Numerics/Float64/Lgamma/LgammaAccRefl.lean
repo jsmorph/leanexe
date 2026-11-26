@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccWinSmall
-import Library.Numerics.Float64.Lgamma.LgammaSinAcc
-import Library.Numerics.Float64.Lgamma.LgammaReflMid
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccWinSmall
+public import Library.Numerics.Float64.Lgamma.LgammaSinAcc
+public import Library.Numerics.Float64.Lgamma.LgammaReflMid
+
+@[expose] public section
 
 /-!
 The reflection of `Lgamma.accurate` at a negative argument `sx` from `-2^52` to `-1/4`.  The code

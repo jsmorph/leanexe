@@ -1,5 +1,9 @@
-import Verified.Wasi.CompactRep
-import Verified.AlignedCopy
+module
+
+public import Verified.Wasi.CompactRep
+public import Verified.AlignedCopy
+
+@[expose] public section
 
 /-! The compaction in the pure module: from any heap that represents a compactable value, the code
 leaves a heap whose top is the base plus at most the value's copy cost, whose free list is empty,

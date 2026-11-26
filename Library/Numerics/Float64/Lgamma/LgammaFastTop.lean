@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaStirTop
-import Library.Numerics.Float64.Lgamma.LgammaLogd
-import Library.Numerics.Float64.Lgamma.LgammaFastWalk
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaStirTop
+public import Library.Numerics.Float64.Lgamma.LgammaLogd
+public import Library.Numerics.Float64.Lgamma.LgammaFastWalk
+
+@[expose] public section
 
 /-!
 The two branches of the fast path's Stirling series of `Lgamma.lgammaWith` from `2^800` to the

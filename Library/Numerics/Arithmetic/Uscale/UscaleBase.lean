@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.Uscale.Compiled
-import Mathlib.Tactic
+module
+
+public import Library.Numerics.Arithmetic.Uscale.Compiled
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-!
 The value of an array of limbs as a natural number and the facts that the proofs of `Uscale`'s

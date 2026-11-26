@@ -1,5 +1,9 @@
-import Demos.RandomChoice.CommandProof
-import Library.Numerics.Decimal.Int64Text.Inverse
+module
+
+public import Demos.RandomChoice.CommandProof
+public import Library.Numerics.Decimal.Int64Text.Inverse
+
+@[expose] public section
 
 /-! The output of the WASI command and the count of `picks_count`.  `outputOf n ws` is the text
 that `main` writes for the K accepted words `ws`: the lines of their picks.  A run whose events meet

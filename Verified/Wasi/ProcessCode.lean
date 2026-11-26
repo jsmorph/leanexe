@@ -1,6 +1,10 @@
-import Verified.Wasi.ProgramIn
-import Verified.Wasi.CompactCode
-import LeanExe.Wasi.Process
+module
+
+public import Verified.Wasi.ProgramIn
+public import Verified.Wasi.CompactCode
+public import LeanExe.Wasi.Process
+
+@[expose] public section
 
 namespace Verified.Wasi
 

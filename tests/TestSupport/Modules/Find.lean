@@ -1,5 +1,9 @@
-import Library.Sorting.Find.Spec
-import TestSupport.Modules.Quicksort
+module
+
+public import Library.Sorting.Find.Spec
+public import TestSupport.Modules.Quicksort
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of selection. -/
 

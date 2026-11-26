@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erfc.ErfcFastPlan
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcFastPlan
+
+@[expose] public section
 
 /-!
 The kernel's checks of rows 65 to 72 of `C` (`ErfcFastPlan.rowOK`).

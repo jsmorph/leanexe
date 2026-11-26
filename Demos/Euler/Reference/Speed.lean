@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64PositiveArithmetic
-import LeanExe.ProofKit.F64Absolute
+module
+
+public import LeanExe.ProofKit.F64PositiveArithmetic
+public import LeanExe.ProofKit.F64Absolute
+
+@[expose] public section
 
 namespace Demos.Euler.Reference
 open CodeLib.IEEE64

@@ -1,8 +1,12 @@
-import Library.Numerics.Reductions.SumError
-import CodeLib.IEEE32.Roundoff
-import CodeLib.IEEE32.Multiplication
-import LeanExe.ProofKit.F32Bits
-import LeanExe.ProofKit.F64DyadicBounds
+module
+
+public import Library.Numerics.Reductions.SumError
+public import CodeLib.IEEE32.Roundoff
+public import CodeLib.IEEE32.Multiplication
+public import LeanExe.ProofKit.F32Bits
+public import LeanExe.ProofKit.F64DyadicBounds
+
+@[expose] public section
 
 /-!
 Binary32 rounding errors and sums.  The binary32 operations of Talos, `Wasm.IEEE32.add` and

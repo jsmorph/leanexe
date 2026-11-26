@@ -1,5 +1,9 @@
-import Verified.Examples.Composition
-import TestSupport.Host
+module
+
+public import Verified.Examples.Composition
+public import TestSupport.Host
+
+@[expose] public section
 
 namespace Verified.Examples.Composition
 

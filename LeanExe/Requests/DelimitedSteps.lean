@@ -1,4 +1,8 @@
-import LeanExe.Requests.DelimitedWords
+module
+
+public import LeanExe.Requests.DelimitedWords
+
+@[expose] public section
 
 /-!
 Lemmas for steps that hold the delimited framing's segment and answer in the buffers of

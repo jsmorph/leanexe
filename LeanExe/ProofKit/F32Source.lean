@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Float32
-import Interpreter.Wasm.IEEE32
-import Mathlib.Tactic
+module
+
+public import LeanExe.Dialect.Float32
+public import Interpreter.Wasm.IEEE32
+public import Mathlib.Tactic
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32Source
 

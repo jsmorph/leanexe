@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.Sieve.Spec
-import TestSupport.Host
+module
+
+public import Library.Numerics.Arithmetic.Sieve.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of the sieve. -/
 

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack4
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack4
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 The stages of `erfc_asympt_accurate` in the form of `ErfcTrack`.  `pr_twoSum` adds a float to a

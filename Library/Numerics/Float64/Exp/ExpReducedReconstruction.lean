@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpResidualFloat
-import Library.Numerics.Float64.Exp.ExpReconstructionBounds
+module
+
+public import Library.Numerics.Float64.Exp.ExpResidualFloat
+public import Library.Numerics.Float64.Exp.ExpReconstructionBounds
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpReducedReconstruction
 open CodeLib.IEEE64

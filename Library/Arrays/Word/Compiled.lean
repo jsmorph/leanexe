@@ -1,5 +1,9 @@
-import Library.Arrays.Word.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Arrays.Word.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Arrays.Word
 

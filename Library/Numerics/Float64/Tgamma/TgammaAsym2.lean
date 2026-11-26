@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Tgamma.TgammaPolyLip
-import Library.Numerics.Float64.Tgamma.TgammaMul
-import Library.Numerics.Float64.Tgamma.TgammaApprox
-import Library.Numerics.Float64.Tgamma.TgammaWords
-import Library.Numerics.Float64.Tgamma.TgammaSmall
-import Library.Numerics.Float64.Tgamma.TgammaPolyDDD
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaPolyLip
+public import Library.Numerics.Float64.Tgamma.TgammaMul
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+public import Library.Numerics.Float64.Tgamma.TgammaWords
+public import Library.Numerics.Float64.Tgamma.TgammaSmall
+public import Library.Numerics.Float64.Tgamma.TgammaPolyDDD
+
+@[expose] public section
 
 /-!
 The two series of `Tgamma.asLgammaAsym` in `u = z2h ≈ 1/x²`.  Above `11.5` the code computes

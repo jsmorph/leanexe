@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erf.ErfTailPieces7
+module
+
+public import Library.Numerics.Float64.Erf.ErfTailPieces7
+
+@[expose] public section
 
 /-!
 The tail kernels of `s_erf.c`.  `R_a/S_a` models `log (x erfcx x) + 0.5625` within `2^-56` on

@@ -1,5 +1,9 @@
-import LeanExe.M7.Proof.Sim
-import LeanExe.ProofKit.Locals
+module
+
+public import LeanExe.M7.Proof.Sim
+public import LeanExe.ProofKit.Locals
+
+@[expose] public section
 
 /-!
 The pieces that the simulation of each form uses: the inversion of the generator's helpers,

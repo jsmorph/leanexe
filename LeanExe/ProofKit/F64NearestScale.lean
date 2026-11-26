@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64NearestSteps
-import LeanExe.ProofKit.F64Source
-import LeanExe.ProofKit.F64NearestSum
-import LeanExe.ProofKit.F64PowerScale
+module
+
+public import LeanExe.ProofKit.F64NearestSteps
+public import LeanExe.ProofKit.F64Source
+public import LeanExe.ProofKit.F64NearestSum
+public import LeanExe.ProofKit.F64PowerScale
+
+@[expose] public section
 
 /-!
 Exact scaling of a nearest word by a power of two, and the absorption of `- 1` by a large word.

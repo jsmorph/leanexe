@@ -1,6 +1,10 @@
-import Demos.Conjunction.Model
-import Mathlib.MeasureTheory.Integral.DominatedConvergence
-import Mathlib.Topology.Order.IntermediateValue
+module
+
+public import Demos.Conjunction.Model
+public import Mathlib.MeasureTheory.Integral.DominatedConvergence
+public import Mathlib.Topology.Order.IntermediateValue
+
+@[expose] public section
 
 /-!
 The radius at a probability.  The probability `pc` of the disk of radius `R` about the origin is

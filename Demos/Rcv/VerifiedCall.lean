@@ -1,7 +1,11 @@
-import Demos.Rcv.Compiled
-import Demos.Rcv.Refinement
-import Verified.Call
-import Verified.ChargeFacts
+module
+
+public import Demos.Rcv.Compiled
+public import Demos.Rcv.Refinement
+public import Verified.Call
+public import Verified.ChargeFacts
+
+@[expose] public section
 
 /-!
 The call of the module's export `count`.  `count_callSpec` composes the generated

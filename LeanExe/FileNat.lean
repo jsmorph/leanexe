@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Lean
+module
+
+public import LeanExe.Base
+public import Lean
+
+@[expose] public section
 
 /-!
 The bytes of a file as a number, so that a theorem can name the bytes that a build wrote.

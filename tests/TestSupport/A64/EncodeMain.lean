@@ -1,4 +1,8 @@
-import TestSupport.A64.Asm
+module
+
+public import TestSupport.A64.Asm
+
+@[expose] public section
 
 /-!
 The command `a64-encode` of the comparison of the AArch64 encoder with the GNU assembler.

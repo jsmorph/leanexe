@@ -1,5 +1,9 @@
-import Demos.Drone.Verified
-import Verified.Call
+module
+
+public import Demos.Drone.Verified
+public import Verified.Call
+
+@[expose] public section
 
 /-! The call of the verified drone planner from a ready store.  `drone_trapFree` states that entry
 18 computes `compute` without a trap when `top` can rise by 2,251,064 bytes within the memory cap,

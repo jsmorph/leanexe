@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaWalk
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaWalk
+
+@[expose] public section
 
 /-!
 Reading the block of `Lgamma.accurate`, with the steps of `LgammaWalk` and two more.  `acc_step`

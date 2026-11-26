@@ -1,5 +1,9 @@
-import LeanExe.Native.ClightN.Reads
-import LeanExe.Native.Proof.Ctl
+module
+
+public import LeanExe.Native.ClightN.Reads
+public import LeanExe.Native.Proof.Ctl
+
+@[expose] public section
 
 /-!
 What the instances of `clightn/check.sh` share: decidable equality of the copy's syntax, so that

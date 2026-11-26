@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64PositiveRounding
-import LeanExe.ProofKit.F64PositiveOrder
+module
+
+public import LeanExe.ProofKit.F64PositiveRounding
+public import LeanExe.ProofKit.F64PositiveOrder
+
+@[expose] public section
 
 /-!
 The signed nearest-even reference and the count of representable steps between words.  Rounding

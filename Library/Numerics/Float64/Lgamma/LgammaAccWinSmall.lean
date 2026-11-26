@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccWin
-import Library.Numerics.Float64.Lgamma.LgammaLogdOne
-import Library.Numerics.Float64.Tgamma.TgammaAccPre
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccWin
+public import Library.Numerics.Float64.Lgamma.LgammaLogdOne
+public import Library.Numerics.Float64.Tgamma.TgammaAccPre
+
+@[expose] public section
 
 /-!
 The windows of `Lgamma.accurate` about 1, 2, and 3, where the code multiplies the polynomial at

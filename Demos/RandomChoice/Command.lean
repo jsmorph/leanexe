@@ -1,6 +1,10 @@
-import Demos.RandomChoice.Program
-import Verified.Wasi
-import LeanExe.Wasi.WriteAll
+module
+
+public import Demos.RandomChoice.Program
+public import Verified.Wasi
+public import LeanExe.Wasi.WriteAll
+
+@[expose] public section
 
 /-! The WASI command of the unbiased random choice.  `main` reads the arguments with `args`, and N
 and K, arguments 1 and 2, with `parseArg`.  It then runs a loop of at most `K / 128 + 3` passes

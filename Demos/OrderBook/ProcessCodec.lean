@@ -1,6 +1,10 @@
-import Demos.OrderBook.Process
-import Demos.OrderBook.Spec
-import Demos.StreamFold.Bytes
+module
+
+public import Demos.OrderBook.Process
+public import Demos.OrderBook.Spec
+public import Demos.StreamFold.Bytes
+
+@[expose] public section
 
 /-! The little-endian codec of [the process](Process.lean) and the meaning of its byte streams.
 `leWords` and `leBytes` state the conversion between bytes and words over byte lists, as sums and

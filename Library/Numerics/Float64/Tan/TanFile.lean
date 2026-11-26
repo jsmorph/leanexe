@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tan.TanTheorem
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Numerics.Float64.Tan.TanTheorem
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/tan.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Library/Numerics/Float64/Tan/TanFile.lean`: the file holds

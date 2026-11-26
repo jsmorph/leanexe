@@ -1,4 +1,8 @@
-import LeanExe.M7.Proof.Constructs
+module
+
+public import LeanExe.M7.Proof.Constructs
+
+@[expose] public section
 
 /-!
 The simulation of a function, as `LeanExe/A64/Proof/Function.lean` states it for the AArch64 back

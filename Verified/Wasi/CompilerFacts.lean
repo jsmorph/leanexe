@@ -1,6 +1,10 @@
-import Verified.Wasi.EffectSpec
-import Verified.Wasi.ResourceCost
-import Verified.ExprCorrect
+module
+
+public import Verified.Wasi.EffectSpec
+public import Verified.Wasi.ResourceCost
+public import Verified.ExprCorrect
+
+@[expose] public section
 
 namespace Verified.Wasi
 

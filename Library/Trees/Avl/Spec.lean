@@ -1,5 +1,9 @@
-import Library.Trees.Avl.Program
-import Mathlib.Data.List.Sort
+module
+
+public import Library.Trees.Avl.Program
+public import Mathlib.Data.List.Sort
+
+@[expose] public section
 
 /-! The specification of Algorithm A, balanced tree search and insertion, on `AvlTree`.  A node's
 balance factor `B` is the height of its right subtree minus the height of its left subtree, as a

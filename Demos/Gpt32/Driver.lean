@@ -1,7 +1,11 @@
-import Demos.Gpt32.VerifiedKernels
-import Demos.Gpt32.VerifiedPtxKernels
-import LeanExe.WGSL.Parse
-import LeanExe.PTX.Parse
+module
+
+public import Demos.Gpt32.VerifiedKernels
+public import Demos.Gpt32.VerifiedPtxKernels
+public import LeanExe.WGSL.Parse
+public import LeanExe.PTX.Parse
+
+@[expose] public section
 
 /-!
 Runs the programs of `Demos/Gpt32/HostProgram.lean` on a host session: `leanexe-webgpu-host

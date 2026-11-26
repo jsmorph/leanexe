@@ -1,5 +1,9 @@
-import Library.Numerics.Fourier.Master
-import Mathlib.Analysis.SpecialFunctions.Complex.Log
+module
+
+public import Library.Numerics.Fourier.Master
+public import Mathlib.Analysis.SpecialFunctions.Complex.Log
+
+@[expose] public section
 
 /-!
 The round trip of the discrete Fourier transform.  For a signal of `n` complex values

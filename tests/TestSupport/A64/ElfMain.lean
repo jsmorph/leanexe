@@ -1,5 +1,9 @@
-import TestSupport.A64.FlipElf
-import TestSupport.A64.StampElf
+module
+
+public import TestSupport.A64.FlipElf
+public import TestSupport.A64.StampElf
+
+@[expose] public section
 
 /-!
 The command `a64-elf emit DIR` of the AArch64 back end's Linux executables.  It writes DIR/flip.elf,

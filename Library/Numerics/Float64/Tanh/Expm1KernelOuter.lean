@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tanh.Expm1KernelE0
-import LeanExe.ProofKit.TaylorRemainder
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1KernelE0
+public import LeanExe.ProofKit.TaylorRemainder
+
+@[expose] public section
 
 /-!
 The last steps of fdlibm's `expm1` kernel.  `m0_spec`: for `k = 0` the kernel returns

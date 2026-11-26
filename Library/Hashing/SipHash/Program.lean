@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Loop
-import Library.Hashing.SipHash.Spec
+module
+
+public import LeanExe.Dialect.Loop
+public import Library.Hashing.SipHash.Spec
+
+@[expose] public section
 
 /-! SipHash-2-4 and SipHash-1-3 of `Library.Hashing.SipHash.Spec` for a 16-byte key given as its
 two little-endian words and a message of `n` bytes packed eight to a word as

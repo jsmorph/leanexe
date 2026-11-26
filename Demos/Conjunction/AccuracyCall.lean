@@ -1,6 +1,10 @@
-import Demos.Conjunction.AccuracyVerified
-import Demos.Conjunction.AccuracySoundness
-import Verified.Call
+module
+
+public import Demos.Conjunction.AccuracyVerified
+public import Demos.Conjunction.AccuracySoundness
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 Call theorems of the module `accuracy`.  A call of the export `circularError` or `linearError`

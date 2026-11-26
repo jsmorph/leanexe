@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccShift
-import LeanExe.ProofKit.F64Admissibility
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64NearestScale
-import Mathlib.Data.UInt
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccShift
+public import LeanExe.ProofKit.F64Admissibility
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64NearestScale
+public import Mathlib.Data.UInt
+
+@[expose] public section
 
 /-!
 The loop of `Tgamma.accurate` for `x < j`, which multiplies the factors `x, x + 1, …` and divides

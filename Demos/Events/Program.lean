@@ -1,5 +1,9 @@
-import Demos.Events.Spec
-import Demos.Screening.Program
+module
+
+public import Demos.Events.Spec
+public import Demos.Screening.Program
+
+@[expose] public section
 
 /-!
 The event-window program.  `eventsWith` reads an array of 21 binary64 values, sets up the

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaCases
-import Library.Numerics.Arithmetic.Fma.FmaSpecTheorem
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaCases
+public import Library.Numerics.Arithmetic.Fma.FmaSpecTheorem
+
+@[expose] public section
 
 /-!
 **`Tgamma.tgamma` within one step of `Γ`** for every finite input other than the poles

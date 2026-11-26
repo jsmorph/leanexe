@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! Recursive types whose records hold `Bool`, binary64, binary32, and word fields, structures,
 enumerations, and sums beside their children.  Each word, `Bool`, or float occupies one slot: a

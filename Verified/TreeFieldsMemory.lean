@@ -1,5 +1,9 @@
-import Verified.TreeStorage
-import LeanExe.Pipeline.RecordSlots
+module
+
+public import Verified.TreeStorage
+public import LeanExe.Pipeline.RecordSlots
+
+@[expose] public section
 
 namespace Verified
 

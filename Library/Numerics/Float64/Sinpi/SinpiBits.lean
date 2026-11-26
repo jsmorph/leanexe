@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiReflect
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiReflect
+
+@[expose] public section
 
 /-!
 The words of `Sinpi`: `ax` built from the high and low words of `x` is `|x|`, the flag `neg` is the

@@ -1,5 +1,9 @@
 --#--
-import Library.Hashing.Sha2.Spec.Functions
+module
+
+public import Library.Hashing.Sha2.Spec.Functions
+
+@[expose] public section
 set_option autoImplicit true
 --#--
 

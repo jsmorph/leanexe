@@ -1,4 +1,8 @@
-import Verified.Call
+module
+
+public import Verified.Call
+
+@[expose] public section
 
 /-! The call of an entry that maps a borrowed array of words to an owned array of words without a
 trap, stated for a function `g` that the entry's function equals on every array that memory can

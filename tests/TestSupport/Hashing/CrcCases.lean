@@ -1,4 +1,8 @@
-import Library.Hashing.Crc.Program
+module
+
+public import Library.Hashing.Crc.Program
+
+@[expose] public section
 
 /-! The cases of the module `crc`: CRC-32 and CRC-32C of messages of 0 to 17 bytes and of lengths
 around multiples of eight and of 4,096, of the check string `123456789`, and of byte counts beyond

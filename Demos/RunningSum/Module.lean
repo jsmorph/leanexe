@@ -1,5 +1,9 @@
-import Demos.RunningSum.Wasi
-import Verified.Wasi.ProcessCode
+module
+
+public import Demos.RunningSum.Wasi
+public import Verified.Wasi.ProcessCode
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

@@ -1,12 +1,16 @@
-import Library.Random.Lcg.Program
-import Library.Random.Orbit.Basic
-import Mathlib.Algebra.Ring.Periodic
-import Mathlib.Data.Nat.Factorization.Basic
-import Mathlib.Data.UInt
-import Mathlib.Data.ZMod.Basic
-import Mathlib.Dynamics.PeriodicPts.Lemmas
-import Mathlib.Tactic.LinearCombination
-import Mathlib.Tactic.Ring
+module
+
+public import Library.Random.Lcg.Program
+public import Library.Random.Orbit.Basic
+public import Mathlib.Algebra.Ring.Periodic
+public import Mathlib.Data.Nat.Factorization.Basic
+public import Mathlib.Data.UInt
+public import Mathlib.Data.ZMod.Basic
+public import Mathlib.Dynamics.PeriodicPts.Lemmas
+public import Mathlib.Tactic.LinearCombination
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-! The periods of the linear congruential generator of `Library/Random/Lcg/Program.lean`.  From any
 word, `affine a c` returns to that word after `2^64` steps and not before if and only if

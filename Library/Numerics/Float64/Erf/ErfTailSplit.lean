@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erf.ErfMiddleBase
-import LeanExe.ProofKit.F64ExactProduct
-import LeanExe.ProofKit.F64NegateOps
+module
+
+public import Library.Numerics.Float64.Erf.ErfMiddleBase
+public import LeanExe.ProofKit.F64ExactProduct
+public import LeanExe.ProofKit.F64NegateOps
+
+@[expose] public section
 
 /-!
 The split of `x²` in `s_erf.c`'s tail.  `z` keeps the high 32 bits of `x`, so its significand has

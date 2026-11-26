@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.TaylorCheck
-import LeanExe.ProofKit.GammaThresholds
-import Library.Numerics.Float64.Tgamma.TgammaFactsBase
-import Library.Numerics.Float64.Tgamma.GammaPi
+module
+
+public import LeanExe.ProofKit.TaylorCheck
+public import LeanExe.ProofKit.GammaThresholds
+public import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+public import Library.Numerics.Float64.Tgamma.GammaPi
+
+@[expose] public section
 
 /-!
 The definitions of the tables and kernel polynomials of `cr_tgamma`'s helpers `as_logd`, `as_expd`,

@@ -1,7 +1,11 @@
-import Verified.Wasi.LoopInvariant
-import Verified.Wasi.LoopTest
-import Verified.Wasi.LoopBody
-import Verified.Wasi.LoopFinish
+module
+
+public import Verified.Wasi.LoopInvariant
+public import Verified.Wasi.LoopTest
+public import Verified.Wasi.LoopBody
+public import Verified.Wasi.LoopFinish
+
+@[expose] public section
 
 namespace Verified.Wasi
 

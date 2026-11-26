@@ -1,8 +1,12 @@
-import LeanExe.Base
-import Mathlib.Analysis.Calculus.SmoothSeries
-import Mathlib.Analysis.Calculus.Deriv.Pow
-import Mathlib.Analysis.SpecificLimits.Normed
-import Mathlib.Analysis.Normed.Module.Convex
+module
+
+public import LeanExe.Base
+public import Mathlib.Analysis.Calculus.SmoothSeries
+public import Mathlib.Analysis.Calculus.Deriv.Pow
+public import Mathlib.Analysis.SpecificLimits.Normed
+public import Mathlib.Analysis.Normed.Module.Convex
+
+@[expose] public section
 
 /-!
 Real power series `psum a z = ∑' k, a k * z ^ k` whose coefficients make `∑ |a k| R ^ k` converge

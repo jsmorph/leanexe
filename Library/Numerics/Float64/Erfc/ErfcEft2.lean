@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Erfc.ErfcEft
-import LeanExe.ProofKit.F64NegateOps
-import LeanExe.ProofKit.F64MulBounds
-import LeanExe.ProofKit.F64NearestHalf
-import LeanExe.ProofKit.F64Sign
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcEft
+public import LeanExe.ProofKit.F64NegateOps
+public import LeanExe.ProofKit.F64MulBounds
+public import LeanExe.ProofKit.F64NearestHalf
+public import LeanExe.ProofKit.F64Sign
+
+@[expose] public section
 
 /-!
 Knuth's `TwoSum` for the proof of `Erfc.erfc`: `two_sum` shows that it returns `s + t = a + b`

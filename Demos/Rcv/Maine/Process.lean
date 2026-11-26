@@ -1,5 +1,9 @@
-import Demos.Rcv.Maine.TabulateProgram
-import Demos.Rcv.Process
+module
+
+public import Demos.Rcv.Maine.TabulateProgram
+public import Demos.Rcv.Process
+
+@[expose] public section
 
 /-! The Maine module as a WASI process over stdin and stdout.  The process is the Oakland
 tabulator's process of `Demos/Rcv/Process.lean` with the Maine report in place of Oakland's: the

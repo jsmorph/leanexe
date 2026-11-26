@@ -1,5 +1,9 @@
-import Lean
-import LeanExe.A64.Machine
+module
+
+public import Lean
+public import LeanExe.A64.Machine
+
+@[expose] public section
 
 /-!
 The traces that Isla computes from the Sail model of the Arm architecture, as a relation between

@@ -1,5 +1,9 @@
-import LeanExe.Base
-import CodeLib.Entry
+module
+
+public import LeanExe.Base
+public import CodeLib.Entry
+
+@[expose] public section
 
 namespace Wasm
 

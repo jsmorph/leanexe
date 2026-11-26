@@ -1,5 +1,9 @@
-import Demos.Sgp4.Box
-import Library.Numerics.Decimal.ParseFloat.Program
+module
+
+public import Demos.Sgp4.Box
+public import Library.Numerics.Decimal.ParseFloat.Program
+
+@[expose] public section
 
 /-!
 A reader of the decimal values of an Orbit Mean-Elements Message.  `field` reads the text of one

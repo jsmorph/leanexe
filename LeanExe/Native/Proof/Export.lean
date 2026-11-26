@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Genv
+module
+
+public import LeanExe.Native.Proof.Genv
+
+@[expose] public section
 
 /-!
 The program of `clightgen`'s Coq file.  `clightgen` prints a statement with `stmt` of

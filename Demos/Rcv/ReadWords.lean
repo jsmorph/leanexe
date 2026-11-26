@@ -1,4 +1,8 @@
-import Demos.Rcv.Read
+module
+
+public import Demos.Rcv.Read
+
+@[expose] public section
 
 /-!
 The word form of the reader's result, which the reader program `readContest` of

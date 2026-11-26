@@ -1,6 +1,10 @@
-import Demos.Bms.Program
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Demos.Bms.Program
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The BMS step of `Demos/Bms/Program.lean` compiled by the verified compiler.  `bmsCompiled.module`

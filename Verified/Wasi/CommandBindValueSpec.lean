@@ -1,8 +1,12 @@
-import Verified.Wasi.BindContext
-import Verified.Wasi.CompilerFacts
-import Verified.Wasi.CommandCodeSpec
-import Verified.Wasi.LoopRelease
-import Verified.Wasi.Cleanup
+module
+
+public import Verified.Wasi.BindContext
+public import Verified.Wasi.CompilerFacts
+public import Verified.Wasi.CommandCodeSpec
+public import Verified.Wasi.LoopRelease
+public import Verified.Wasi.Cleanup
+
+@[expose] public section
 
 namespace Verified.Wasi
 

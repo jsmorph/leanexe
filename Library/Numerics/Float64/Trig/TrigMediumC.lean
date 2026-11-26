@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Trig.TrigMediumB
+module
+
+public import Library.Numerics.Float64.Trig.TrigMediumB
+
+@[expose] public section
 
 /-!
 The third outcome of the medium reduction: when the second step also cancels below `x / 2 ^ 49`,

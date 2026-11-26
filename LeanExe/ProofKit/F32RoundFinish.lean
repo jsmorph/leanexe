@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F32Normalize
+module
+
+public import LeanExe.ProofKit.F32Normalize
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32RoundFinish
 open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing FloatRounding F32RoundScaled FloatCommon

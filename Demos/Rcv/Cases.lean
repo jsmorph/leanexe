@@ -1,4 +1,8 @@
-import Demos.Rcv.Spec
+module
+
+public import Demos.Rcv.Spec
+
+@[expose] public section
 
 /-!
 Executable cases of the specification of the Oakland tabulator.  Each `#guard` evaluates the

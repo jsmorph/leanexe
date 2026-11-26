@@ -1,5 +1,9 @@
-import Demos.Slew.Check
-import Demos.Slew.Rotation
+module
+
+public import Demos.Slew.Check
+public import Demos.Slew.Rotation
+
+@[expose] public section
 
 /-! The relative quaternion of an edge.  For attitudes `qa` and `qb` whose squared norms lie
 within `3e-12` of 1, each component of `relative qa qb` lies within `13.04 u` of the exact

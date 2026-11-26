@@ -1,5 +1,9 @@
-import Library.Hashing.Sha2.Impl.SHA256
-import Library.Hashing.Sha2.Spec.HashAlgorithms
+module
+
+public import Library.Hashing.Sha2.Impl.SHA256
+public import Library.Hashing.Sha2.Spec.HashAlgorithms
+
+@[expose] public section
 
 /-!
 # Round-constant bridge: `K32 ↔ K`

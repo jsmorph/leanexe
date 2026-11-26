@@ -1,5 +1,9 @@
-import Verified.Reflect.Definitions
-import LeanExe.Encoding.ValidityProof
+module
+
+public import Verified.Reflect.Definitions
+public import LeanExe.Encoding.ValidityProof
+
+@[expose] public section
 
 namespace Verified.Wasi.Reflect
 

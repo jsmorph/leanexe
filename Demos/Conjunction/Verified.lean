@@ -1,6 +1,10 @@
-import Demos.Conjunction.Message
-import Verified.Reflect.Command
-import Demos.Conjunction.Flat
+module
+
+public import Demos.Conjunction.Message
+public import Verified.Reflect.Command
+public import Demos.Conjunction.Flat
+
+@[expose] public section
 
 namespace Demos.Conjunction
 

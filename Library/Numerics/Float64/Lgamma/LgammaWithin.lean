@@ -1,10 +1,14 @@
-import Library.Numerics.Float64.Lgamma.LgammaEnds
-import Library.Numerics.Float64.Lgamma.LgammaAccPath
-import Library.Numerics.Float64.Lgamma.LgammaBounds
-import Library.Numerics.Float64.Lgamma.LgammaFacts
-import Library.Numerics.Float64.Lgamma.LgammaSign
-import Library.Numerics.Arithmetic.Fma.FmaSpecTheorem
-import Library.Numerics.Float64.Lgamma.LgammaAccTop
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaEnds
+public import Library.Numerics.Float64.Lgamma.LgammaAccPath
+public import Library.Numerics.Float64.Lgamma.LgammaBounds
+public import Library.Numerics.Float64.Lgamma.LgammaFacts
+public import Library.Numerics.Float64.Lgamma.LgammaSign
+public import Library.Numerics.Arithmetic.Fma.FmaSpecTheorem
+public import Library.Numerics.Float64.Lgamma.LgammaAccTop
+
+@[expose] public section
 
 /-!
 **`lgamma` within one step**: `(Lgamma.lgammaR x).1` lies within one step of the nearest-even

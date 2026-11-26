@@ -1,8 +1,12 @@
-import LeanExe.ProofKit.F64ErrorTrack
-import LeanExe.ProofKit.F64DivBounds
-import LeanExe.ProofKit.PolyCalculus
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64Source
+module
+
+public import LeanExe.ProofKit.F64ErrorTrack
+public import LeanExe.ProofKit.F64DivBounds
+public import LeanExe.ProofKit.PolyCalculus
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64Source
+
+@[expose] public section
 
 /-!
 Error tracking through a rounded division, in the form of `F64Approx.Approx`, and the change

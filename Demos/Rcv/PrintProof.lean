@@ -1,6 +1,10 @@
-import Demos.Rcv.PrintProgram
-import Demos.Rcv.ReadProgramMain
-import Demos.Rcv.Winner
+module
+
+public import Demos.Rcv.PrintProgram
+public import Demos.Rcv.ReadProgramMain
+public import Demos.Rcv.Winner
+
+@[expose] public section
 
 /-!
 The report's printer equals the specification's report.  Every part of the printer appends words to

@@ -1,4 +1,8 @@
-import Verified.Wasi.ResourceRules
+module
+
+public import Verified.Wasi.ResourceRules
+
+@[expose] public section
 
 /-! Bounds on the resource semantics of effect commands from one world.  `Bounded` bounds every run
 and every prefix of a command from every world, which suits a command whose charge does not depend

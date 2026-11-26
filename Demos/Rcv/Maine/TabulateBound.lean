@@ -1,6 +1,10 @@
-import Demos.Rcv.Maine.TabulateCall
-import Demos.Rcv.TabulateBound
-import Verified.ChargeFacts
+module
+
+public import Demos.Rcv.Maine.TabulateCall
+public import Demos.Rcv.TabulateBound
+public import Verified.ChargeFacts
+
+@[expose] public section
 
 /-!
 The closed forms of the generated bounds of the Maine module's exports `count` and `tabulate`.

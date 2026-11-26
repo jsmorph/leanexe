@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! The specification of the request in `Examples/RunningMax/request.txt`: entry `i` of the result
 is the largest of entries `0` through `i` of the input, so the result has the input's length.

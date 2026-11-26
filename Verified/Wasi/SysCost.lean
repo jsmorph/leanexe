@@ -1,6 +1,10 @@
-import Verified.Bytes.Allocation
-import Verified.Wasi.SysForm
-import LeanExe.Wasi.Semantics
+module
+
+public import Verified.Bytes.Allocation
+public import Verified.Wasi.SysForm
+public import LeanExe.Wasi.Semantics
+
+@[expose] public section
 
 /-! The heap that a `sys` command allocates.  A reported call allocates one block after its
 reporter returns, whose size follows from the reporter's reply in the trace.  The other forms

@@ -1,5 +1,9 @@
-import LeanExe.Base
-import CodeLib.Numerical.Kernels
+module
+
+public import LeanExe.Base
+public import CodeLib.Numerical.Kernels
+
+@[expose] public section
 
 /-!
 # Reusable raw binary64 magnitude guards

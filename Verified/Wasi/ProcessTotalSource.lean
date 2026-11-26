@@ -1,4 +1,8 @@
-import LeanExe.Wasi.Process
+module
+
+public import LeanExe.Wasi.Process
+
+@[expose] public section
 
 namespace LeanExe.Wasi.Process
 

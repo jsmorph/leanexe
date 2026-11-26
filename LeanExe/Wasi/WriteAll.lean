@@ -1,4 +1,8 @@
-import LeanExe.Wasi.Semantics
+module
+
+public import LeanExe.Wasi.Semantics
+
+@[expose] public section
 
 /-! `writeAll buffer start count` writes the bytes of the window of `buffer` that `start` and
 `count` name to standard output with a loop of at most the window's length plus one passes.  It

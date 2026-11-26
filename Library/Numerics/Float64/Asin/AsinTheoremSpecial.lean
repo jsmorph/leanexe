@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Asin.AcosTheorem
-import Library.Numerics.Float64.Log1p.Log1pTheoremSpecial
+module
+
+public import Library.Numerics.Float64.Asin.AcosTheorem
+public import Library.Numerics.Float64.Log1p.Log1pTheoremSpecial
+
+@[expose] public section
 
 /-!
 The exceptional inputs of `Asin.asin` and `Asin.acos` as words: `asin` keeps `±0`, `acos 1` is

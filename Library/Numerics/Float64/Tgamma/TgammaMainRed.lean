@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tgamma.TgammaFloor
-import Library.Numerics.Float64.Tgamma.TgammaSpecial
-import Library.Numerics.Float64.Tgamma.TgammaRecip
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64GridExact
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaFloor
+public import Library.Numerics.Float64.Tgamma.TgammaSpecial
+public import Library.Numerics.Float64.Tgamma.TgammaRecip
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64GridExact
+
+@[expose] public section
 
 /-!
 The reduction of `tgammaWith` on `(-3, 4)`.  For a finite `x` with `-3 < x < 4` and `|x| ≥ 1/4`,

@@ -1,6 +1,10 @@
-import Demos.Euler.RealState
-import LeanExe.ProofKit.F64ArithmeticBounds
-import LeanExe.ProofKit.RealRusanovError
+module
+
+public import Demos.Euler.RealState
+public import LeanExe.ProofKit.F64ArithmeticBounds
+public import LeanExe.ProofKit.RealRusanovError
+
+@[expose] public section
 
 /-! One Rusanov flux component of the first-order solver against its exact formula.  For a positive
 speed at most `32 M²`, side fluxes at most `15 M⁵`, and states at most `M` in magnitude,

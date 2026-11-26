@@ -1,4 +1,8 @@
-import Demos.Rcv.Maine.ProcessCharges
+module
+
+public import Demos.Rcv.Maine.ProcessCharges
+
+@[expose] public section
 
 /-! The correctness of the compiled Maine process.  Under StreamFold's host assumptions, a Talos
 host that satisfies the three import specifications, and a host that accepts the exit status,

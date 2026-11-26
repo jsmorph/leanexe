@@ -1,4 +1,8 @@
-import LeanExe.Wasi.Prefix
+module
+
+public import LeanExe.Wasi.Prefix
+
+@[expose] public section
 
 namespace LeanExe.Wasi
 

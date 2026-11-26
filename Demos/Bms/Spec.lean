@@ -1,5 +1,9 @@
-import Library.Hashing.Crc.Division
-import LeanExe.Requests.Delimited
+module
+
+public import Library.Hashing.Crc.Division
+public import LeanExe.Requests.Delimited
+
+@[expose] public section
 
 /-!
 The protection machine of the BMS demo, as `Demos/Bms/requirements.md` states it, over natural

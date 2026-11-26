@@ -1,4 +1,8 @@
-import Library.Numerics.Arithmetic.Fma.FmaRound
+module
+
+public import Library.Numerics.Arithmetic.Fma.FmaRound
+
+@[expose] public section
 
 /-!
 The cases of `Fma.roundPack s w h l` for `N = h · 2 ^ 64 + l` with highest set bit `M`, and the

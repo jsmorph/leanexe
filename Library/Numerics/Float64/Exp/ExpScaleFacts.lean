@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpTableBounds
-import Library.Numerics.Float64.Exp.ExpReductionSelection
+module
+
+public import Library.Numerics.Float64.Exp.ExpTableBounds
+public import Library.Numerics.Float64.Exp.ExpReductionSelection
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpScaleFacts
 open CodeLib.IEEE64

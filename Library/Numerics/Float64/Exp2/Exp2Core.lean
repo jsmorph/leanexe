@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Exp2.Exp2Selection
-import Library.Numerics.Float64.Exp2.Exp2Evaluation
-import Library.Numerics.Float64.Exp.ArmSpecial
-import Library.Numerics.Float64.Exp.ArmScale
-import LeanExe.ProofKit.RealExpError
+module
+
+public import Library.Numerics.Float64.Exp2.Exp2Selection
+public import Library.Numerics.Float64.Exp2.Exp2Evaluation
+public import Library.Numerics.Float64.Exp.ArmSpecial
+public import Library.Numerics.Float64.Exp.ArmScale
+public import LeanExe.ProofKit.RealExpError
+
+@[expose] public section
 
 /-!
 `Exp2.exp2Core` on `Exp.expTable`.  The shifted sum's bits `ki = 0x42C8000000000000 + k` raised

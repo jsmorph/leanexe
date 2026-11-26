@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: constant tables.  A table is a constant
 array of words, which the module holds in a data segment.  A function takes it as a borrowed array

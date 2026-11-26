@@ -1,6 +1,10 @@
-import Verified.State
-import Verified.Rename
-import Verified.Bound
+module
+
+public import Verified.State
+public import Verified.Rename
+public import Verified.Bound
+
+@[expose] public section
 
 namespace Verified
 

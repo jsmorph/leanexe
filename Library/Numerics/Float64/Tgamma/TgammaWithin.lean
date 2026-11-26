@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccDb
-import Library.Numerics.Float64.Tgamma.TgammaFacts
-import Library.Numerics.Float64.Tgamma.TgammaSpecs
-import LeanExe.ProofKit.GammaBelowT0
-import LeanExe.ProofKit.GammaSubnormal
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccDb
+public import Library.Numerics.Float64.Tgamma.TgammaFacts
+public import Library.Numerics.Float64.Tgamma.TgammaSpecs
+public import LeanExe.ProofKit.GammaBelowT0
+public import LeanExe.ProofKit.GammaSubnormal
+
+@[expose] public section
 
 /-!
 **`tgamma` within one step of `Γ`** with no hypothesis.  `TgammaFinal.tgamma_within_one` takes the

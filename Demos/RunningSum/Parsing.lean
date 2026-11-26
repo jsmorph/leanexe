@@ -1,5 +1,9 @@
-import Demos.RunningSum.ParsingScan
-import Demos.RunningSum.ParsingSlices
+module
+
+public import Demos.RunningSum.ParsingScan
+public import Demos.RunningSum.ParsingSlices
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

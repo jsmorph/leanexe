@@ -1,7 +1,11 @@
-import Demos.RunningSumFp.Program
-import Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
-import Library.Numerics.Decimal.PrintFloat.PrintFloatTheorem
-import LeanExe.ProofKit.F64Bits
+module
+
+public import Demos.RunningSumFp.Program
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatTheorem
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 namespace Demos.RunningSumFp
 

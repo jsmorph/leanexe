@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 namespace Library.Numerics.Reductions.Float64
 

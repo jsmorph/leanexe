@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log2.Compiled
-import Library.Numerics.Float64.Log.LogBranches
+module
+
+public import Library.Numerics.Float64.Log2.Compiled
+public import Library.Numerics.Float64.Log.LogBranches
+
+@[expose] public section
 
 /-!
 The paths of `Log2.log2With` by the bits of the argument.  The guards are those of `Log.logWith`

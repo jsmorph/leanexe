@@ -1,7 +1,11 @@
-import Library.Trees.WordTree.Compiled
-import Library.Trees.Search.Proof
-import Mathlib.Data.Tree.Basic
-import Verified.Master
+module
+
+public import Library.Trees.WordTree.Compiled
+public import Library.Trees.Search.Proof
+public import Mathlib.Data.Tree.Basic
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Trees.WordTree
 

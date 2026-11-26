@@ -1,6 +1,10 @@
-import Demos.Gpt32.Program
-import Verified.Reflect.Command
-import Verified.WGSL.Compile
+module
+
+public import Demos.Gpt32.Program
+public import Verified.Reflect.Command
+public import Verified.WGSL.Compile
+
+@[expose] public section
 
 namespace Demos.Gpt32.Verified
 

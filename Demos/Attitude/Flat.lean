@@ -1,5 +1,9 @@
-import Demos.Attitude.Program
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Attitude.Program
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Attitude
 

@@ -1,4 +1,8 @@
-import Verified.Shim.Trace
+module
+
+public import Verified.Shim.Trace
+
+@[expose] public section
 
 /-!
 The descriptors that the shim's layer events name.  The shim holds open the numbers of

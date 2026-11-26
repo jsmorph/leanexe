@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaAsym1
-import Mathlib.Analysis.Complex.ExponentialBounds
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAsym1
+public import Mathlib.Analysis.Complex.ExponentialBounds
+
+@[expose] public section
 
 /-!
 The quantities of `Tgamma.asLgammaAsym` before its two branches, for `X = xh + xl` with

@@ -1,4 +1,8 @@
-import Verified.TreeCopyInvariant
+module
+
+public import Verified.TreeCopyInvariant
+
+@[expose] public section
 
 namespace Verified
 

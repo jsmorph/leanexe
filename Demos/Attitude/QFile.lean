@@ -1,5 +1,9 @@
-import Demos.Attitude.QVerified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Attitude.QVerified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh --cases qmethod` writes `build/verified/qmethod.wasm`,
 with `tools/leanrun --timeout 10m lake env lean Demos/Attitude/QFile.lean`: the file holds

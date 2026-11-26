@@ -1,6 +1,10 @@
-import TestSupport.A64.WasiElf
-import Verified.Examples.WasiSysEnvironNative
-import LeanExe.A64.File
+module
+
+public import TestSupport.A64.WasiElf
+public import Verified.Examples.WasiSysEnvironNative
+public import LeanExe.A64.File
+
+@[expose] public section
 
 /-!
 The theorems of the Linux executable that `a64-wasi emit` writes for the environment command of

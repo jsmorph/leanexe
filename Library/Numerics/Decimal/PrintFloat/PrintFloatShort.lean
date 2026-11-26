@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.Shared.StrconvRound
+module
+
+public import Library.Numerics.Decimal.Shared.StrconvRound
+
+@[expose] public section
 
 /-!
 The shortest decimals of an interval.  For an interval of positive reals from `lo` to `hi`, ends

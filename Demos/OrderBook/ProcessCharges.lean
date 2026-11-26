@@ -1,7 +1,11 @@
-import Demos.OrderBook.Bound
-import Demos.OrderBook.ProcessSizes
-import Verified.Wasi.BudgetTactics
-import Verified.Wasi.ResourceRules
+module
+
+public import Demos.OrderBook.Bound
+public import Demos.OrderBook.ProcessSizes
+public import Verified.Wasi.BudgetTactics
+public import Verified.Wasi.ResourceRules
+
+@[expose] public section
 
 /-! The allocation charges of the compiled process's `begin` and steps.  `begin` builds the seven
 arrays of the empty book.  The steps, `afterWrite`, and `afterRead` take the state owned, so a

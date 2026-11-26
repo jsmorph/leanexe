@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Order
+module
+
+public import LeanExe.ProofKit.F64Order
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64ExponentBounds
 open CodeLib.IEEE64 F64Order

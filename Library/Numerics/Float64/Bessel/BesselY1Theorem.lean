@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselY1Large
-import Library.Numerics.Float64.Bessel.BesselY1Small
-import Library.Numerics.Float64.Bessel.BesselY1Tiny
+module
+
+public import Library.Numerics.Float64.Bessel.BesselY1Large
+public import Library.Numerics.Float64.Bessel.BesselY1Small
+public import Library.Numerics.Float64.Bessel.BesselY1Tiny
+
+@[expose] public section
 
 /-!
 The accuracy theorems for `Bessel.y1`.  For every finite `x ≥ 2^-1022`, the result lies within

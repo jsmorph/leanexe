@@ -1,6 +1,10 @@
-import Demos.Conjunction.Accuracy
-import Demos.Conjunction.AccuracyModel
-import Demos.Conjunction.Soundness
+module
+
+public import Demos.Conjunction.Accuracy
+public import Demos.Conjunction.AccuracyModel
+public import Demos.Conjunction.Soundness
+
+@[expose] public section
 
 /-!
 Soundness of the radius searches.  `circularError_sound` states that an accepted result of

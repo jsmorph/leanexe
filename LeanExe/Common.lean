@@ -1,6 +1,10 @@
-import LeanExe.TalosPrelude
-import LeanExe.TalosCompat
-import LeanExe.Attr
+module
+
+public import LeanExe.TalosPrelude
+public import LeanExe.TalosCompat
+public import LeanExe.Attr
+
+@[expose] public section
 
 /-!
 # Shared lemmas for artifact proofs

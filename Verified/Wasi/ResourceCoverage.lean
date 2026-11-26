@@ -1,4 +1,8 @@
-import Verified.Wasi.ResourceExec
+module
+
+public import Verified.Wasi.ResourceExec
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

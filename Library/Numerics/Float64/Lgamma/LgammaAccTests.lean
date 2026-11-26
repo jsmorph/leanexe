@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccWin
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccWin
+
+@[expose] public section
 
 /-!
 The tests of `Lgamma.accurate` on the reals.  `win_test` reads the window test

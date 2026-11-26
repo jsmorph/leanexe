@@ -1,5 +1,9 @@
-import Verified.Examples.Relocation
-import Verified.Examples.ScalarCompositionCases
+module
+
+public import Verified.Examples.Relocation
+public import Verified.Examples.ScalarCompositionCases
+
+@[expose] public section
 
 namespace Verified.Examples.Relocation
 

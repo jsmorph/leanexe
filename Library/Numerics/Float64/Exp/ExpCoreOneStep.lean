@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpCoreInterval
-import LeanExe.ProofKit.F64NearestBinade
+module
+
+public import Library.Numerics.Float64.Exp.ExpCoreInterval
+public import LeanExe.ProofKit.F64NearestBinade
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpCoreOneStep
 open CodeLib.IEEE64

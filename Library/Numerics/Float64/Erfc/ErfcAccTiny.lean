@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcAccMain
-import Library.Numerics.Float64.Erfc.ErfcSeries
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAccMain
+public import Library.Numerics.Float64.Erfc.ErfcSeries
+
+@[expose] public section
 
 /-!
 `cr_erf_accurate` below `1/8` (`Erfc.erfAccurateTiny`).  The code evaluates `z Q (z²)` for the

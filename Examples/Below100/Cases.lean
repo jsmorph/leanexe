@@ -1,5 +1,9 @@
-import Examples.Below100.Spec
-import TestSupport.Host
+module
+
+public import Examples.Below100.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `below100`. -/
 

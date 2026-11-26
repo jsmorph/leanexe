@@ -1,5 +1,9 @@
-import Demos.Conjunction.Box
-import Library.Numerics.Interval.Enclose
+module
+
+public import Demos.Conjunction.Box
+public import Library.Numerics.Interval.Enclose
+
+@[expose] public section
 
 /-!
 The conjunction-message form.  A conjunction data message (CCSDS 508.0-B-1) gives each object's

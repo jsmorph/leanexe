@@ -1,4 +1,8 @@
-import Demos.Sgp4.Spec
+module
+
+public import Demos.Sgp4.Spec
+
+@[expose] public section
 
 /-!
 The near-Earth SGP4 model of an element set: the status, the position, and the velocity at a time,

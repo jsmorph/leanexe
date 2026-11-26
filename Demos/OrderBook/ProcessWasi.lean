@@ -1,6 +1,10 @@
-import Demos.OrderBook.Flat
-import Demos.OrderBook.Process
-import Verified.Wasi.ReflectCommand
+module
+
+public import Demos.OrderBook.Flat
+public import Demos.OrderBook.Process
+public import Verified.Wasi.ReflectCommand
+
+@[expose] public section
 
 /-! The order book's process compiled by the verified WASI compiler.  The list holds the program's
 functions in calling order, from `emit` to `run`, and the process's functions after them.  `byteAt`

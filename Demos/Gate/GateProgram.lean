@@ -1,6 +1,10 @@
-import Library.Numerics.Interval.Functions
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
+module
+
+public import Library.Numerics.Interval.Functions
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 /-!
 The gate.  `gate nu s g` checks an innovation `nu` of `d` values and a covariance `s` of `d·d`

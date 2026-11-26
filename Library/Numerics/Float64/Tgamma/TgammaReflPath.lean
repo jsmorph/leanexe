@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaRefl9
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRefl9
+
+@[expose] public section
 
 /-!
 **The path of `tgammaWith` from `-184` to `-3`** within one step of `Γ x` for every finite

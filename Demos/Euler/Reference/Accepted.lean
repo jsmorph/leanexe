@@ -1,10 +1,14 @@
-import Demos.Euler.Reference.Interface
-import Demos.Euler.ReconstructedSpec
-import Demos.Euler.Balance
-import Demos.Euler.Words
-import LeanExe.ProofKit.F64RusanovResidual
-import LeanExe.ProofKit.F64ErrorPropagation
-import LeanExe.ProofKit.F64QuotientResidual
+module
+
+public import Demos.Euler.Reference.Interface
+public import Demos.Euler.ReconstructedSpec
+public import Demos.Euler.Balance
+public import Demos.Euler.Words
+public import LeanExe.ProofKit.F64RusanovResidual
+public import LeanExe.ProofKit.F64ErrorPropagation
+public import LeanExe.ProofKit.F64QuotientResidual
+
+@[expose] public section
 
 /-! Error bounds computed from the words of an accepted evaluation.  When `side` or `outwardSide`
 accepts a state, each of its four fluxes is within `sideFluxErrorBound` of the exact flux

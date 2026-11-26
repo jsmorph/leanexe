@@ -1,5 +1,9 @@
-import Verified.Examples.RecursiveTypes
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.RecursiveTypes
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/recursivetypes.wasm`: the file
 holds `encode RecursiveTypes.compiled.module`, and it decodes to the module of

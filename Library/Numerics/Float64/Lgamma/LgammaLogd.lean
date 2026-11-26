@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaLogd
-import Library.Numerics.Arithmetic.Fma.FmaWords
-import Library.Numerics.Float64.Lgamma.LgammaApprox
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaLogd
+public import Library.Numerics.Arithmetic.Fma.FmaWords
+public import Library.Numerics.Float64.Lgamma.LgammaApprox
+
+@[expose] public section
 
 /-!
 **`Lgamma.asLogd` within `2^-69 + |log x| 2^-78` of `log x`** for every positive finite double `x`

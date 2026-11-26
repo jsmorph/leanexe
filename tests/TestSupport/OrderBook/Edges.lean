@@ -1,4 +1,8 @@
-import Demos.OrderBook.Samples
+module
+
+public import Demos.OrderBook.Samples
+
+@[expose] public section
 
 /-! Command streams for the input classes that [the samples](../../../Demos/OrderBook/Samples.lean)
 leave uncovered, and for the program's own limits: top-of-book totals near 2^44, ids at or above

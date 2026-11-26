@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! The double-precision inputs that give the largest known errors of the libraries compared in
 B. Gladman, V. Innocente, J. Mather, K. Ozaki, and P. Zimmermann, "Accuracy of Mathematical

@@ -1,7 +1,11 @@
-import LeanExe.Requests.DelimitedWords
-import LeanExe.Native.Requests
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import LeanExe.Requests.DelimitedWords
+public import LeanExe.Native.Requests
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 An echo of records over a UART for the Cortex-M7 back end, framed by the delimited framing of

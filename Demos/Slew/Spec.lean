@@ -1,6 +1,10 @@
-import LeanExe.Base
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Inverse
-import Mathlib.Analysis.SpecialFunctions.Sqrt
+module
+
+public import LeanExe.Base
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Inverse
+public import Mathlib.Analysis.SpecialFunctions.Sqrt
+
+@[expose] public section
 
 /-! Real-number definitions for the slew planner's theorems.  A vector is a triple of reals and a
 quaternion a quadruple, with explicit formulas rather than Mathlib's quaternions.  `rot q v` is

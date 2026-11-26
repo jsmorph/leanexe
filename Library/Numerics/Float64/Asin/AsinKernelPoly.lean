@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.AsinRemainder
+module
+
+public import LeanExe.ProofKit.AsinRemainder
+
+@[expose] public section
 
 /-!
 The approximation error of fdlibm's rational function for `arcsin`, as FreeBSD msun's `e_asin.c`

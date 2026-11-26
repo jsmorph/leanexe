@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp2.Exp2Approximation
-import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+module
+
+public import Library.Numerics.Float64.Exp2.Exp2Approximation
+public import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+
+@[expose] public section
 
 /-!
 The constants of `Exp2.exp10Core` against `log 10`.  `log 10 = 3 log 2 + log (5/4)`, with `log 2`

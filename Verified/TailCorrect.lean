@@ -1,8 +1,12 @@
-import Verified.ArgsCorrect
-import Verified.TailPaid
-import Verified.TailState
-import Verified.TailLoop
-import Verified.EnvStep
+module
+
+public import Verified.ArgsCorrect
+public import Verified.TailPaid
+public import Verified.TailState
+public import Verified.TailLoop
+public import Verified.EnvStep
+
+@[expose] public section
 
 namespace Verified
 

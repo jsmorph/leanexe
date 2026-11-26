@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64FullStep
-import LeanExe.ProofKit.F64Approx
-import LeanExe.ProofKit.F64RoundNearest
+module
+
+public import LeanExe.ProofKit.F64FullStep
+public import LeanExe.ProofKit.F64Approx
+public import LeanExe.ProofKit.F64RoundNearest
+
+@[expose] public section
 
 /-!
 Two steps from a total error: a nonnegative word within two and a half spacings of a real number

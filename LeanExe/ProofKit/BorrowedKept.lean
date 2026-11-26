@@ -1,4 +1,8 @@
-import LeanExe.Pipeline.Allocation
+module
+
+public import LeanExe.Pipeline.Allocation
+
+@[expose] public section
 
 /-!
 A borrowed array stays borrowed through a call that keeps the bytes and regions of the heap.  The

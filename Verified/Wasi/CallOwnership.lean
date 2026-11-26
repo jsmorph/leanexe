@@ -1,4 +1,8 @@
-import Verified.Wasi.CallArguments
+module
+
+public import Verified.Wasi.CallArguments
+
+@[expose] public section
 
 namespace Verified.Wasi
 

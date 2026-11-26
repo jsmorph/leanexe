@@ -1,5 +1,9 @@
-import Verified.Wasi.CommandRun
-import Verified.Wasi.NativeResult
+module
+
+public import Verified.Wasi.CommandRun
+public import Verified.Wasi.NativeResult
+
+@[expose] public section
 
 namespace Verified.Wasi
 

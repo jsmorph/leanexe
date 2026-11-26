@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Log2.Log2CoreBits
-import Library.Numerics.Float64.Log.LogCoreFinal
-import LeanExe.ProofKit.F64HighWord
-import LeanExe.ProofKit.F64Sterbenz
+module
+
+public import Library.Numerics.Float64.Log2.Log2CoreBits
+public import Library.Numerics.Float64.Log.LogCoreFinal
+public import LeanExe.ProofKit.F64HighWord
+public import LeanExe.ProofKit.F64Sterbenz
+
+@[expose] public section
 
 /-!
 The error of `Log2CoreBits.final2`, the arithmetic of `Log2.log2Core` after `r`, `kd`, and

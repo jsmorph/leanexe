@@ -1,5 +1,9 @@
-import Verified.Wasi.Return
-import Verified.Wasi.CommandSpec
+module
+
+public import Verified.Wasi.Return
+public import Verified.Wasi.CommandSpec
+
+@[expose] public section
 
 namespace Verified.Wasi
 

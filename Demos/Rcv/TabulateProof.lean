@@ -1,6 +1,10 @@
-import Demos.Rcv.TabulateProgram
-import Demos.Rcv.PrintProof
-import Demos.Rcv.Refinement
+module
+
+public import Demos.Rcv.TabulateProgram
+public import Demos.Rcv.PrintProof
+public import Demos.Rcv.Refinement
+
+@[expose] public section
 
 /-!
 The export `tabulate` returns the report of every file: `tabulate_eq` states that the bytes of

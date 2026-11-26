@@ -1,10 +1,14 @@
-import TestSupport.A64.CicTable
-import Library.Numerics.Filters.Cic.Proof
-import Library.Numerics.Filters.Cic.Exact
-import LeanExe.Dialect.Lemmas
-import LeanExe.A64.Proof.ProgramRuns
-import LeanExe.Native.Bare
-import Verified.Bare
+module
+
+public import TestSupport.A64.CicTable
+public import Library.Numerics.Filters.Cic.Proof
+public import Library.Numerics.Filters.Cic.Exact
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.A64.Proof.ProgramRuns
+public import LeanExe.Native.Bare
+public import Verified.Bare
+
+@[expose] public section
 
 /-!
 The theorems of the CIC filter's bare-metal program for AArch64.  `check_toInt` states that the

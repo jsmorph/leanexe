@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ArmSpecial
-import Library.Numerics.Float64.Exp.ExpSpecialPositive
+module
+
+public import Library.Numerics.Float64.Exp.ArmSpecial
+public import Library.Numerics.Float64.Exp.ExpSpecialPositive
+
+@[expose] public section
 
 /-!
 The reconstruction `s + s · w` of Arm's exponential family with a larger allowance for the

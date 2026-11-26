@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.TaylorRemainder
+module
+
+public import LeanExe.ProofKit.TaylorRemainder
+
+@[expose] public section
 
 /-!
 The series `log (1 + x) - log (1 - x) = Σ 2 x ^ (2 k + 1) / (2 k + 1)` truncated as a polynomial in

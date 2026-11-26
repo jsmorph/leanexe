@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! The specification of multiple-precision arithmetic.  A number is an array of digits in base
 `2^32`, least significant first, each held in a word.  `value u` is the number, and `digits n x` is

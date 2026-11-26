@@ -1,4 +1,8 @@
-import TestSupport.Gate.AssignmentCases
+module
+
+public import TestSupport.Gate.AssignmentCases
+
+@[expose] public section
 
 /-! The cases of the module `assignment` alone, for `tests/verified/run.sh --cases assignment`.
 With the argument `--bits`, it prints the lines that `tests/gate/assignment.py` reads. -/

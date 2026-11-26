@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiProduct
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiProduct
+
+@[expose] public section
 
 /-!
 `Sinpi.piTiny` on words, with its exact steps.  The head `hi` is the truncation of `x` to its high

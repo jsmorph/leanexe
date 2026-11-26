@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.Shared.StrconvGrid
+module
+
+public import Library.Numerics.Decimal.Shared.StrconvGrid
+
+@[expose] public section
 
 /-!
 The rounding interval of a finite positive encoding.  The encoding `pack f E Q` of a canonical

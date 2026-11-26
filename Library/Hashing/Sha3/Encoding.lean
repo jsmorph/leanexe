@@ -1,5 +1,9 @@
-import Library.Hashing.Sha3.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Library.Hashing.Sha3.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! The lanes are represented as the tuple of their fields, in declaration order. -/
 

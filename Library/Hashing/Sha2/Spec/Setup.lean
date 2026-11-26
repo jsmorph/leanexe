@@ -1,9 +1,13 @@
 --#--
-import LeanExe.Base
-import Mathlib.Data.Nat.Find
-import Mathlib.Data.Nat.ModEq
-import Mathlib.Basic.Logic.Basic
-import Batteries.Data.List.Basic
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.Nat.Find
+public import Mathlib.Data.Nat.ModEq
+public import Mathlib.Basic.Logic.Basic
+public import Batteries.Data.List.Basic
+
+@[expose] public section
 
 -- TODO: input preconditions are not yet encoded in the Lean signatures.
 -- The spec text constrains `0 ≤ n < w` for `Notation.ROTR`/`ROTL`/`SHR` and

@@ -1,4 +1,8 @@
-import Demos.Orbit.Vector
+module
+
+public import Demos.Orbit.Vector
+
+@[expose] public section
 
 /-!
 The two-body model of the demo.  For a gravitational parameter `μ > 0`, an orbit is a pair of

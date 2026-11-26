@@ -1,5 +1,9 @@
-import LeanExe.A64.Linux
-import LeanExe.A64.Proof.Lift
+module
+
+public import LeanExe.A64.Linux
+public import LeanExe.A64.Proof.Lift
+
+@[expose] public section
 
 /-!
 A platform that maps more.  `Platform.Le P P'` states that `P'` maps as Normal memory every byte

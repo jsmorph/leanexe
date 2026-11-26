@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaAcc2
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAcc2
+
+@[expose] public section
 
 /-!
 The loop of `Tgamma.poly3`, the polynomial of the accurate path of `Tgamma` above `1/4`.  Step `k`

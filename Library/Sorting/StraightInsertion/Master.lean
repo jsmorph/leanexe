@@ -1,5 +1,9 @@
-import Library.Sorting.StraightInsertion.Compiled
-import Verified.Master
+module
+
+public import Library.Sorting.StraightInsertion.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Sorting.StraightInsertion
 

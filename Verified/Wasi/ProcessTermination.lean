@@ -1,6 +1,10 @@
-import Verified.Wasi.ProcessLoop
-import Interpreter.Wasm.Wp.Loop
-import Interpreter.Wasm.Wp.Block
+module
+
+public import Verified.Wasi.ProcessLoop
+public import Interpreter.Wasm.Wp.Loop
+public import Interpreter.Wasm.Wp.Block
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,5 +1,9 @@
-import Library.Hashing.SipHash.Bytes
-import Verified.Master
+module
+
+public import Library.Hashing.SipHash.Bytes
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Hashing.SipHash
 

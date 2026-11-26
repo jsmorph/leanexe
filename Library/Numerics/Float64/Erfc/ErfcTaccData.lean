@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcTaccLoop
-import Library.Numerics.Float64.Erfc.ErfcAsymPlan
-import Library.Numerics.Float64.Erfc.ErfcRound
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTaccLoop
+public import Library.Numerics.Float64.Erfc.ErfcAsymPlan
+public import Library.Numerics.Float64.Erfc.ErfcRound
+
+@[expose] public section
 
 /-!
 The data of the ten rows of `Tacc` for `ErfcTaccLoop`: the bound `MU` on `U ≈ 1/x²`, the

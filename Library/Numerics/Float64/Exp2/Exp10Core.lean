@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Exp2.Exp10Reduction
-import Library.Numerics.Float64.Exp.ArmSpecial
-import Library.Numerics.Float64.Exp.ArmScale
-import Library.Numerics.Float64.Exp2.Exp2Paths
+module
+
+public import Library.Numerics.Float64.Exp2.Exp10Reduction
+public import Library.Numerics.Float64.Exp.ArmSpecial
+public import Library.Numerics.Float64.Exp.ArmScale
+public import Library.Numerics.Float64.Exp2.Exp2Paths
+
+@[expose] public section
 
 /-!
 `Exp2.exp10Core` on `Exp.expTable`.  Its key is that of `exp`, so the scale and tail words are

@@ -1,5 +1,9 @@
-import Examples.Scale.Program
-import Verified.Reflect.Command
+module
+
+public import Examples.Scale.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `scale`.  The function allocates nothing, so the generated
 `compiled.scale.implements` states that function 2 computes `scale` without a trap. -/

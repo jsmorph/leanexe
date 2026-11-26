@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.Traps
+module
+
+public import LeanExe.A64.Proof.Traps
+
+@[expose] public section
 
 /-!
 The simulation of the branches `br`, `br_if`, and `ret`.  A branch to a construct moves the

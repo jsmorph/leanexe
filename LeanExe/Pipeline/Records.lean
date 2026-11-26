@@ -1,6 +1,10 @@
-import LeanExe.Pipeline.Allocation
-import LeanExe.Pipeline.Implements
-import LeanExe.ProofKit.MemoryFrame
+module
+
+public import LeanExe.Pipeline.Allocation
+public import LeanExe.Pipeline.Implements
+public import LeanExe.ProofKit.MemoryFrame
+
+@[expose] public section
 
 /-!
 Facts about records on the heap.  A region below `top` and outside every free block keeps

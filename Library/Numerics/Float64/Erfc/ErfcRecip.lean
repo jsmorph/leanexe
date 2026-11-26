@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack4
-import Library.Numerics.Float64.Erfc.ErfcExpBits
-import LeanExe.ProofKit.F64DivBounds
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack4
+public import Library.Numerics.Float64.Erfc.ErfcExpBits
+public import LeanExe.ProofKit.F64DivBounds
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 `1/x` and `1/x²` as double-doubles in `erfc_asympt_fast` and `erfc_asympt_accurate`.  The code

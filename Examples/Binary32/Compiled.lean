@@ -1,6 +1,10 @@
-import Examples.Binary32.Program
-import Verified.Reflect.Command
-import Verified.WGSL.Compile
+module
+
+public import Examples.Binary32.Program
+public import Verified.Reflect.Command
+public import Verified.WGSL.Compile
+
+@[expose] public section
 
 /-! The verified compiler's module of the example's functions, and the WGSL kernels that
 `Verified.WGSL.compile` translates from the reflected bodies of `scale32`, `axpyArray32`,

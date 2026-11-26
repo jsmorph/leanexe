@@ -1,5 +1,9 @@
-import Examples.Calc.Flat
-import Verified.Reflect.Command
+module
+
+public import Examples.Calc.Flat
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of the functions of `Program.lean`, with the representations
 of `Flat.lean`.  The reflector reads the structure patterns of `Calc.undo`, which

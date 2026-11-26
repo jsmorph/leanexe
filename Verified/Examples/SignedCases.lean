@@ -1,9 +1,13 @@
-import Verified.Examples.Signed
-import Examples.Floor.Program
-import Examples.Floor.Cases
-import Examples.Convert.Program
-import Examples.Convert.Cases
-import TestSupport.Host
+module
+
+public import Verified.Examples.Signed
+public import Examples.Floor.Program
+public import Examples.Floor.Cases
+public import Examples.Convert.Program
+public import Examples.Convert.Cases
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The cases of the modules `signed`, `floor`, and `convert`: each function of
 `Verified.Examples.Signed` and of `Examples.Floor` on the extremes of `Int64`, the values near 0,

@@ -1,6 +1,10 @@
-import Examples.ArrayCall
-import Examples.Lookup.Proof
-import Verified.Reflect.Command
+module
+
+public import Examples.ArrayCall
+public import Examples.Lookup.Proof
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `compute`, whose result is a two-word literal, which the
 reflector reads as two pushes onto `#[]`.  `lookup_call` composes the generated

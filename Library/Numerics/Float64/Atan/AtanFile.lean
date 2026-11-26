@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Atan.AtanBytes
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Numerics.Float64.Atan.AtanBytes
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/atan.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Library/Numerics/Float64/Atan/AtanFile.lean`: the file holds

@@ -1,5 +1,9 @@
-import Demos.Gpt.Verified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Gpt.Verified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/gpt.wasm`: the file holds
 `encode Verified.compiled.module`, and it decodes to the module of `Verified.compiled.bytes`. -/

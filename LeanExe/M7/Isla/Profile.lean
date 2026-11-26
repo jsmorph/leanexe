@@ -1,4 +1,8 @@
-import LeanExe.A64.Isla.Profile
+module
+
+public import LeanExe.A64.Isla.Profile
+
+@[expose] public section
 
 /-!
 The profile of the traces of `tests/isla/m7-traces.sh`: the registers outside the model that some

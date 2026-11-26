@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Trig.TrigSinCos
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Trig.TrigSinCos
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The accuracy theorems for `Trig.sin` and `Trig.cos`.  For every finite binary64 input, the

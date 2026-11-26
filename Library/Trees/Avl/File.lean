@@ -1,5 +1,9 @@
-import Library.Trees.Avl.Compiled
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Trees.Avl.Compiled
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/avlTree.wasm`: the file holds
 `encode compiled.module`, and it decodes to the module of `compiled.bytes`. -/

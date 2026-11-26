@@ -1,9 +1,13 @@
-import Library.Numerics.Decimal.Shared.StrconvRational
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64DivCore
-import LeanExe.ProofKit.F64RoundDyadic
-import LeanExe.ProofKit.F64GridExact
+module
+
+public import Library.Numerics.Decimal.Shared.StrconvRational
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64DivCore
+public import LeanExe.ProofKit.F64RoundDyadic
+public import LeanExe.ProofKit.F64GridExact
+
+@[expose] public section
 
 /-!
 Lean's `Float.ofScientific` at `v4.34.1`, the meaning of every decimal literal of type `Float`,

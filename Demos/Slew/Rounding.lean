@@ -1,5 +1,9 @@
-import Demos.Slew.Program
-import LeanExe.ProofKit.F64Approx
+module
+
+public import Demos.Slew.Program
+public import LeanExe.ProofKit.F64Approx
+
+@[expose] public section
 
 /-! Binary64 facts for the slew planner's error lemmas.  `val x` is the real value of the float
 `x` and `Fin x` states that it is finite.  The comparisons, `max`, `min`, and negation of finite

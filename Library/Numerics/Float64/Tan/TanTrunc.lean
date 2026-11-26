@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tan.TanWords
-import LeanExe.ProofKit.F64SignedNearestSum
-import LeanExe.ProofKit.F64ValueExact
-import Library.Numerics.Float64.Trig.TrigSmall
-import LeanExe.ProofKit.F64ExactProduct
+module
+
+public import Library.Numerics.Float64.Tan.TanWords
+public import LeanExe.ProofKit.F64SignedNearestSum
+public import LeanExe.ProofKit.F64ValueExact
+public import Library.Numerics.Float64.Trig.TrigSmall
+public import LeanExe.ProofKit.F64ExactProduct
+
+@[expose] public section
 
 /-!
 The truncation of a word to its high 32 bits, which `Tan.kernelTan` uses to split `w` and

@@ -1,5 +1,9 @@
-import Lean
-import Verified.Wasi.SysForm
+module
+
+public import Lean
+public import Verified.Wasi.SysForm
+
+@[expose] public section
 
 namespace Verified.Wasi.Reflect
 

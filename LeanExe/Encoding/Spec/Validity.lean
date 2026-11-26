@@ -1,4 +1,8 @@
-import LeanExe.Encoding.Spec.Modules
+module
+
+public import LeanExe.Encoding.Spec.Modules
+
+@[expose] public section
 
 namespace Wasm.Encoding.Spec.Validity
 

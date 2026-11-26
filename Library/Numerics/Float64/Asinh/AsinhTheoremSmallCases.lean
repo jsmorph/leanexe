@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Asinh.AsinhTheoremSmall
-import Library.Numerics.Float64.Asinh.AtanhTheoremSmallCases
+module
+
+public import Library.Numerics.Float64.Asinh.AsinhTheoremSmall
+public import Library.Numerics.Float64.Asinh.AtanhTheoremSmallCases
+
+@[expose] public section
 
 /-!
 `Asinh.asinh` from `2 ^ -28` to 2, before the sign, in 25 input ranges: five with a bound relative

@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tgamma.TgammaPolyDDD
-import Library.Numerics.Float64.Tgamma.TgammaExpr
-import Library.Numerics.Float64.Tgamma.TgammaApprox
-import Library.Numerics.Float64.Tgamma.TgammaWords
-import Library.Numerics.Float64.Tgamma.TgammaSmall
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaPolyDDD
+public import Library.Numerics.Float64.Tgamma.TgammaExpr
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+public import Library.Numerics.Float64.Tgamma.TgammaWords
+public import Library.Numerics.Float64.Tgamma.TgammaSmall
+
+@[expose] public section
 
 /-!
 The polynomial of `tgammaWith` on `(-3, 4)`, in `d = x - (i + 7/2)` with `|d| ≤ 1/2 + 2 ^ -50`.

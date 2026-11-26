@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64ErrorTrack
+module
+
+public import LeanExe.ProofKit.F64ErrorTrack
+
+@[expose] public section
 
 /-!
 Error tracking with magnitude bounds: `AB w A e M` states that the word `w` approximates `A`

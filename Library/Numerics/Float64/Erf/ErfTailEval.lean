@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erf.ErfTailKernel
-import Library.Numerics.Float64.Erf.ErfTailSplit
-import Library.Numerics.Float64.Exp.ExpTightFloat
+module
+
+public import Library.Numerics.Float64.Erf.ErfTailKernel
+public import Library.Numerics.Float64.Erf.ErfTailSplit
+public import Library.Numerics.Float64.Exp.ExpTightFloat
+
+@[expose] public section
 
 /-!
 The rounding error of `s_erf.c`'s tail, `erfc x = exp (-z² - 0.5625) exp ((z - x)(z + x) + R/S)/x`

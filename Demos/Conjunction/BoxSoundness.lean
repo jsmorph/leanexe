@@ -1,6 +1,10 @@
-import Demos.Conjunction.Box
-import Demos.Conjunction.Soundness
-import Library.Numerics.Interval.FunctionsProof
+module
+
+public import Demos.Conjunction.Box
+public import Demos.Conjunction.Soundness
+public import Library.Numerics.Interval.FunctionsProof
+
+@[expose] public section
 
 /-!
 Soundness of the probability enclosure for interval inputs.  `pcBoxWith_enclosure` states that an

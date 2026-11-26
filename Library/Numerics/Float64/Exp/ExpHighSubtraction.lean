@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpReductionExact
-import LeanExe.ProofKit.F64NormalizedMagnitude
+module
+
+public import Library.Numerics.Float64.Exp.ExpReductionExact
+public import LeanExe.ProofKit.F64NormalizedMagnitude
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpHighSubtraction
 open CodeLib.IEEE64

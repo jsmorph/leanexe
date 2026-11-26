@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Interpreter.Wasm.IEEE64
+module
+
+public import LeanExe.Base
+public import Interpreter.Wasm.IEEE64
+
+@[expose] public section
 
 /-! The specifications: WebAssembly's signed conversions in Talos's IEEE 754 functions.
 `convertI64S` rounds the integer of a word, read in two's complement, to the nearest float with

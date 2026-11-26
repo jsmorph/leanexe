@@ -1,6 +1,10 @@
-import Library.Arrays.MaxSegmentSum.Compiled
-import Library.Arrays.MaxSegmentSum.Proof
-import Verified.Master
+module
+
+public import Library.Arrays.MaxSegmentSum.Compiled
+public import Library.Arrays.MaxSegmentSum.Proof
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Arrays.MaxSegmentSum
 

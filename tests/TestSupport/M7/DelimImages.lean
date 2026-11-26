@@ -1,6 +1,10 @@
-import LeanExe.M7.Board
-import TestSupport.M7.Qemu
-import TestSupport.M7.Delim
+module
+
+public import LeanExe.M7.Board
+public import TestSupport.M7.Qemu
+public import TestSupport.M7.Delim
+
+@[expose] public section
 
 /-!
 The images of the echo of records of `tests/TestSupport/M7/Delim.lean`, both from the state

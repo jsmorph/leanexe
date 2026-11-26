@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.Linux
-import LeanExe.A64.Startup
-import LeanExe.Linux.Replies
+module
+
+public import LeanExe.A64.Proof.Linux
+public import LeanExe.A64.Startup
+public import LeanExe.Linux.Replies
+
+@[expose] public section
 
 /-!
 Facts about the binding of the Linux call layer in `LeanExe/A64/Linux.lean`.  `a64Memory_lawful`

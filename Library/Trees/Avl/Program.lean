@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! Balanced tree search and insertion, Knuth's Algorithm A of TAOCP §6.2.3, on `AvlTree`, a
 binary tree whose node holds a key and Knuth's balance factor `B`, the height of the right subtree

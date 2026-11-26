@@ -1,7 +1,11 @@
-import LeanExe.M7.Proof.Step
-import LeanExe.M7.Proof.Runs
-import LeanExe.M7.Proof.Bound
-import LeanExe.Requests.Windows
+module
+
+public import LeanExe.M7.Proof.Step
+public import LeanExe.M7.Proof.Runs
+public import LeanExe.M7.Proof.Bound
+public import LeanExe.Requests.Windows
+
+@[expose] public section
 
 /-!
 `main`'s windows and its loop.  `main` lowers SP by the outgoing area of the step's `n + 1`

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tan.TanOdd
-import Library.Numerics.Float64.Tan.TanEven
+module
+
+public import Library.Numerics.Float64.Tan.TanOdd
+public import Library.Numerics.Float64.Tan.TanEven
+
+@[expose] public section
 
 /-!
 The final step of the odd path of `Tan.kernelTan` below `0x3FE59428`: the result lies within one

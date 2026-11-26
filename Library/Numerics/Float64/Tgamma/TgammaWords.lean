@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaPolyDDD
-import Library.Numerics.Float64.Tgamma.TgammaApprox
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaPolyDDD
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+
+@[expose] public section
 
 /-!
 Facts about table words for the instances of the double-double lemmas: a finite word gives a finite

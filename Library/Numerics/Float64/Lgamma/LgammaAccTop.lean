@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccPath
-import Library.Numerics.Float64.Lgamma.LgammaFastTop
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccPath
+public import Library.Numerics.Float64.Lgamma.LgammaFastTop
+
+@[expose] public section
 
 /-!
 **The accurate path of `lgamma` from `2^800` to the threshold `x1`** within one step of

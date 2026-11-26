@@ -1,5 +1,9 @@
-import Library.Trees.Search.Program
-import Library.Trees.Search.Spec
+module
+
+public import Library.Trees.Search.Program
+public import Library.Trees.Search.Spec
+
+@[expose] public section
 
 /-! The proofs that `search` and `insert` compute `algorithmT` and that `algorithmT` satisfies
 `SearchTree` on every binary search tree.  For the library's `KeyTree.insert`, which computes the

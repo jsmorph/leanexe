@@ -1,6 +1,10 @@
-import Demos.Conjunction.Adaptive
-import TestSupport.Conjunction.AccuracyCases
-import TestSupport.Conjunction.Cases
+module
+
+public import Demos.Conjunction.Adaptive
+public import TestSupport.Conjunction.AccuracyCases
+public import TestSupport.Conjunction.Cases
+
+@[expose] public section
 
 /-! Cases of the module `adaptive`.  `cases` prints the module cases of `pcAdaptive` and
 `circularErrorAdaptive` for `tests/verified/run.sh`.  `bits` prints the lines that

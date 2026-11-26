@@ -1,4 +1,8 @@
-import Demos.Drone.Kinematics
+module
+
+public import Demos.Drone.Kinematics
+
+@[expose] public section
 
 namespace Demos.Drone.Gluing
 noncomputable section

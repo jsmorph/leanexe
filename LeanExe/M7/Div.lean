@@ -1,4 +1,8 @@
-import LeanExe.M7.Encode
+module
+
+public import LeanExe.M7.Encode
+
+@[expose] public section
 
 /-!
 `udivmod64`, the routine that divides a `UInt64` by a nonzero `UInt64` on the Cortex-M7, whose

@@ -1,5 +1,9 @@
-import Verified.Kernel.Context
-import LeanExe.Source.Build
+module
+
+public import Verified.Kernel.Context
+public import LeanExe.Source.Build
+
+@[expose] public section
 
 namespace Verified.Kernel
 

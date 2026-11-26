@@ -1,5 +1,9 @@
-import Demos.Energy.Arith
-import Demos.Energy.Compose
+module
+
+public import Demos.Energy.Arith
+public import Demos.Energy.Compose
+
+@[expose] public section
 
 /-! The theorems about `authorizeWith` under a valid profile table.  `authorizeWith_iff` states
 that the authorizer accepts exactly when the input is valid and the conditions of the acceptance

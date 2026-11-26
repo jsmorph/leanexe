@@ -1,7 +1,11 @@
-import Library.Hashing.Sha2.Equiv.SHA256.Lift
-import Library.Hashing.Sha2.Equiv.Common.Bytes
-import Library.Hashing.Sha2.Equiv.Common.FromBits
-import Mathlib.Tactic.IntervalCases
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA256.Lift
+public import Library.Hashing.Sha2.Equiv.Common.Bytes
+public import Library.Hashing.Sha2.Equiv.Common.FromBits
+public import Mathlib.Tactic.IntervalCases
+
+@[expose] public section
 
 /-! # SHA-256 digest emission
 

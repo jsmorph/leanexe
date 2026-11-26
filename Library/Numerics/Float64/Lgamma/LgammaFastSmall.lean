@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Lgamma.LgammaPolyFst
-import Library.Numerics.Float64.Lgamma.LgammaFastTiny
-import Library.Numerics.Float64.Tgamma.TgammaExpr
-import Library.Numerics.Float64.Tgamma.TgammaWords
-import Library.Numerics.Float64.Lgamma.LgammaApprox
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPolyFst
+public import Library.Numerics.Float64.Lgamma.LgammaFastTiny
+public import Library.Numerics.Float64.Tgamma.TgammaExpr
+public import Library.Numerics.Float64.Tgamma.TgammaWords
+public import Library.Numerics.Float64.Lgamma.LgammaApprox
+
+@[expose] public section
 
 /-!
 The fast path of `Lgamma.lgammaWith` from `2 ^ -75` to `2 ^ -5` in magnitude: `-log |x|` from

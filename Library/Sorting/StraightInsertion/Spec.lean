@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! The specification of sorting: the array's elements in nondecreasing order, as Lean's
 `List.mergeSort` arranges them.  Words compare as unsigned numbers.  Exactly one list holds the same

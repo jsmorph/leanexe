@@ -1,4 +1,8 @@
-import Verified.Wasi.EffectAnalysis
+module
+
+public import Verified.Wasi.EffectAnalysis
+
+@[expose] public section
 
 namespace Verified.Wasi
 

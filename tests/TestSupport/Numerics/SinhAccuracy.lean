@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Sinh.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.HyperbolicReference
+module
+
+public import Library.Numerics.Float64.Sinh.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.HyperbolicReference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Sinh.sinh` and `Library.Numerics.Float64.Sinh.cosh` against references computed with Lean's integers
 through `HyperbolicReference.sinhFixed` and `coshFixed`, rounded to the nearest double.  fdlibm

@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatDigits
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatDigits
+
+@[expose] public section
 
 /-!
 The layouts of the printers: `sciLayoutW` and `ecmaLayoutW` write the bytes of `sciLayout` and

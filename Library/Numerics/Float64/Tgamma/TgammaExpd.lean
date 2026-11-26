@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tgamma.TgammaExpRed
-import Library.Numerics.Float64.Tgamma.TgammaExpr
-import Library.Numerics.Float64.Tgamma.TgammaPolyDDD
-import Mathlib.Analysis.Complex.ExponentialBounds
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaExpRed
+public import Library.Numerics.Float64.Tgamma.TgammaExpr
+public import Library.Numerics.Float64.Tgamma.TgammaPolyDDD
+public import Mathlib.Analysis.Complex.ExponentialBounds
+
+@[expose] public section
 
 /-!
 The kernel of **`Tgamma.asExpd`**, toward the specification for `1 ≤ x + l ≤ 1000` and

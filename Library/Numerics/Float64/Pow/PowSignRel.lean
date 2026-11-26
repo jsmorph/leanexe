@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Pow.PowNegate
-import LeanExe.ProofKit.F64Bits
+module
+
+public import Library.Numerics.Float64.Pow.PowNegate
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-!
 Negation through the operations of `Pow.powExp`.  `Rel x y` states that the word `x` is the

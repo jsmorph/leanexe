@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log10.Log10Final
-import Library.Numerics.Float64.Log.LogMain
+module
+
+public import Library.Numerics.Float64.Log10.Log10Final
+public import Library.Numerics.Float64.Log.LogMain
+
+@[expose] public section
 
 /-!
 `Log10.log10` on positive normal and subnormal arguments other than 1: one step of the

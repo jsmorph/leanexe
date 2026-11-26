@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Asinh.AtanhTheoremSmall
+module
+
+public import Library.Numerics.Float64.Asinh.AtanhTheoremSmall
+
+@[expose] public section
 
 /-!
 `Asinh.atanh` below `1/2` in eight input ranges: four with a bound relative to `artanh a` below

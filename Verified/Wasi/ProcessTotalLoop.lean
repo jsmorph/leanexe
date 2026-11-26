@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Interpreter.Wasm.Wp.Loop
+module
+
+public import LeanExe.Base
+public import Interpreter.Wasm.Wp.Loop
+
+@[expose] public section
 
 namespace Wasm
 

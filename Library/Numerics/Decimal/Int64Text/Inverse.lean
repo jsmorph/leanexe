@@ -1,6 +1,10 @@
-import Library.Numerics.Decimal.Int64Text.Spec
-import Mathlib.Data.List.Induction
-import Mathlib.Tactic
+module
+
+public import Library.Numerics.Decimal.Int64Text.Spec
+public import Mathlib.Data.List.Induction
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-!
 The specification's reader and printer are inverse.  `expectedRead_print` states that the reader

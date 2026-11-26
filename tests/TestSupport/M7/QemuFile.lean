@@ -1,4 +1,8 @@
-import TestSupport.M7.QemuLoop
+module
+
+public import TestSupport.M7.QemuLoop
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of the echo of `cmsdkTick` for QEMU's `mps2-an500` that

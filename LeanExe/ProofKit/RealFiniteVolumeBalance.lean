@@ -1,7 +1,11 @@
-import LeanExe.Base
-import Mathlib.Algebra.BigOperators.Ring.Finset
-import Mathlib.Data.Real.Basic
-import Mathlib.Tactic.Ring
+module
+
+public import LeanExe.Base
+public import Mathlib.Algebra.BigOperators.Ring.Finset
+public import Mathlib.Data.Real.Basic
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-! Telescoping sums of finite-volume updates along a line, over a sweep, and over time steps. -/
 

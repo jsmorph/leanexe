@@ -1,6 +1,10 @@
-import Library.Hashing.Sha2.Impl.SHA512
-import Library.Hashing.Sha2.Spec.HashAlgorithms
-import Library.Hashing.Sha2.Spec.SHA512t
+module
+
+public import Library.Hashing.Sha2.Impl.SHA512
+public import Library.Hashing.Sha2.Spec.HashAlgorithms
+public import Library.Hashing.Sha2.Spec.SHA512t
+
+@[expose] public section
 
 /-!
 # Lifting impl `UInt64` containers to spec `BitVec 64` containers

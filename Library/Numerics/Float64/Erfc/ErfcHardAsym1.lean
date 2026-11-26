@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Erfc.ErfcHardRows
-import Library.Numerics.Float64.Erf.ErfTailPieces0
-import Library.Numerics.Float64.Erf.ErfTailPieces1
-import Library.Numerics.Float64.Erf.ErfTailPieces2
-import Library.Numerics.Float64.Erf.ErfTailPieces3
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcHardRows
+public import Library.Numerics.Float64.Erf.ErfTailPieces0
+public import Library.Numerics.Float64.Erf.ErfTailPieces1
+public import Library.Numerics.Float64.Erf.ErfTailPieces2
+public import Library.Numerics.Float64.Erf.ErfTailPieces3
+
+@[expose] public section
 
 /-!
 Rows 11 to 21 of the 22 hard cases of `Erfc` for `x > 0x1.b59ffb450828cp+0` (the table

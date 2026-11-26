@@ -1,4 +1,8 @@
-import Demos.Rcv.ReadProgramMain
+module
+
+public import Demos.Rcv.ReadProgramMain
+
+@[expose] public section
 
 /-!
 T2(c): a file that is the file of no structure that meets the constraints reads as the error of

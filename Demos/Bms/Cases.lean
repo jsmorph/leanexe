@@ -1,4 +1,8 @@
-import Demos.Bms.Spec
+module
+
+public import Demos.Bms.Spec
+
+@[expose] public section
 
 /-!
 Executable cases of the BMS specification: the requirements' test vectors and the entries of the

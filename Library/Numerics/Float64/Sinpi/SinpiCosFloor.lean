@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiCos
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiCos
+
+@[expose] public section
 
 /-!
 `Sinpi.cospi` from 1 on: within one step of `cos (π x)` for every finite `x` with `|x| ≥ 1`.

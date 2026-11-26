@@ -1,40 +1,44 @@
-import LeanExe.Native.Subset
-import LeanExe.Native.Clight.Integers
-import LeanExe.Native.Clight.Floats
-import LeanExe.Native.Clight.AST
-import LeanExe.Native.Clight.Values
-import LeanExe.Native.Clight.Memdata
-import LeanExe.Native.Clight.Memory
-import LeanExe.Native.Clight.Ctypes
-import LeanExe.Native.Clight.Globalenvs
-import LeanExe.Native.Clight.Events
-import LeanExe.Native.Clight.Cop
-import LeanExe.Native.Clight.Clight
-import LeanExe.Native.Clight.Bigstep
-import LeanExe.Native.Clight.Run
-import LeanExe.Native.Clight.RunSound
-import LeanExe.Native.Clight.Determinism
-import LeanExe.Native.ClightN.Base
-import LeanExe.Native.ClightN.Spec
-import LeanExe.Native.ClightN.Laws
-import LeanExe.Native.ClightN.Leaf
-import LeanExe.Native.ClightN.Read
-import LeanExe.Native.Print
-import LeanExe.Native.Translate
-import LeanExe.Native.CText
-import LeanExe.Native.ClightCheck
-import LeanExe.Native.Proof.Native
-import LeanExe.Native.Proof.Unique
-import LeanExe.Native.Proof.Rename
-import LeanExe.Native.Proof.Export
-import LeanExe.Native.Proof.Reacts
-import LeanExe.Native.Proof.Ctl
-import LeanExe.Native.Proof.Req
-import LeanExe.Native.Requests
-import LeanExe.Native.Proof.Whole
-import LeanExe.Native.Proof.Quiet
-import LeanExe.Native.Proof.Main
-import LeanExe.Native.Proof.Input
-import LeanExe.Native.Proof.Parts
-import LeanExe.Native.Proof.AlignedMem
-import LeanExe.Native.Proof.AlignedNative
+module
+
+public import LeanExe.Native.Subset
+public import LeanExe.Native.Clight.Integers
+public import LeanExe.Native.Clight.Floats
+public import LeanExe.Native.Clight.AST
+public import LeanExe.Native.Clight.Values
+public import LeanExe.Native.Clight.Memdata
+public import LeanExe.Native.Clight.Memory
+public import LeanExe.Native.Clight.Ctypes
+public import LeanExe.Native.Clight.Globalenvs
+public import LeanExe.Native.Clight.Events
+public import LeanExe.Native.Clight.Cop
+public import LeanExe.Native.Clight.Clight
+public import LeanExe.Native.Clight.Bigstep
+public import LeanExe.Native.Clight.Run
+public import LeanExe.Native.Clight.RunSound
+public import LeanExe.Native.Clight.Determinism
+public import LeanExe.Native.ClightN.Base
+public import LeanExe.Native.ClightN.Spec
+public import LeanExe.Native.ClightN.Laws
+public import LeanExe.Native.ClightN.Leaf
+public import LeanExe.Native.ClightN.Read
+public import LeanExe.Native.Print
+public import LeanExe.Native.Translate
+public import LeanExe.Native.CText
+public import LeanExe.Native.ClightCheck
+public import LeanExe.Native.Proof.Native
+public import LeanExe.Native.Proof.Unique
+public import LeanExe.Native.Proof.Rename
+public import LeanExe.Native.Proof.Export
+public import LeanExe.Native.Proof.Reacts
+public import LeanExe.Native.Proof.Ctl
+public import LeanExe.Native.Proof.Req
+public import LeanExe.Native.Requests
+public import LeanExe.Native.Proof.Whole
+public import LeanExe.Native.Proof.Quiet
+public import LeanExe.Native.Proof.Main
+public import LeanExe.Native.Proof.Input
+public import LeanExe.Native.Proof.Parts
+public import LeanExe.Native.Proof.AlignedMem
+public import LeanExe.Native.Proof.AlignedNative
+
+@[expose] public section

@@ -1,4 +1,8 @@
-import Verified.Wasi.ResourcePrefix
+module
+
+public import Verified.Wasi.ResourcePrefix
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.Float64
-import Interpreter.Wasm.IEEE64
-import Mathlib.Tactic
+module
+
+public import LeanExe.ProofKit.Float64
+public import Interpreter.Wasm.IEEE64
+public import Mathlib.Tactic
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Source
 

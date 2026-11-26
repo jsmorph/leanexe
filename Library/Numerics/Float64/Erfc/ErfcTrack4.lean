@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack3
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack3
+
+@[expose] public section
 
 /-!
 The double-double operations of `exp_1`, `q_1`, and `erfc_asympt_fast`, in the form of

@@ -1,4 +1,8 @@
-import Verified.Wasi.Reflect
+module
+
+public import Verified.Wasi.Reflect
+
+@[expose] public section
 
 namespace Verified.Wasi.ReflectCases
 

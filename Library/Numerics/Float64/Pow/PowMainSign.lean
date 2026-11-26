@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Pow.PowTheoremPos
-import Library.Numerics.Float64.Pow.PowExpSign
+module
+
+public import Library.Numerics.Float64.Pow.PowTheoremPos
+public import Library.Numerics.Float64.Pow.PowExpSign
+
+@[expose] public section
 
 /-!
 `Pow.powMain` with the sign bias against `powMain` without it, on the normalized word of a

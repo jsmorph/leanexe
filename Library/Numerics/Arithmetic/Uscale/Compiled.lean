@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.Uscale.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Arithmetic.Uscale.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Numerics.Arithmetic.Uscale
 

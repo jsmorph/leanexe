@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.ImageRun
-import LeanExe.A64.Proof.Addr
-import LeanExe.A64.Proof.Clear
+module
+
+public import LeanExe.A64.Proof.ImageRun
+public import LeanExe.A64.Proof.Addr
+public import LeanExe.A64.Proof.Clear
+
+@[expose] public section
 
 /-!
 The run of the startup's tail, from instruction 43, after the `ISB` that puts translation in

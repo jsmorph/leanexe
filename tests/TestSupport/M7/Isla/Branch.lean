@@ -1,4 +1,8 @@
-import LeanExe.M7.Isla.Walk
+module
+
+public import LeanExe.M7.Isla.Walk
+
+@[expose] public section
 
 /-!
 Theorems of `Agrees` for the branches of `LeanExe/M7/Machine.lean`: `B.W` (T4), `B<cond>.W` (T3),

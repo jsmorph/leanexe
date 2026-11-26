@@ -1,17 +1,21 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallA
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallB
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallC
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallD
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallE
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallF
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallG
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallH
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallI
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallJ
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallK
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallL
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallM
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallN
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallA
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallB
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallC
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallD
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallE
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallF
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallG
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallH
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallI
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallJ
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallK
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallL
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallM
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallN
+
+@[expose] public section
 
 /-!
 `LgammaApprox.AccPolyFact`'s first clause: the accurate path's polynomial for `log Γ (1 + x)/x` on

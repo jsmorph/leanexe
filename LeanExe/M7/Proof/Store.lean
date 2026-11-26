@@ -1,5 +1,9 @@
-import LeanExe.M7.Proof.Relation
-import LeanExe.Proof.Area
+module
+
+public import LeanExe.M7.Proof.Relation
+public import LeanExe.Proof.Area
+
+@[expose] public section
 
 /-!
 The relation between Talos's store and the area of `LeanExe/Area.lean` in the Cortex-M7 model's

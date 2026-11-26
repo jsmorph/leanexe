@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.ParseFloat.ParseFloatBytes
-import Verified.Master
+module
+
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatBytes
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Decimal.ParseFloat
 

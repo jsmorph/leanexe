@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! The specification of the hash table: the operations run on a list of distinct keys, the keys
 that the table holds, in any order.  Code 0 inserts, code 1 looks up, and every other code deletes.

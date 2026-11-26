@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erf.ErfBranches
-import Library.Numerics.Float64.Erf.ErfTailEval
+module
+
+public import Library.Numerics.Float64.Erf.ErfBranches
+public import Library.Numerics.Float64.Erf.ErfTailEval
+
+@[expose] public section
 
 /-!
 The path of `Erf.erfWith` for each range of `|x|`, and the words it computes.  `ix_below` turns

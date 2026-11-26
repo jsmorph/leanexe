@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Sinh.SinhLdexpBits
-import Library.Numerics.Float64.Sinh.CoshLarge
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64Sterbenz
-import LeanExe.ProofKit.F64FullStep
+module
+
+public import Library.Numerics.Float64.Sinh.SinhLdexpBits
+public import Library.Numerics.Float64.Sinh.CoshLarge
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64Sterbenz
+public import LeanExe.ProofKit.F64FullStep
+
+@[expose] public section
 
 /-!
 `Sinh.ldexpExp` with the exponent `-1` within one step of any target `y` with

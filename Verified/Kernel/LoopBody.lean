@@ -1,4 +1,8 @@
-import Verified.Kernel.Branch
+module
+
+public import Verified.Kernel.Branch
+
+@[expose] public section
 
 namespace Verified.Kernel
 

@@ -1,7 +1,11 @@
-import Demos.Rcv.Read
-import Library.Numerics.Decimal.Int64Text.Inverse
-import Mathlib.Data.Nat.BitIndices
-import Mathlib.Tactic
+module
+
+public import Demos.Rcv.Read
+public import Library.Numerics.Decimal.Int64Text.Inverse
+public import Mathlib.Data.Nat.BitIndices
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-!
 Lemmas about the canonical file's forms that the theorems of the reader and of the printer share.

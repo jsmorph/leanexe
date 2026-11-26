@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinh.SinhSmall
+module
+
+public import Library.Numerics.Float64.Sinh.SinhSmall
+
+@[expose] public section
 
 /-!
 `Sinh.sinh` within three steps of `sinh x` for `1 ≤ abs(x) < 22`, where the code returns

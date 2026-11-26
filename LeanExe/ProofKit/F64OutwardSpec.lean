@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64Outward
-import LeanExe.ProofKit.F64MulEnclosure
-import LeanExe.ProofKit.F64DivEnclosure
-import LeanExe.ProofKit.F64SqrtEnclosure
+module
+
+public import LeanExe.ProofKit.F64Outward
+public import LeanExe.ProofKit.F64MulEnclosure
+public import LeanExe.ProofKit.F64DivEnclosure
+public import LeanExe.ProofKit.F64SqrtEnclosure
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Outward
 open CodeLib.IEEE64

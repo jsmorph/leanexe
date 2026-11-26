@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaRefl7
-import Library.Numerics.Float64.Tgamma.TgammaLarge
-import Mathlib.Data.UInt
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRefl7
+public import Library.Numerics.Float64.Tgamma.TgammaLarge
+public import Mathlib.Data.UInt
+
+@[expose] public section
 
 /-!
 The last rounding of `Tgamma.accurate`: the code rounds `fh + fl` to `res` and adds the scale

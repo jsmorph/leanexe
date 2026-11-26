@@ -1,5 +1,9 @@
-import Verified.CodeMask
-import Verified.LiteralCoverage
+module
+
+public import Verified.CodeMask
+public import Verified.LiteralCoverage
+
+@[expose] public section
 
 namespace Verified
 

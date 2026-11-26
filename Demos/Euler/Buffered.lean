@@ -1,4 +1,8 @@
-import Demos.Euler.ReconstructedProgram
+module
+
+public import Demos.Euler.ReconstructedProgram
+
+@[expose] public section
 
 /-! The Euler solvers with three grids in the states of their loops.  A sweep writes its cells into
 a grid of the state with `set!`, and an accepted try rotates the three grids, so that the compiled

@@ -1,6 +1,10 @@
-import Library.Numerics.Decimal.Int64Text.Proof
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Numerics.Decimal.Int64Text.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-! The verified compiler's module of the `Int64` printer and reader.  The compiler translates the
 loops of `digitCount`, `digitByte`, and `scanDigits` into loops, so no theorem of the module has a

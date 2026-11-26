@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64SignedRounding
-import LeanExe.ProofKit.F64AdjacentSigned
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import LeanExe.ProofKit.F64SignedRounding
+public import LeanExe.ProofKit.F64AdjacentSigned
+public import LeanExe.ProofKit.F64Magnitude
+
+@[expose] public section
 
 /-!
 Real bounds from a count of steps.  A finite word whose position lies above that of the

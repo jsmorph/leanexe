@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaSinpidSum
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidSum
+
+@[expose] public section
 
 /-!
 Bounds of the low parts of `Tgamma`'s double-double operations in units of `2^-53` of the high

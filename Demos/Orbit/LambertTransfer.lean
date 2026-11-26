@@ -1,5 +1,9 @@
-import Demos.Orbit.LambertSound
-import Demos.Orbit.LambertTime
+module
+
+public import Demos.Orbit.LambertSound
+public import Demos.Orbit.LambertTime
+
+@[expose] public section
 
 /-!
 The transfer that an accepted result of Lambert's program states.  `lambertBox_accepts` states

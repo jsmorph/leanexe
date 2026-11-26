@@ -1,5 +1,9 @@
-import Demos.Energy.Fields
-import Demos.Energy.Site
+module
+
+public import Demos.Energy.Fields
+public import Demos.Energy.Site
+
+@[expose] public section
 
 /-! The gateway of the energy controller, as a machine over records in the verified compiler's
 dialect.  Each step, a tick, reads one input record and writes one output record.  The input

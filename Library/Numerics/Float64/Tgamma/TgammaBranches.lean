@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.Compiled
+module
+
+public import Library.Numerics.Float64.Tgamma.Compiled
+
+@[expose] public section
 
 /-!
 The paths of `Tgamma.tgammaWith` as functions, and the equations that select them.  Each path

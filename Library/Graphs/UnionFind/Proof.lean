@@ -1,6 +1,10 @@
-import Library.Graphs.UnionFind.Program
-import Library.Graphs.UnionFind.Spec
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Graphs.UnionFind.Program
+public import Library.Graphs.UnionFind.Spec
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! The proof that `classes` labels each element with the least element of its class.  `Forest`
 states that the parent links form a forest: a rank rises along every link from an element that is

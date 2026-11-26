@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Asin.AsinTheoremMid
-import Library.Numerics.Float64.Atan.AtanTheoremSpecial
+module
+
+public import Library.Numerics.Float64.Asin.AsinTheoremMid
+public import Library.Numerics.Float64.Atan.AtanTheoremSpecial
+
+@[expose] public section
 
 /-!
 `Asin.asin x` within one step of `arcsin x` for every finite `x` with `|x| ≤ 1`.  The proof

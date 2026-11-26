@@ -1,5 +1,9 @@
-import Demos.Sgp4.Tle
-import TestSupport.Sgp4.Cases
+module
+
+public import Demos.Sgp4.Tle
+public import TestSupport.Sgp4.Cases
+
+@[expose] public section
 
 /-! Cases of the enclosing SGP4 module.  `cases` prints the module cases of `sgp4BoxAround` for
 `tests/verified/run.sh`.  `boxes` reads lines of the bit patterns `n e incl node argp m bstar t`

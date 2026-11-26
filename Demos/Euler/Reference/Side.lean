@@ -1,11 +1,15 @@
-import Demos.Euler.Reference.InternalGuard
-import Demos.Euler.Reference.PressureReference
-import Demos.Euler.Reference.Sound
-import Demos.Euler.Reference.Speed
-import Demos.Euler.Reference.FluxTerms
-import Demos.Euler.RealState
-import LeanExe.ProofKit.RealProductError
-import Demos.Euler.Equations.Flux
+module
+
+public import Demos.Euler.Reference.InternalGuard
+public import Demos.Euler.Reference.PressureReference
+public import Demos.Euler.Reference.Sound
+public import Demos.Euler.Reference.Speed
+public import Demos.Euler.Reference.FluxTerms
+public import Demos.Euler.RealState
+public import LeanExe.ProofKit.RealProductError
+public import Demos.Euler.Equations.Flux
+
+@[expose] public section
 
 /-! The first-order solver's `side` against the exact physical flux.  For a state whose density
 lies in `[1/M, M]`, whose other components are at most `M` in magnitude, whose internal energy

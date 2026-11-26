@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaLogdTail
-import Library.Numerics.Float64.Tgamma.TgammaApprox
-import Mathlib.Analysis.Complex.ExponentialBounds
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaLogdTail
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+public import Mathlib.Analysis.Complex.ExponentialBounds
+
+@[expose] public section
 
 /-!
 **`Tgamma.asLogd` within `2^-69 + |log x| 2^-78` of `log x`** for every positive normal double `x`

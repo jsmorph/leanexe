@@ -1,4 +1,8 @@
-import Verified.Wasi.ReflectDefinition
+module
+
+public import Verified.Wasi.ReflectDefinition
+
+@[expose] public section
 
 namespace Verified.Wasi
 

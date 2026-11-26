@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Erfc.ErfcOps
-import Library.Numerics.Float64.Sinpi.SinpiFloor
-import LeanExe.ProofKit.F64UpperWord
-import LeanExe.ProofKit.F64RoundNearest
-import LeanExe.ProofKit.PolyBound
-import LeanExe.ProofKit.F64ExactProduct
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcOps
+public import Library.Numerics.Float64.Sinpi.SinpiFloor
+public import LeanExe.ProofKit.F64UpperWord
+public import LeanExe.ProofKit.F64RoundNearest
+public import LeanExe.ProofKit.PolyBound
+public import LeanExe.ProofKit.F64ExactProduct
+
+@[expose] public section
 
 /-!
 Rounding to integers and exact steps in `Erfc`.  `round52` shows that `(a + 2 ^ 52) - 2 ^ 52` is an

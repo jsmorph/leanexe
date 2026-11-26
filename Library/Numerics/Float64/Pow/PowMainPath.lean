@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Pow.PowLogFinal
-import Library.Numerics.Float64.Pow.PowProduct
-import Library.Numerics.Float64.Pow.PowExpTheorem
-import Library.Numerics.Float64.Pow.PowBranches
+module
+
+public import Library.Numerics.Float64.Pow.PowLogFinal
+public import Library.Numerics.Float64.Pow.PowProduct
+public import Library.Numerics.Float64.Pow.PowExpTheorem
+public import Library.Numerics.Float64.Pow.PowBranches
+
+@[expose] public section
 
 /-!
 The main path of `Pow.pow` for a positive `x` and `2 ^ -65 ≤ |y| < 2 ^ 63`: `powMain` on the

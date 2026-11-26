@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack4
-import Library.Numerics.Float64.Erfc.ErfcAccMain
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack4
+public import Library.Numerics.Float64.Erfc.ErfcAccMain
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 The polynomial of `exp_accurate` in `Erfc`: for the double-double `Y = yh + yl` of the reduced

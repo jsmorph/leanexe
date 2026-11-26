@@ -1,6 +1,10 @@
-import Library.Numerics.Interval.Enclose
-import Demos.Screening.Spec
-import Demos.Events.Model
+module
+
+public import Library.Numerics.Interval.Enclose
+public import Demos.Screening.Spec
+public import Demos.Events.Model
+
+@[expose] public section
 
 /-!
 The parts of the event model that the program evaluates on intervals.  Each `enclosure_def`

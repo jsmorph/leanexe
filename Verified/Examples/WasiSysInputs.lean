@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 /-! A command with flat calls that take inputs.  `main` creates the directory `d` in the directory
 `Handle.preopened`, descriptor 3, with the path as an argument that is not a variable, removes it

@@ -1,5 +1,9 @@
-import LeanExe.A64.Linux
-import LeanExe.A64.Startup
+module
+
+public import LeanExe.A64.Linux
+public import LeanExe.A64.Startup
+
+@[expose] public section
 
 /-!
 A program of the AArch64 back end as a static Linux executable: an ELF64 file of type `ET_EXEC` for

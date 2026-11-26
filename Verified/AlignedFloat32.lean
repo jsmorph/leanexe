@@ -1,6 +1,10 @@
-import Verified.AlignedScalar
-import Verified.Float32Facts
-import LeanExe.ProofKit.F32Nearest
+module
+
+public import Verified.AlignedScalar
+public import Verified.Float32Facts
+public import LeanExe.ProofKit.F32Nearest
+
+@[expose] public section
 
 /-!
 The constructs on 32-bit floats under the flag, each its original in `Float32Correct.lean` with

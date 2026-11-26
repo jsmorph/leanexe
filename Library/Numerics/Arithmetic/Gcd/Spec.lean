@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Mathlib.Data.Nat.GCD.Basic
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.Nat.GCD.Basic
+
+@[expose] public section
 
 /-! The specification: the greatest
 common divisor of two words, as Lean's `Nat.gcd` defines it for natural numbers. -/

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowLogEval
+module
+
+public import Library.Numerics.Float64.Pow.PowLogEval
+
+@[expose] public section
 
 /-!
 The error of `Pow.powLog`'s arithmetic after `r`.  For words `rhi` and `rlo` with `r = rhi + rlo`

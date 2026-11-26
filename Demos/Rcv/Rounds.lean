@@ -1,4 +1,8 @@
-import Demos.Rcv.Spec
+module
+
+public import Demos.Rcv.Spec
+
+@[expose] public section
 
 /-!
 The theorems of the rounds of [the requirements](requirements.md), section "Theorems": T4

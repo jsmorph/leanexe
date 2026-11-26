@@ -1,5 +1,9 @@
 -- Rendered by clightn/nsx.py from the specification of N.  Do not edit.
-import LeanExe.Native.ClightN.Base
+module
+
+public import LeanExe.Native.ClightN.Base
+
+@[expose] public section
 
 set_option autoImplicit false
 set_option maxRecDepth 100000

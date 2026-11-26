@@ -1,4 +1,8 @@
-import Demos.OrderBook.RefineChains
+module
+
+public import Demos.OrderBook.RefineChains
+
+@[expose] public section
 
 /-! The effects of [the program's](Program.lean) book updates on the chains and on `toSpec`.
 `unlink` removes one slot from its level's chain, `place` appends a free slot to the end of a

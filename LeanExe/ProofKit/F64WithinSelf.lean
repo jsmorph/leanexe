@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Approx
+module
+
+public import LeanExe.ProofKit.F64Approx
+
+@[expose] public section
 
 /-!
 A function that returns its argument near a fixed point.  When the exact result `y` lies within the

@@ -1,9 +1,13 @@
-import Library.Hashing.Sha2.Impl.SHA512
-import Library.Hashing.Sha2.Spec.Setup
-import Library.Hashing.Sha2.Equiv.SHA512.Bridge
-import Library.Hashing.Sha2.Equiv.SHA512.Lift
-import Library.Hashing.Sha2.Equiv.Common.Bytes
-import Mathlib.Tactic.IntervalCases
+module
+
+public import Library.Hashing.Sha2.Impl.SHA512
+public import Library.Hashing.Sha2.Spec.Setup
+public import Library.Hashing.Sha2.Equiv.SHA512.Bridge
+public import Library.Hashing.Sha2.Equiv.SHA512.Lift
+public import Library.Hashing.Sha2.Equiv.Common.Bytes
+public import Mathlib.Tactic.IntervalCases
+
+@[expose] public section
 
 /-!
 # Per-block byte → word lift bridge (SHA-512)

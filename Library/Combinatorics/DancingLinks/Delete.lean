@@ -1,5 +1,9 @@
-import Library.Combinatorics.DancingLinks.Links
-import LeanExe.Dialect.ArrayLemmas
+module
+
+public import Library.Combinatorics.DancingLinks.Links
+public import LeanExe.Dialect.ArrayLemmas
+
+@[expose] public section
 
 /-! Removing and restoring a node of a column in the array.  Node `p` holds `TOP`, `ULINK`, and
 `DLINK` in the words `3p`, `3p + 1`, and `3p + 2`, and a header keeps `LEN` in `TOP`.  `Col t c Q`

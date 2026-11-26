@@ -1,5 +1,9 @@
-import TestSupport.M7.Delim
-import LeanExe.Requests.DelimitedSteps
+module
+
+public import TestSupport.M7.Delim
+public import LeanExe.Requests.DelimitedSteps
+
+@[expose] public section
 
 /-!
 The echo of records of `tests/TestSupport/M7/Delim.lean` against the delimited framing of

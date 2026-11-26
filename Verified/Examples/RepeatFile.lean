@@ -1,5 +1,9 @@
-import Verified.Examples.Repeat
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Repeat
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/repeat.wasm`: the file holds
 `encode Repeat.compiled.module`, and it decodes to the module of `Repeat.compiled.bytes`. -/

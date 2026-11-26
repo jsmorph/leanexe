@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaAsym4
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAsym4
+
+@[expose] public section
 
 /-!
 The branch of `Tgamma.asLgammaAsym` at or below `11.5`.  It adds the constant `c16 + c17` to the

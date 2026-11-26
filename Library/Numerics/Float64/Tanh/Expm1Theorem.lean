@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tanh.Expm1PathsEdge
-import Library.Numerics.Float64.Tanh.Expm1Branches
-import LeanExe.ProofKit.F64RoundScaled
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1PathsEdge
+public import Library.Numerics.Float64.Tanh.Expm1Branches
+public import LeanExe.ProofKit.F64RoundScaled
+
+@[expose] public section
 
 /-!
 `Tanh.expm1` lies within one step of `exp x - 1` on every finite input, with overflow to positive

@@ -1,6 +1,10 @@
-import TestSupport.A64.WasiElf
-import Verified.Examples.WasiClockRandomNative
-import LeanExe.A64.File
+module
+
+public import TestSupport.A64.WasiElf
+public import Verified.Examples.WasiClockRandomNative
+public import LeanExe.A64.File
+
+@[expose] public section
 
 /-!
 The theorems of the Linux executable that `a64-wasi emit` writes for the clock and random command,

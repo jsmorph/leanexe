@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F32Source
-import LeanExe.ProofKit.FloatCommon
+module
+
+public import LeanExe.ProofKit.F32Source
+public import LeanExe.ProofKit.FloatCommon
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32Encoding
 open Float.Model Float.Model.UnpackedFloat FloatCommon

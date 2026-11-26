@@ -1,5 +1,9 @@
-import Demos.Avoidance.Program
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Avoidance.Program
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Avoidance
 

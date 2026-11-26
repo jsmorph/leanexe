@@ -1,5 +1,9 @@
-import Demos.StreamFold.StreamHost
-import LeanExe.Wasi.ReadAll
+module
+
+public import Demos.StreamFold.StreamHost
+public import LeanExe.Wasi.ReadAll
+
+@[expose] public section
 
 /-! `readAll` under StreamFold's host assumptions.  Every run of `readAll limit` returns errno 0
 with a prefix of the unread input, leaves the output unchanged, and either reads to EOF or returns

@@ -1,5 +1,9 @@
-import Interpreter.Wasm.Syntax
-import LeanExe.Wasi.Calls
+module
+
+public import Interpreter.Wasm.Syntax
+public import LeanExe.Wasi.Calls
+
+@[expose] public section
 
 namespace Verified.Wasi.ABI
 

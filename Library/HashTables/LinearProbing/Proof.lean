@@ -1,7 +1,11 @@
-import Library.HashTables.LinearProbing.Program
-import Library.HashTables.LinearProbing.Spec
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
+module
+
+public import Library.HashTables.LinearProbing.Program
+public import Library.HashTables.LinearProbing.Spec
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+
+@[expose] public section
 
 /-! The proof that the hash table computes the outputs of the list of keys.  Slots are numbers below
 `m`.  `adv m r d` is the slot `d` steps after slot `r`, and `dist m a b` is the number of steps from

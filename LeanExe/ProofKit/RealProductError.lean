@@ -1,6 +1,10 @@
-import LeanExe.Base
-import Mathlib.Data.Real.Basic
-import Mathlib.Tactic.Ring
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.Real.Basic
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-! The error of a product when both factors have errors. -/
 

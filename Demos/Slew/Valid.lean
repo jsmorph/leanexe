@@ -1,10 +1,14 @@
-import Demos.Slew.Relative
-import LeanExe.ProofKit.F64MulEnclosure
-import LeanExe.ProofKit.F64AddEnclosure
-import LeanExe.ProofKit.F64UpperWord
-import LeanExe.ProofKit.F64NegateOps
-import LeanExe.ProofKit.F64MulBounds
-import LeanExe.ProofKit.F64AddBounds
+module
+
+public import Demos.Slew.Relative
+public import LeanExe.ProofKit.F64MulEnclosure
+public import LeanExe.ProofKit.F64AddEnclosure
+public import LeanExe.ProofKit.F64UpperWord
+public import LeanExe.ProofKit.F64NegateOps
+public import LeanExe.ProofKit.F64MulBounds
+public import LeanExe.ProofKit.F64AddBounds
+
+@[expose] public section
 
 /-! The hypotheses of the edge check from `validInput`.  A norm test
 `(q.w q.w + q.x q.x + q.y q.y + q.z q.z - 1).abs ≤ tolNorm` that holds has finite operands and

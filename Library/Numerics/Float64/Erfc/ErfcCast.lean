@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.PolyBound
+module
+
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 `qc h` transfers a rational fact `h` to the reals: an inequality or equality between rationals

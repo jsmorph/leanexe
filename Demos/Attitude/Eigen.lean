@@ -1,4 +1,8 @@
-import Demos.Attitude.Inertia
+module
+
+public import Demos.Attitude.Inertia
+
+@[expose] public section
 
 /-! The maximizer of Davenport's form and the bounds of the q-method.  `IsMax K e` states that the
 unit quaternion `e` maximizes `qᵀ K q` on the unit sphere; one exists by compactness

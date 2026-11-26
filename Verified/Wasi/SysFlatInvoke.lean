@@ -1,5 +1,9 @@
-import Verified.Wasi.SysFlatParts
-import Verified.Wasi.ReadAllLoop
+module
+
+public import Verified.Wasi.SysFlatParts
+public import Verified.Wasi.ReadAllLoop
+
+@[expose] public section
 
 /-! The host call of a flat command without an output and the code after it: the code calls the
 import, sets the errno, and on errno 0 loads the result words. -/

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselCase
-import Library.Numerics.Float64.Bessel.BesselPQ0
-import Library.Numerics.Float64.Bessel.BesselPQ1
+module
+
+public import Library.Numerics.Float64.Bessel.BesselCase
+public import Library.Numerics.Float64.Bessel.BesselPQ0
+public import Library.Numerics.Float64.Bessel.BesselPQ1
+
+@[expose] public section
 
 /-!
 The path from 2 of `j0`, `j1`, `y0`, and `y1`, with the two branches of `BesselCS` folded in.

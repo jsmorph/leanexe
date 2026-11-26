@@ -1,5 +1,9 @@
-import Verified.Examples.WasiClockRandom
-import Verified.ShimA64.Elf
+module
+
+public import Verified.Examples.WasiClockRandom
+public import Verified.ShimA64.Elf
+
+@[expose] public section
 
 /-!
 The footprint theorem for the clock and random example at the memory cap of a native executable.

@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Lean
+module
+
+public import LeanExe.Base
+public import Lean
+
+@[expose] public section
 
 namespace LeanExe
 

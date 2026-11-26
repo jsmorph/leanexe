@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Exp.ExpHighResidual
+module
+
+public import Library.Numerics.Float64.Exp.ExpHighResidual
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpResidualBounds
 open CodeLib.IEEE64

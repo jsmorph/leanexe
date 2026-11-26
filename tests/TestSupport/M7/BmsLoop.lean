@@ -1,8 +1,12 @@
-import TestSupport.M7.BmsImages
-import TestSupport.M7.BmsStep
-import TestSupport.M7.QemuLoop
-import Demos.Bms.Abs
-import LeanExe.M7.Proof.Board
+module
+
+public import TestSupport.M7.BmsImages
+public import TestSupport.M7.BmsStep
+public import TestSupport.M7.QemuLoop
+public import Demos.Bms.Abs
+public import LeanExe.M7.Proof.Board
+
+@[expose] public section
 
 /-!
 The loop theorems of the BMS step of `Demos/Bms/Program.lean` through the Cortex-M7 back end, from

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccNegLarge
-import Library.Numerics.Float64.Lgamma.LgammaAccTests
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccNegLarge
+public import Library.Numerics.Float64.Lgamma.LgammaAccTests
+
+@[expose] public section
 
 /-!
 **The accurate path of `lgamma`** within one step of `log |Γ x|` (`accurate_within`), for every

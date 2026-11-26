@@ -1,4 +1,8 @@
-import LeanExe.A64.Isla.Trace
+module
+
+public import LeanExe.A64.Isla.Trace
+
+@[expose] public section
 
 /-!
 The processor profiles of the traces of `tests/isla/traces.sh`, `tcg` and `kvm`, as the registers

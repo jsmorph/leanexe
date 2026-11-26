@@ -1,5 +1,9 @@
-import Verified.Examples.Frontend
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Frontend
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/frontend.wasm`: the file holds
 `encode Frontend.compiled.module`, and it decodes to the module of `Frontend.compiled.bytes`. -/

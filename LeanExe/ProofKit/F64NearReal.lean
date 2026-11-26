@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64GridExact
+module
+
+public import LeanExe.ProofKit.F64GridExact
+
+@[expose] public section
 
 /-!
 Every real `S` with `|S| ≤ 2 ^ 1000` has a finite double within `|S|/2^53 + 2^-1075`

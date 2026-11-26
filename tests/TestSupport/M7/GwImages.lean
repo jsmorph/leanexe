@@ -1,6 +1,10 @@
-import LeanExe.M7.Board
-import TestSupport.M7.Qemu
-import Demos.Energy.Loop
+module
+
+public import LeanExe.M7.Board
+public import TestSupport.M7.Qemu
+public import Demos.Energy.Loop
+
+@[expose] public section
 
 /-!
 The images of the energy controller's gateway through the Cortex-M7 back end, both from the state

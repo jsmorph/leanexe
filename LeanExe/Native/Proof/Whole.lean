@@ -1,5 +1,9 @@
-import LeanExe.Native.Proof.Init
-import LeanExe.Native.Bare
+module
+
+public import LeanExe.Native.Proof.Init
+public import LeanExe.Native.Bare
+
+@[expose] public section
 
 /-!
 The whole program that `ccomp` compiles for a translation (`docs/native-bare-metal.md`):

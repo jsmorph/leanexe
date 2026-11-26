@@ -1,5 +1,9 @@
-import Verified.Wasi.WriteCommand
-import Verified.Wasi.CommandValue
+module
+
+public import Verified.Wasi.WriteCommand
+public import Verified.Wasi.CommandValue
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.GammaBasic
-import Mathlib.Analysis.SpecialFunctions.Gamma.BohrMollerup
-import Mathlib.Analysis.Convex.Slope
+module
+
+public import LeanExe.ProofKit.GammaBasic
+public import Mathlib.Analysis.SpecialFunctions.Gamma.BohrMollerup
+public import Mathlib.Analysis.Convex.Slope
+
+@[expose] public section
 
 /-!
 Convexity of `lgamma = log |Γ|` and its consequences for the facts next to the zeros of `lgamma`.

@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 The check of an optimal assignment.  `check c perm u v` reads an `n × n` matrix of `Int64` costs

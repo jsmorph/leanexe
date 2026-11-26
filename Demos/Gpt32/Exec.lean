@@ -1,6 +1,10 @@
-import Demos.Gpt32.HostProgram
-import LeanExe.Dialect.Lemmas
-import LeanExe.Source.Build
+module
+
+public import Demos.Gpt32.HostProgram
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Source.Build
+
+@[expose] public section
 
 /-!
 The meaning of the programs of `Demos/Gpt32/HostProgram.lean` on a device.

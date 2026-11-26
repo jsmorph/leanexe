@@ -1,4 +1,8 @@
-import LeanExe.WGSL.EventsAgree
+module
+
+public import LeanExe.WGSL.EventsAgree
+
+@[expose] public section
 
 /-!
 With the oracle that returns the initial buffers' words, the event semantics computes what the

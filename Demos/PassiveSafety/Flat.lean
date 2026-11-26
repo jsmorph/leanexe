@@ -1,5 +1,9 @@
-import Demos.PassiveSafety.Program
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.PassiveSafety.Program
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.PassiveSafety
 

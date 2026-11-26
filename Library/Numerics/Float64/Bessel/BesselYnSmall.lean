@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Bessel.BesselYnSteps
-import Library.Numerics.Float64.Bessel.BesselYnSmallReal
-import Library.Numerics.Float64.Bessel.BesselY0Theorem
-import Library.Numerics.Float64.Bessel.BesselY1Theorem
+module
+
+public import Library.Numerics.Float64.Bessel.BesselYnSteps
+public import Library.Numerics.Float64.Bessel.BesselYnSmallReal
+public import Library.Numerics.Float64.Bessel.BesselY0Theorem
+public import Library.Numerics.Float64.Bessel.BesselY1Theorem
+
+@[expose] public section
 
 /-!
 `yn`'s forward loop for `0 < x < 2` and `2 ≤ n ≤ 2^31` in floating point: the result is negative

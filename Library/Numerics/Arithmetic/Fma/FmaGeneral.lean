@@ -1,4 +1,8 @@
-import Library.Numerics.Arithmetic.Fma.FmaCombine
+module
+
+public import Library.Numerics.Arithmetic.Fma.FmaCombine
+
+@[expose] public section
 
 /-!
 `Fma.fmaBits` on finite operands with nonzero `a` and `b`.  The exact `a · b + c` in units of

@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-! The minimal standard generator of Park and Miller: each step replaces the state `x` with
 `16807 * x % 2147483647`, where `2147483647 = 2^31 - 1`.  The state lies in `[1, 2^31 - 2]`, so the

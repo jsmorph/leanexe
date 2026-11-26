@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F32Normalize
+module
+
+public import LeanExe.ProofKit.F32Normalize
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32AddFinite
 open Float.Model Float.Model.UnpackedFloat F32Normalize FloatCommon

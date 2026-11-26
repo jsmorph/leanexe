@@ -1,6 +1,10 @@
-import Verified.Reflect.Definitions
-import Verified.Reflect.RecursiveMatch
-import Mathlib.Tactic.FinCases
+module
+
+public import Verified.Reflect.Definitions
+public import Verified.Reflect.RecursiveMatch
+public import Mathlib.Tactic.FinCases
+
+@[expose] public section
 
 namespace Verified.Reflect
 

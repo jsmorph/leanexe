@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccPos
-import Library.Numerics.Float64.Lgamma.LgammaAccRegion
-import Library.Numerics.Float64.Lgamma.LgammaAccCancel
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccPos
+public import Library.Numerics.Float64.Lgamma.LgammaAccRegion
+public import Library.Numerics.Float64.Lgamma.LgammaAccCancel
+
+@[expose] public section
 
 /-!
 **The triple of `Lgamma.accurate` at a negative argument**, through the reflection.  `NormReady`

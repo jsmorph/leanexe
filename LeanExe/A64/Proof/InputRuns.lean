@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.Input
+module
+
+public import LeanExe.A64.Proof.Input
+
+@[expose] public section
 
 /-!
 The theorems of the programs and images that read their arguments from the UART.

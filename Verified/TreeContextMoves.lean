@@ -1,5 +1,9 @@
-import Verified.TreeContextRep
-import Verified.TreeMatchBlocks
+module
+
+public import Verified.TreeContextRep
+public import Verified.TreeMatchBlocks
+
+@[expose] public section
 
 namespace Verified
 

@@ -1,5 +1,9 @@
-import Demos.Orbit.LambertBox
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Orbit.LambertBox
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Orbit
 

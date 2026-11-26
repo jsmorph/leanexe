@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.GammaRel
+module
+
+public import LeanExe.ProofKit.GammaRel
+
+@[expose] public section
 
 /-!
 Relative bounds on polynomials against `Γ` scaled by a power of two, for the ranges of

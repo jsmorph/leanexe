@@ -1,5 +1,9 @@
-import Verified.Shim.Env
-import Verified.Wasi.OracleSys
+module
+
+public import Verified.Shim.Env
+public import Verified.Wasi.OracleSys
+
+@[expose] public section
 
 /-!
 What the shim's flat calls share.  A flat call's function checks the request, makes its layer

@@ -1,8 +1,12 @@
-import Verified.Wasi.After
-import Verified.Wasi.Code
-import Verified.Wasi.PurePrefix
-import Verified.OwnedExpr
-import Verified.AlignedTreeNode
+module
+
+public import Verified.Wasi.After
+public import Verified.Wasi.Code
+public import Verified.Wasi.PurePrefix
+public import Verified.OwnedExpr
+public import Verified.AlignedTreeNode
+
+@[expose] public section
 
 namespace Verified.Wasi
 

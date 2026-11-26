@@ -1,6 +1,10 @@
-import Verified.Wasi.ResourceBudget
-import Verified.Wasi.CallArguments
-import Verified.Wasi.LoopAfter
+module
+
+public import Verified.Wasi.ResourceBudget
+public import Verified.Wasi.CallArguments
+public import Verified.Wasi.LoopAfter
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

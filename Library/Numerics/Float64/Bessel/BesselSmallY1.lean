@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselSmallY0
+module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallY0
+
+@[expose] public section
 
 /-!
 The main path of `Bessel.y1` below 2, `x (U(z)/V(z)) + tpi (ĵ L̂ - 1/x)` with `z = x x`, for

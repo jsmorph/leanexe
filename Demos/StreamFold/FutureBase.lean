@@ -1,4 +1,8 @@
-import Demos.StreamFold.Invariant
+module
+
+public import Demos.StreamFold.Invariant
+
+@[expose] public section
 
 namespace Demos.StreamFold
 

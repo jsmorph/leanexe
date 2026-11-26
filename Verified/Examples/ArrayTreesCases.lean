@@ -1,5 +1,9 @@
-import Verified.Examples.ArrayTrees
-import TestSupport.Host
+module
+
+public import Verified.Examples.ArrayTrees
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The cases of the trees whose records hold arrays.  Each case passes an array of words and a
 word and returns a word, and the code builds, copies, updates, and consumes the trees in between.

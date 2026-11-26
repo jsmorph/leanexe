@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.Shared.StrconvGrid
-import Library.Numerics.Decimal.Shared.StrconvRound
+module
+
+public import Library.Numerics.Decimal.Shared.StrconvGrid
+public import Library.Numerics.Decimal.Shared.StrconvRound
+
+@[expose] public section
 
 /-!
 The references of `StrconvRound` in terms of the grid of `StrconvGrid`.  The encoding `n` of a

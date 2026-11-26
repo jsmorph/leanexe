@@ -1,5 +1,9 @@
-import Demos.Events.Verified
-import Verified.Call
+module
+
+public import Demos.Events.Verified
+public import Verified.Call
+
+@[expose] public section
 
 /-! The call of the compiled event-window program (C1).  `events_callSpec` states that function
 85, the export `events`, returns `events xs` without a trap from every ready store in which the

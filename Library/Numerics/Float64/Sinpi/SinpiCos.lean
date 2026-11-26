@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiSin
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiSin
+
+@[expose] public section
 
 /-!
 `Sinpi.cospi`: within one step of `cos (π x)` for every finite `x`.  Below `2 ^ -29` the result

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselRecur
-import Library.Numerics.Float64.Bessel.BesselY1Large
-import Library.Numerics.Float64.Trig.TrigNear
+module
+
+public import Library.Numerics.Float64.Bessel.BesselRecur
+public import Library.Numerics.Float64.Bessel.BesselY1Large
+public import Library.Numerics.Float64.Trig.TrigNear
+
+@[expose] public section
 
 /-!
 `jn` and `yn` from `2^302` on, where the code returns Hankel's leading term

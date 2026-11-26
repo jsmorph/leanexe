@@ -1,5 +1,9 @@
-import CodeLib.IEEE64.Roundoff
-import LeanExe.ProofKit.RealExpError
+module
+
+public import CodeLib.IEEE64.Roundoff
+public import LeanExe.ProofKit.RealExpError
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpApproximation
 open CodeLib.IEEE64

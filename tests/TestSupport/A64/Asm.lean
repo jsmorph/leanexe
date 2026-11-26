@@ -1,4 +1,8 @@
-import LeanExe.A64.Encode
+module
+
+public import LeanExe.A64.Encode
+
+@[expose] public section
 
 /-!
 The GNU assembler's syntax for the loads `LDR Wt` and `LDRB` of the AArch64 model of

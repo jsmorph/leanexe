@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64PositiveSpacing
-import LeanExe.ProofKit.F64NearestEven
+module
+
+public import LeanExe.ProofKit.F64PositiveSpacing
+public import LeanExe.ProofKit.F64NearestEven
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64NearestBinade
 open CodeLib.IEEE64 F64NearestNonnegative F64PositiveOrder F64PositiveSpacing F64NearestStep

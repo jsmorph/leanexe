@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64UnitStep
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
-import Mathlib.Analysis.Real.Pi.Bounds
+module
+
+public import LeanExe.ProofKit.F64UnitStep
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+public import Mathlib.Analysis.Real.Pi.Bounds
+
+@[expose] public section
 
 /-!
 The last step of `sin` and `cos`: a finite word close to `sin r` or `cos r` lies within one step

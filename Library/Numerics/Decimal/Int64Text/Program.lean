@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 The decimal printer and reader of `Int64`, on texts of one byte to a word.  `printInt64` writes the

@@ -1,4 +1,8 @@
-import Demos.Sgp4.Spec
+module
+
+public import Demos.Sgp4.Spec
+
+@[expose] public section
 
 /-!
 The enclosing SGP4 program.  `initBox` computes intervals for the constants of an element set

@@ -1,5 +1,9 @@
-import Demos.Euler.Reference.Transport
-import LeanExe.ProofKit.RealHalfSumError
+module
+
+public import Demos.Euler.Reference.Transport
+public import LeanExe.ProofKit.RealHalfSumError
+
+@[expose] public section
 
 namespace Demos.Euler.Reference
 open CodeLib.IEEE64

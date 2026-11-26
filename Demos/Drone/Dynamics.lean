@@ -1,4 +1,8 @@
-import Demos.Drone.Edges
+module
+
+public import Demos.Drone.Edges
+
+@[expose] public section
 
 /-! The guards of an admitted edge give the speed and acceleration limits of its segment, and the
 rest duration gives them for rest-to-rest segments. -/

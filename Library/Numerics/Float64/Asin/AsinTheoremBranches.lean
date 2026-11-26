@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Asin.Compiled
-import LeanExe.ProofKit.F64UpperWord
+module
+
+public import Library.Numerics.Float64.Asin.Compiled
+public import LeanExe.ProofKit.F64UpperWord
+
+@[expose] public section
 
 /-!
 The branches of `Asin.asin` and `Asin.acos` as equations.  `ixA x` is the high word of `|x|` and

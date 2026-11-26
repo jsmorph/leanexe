@@ -1,5 +1,9 @@
-import Library.Graphs.WeightedUnionFind.Compiled
-import Verified.Master
+module
+
+public import Library.Graphs.WeightedUnionFind.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Graphs.WeightedUnionFind
 

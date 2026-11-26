@@ -1,5 +1,9 @@
-import Library.Arrays.Word.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Arrays.Word.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: values that own arrays.  A function returns an owned
 array, so a function that returns a parameter takes it owned, as `copy` does, and copies it where

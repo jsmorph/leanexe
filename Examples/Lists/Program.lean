@@ -1,5 +1,9 @@
-import Library.Lists.Word.Program
-import LeanExe.Dialect.Loop
+module
+
+public import Library.Lists.Word.Program
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 Lists of words, held on the heap as chains of records of two slots: the element and the

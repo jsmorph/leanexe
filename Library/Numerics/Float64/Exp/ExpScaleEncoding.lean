@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Exp.ExpScaleFacts
-import LeanExe.ProofKit.F64Packing
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import Library.Numerics.Float64.Exp.ExpScaleFacts
+public import LeanExe.ProofKit.F64Packing
+public import LeanExe.ProofKit.F64Magnitude
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpScaleEncoding
 open CodeLib.IEEE64

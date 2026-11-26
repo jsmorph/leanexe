@@ -1,6 +1,10 @@
-import Verified.Wasi.ReadCode
-import Verified.Wasi.Runtime
-import Verified.LocalFrame
+module
+
+public import Verified.Wasi.ReadCode
+public import Verified.Wasi.Runtime
+public import Verified.LocalFrame
+
+@[expose] public section
 
 namespace Verified.Wasi
 

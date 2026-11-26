@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Asinh.AsinhTheorem
-import Library.Numerics.Float64.Asinh.AcoshTheorem
-import Library.Numerics.Float64.Asinh.AtanhTheorem
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Asinh.AsinhTheorem
+public import Library.Numerics.Float64.Asinh.AcoshTheorem
+public import Library.Numerics.Float64.Asinh.AtanhTheorem
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorems for the module of `Asinh.lean`, whose exports `atanh` (function 9), `asinh`

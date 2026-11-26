@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Erf.ErfSmall
-import Library.Numerics.Float64.Erf.ErfMiddle
-import Library.Numerics.Float64.Erf.ErfSub
-import Library.Numerics.Float64.Erf.ErfTailErf
-import Library.Numerics.Float64.Erf.ErfBits
+module
+
+public import Library.Numerics.Float64.Erf.ErfSmall
+public import Library.Numerics.Float64.Erf.ErfMiddle
+public import Library.Numerics.Float64.Erf.ErfSub
+public import Library.Numerics.Float64.Erf.ErfTailErf
+public import Library.Numerics.Float64.Erf.ErfBits
+
+@[expose] public section
 
 /-!
 One step for `Erf.erfWith Exp.expTable x` for every finite `x` with a clear sign bit.  The code's

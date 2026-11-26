@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tan.TanEven
+module
+
+public import Library.Numerics.Float64.Tan.TanEven
+
+@[expose] public section
 
 /-!
 The real error of `Tan.kernelTan` from `0x3FE59428` on.  With `T_v (y) = v - 2 y v/(y + v)`,

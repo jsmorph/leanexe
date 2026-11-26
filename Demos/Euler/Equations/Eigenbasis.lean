@@ -1,8 +1,12 @@
-import Demos.Euler.Equations.Eigenvectors
-import Demos.Euler.Equations.Jacobian
-import Mathlib.Analysis.Real.Sqrt
-import Mathlib.LinearAlgebra.Eigenspace.Matrix
-import Mathlib.LinearAlgebra.FiniteDimensional.Lemmas
+module
+
+public import Demos.Euler.Equations.Eigenvectors
+public import Demos.Euler.Equations.Jacobian
+public import Mathlib.Analysis.Real.Sqrt
+public import Mathlib.LinearAlgebra.Eigenspace.Matrix
+public import Mathlib.LinearAlgebra.FiniteDimensional.Lemmas
+
+@[expose] public section
 
 namespace Demos.Euler.Equations
 open Module

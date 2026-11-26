@@ -1,14 +1,18 @@
-import TestSupport.M7.Windows
-import TestSupport.M7.Qemu
-import TestSupport.M7.GwImages
-import TestSupport.M7.CrcImages
-import TestSupport.M7.ShaImages
-import TestSupport.M7.SignedImages
-import TestSupport.M7.DelimImages
-import TestSupport.M7.BmsImages
-import TestSupport.M7.Dwt
-import TestSupport.M7.Area
-import TestSupport.M7.Diag
+module
+
+public import TestSupport.M7.Windows
+public import TestSupport.M7.Qemu
+public import TestSupport.M7.GwImages
+public import TestSupport.M7.CrcImages
+public import TestSupport.M7.ShaImages
+public import TestSupport.M7.SignedImages
+public import TestSupport.M7.DelimImages
+public import TestSupport.M7.BmsImages
+public import TestSupport.M7.Dwt
+public import TestSupport.M7.Area
+public import TestSupport.M7.Diag
+
+@[expose] public section
 
 /-!
 The command `m7-windows` of the window counts of the Cortex-M7 back end's programs, the echoes

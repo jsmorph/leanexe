@@ -1,5 +1,9 @@
-import Demos.Gpt.Host
-import Demos.Gpt.Verified
+module
+
+public import Demos.Gpt.Host
+public import Demos.Gpt.Verified
+
+@[expose] public section
 
 /-! The generation as the host runs it, on the verified compiler's module of GPT-2.  The host
 calls `step` once per token, each time moving the cache that the previous call returned,

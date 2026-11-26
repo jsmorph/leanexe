@@ -1,5 +1,9 @@
-import Verified.TailPaid
-import Verified.Reflect.TailModes
+module
+
+public import Verified.TailPaid
+public import Verified.Reflect.TailModes
+
+@[expose] public section
 
 namespace Verified.Examples.TailModel
 

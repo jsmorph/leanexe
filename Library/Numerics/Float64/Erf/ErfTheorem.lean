@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erf.ErfOdd
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Erf.ErfOdd
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Erf.erf`.  For every finite binary64 input the result lies within one

@@ -1,5 +1,9 @@
-import Library.Combinatorics.DancingLinks.Search
-import Library.Combinatorics.DancingLinks.ValidProof
+module
+
+public import Library.Combinatorics.DancingLinks.Search
+public import Library.Combinatorics.DancingLinks.ValidProof
+
+@[expose] public section
 
 /-! The program equals the specification.  `count_eq` composes the parts of the proof: the item
 links begin at `3 (N + 2 + nodeCount x) = base` by `nodeCount_eq` and `first_eq`, step X1 leaves

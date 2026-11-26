@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.Signed64Wasm
-import LeanExe.ProofKit.F64GridExact
+module
+
+public import LeanExe.ProofKit.Signed64Wasm
+public import LeanExe.ProofKit.F64GridExact
+
+@[expose] public section
 
 /-!
 The integers of `Int64` values that programs compute from words, and the exact conversion of

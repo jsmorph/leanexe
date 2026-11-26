@@ -1,5 +1,9 @@
-import LeanExe.Base
-import Batteries.Data.List.Lemmas
+module
+
+public import LeanExe.Base
+public import Batteries.Data.List.Lemmas
+
+@[expose] public section
 
 /-!
 # Generic loop infrastructure for the spec ↔ implementation equivalence

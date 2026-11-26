@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tanh.Expm1PathsReduced
-import LeanExe.ProofKit.F64RelativeStep
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1PathsReduced
+public import LeanExe.ProofKit.F64RelativeStep
+
+@[expose] public section
 
 /-!
 The unreduced paths of fdlibm's `expm1` on words: the kernel without reduction for

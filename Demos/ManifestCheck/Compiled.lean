@@ -1,9 +1,13 @@
-import Demos.ManifestCheck.Proof
-import Library.Hashing.Words.Encoding
-import LeanExe.Pipeline.BytesSize
-import Verified.Call
-import Verified.ChargeFacts
-import Verified.Reflect.Command
+module
+
+public import Demos.ManifestCheck.Proof
+public import Library.Hashing.Words.Encoding
+public import LeanExe.Pipeline.BytesSize
+public import Verified.Call
+public import Verified.ChargeFacts
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of the pure core.  The call theorems compose the generated
 `trapFree` theorems with the programs' equations: from a ready store with room for the generated

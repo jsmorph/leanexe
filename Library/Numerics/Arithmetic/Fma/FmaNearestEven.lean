@@ -1,4 +1,8 @@
-import Library.Numerics.Arithmetic.Fma.FmaGrid
+module
+
+public import Library.Numerics.Arithmetic.Fma.FmaGrid
+
+@[expose] public section
 
 /-!
 The nearest-even rounding of a nonnegative number given in units of `2 ^ -2400`, in the form that

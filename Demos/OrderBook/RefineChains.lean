@@ -1,4 +1,8 @@
-import Demos.OrderBook.Invariant
+module
+
+public import Demos.OrderBook.Invariant
+
+@[expose] public section
 
 /-! Chains of slots and the level structure of `toSpec`, for the refinement of
 [the specification](Spec.lean) by [the program](Program.lean).  `Path nxt s L e` states without

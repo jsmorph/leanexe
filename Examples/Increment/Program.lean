@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Build
+module
+
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 /-!
 Each element of an array of at most eight words plus

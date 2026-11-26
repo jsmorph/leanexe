@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.GammaDDCover
-import LeanExe.ProofKit.GammaRel
-import Library.Numerics.Float64.Lgamma.LgammaData
+module
+
+public import LeanExe.ProofKit.GammaDDCover
+public import LeanExe.ProofKit.GammaRel
+public import Library.Numerics.Float64.Lgamma.LgammaData
+
+@[expose] public section
 
 /-!
 The definitions of the checks of piece 4 of `cr_lgamma`'s piecewise polynomial (`LgammaPiece4`):

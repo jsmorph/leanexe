@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.WasiStubs
-import LeanExe.A64.WasiStrings
+module
+
+public import LeanExe.A64.Proof.WasiStubs
+public import LeanExe.A64.WasiStrings
+
+@[expose] public section
 
 /-!
 The runs of the stubs of `LeanExe/A64/WasiStrings.lean` in the program's model.  `StrAt P mem p s`

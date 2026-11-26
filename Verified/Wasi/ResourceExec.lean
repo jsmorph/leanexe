@@ -1,6 +1,10 @@
-import Verified.Wasi.ResourceLoopCost
-import Verified.Wasi.SysCost
-import LeanExe.Wasi.Semantics
+module
+
+public import Verified.Wasi.ResourceLoopCost
+public import Verified.Wasi.SysCost
+public import LeanExe.Wasi.Semantics
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

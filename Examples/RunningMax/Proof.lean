@@ -1,5 +1,9 @@
-import Examples.RunningMax.Program
-import Examples.RunningMax.Spec
+module
+
+public import Examples.RunningMax.Program
+public import Examples.RunningMax.Spec
+
+@[expose] public section
 
 /-! The program equals the specification, a fact about the Lean definitions that the verified
 compiler's call theorem uses. -/

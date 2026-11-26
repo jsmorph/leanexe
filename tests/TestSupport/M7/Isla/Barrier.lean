@@ -1,5 +1,9 @@
-import LeanExe.M7.Isla.Check
-import LeanExe.M7.Isla.Profile
+module
+
+public import LeanExe.M7.Isla.Check
+public import LeanExe.M7.Isla.Profile
+
+@[expose] public section
 
 /-!
 The theorem of `Agrees` for `DSB SY` of `LeanExe/M7/Machine.lean`, from the trace of `tests/isla/m7`

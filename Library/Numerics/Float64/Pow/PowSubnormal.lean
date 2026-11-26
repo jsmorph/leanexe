@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowMainPath
+module
+
+public import Library.Numerics.Float64.Pow.PowMainPath
+
+@[expose] public section
 
 /-!
 A positive subnormal `x`.  `Pow.powWith` multiplies it by `2 ^ 52`, exactly, clears the sign bit,

@@ -1,7 +1,11 @@
-import Demos.Rcv.ProcessControl
-import Demos.Rcv.TabulateBound
-import Demos.StreamFold.ReadAll
-import LeanExe.Wasi.Bind
+module
+
+public import Demos.Rcv.ProcessControl
+public import Demos.Rcv.TabulateBound
+public import Demos.StreamFold.ReadAll
+public import LeanExe.Wasi.Bind
+
+@[expose] public section
 
 /-! The invariant of [the process](Process.lean) and what `begin` and each step do under
 StreamFold's host assumptions.  `beginWith tab` is `begin` with the report function `tab`, and

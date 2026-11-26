@@ -1,5 +1,9 @@
-import Verified.ShimA64.Open
-import LeanExe.A64.Proof.WasiFilestat
+module
+
+public import Verified.ShimA64.Open
+public import LeanExe.A64.Proof.WasiFilestat
+
+@[expose] public section
 
 /-!
 The stub of `fd_filestat_get` of `LeanExe/A64/WasiFiles.lean` against the shim's

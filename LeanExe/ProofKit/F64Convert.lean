@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64Normalize
-import LeanExe.ProofKit.F32TruncSat
+module
+
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64Normalize
+public import LeanExe.ProofKit.F32TruncSat
+
+@[expose] public section
 
 /-!
 Lean's conversions between `UInt64` and `Float` agree with WebAssembly's

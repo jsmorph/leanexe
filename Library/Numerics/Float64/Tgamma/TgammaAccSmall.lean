@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaSmall
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaSmall
+
+@[expose] public section
 
 /-!
 The polynomial of `Tgamma.accurate` below `1/4` in magnitude.  The polynomial `Q` of degree 7 in

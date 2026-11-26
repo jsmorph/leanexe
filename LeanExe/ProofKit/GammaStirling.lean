@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.GammaBasic
-import LeanExe.ProofKit.PolyCalculus
-import Mathlib.Analysis.SpecialFunctions.Stirling
-import Mathlib.Analysis.SpecialFunctions.Complex.LogBounds
+module
+
+public import LeanExe.ProofKit.GammaBasic
+public import LeanExe.ProofKit.PolyCalculus
+public import Mathlib.Analysis.SpecialFunctions.Stirling
+public import Mathlib.Analysis.SpecialFunctions.Complex.LogBounds
+
+@[expose] public section
 
 /-!
 Stirling's series for `lgamma` with a proved remainder bound.  For `x > 0` let

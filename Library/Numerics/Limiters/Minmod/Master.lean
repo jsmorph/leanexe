@@ -1,6 +1,10 @@
-import Library.Numerics.Limiters.Minmod.Compiled
-import Library.Numerics.Limiters.Minmod.Proof
-import Verified.Master
+module
+
+public import Library.Numerics.Limiters.Minmod.Compiled
+public import Library.Numerics.Limiters.Minmod.Proof
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Limiters.Minmod
 

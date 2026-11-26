@@ -1,4 +1,8 @@
-import Verified.TreeFieldLocs
+module
+
+public import Verified.TreeFieldLocs
+
+@[expose] public section
 
 namespace Verified
 

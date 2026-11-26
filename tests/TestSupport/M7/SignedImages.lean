@@ -1,6 +1,10 @@
-import LeanExe.M7.Board
-import TestSupport.M7.Qemu
-import TestSupport.M7.Signed
+module
+
+public import LeanExe.M7.Board
+public import TestSupport.M7.Qemu
+public import TestSupport.M7.Signed
+
+@[expose] public section
 
 /-!
 The images of the signed step of `tests/TestSupport/M7/Signed.lean`, both from the state

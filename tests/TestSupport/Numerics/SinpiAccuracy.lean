@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Sinpi.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.Reference
+module
+
+public import Library.Numerics.Float64.Sinpi.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Sinpi.sinpi`, `Library.Numerics.Float64.Sinpi.cospi`, and `Library.Numerics.Float64.Sinpi.tanpi` against references computed
 with Lean's integers through `Reference.sinCosTurns`, rounded to the nearest double.  Kargl states

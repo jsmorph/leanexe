@@ -1,6 +1,10 @@
-import Library.Numerics.Bounds.Program
-import Library.Numerics.Limiters.Minmod.Program
-import Demos.Euler.Program
+module
+
+public import Library.Numerics.Bounds.Program
+public import Library.Numerics.Limiters.Minmod.Program
+public import Demos.Euler.Program
+
+@[expose] public section
 
 /-!
 The reconstructed solver for the two-dimensional Euler equations, on the same four-quadrant problem

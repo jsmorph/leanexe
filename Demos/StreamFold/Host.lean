@@ -1,5 +1,9 @@
-import Demos.StreamFold.Rank
-import Verified.Wasi.ProcessTotalSource
+module
+
+public import Demos.StreamFold.Rank
+public import Verified.Wasi.ProcessTotalSource
+
+@[expose] public section
 
 namespace Demos.StreamFold
 

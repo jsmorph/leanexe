@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.Fma.FmaTheorem
-import Library.Numerics.Arithmetic.Fma.FmaSpec
+module
+
+public import Library.Numerics.Arithmetic.Fma.FmaTheorem
+public import Library.Numerics.Arithmetic.Fma.FmaSpec
+
+@[expose] public section
 
 /-!
 `FmaSpec.FmaNearest`, the form of the fused multiply-add that the proofs of `erfc`, `tgamma`, and

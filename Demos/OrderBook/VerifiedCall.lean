@@ -1,6 +1,10 @@
-import Demos.OrderBook.Verified
-import Demos.OrderBook.Refinement
-import Verified.Call
+module
+
+public import Demos.OrderBook.Verified
+public import Demos.OrderBook.Refinement
+public import Verified.Call
+
+@[expose] public section
 
 /-! The calls of the verified order book's exports `run` and `top` from a ready store, the state
 that `Verified.Ready` describes.  `run` consumes the book's seven arrays, so `run_call` starts from

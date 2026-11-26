@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccUp
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccUp
+
+@[expose] public section
 
 /-!
 The loop of `Tgamma.accurate` for `x ≥ j + 1`, which multiplies the factors `x - 1, x - 2, …`.

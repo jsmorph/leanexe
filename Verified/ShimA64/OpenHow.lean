@@ -1,8 +1,12 @@
-import Verified.Shim
-import LeanExe.A64.Proof.WasiStubs
-import LeanExe.A64.Proof.WasiStrings
-import Verified.ShimA64.Clocks
-import LeanExe.A64.WasiFiles
+module
+
+public import Verified.Shim
+public import LeanExe.A64.Proof.WasiStubs
+public import LeanExe.A64.Proof.WasiStrings
+public import Verified.ShimA64.Clocks
+public import LeanExe.A64.WasiFiles
+
+@[expose] public section
 
 /-!
 The run of `openHow` of `LeanExe/A64/WasiFiles.lean` in the program's model.  `run_openHow`

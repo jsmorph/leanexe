@@ -1,5 +1,9 @@
-import Demos.Rcv.Program
-import Verified.Reflect.Command
+module
+
+public import Demos.Rcv.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-!
 The count of `Demos/Rcv/Program.lean` compiled by the verified compiler.  The module exports

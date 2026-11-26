@@ -1,4 +1,8 @@
-import Demos.Rcv.Maine.Process
+module
+
+public import Demos.Rcv.Maine.Process
+
+@[expose] public section
 
 /-! The Maine process on the real stdin and stdout, run as `Demos/Rcv/ProcessNative.lean` runs the
 Oakland process.  Reads use Running sum's [POSIX reader](../../RunningSum/read.c), which returns

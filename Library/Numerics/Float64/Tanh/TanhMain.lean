@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.TanhTheorem
+module
+
+public import Library.Numerics.Float64.Tanh.TanhTheorem
+
+@[expose] public section
 
 /-!
 `Tanh.tanh` within three steps of `tanh x` on every finite input, and its exceptional results.

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Asinh.Compiled
-import Library.Numerics.Float64.Atan.AtanTheorem
+module
+
+public import Library.Numerics.Float64.Asinh.Compiled
+public import Library.Numerics.Float64.Atan.AtanTheorem
+
+@[expose] public section
 
 /-!
 The branches of `Asinh.asinh` and `Asinh.acosh` as equations.  `ixOf x` is the

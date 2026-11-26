@@ -1,8 +1,12 @@
-import LeanExe.Dialect.Bytes
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Loop
-import Library.Numerics.Decimal.Int64Text.Program
-import Demos.RandomHistogram.Program
+module
+
+public import LeanExe.Dialect.Bytes
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Loop
+public import Library.Numerics.Decimal.Int64Text.Program
+public import Demos.RandomHistogram.Program
+
+@[expose] public section
 
 /-! The pure core of the unbiased random choice in the verified compiler's dialect.
 

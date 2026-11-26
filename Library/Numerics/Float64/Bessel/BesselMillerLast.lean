@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselMillerBack
+module
+
+public import Library.Numerics.Float64.Bessel.BesselMillerBack
+
+@[expose] public section
 
 /-!
 The last step of `jn`'s backward recurrence, from `i = 1` to `i = 0`, and the loop as a whole.

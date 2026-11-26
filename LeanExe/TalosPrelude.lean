@@ -1,8 +1,12 @@
-import LeanExe.Base
-import CodeLib.Attrs
-import CodeLib.Basic
-import CodeLib.Entry
-import CodeLib.RustStd.Frame
+module
+
+public import LeanExe.Base
+public import CodeLib.Attrs
+public import CodeLib.Basic
+public import CodeLib.Entry
+public import CodeLib.RustStd.Frame
+
+@[expose] public section
 
 /-!
 # The Talos modules that LeanExe imports

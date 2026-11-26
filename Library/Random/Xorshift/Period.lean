@@ -1,9 +1,13 @@
-import Library.Random.Xorshift.Program
-import Library.Random.Orbit.Basic
-import Library.Random.Xorshift.Columns
-import Mathlib.Data.Fintype.Card
-import Mathlib.Dynamics.PeriodicPts.Lemmas
-import Mathlib.Tactic.NormNum.Prime
+module
+
+public import Library.Random.Xorshift.Program
+public import Library.Random.Orbit.Basic
+public import Library.Random.Xorshift.Columns
+public import Mathlib.Data.Fintype.Card
+public import Mathlib.Dynamics.PeriodicPts.Lemmas
+public import Mathlib.Tactic.NormNum.Prime
+
+@[expose] public section
 
 /-! The period of Marsaglia's xorshift64 generator of `Library/Random/Xorshift/Program.lean`.  Each of
 the three operations of a step distributes over xor and is injective, so the step is a bijection

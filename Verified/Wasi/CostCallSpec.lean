@@ -1,8 +1,12 @@
-import Verified.Wasi.CommandCallSpec
-import Verified.Wasi.CallBudget
-import Verified.Wasi.CostCallHelper
-import Verified.Wasi.CostCodeSpec
-import Verified.AlignedCorrect
+module
+
+public import Verified.Wasi.CommandCallSpec
+public import Verified.Wasi.CallBudget
+public import Verified.Wasi.CostCallHelper
+public import Verified.Wasi.CostCodeSpec
+public import Verified.AlignedCorrect
+
+@[expose] public section
 
 namespace Verified.Wasi
 

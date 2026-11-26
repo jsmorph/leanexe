@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Atan.AtanTheoremSpecial
-import LeanExe.ProofKit.Signed64Value
+module
+
+public import Library.Numerics.Float64.Atan.AtanTheoremSpecial
+public import LeanExe.ProofKit.Signed64Value
+
+@[expose] public section
 
 /-!
 The branches of `Atan.atan2 y x` as equations.  `quadTail z m` is the code's last step for the

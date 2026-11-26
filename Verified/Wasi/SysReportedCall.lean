@@ -1,4 +1,8 @@
-import Verified.Wasi.SysFlat
+module
+
+public import Verified.Wasi.SysFlat
+
+@[expose] public section
 
 /-! The call of a reported request into its block: the hidden region's address, the call with
 the hidden region and the shown region at the block's root, and the code after the call, which

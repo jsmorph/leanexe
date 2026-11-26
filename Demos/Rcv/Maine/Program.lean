@@ -1,4 +1,8 @@
-import Demos.Rcv.Program
+module
+
+public import Demos.Rcv.Program
+
+@[expose] public section
 
 /-!
 The count of the Maine module over words, in the verified compiler's dialect.  `count` takes a

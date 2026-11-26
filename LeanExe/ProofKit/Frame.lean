@@ -1,5 +1,9 @@
-import Interpreter.Wasm.Locals
-import LeanExe.TalosCompat
+module
+
+public import Interpreter.Wasm.Locals
+public import LeanExe.TalosCompat
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.Frame
 

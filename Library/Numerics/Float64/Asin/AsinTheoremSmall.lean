@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Asin.AsinTheoremRatio
-import Library.Numerics.Float64.Asin.AsinTheoremBranches
-import LeanExe.ProofKit.F64RoundNearest
-import LeanExe.ProofKit.F64WithinSelf
+module
+
+public import Library.Numerics.Float64.Asin.AsinTheoremRatio
+public import Library.Numerics.Float64.Asin.AsinTheoremBranches
+public import LeanExe.ProofKit.F64RoundNearest
+public import LeanExe.ProofKit.F64WithinSelf
+
+@[expose] public section
 
 /-!
 `Asin.asin x` for `|x| < 1/2`.  Below `2 ^ -26` the result is `x`, which lies within

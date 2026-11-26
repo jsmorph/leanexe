@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcHardBase
-import Library.Numerics.Float64.Erfc.ErfcAccMain
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcHardBase
+public import Library.Numerics.Float64.Erfc.ErfcAccMain
+
+@[expose] public section
 
 /-!
 The rows of the tables of hard cases of `Erfc`, checked one at a time.  `HardSerOK` states the

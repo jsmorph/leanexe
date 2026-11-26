@@ -1,5 +1,9 @@
-import Verified.Kernel.Plan
-import LeanExe.PTX.Build
+module
+
+public import Verified.Kernel.Plan
+public import LeanExe.PTX.Build
+
+@[expose] public section
 
 /-!
 The PTX kernel of a build: the shared plan and its translation by `LeanExe.Source.Spec.ptx`.

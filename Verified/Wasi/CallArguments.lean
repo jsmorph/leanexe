@@ -1,8 +1,12 @@
-import Verified.ArgsCorrect
-import Verified.ArgumentMoves
-import Verified.Wasi.Code
-import Verified.Wasi.PurePrefix
-import Verified.AlignedCorollaries
+module
+
+public import Verified.ArgsCorrect
+public import Verified.ArgumentMoves
+public import Verified.Wasi.Code
+public import Verified.Wasi.PurePrefix
+public import Verified.AlignedCorollaries
+
+@[expose] public section
 
 namespace Verified.Wasi
 

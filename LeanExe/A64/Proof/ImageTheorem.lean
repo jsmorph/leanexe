@@ -1,7 +1,11 @@
-import LeanExe.A64.Proof.ImageRun
-import LeanExe.A64.Proof.StartupOff
-import LeanExe.A64.Proof.StartupTail
-import LeanExe.A64.Proof.Shift
+module
+
+public import LeanExe.A64.Proof.ImageRun
+public import LeanExe.A64.Proof.StartupOff
+public import LeanExe.A64.Proof.StartupTail
+public import LeanExe.A64.Proof.Shift
+
+@[expose] public section
 
 /-!
 The run of an image from the boot state to `main`.  `image_main` takes a memory that holds the

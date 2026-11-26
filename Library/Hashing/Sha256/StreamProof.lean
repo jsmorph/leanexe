@@ -1,7 +1,11 @@
-import Library.Hashing.Sha256.Stream
-import Library.Hashing.Sha256.Proof
-import LeanExe.Dialect.BytesLemmas
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Hashing.Sha256.Stream
+public import Library.Hashing.Sha256.Proof
+public import LeanExe.Dialect.BytesLemmas
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! The block-level SHA-256 computes FIPS 180-4.  `blocksFold data q s` is the copied
 implementation's hash value after the first `q` blocks of `data` from `s`.  `update_toVec32` states

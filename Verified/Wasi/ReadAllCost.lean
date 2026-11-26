@@ -1,4 +1,8 @@
-import Verified.Bytes.Allocation
+module
+
+public import Verified.Bytes.Allocation
+
+@[expose] public section
 
 /-! The charge of `readAll limit`: the allocation of its buffer of `limit + 4,096` bytes, or
 nothing for a limit that returns errno 61 before any allocation. -/

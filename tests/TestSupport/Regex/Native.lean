@@ -1,7 +1,11 @@
-import Library.Regex.Program
-import Library.Regex.Spec
-import Library.Bytes.Packed
-import TestSupport.Regex.Generate
+module
+
+public import Library.Regex.Program
+public import Library.Regex.Spec
+public import Library.Bytes.Packed
+public import TestSupport.Regex.Generate
+
+@[expose] public section
 
 /-! A native check of `Library.Regex.matchWith` against `Library.Regex.Spec.answer` on the patterns
 of `TestSupport.Regex.Generate` and every input of at most four bytes over its input bytes.

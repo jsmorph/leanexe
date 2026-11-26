@@ -1,44 +1,48 @@
-import Library.Numerics.Bounds.Program
-import Library.Numerics.Interval.Program
-import Library.Numerics.Limiters.Minmod.Program
-import Library.Numerics.Reductions.Word.Program
-import Library.Numerics.Filters.Cic.Program
-import Library.Numerics.Statistics.Mean.Program
-import Library.Numerics.Statistics.SumSquares.Program
-import Library.Random.SplitMix64.Program
-import Library.Arrays.Search.Program
-import Library.Arrays.MaxSegmentSum.Program
-import TestSupport.Host
-import Library.Combinatorics.DancingLinks.Count
-import TestSupport.Modules.BinaryGcd
-import TestSupport.Modules.BinaryHeap
-import TestSupport.Modules.BinarySearch
-import TestSupport.Modules.DancingLinks
-import TestSupport.Modules.Gcd
-import TestSupport.Modules.Heapsort
-import TestSupport.Modules.LinearProbing
-import TestSupport.Modules.MergeSort
-import TestSupport.Modules.MillerRabin
-import TestSupport.Modules.ModInverse
-import TestSupport.Modules.MultiPrecision
-import TestSupport.Modules.StraightInsertion
-import TestSupport.Modules.Quicksort
-import TestSupport.Modules.Shellsort
-import TestSupport.Modules.RadixSort
-import TestSupport.Modules.Find
-import TestSupport.Modules.PrimeFactors
-import TestSupport.Modules.Sieve
-import TestSupport.Modules.Sampling
-import TestSupport.Modules.TopologicalSort
-import TestSupport.Modules.UnionFind
-import TestSupport.Modules.WeightedUnionFind
-import TestSupport.Modules.Kmp
-import TestSupport.Modules.Dijkstra
-import TestSupport.Modules.TreeSearch
-import TestSupport.Modules.Avl
-import TestSupport.Modules.AvlDelete
-import TestSupport.Modules.NextPermutation
-import TestSupport.Modules.Int64Text
+module
+
+public import Library.Numerics.Bounds.Program
+public import Library.Numerics.Interval.Program
+public import Library.Numerics.Limiters.Minmod.Program
+public import Library.Numerics.Reductions.Word.Program
+public import Library.Numerics.Filters.Cic.Program
+public import Library.Numerics.Statistics.Mean.Program
+public import Library.Numerics.Statistics.SumSquares.Program
+public import Library.Random.SplitMix64.Program
+public import Library.Arrays.Search.Program
+public import Library.Arrays.MaxSegmentSum.Program
+public import TestSupport.Host
+public import Library.Combinatorics.DancingLinks.Count
+public import TestSupport.Modules.BinaryGcd
+public import TestSupport.Modules.BinaryHeap
+public import TestSupport.Modules.BinarySearch
+public import TestSupport.Modules.DancingLinks
+public import TestSupport.Modules.Gcd
+public import TestSupport.Modules.Heapsort
+public import TestSupport.Modules.LinearProbing
+public import TestSupport.Modules.MergeSort
+public import TestSupport.Modules.MillerRabin
+public import TestSupport.Modules.ModInverse
+public import TestSupport.Modules.MultiPrecision
+public import TestSupport.Modules.StraightInsertion
+public import TestSupport.Modules.Quicksort
+public import TestSupport.Modules.Shellsort
+public import TestSupport.Modules.RadixSort
+public import TestSupport.Modules.Find
+public import TestSupport.Modules.PrimeFactors
+public import TestSupport.Modules.Sieve
+public import TestSupport.Modules.Sampling
+public import TestSupport.Modules.TopologicalSort
+public import TestSupport.Modules.UnionFind
+public import TestSupport.Modules.WeightedUnionFind
+public import TestSupport.Modules.Kmp
+public import TestSupport.Modules.Dijkstra
+public import TestSupport.Modules.TreeSearch
+public import TestSupport.Modules.Avl
+public import TestSupport.Modules.AvlDelete
+public import TestSupport.Modules.NextPermutation
+public import TestSupport.Modules.Int64Text
+
+@[expose] public section
 
 namespace TestSupport.LibraryCases
 

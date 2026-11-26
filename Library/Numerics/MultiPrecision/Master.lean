@@ -1,5 +1,9 @@
-import Library.Numerics.MultiPrecision.Compiled
-import Verified.Master
+module
+
+public import Library.Numerics.MultiPrecision.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 /-! The master theorems of multiple-precision arithmetic.  A number is an array of digits in base
 `2 ^ 32`, least significant first: `value u` is its value, `digits n x` is the array of the `n`

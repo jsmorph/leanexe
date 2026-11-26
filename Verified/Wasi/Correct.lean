@@ -1,5 +1,9 @@
-import Verified.Wasi.ProgramCorrect
-import Verified.Wasi.CostCommandCorrect
+module
+
+public import Verified.Wasi.ProgramCorrect
+public import Verified.Wasi.CostCommandCorrect
+
+@[expose] public section
 
 namespace Verified.Wasi
 

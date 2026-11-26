@@ -1,4 +1,8 @@
-import Verified.Wasi.SysReportedCall
+module
+
+public import Verified.Wasi.SysReportedCall
+
+@[expose] public section
 
 /-! The code of a reported call, from the locals set to 0 to the errno, the reporter's words, and
 the block's root and length on the stack: the reporter's call with its words at the scratch

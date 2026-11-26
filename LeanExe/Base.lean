@@ -1,3 +1,7 @@
+module
+
+@[expose] public section
+
 /-!
 # Instance priorities for every leanexe module
 

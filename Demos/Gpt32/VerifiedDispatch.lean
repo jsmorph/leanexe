@@ -1,4 +1,8 @@
-import Demos.Gpt32.Verified
+module
+
+public import Demos.Gpt32.Verified
+
+@[expose] public section
 
 namespace Demos.Gpt32.Verified
 

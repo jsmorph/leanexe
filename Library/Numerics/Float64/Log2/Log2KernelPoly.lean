@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.TaylorRemainder
-import Library.Numerics.Float64.Exp.ExpReductionBounds
+module
+
+public import LeanExe.ProofKit.TaylorRemainder
+public import Library.Numerics.Float64.Exp.ExpReductionBounds
+
+@[expose] public section
 
 /-!
 The approximation errors of the two polynomials of Arm's `log2`.  The main path approximates

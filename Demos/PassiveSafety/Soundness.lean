@@ -1,7 +1,11 @@
-import Demos.PassiveSafety.Program
-import Demos.PassiveSafety.Smooth
-import Library.Numerics.Interval.Proof
-import LeanExe.Dialect.Lemmas
+module
+
+public import Demos.PassiveSafety.Program
+public import Demos.PassiveSafety.Smooth
+public import Library.Numerics.Interval.Proof
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-!
 Soundness of the passive-safety check.  `check_sound` states that when `check` accepts, every

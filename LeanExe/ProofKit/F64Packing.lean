@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64Encoding
-import CodeLib.IEEE32.Roundoff
+module
+
+public import LeanExe.ProofKit.F64Encoding
+public import CodeLib.IEEE32.Roundoff
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Packing
 open Float.Model Float.Model.UnpackedFloat F64Encoding F64Source FloatCommon

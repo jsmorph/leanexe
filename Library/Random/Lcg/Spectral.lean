@@ -1,8 +1,12 @@
-import Library.Random.Lcg.Lattice
-import Mathlib.Data.Matrix.Mul
-import Mathlib.LinearAlgebra.Matrix.Notation
-import Mathlib.Algebra.Order.BigOperators.Ring.Finset
-import Mathlib.Data.Fintype.Pi
+module
+
+public import Library.Random.Lcg.Lattice
+public import Mathlib.Data.Matrix.Mul
+public import Mathlib.LinearAlgebra.Matrix.Notation
+public import Mathlib.Algebra.Order.BigOperators.Ring.Finset
+public import Mathlib.Data.Fintype.Pi
+
+@[expose] public section
 
 /-! These theorems give the spectral test of the LCG of `Library/Random/Lcg/Program.lean`: the squared
 length `ν_t²` of the shortest nonzero vector of `Dual t`, for `t = 2, …, 6`.  Knuth shows that

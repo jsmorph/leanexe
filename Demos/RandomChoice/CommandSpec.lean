@@ -1,7 +1,11 @@
-import Demos.RandomChoice.Spec
-import Demos.RandomHistogram.CommandSpec
-import LeanExe.Wasi.Sys
-import Verified.Shim.Trace
+module
+
+public import Demos.RandomChoice.Spec
+public import Demos.RandomHistogram.CommandSpec
+public import LeanExe.Wasi.Sys
+public import Verified.Shim.Trace
+
+@[expose] public section
 
 /-! The specification of the runs of the unbiased random choice's WASI command, in terms of the
 events of a run, `LeanExe.Wasi.Event`, which record each call with the reply that the host gave.

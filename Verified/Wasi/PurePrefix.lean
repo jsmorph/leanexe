@@ -1,5 +1,9 @@
-import Verified.Wasi.PureTransportSpecs
-import LeanExe.ProofKit.Sequencing
+module
+
+public import Verified.Wasi.PureTransportSpecs
+public import LeanExe.ProofKit.Sequencing
+
+@[expose] public section
 
 namespace Verified.Wasi.PureTransport
 

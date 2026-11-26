@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Asin.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.ArcReference
+module
+
+public import Library.Numerics.Float64.Asin.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.ArcReference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Asin.asin` and `Library.Numerics.Float64.Asin.acos` against references computed with Lean's integers
 through `ArcReference.asinFixed` and `ArcReference.acosFixed`, rounded to the nearest double.

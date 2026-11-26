@@ -1,4 +1,8 @@
-import Verified.Kernel.Cell
+module
+
+public import Verified.Kernel.Cell
+
+@[expose] public section
 
 namespace Verified.Kernel
 

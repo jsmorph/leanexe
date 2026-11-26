@@ -1,5 +1,9 @@
-import Demos.Orbit.LambertBox
-import TestSupport.Host
+module
+
+public import Demos.Orbit.LambertBox
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the orbit-determination modules.  `cases` prints the module cases of `gibbsBounds`
 and `lambertBounds` for `tests/verified/run.sh`.  `gibbs` reads lines of the bit patterns of the

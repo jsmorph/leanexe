@@ -1,5 +1,9 @@
-import Demos.RandomChoice.CommandProof
-import Verified.Shim.Footprint
+module
+
+public import Demos.RandomChoice.CommandProof
+public import Verified.Shim.Footprint
+
+@[expose] public section
 
 /-! The theorem of the compiled command.  For every host, every host environment that satisfies the
 host's specifications for the module's imports, `hostSpecWith host command.sysCalls`, and every

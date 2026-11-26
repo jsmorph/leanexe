@@ -1,39 +1,43 @@
-import Library.Numerics.Float64.Lgamma.LgammaApprox
-import Library.Numerics.Float64.Lgamma.LgammaSmallFact
-import Library.Numerics.Float64.Lgamma.LgammaPiecesA
-import Library.Numerics.Float64.Lgamma.LgammaPiecesB
-import Library.Numerics.Float64.Lgamma.LgammaPiecesC
-import Library.Numerics.Float64.Lgamma.LgammaPiecesD
-import Library.Numerics.Float64.Lgamma.LgammaPiecesE
-import Library.Numerics.Float64.Lgamma.LgammaPiece4
-import Library.Numerics.Float64.Lgamma.LgammaPiece10
-import Library.Numerics.Float64.Lgamma.LgammaStirLarge
-import Library.Numerics.Float64.Tgamma.TgammaLogTables
-import Library.Numerics.Float64.Lgamma.LgammaSinpiTables
-import Library.Numerics.Float64.Lgamma.LgammaAccSmall
-import Library.Numerics.Float64.Lgamma.LgammaAccMid
-import Library.Numerics.Float64.Lgamma.LgammaAsymMidA
-import Library.Numerics.Float64.Lgamma.LgammaAsymMidB
-import Library.Numerics.Float64.Lgamma.LgammaAsymMidC
-import Library.Numerics.Float64.Lgamma.LgammaAsymLowA
-import Library.Numerics.Float64.Lgamma.LgammaAsymLowB
-import Library.Numerics.Float64.Lgamma.LgammaAsymLowC
-import Library.Numerics.Float64.Lgamma.LgammaAsymLowD
-import Library.Numerics.Float64.Lgamma.LgammaAsymLowE
-import Library.Numerics.Float64.Lgamma.LgammaAsymLowF
-import Library.Numerics.Float64.Lgamma.LgammaAsymLowG
-import Library.Numerics.Float64.Lgamma.LgammaAsymLowH
-import Library.Numerics.Float64.Lgamma.LgammaLogAcc
-import Library.Numerics.Float64.Lgamma.LgammaSinpiAcc
-import Library.Numerics.Float64.Lgamma.LgammaRootA
-import Library.Numerics.Float64.Lgamma.LgammaRootB
-import Library.Numerics.Float64.Lgamma.LgammaRootC
-import Library.Numerics.Float64.Lgamma.LgammaRootD
-import Library.Numerics.Float64.Lgamma.LgammaRootE
-import Library.Numerics.Float64.Lgamma.LgammaRootF
-import Library.Numerics.Float64.Lgamma.LgammaZerosA
-import Library.Numerics.Float64.Lgamma.LgammaDb
-import Library.Numerics.Float64.Lgamma.LgammaCancel
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaApprox
+public import Library.Numerics.Float64.Lgamma.LgammaSmallFact
+public import Library.Numerics.Float64.Lgamma.LgammaPiecesA
+public import Library.Numerics.Float64.Lgamma.LgammaPiecesB
+public import Library.Numerics.Float64.Lgamma.LgammaPiecesC
+public import Library.Numerics.Float64.Lgamma.LgammaPiecesD
+public import Library.Numerics.Float64.Lgamma.LgammaPiecesE
+public import Library.Numerics.Float64.Lgamma.LgammaPiece4
+public import Library.Numerics.Float64.Lgamma.LgammaPiece10
+public import Library.Numerics.Float64.Lgamma.LgammaStirLarge
+public import Library.Numerics.Float64.Tgamma.TgammaLogTables
+public import Library.Numerics.Float64.Lgamma.LgammaSinpiTables
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmall
+public import Library.Numerics.Float64.Lgamma.LgammaAccMid
+public import Library.Numerics.Float64.Lgamma.LgammaAsymMidA
+public import Library.Numerics.Float64.Lgamma.LgammaAsymMidB
+public import Library.Numerics.Float64.Lgamma.LgammaAsymMidC
+public import Library.Numerics.Float64.Lgamma.LgammaAsymLowA
+public import Library.Numerics.Float64.Lgamma.LgammaAsymLowB
+public import Library.Numerics.Float64.Lgamma.LgammaAsymLowC
+public import Library.Numerics.Float64.Lgamma.LgammaAsymLowD
+public import Library.Numerics.Float64.Lgamma.LgammaAsymLowE
+public import Library.Numerics.Float64.Lgamma.LgammaAsymLowF
+public import Library.Numerics.Float64.Lgamma.LgammaAsymLowG
+public import Library.Numerics.Float64.Lgamma.LgammaAsymLowH
+public import Library.Numerics.Float64.Lgamma.LgammaLogAcc
+public import Library.Numerics.Float64.Lgamma.LgammaSinpiAcc
+public import Library.Numerics.Float64.Lgamma.LgammaRootA
+public import Library.Numerics.Float64.Lgamma.LgammaRootB
+public import Library.Numerics.Float64.Lgamma.LgammaRootC
+public import Library.Numerics.Float64.Lgamma.LgammaRootD
+public import Library.Numerics.Float64.Lgamma.LgammaRootE
+public import Library.Numerics.Float64.Lgamma.LgammaRootF
+public import Library.Numerics.Float64.Lgamma.LgammaZerosA
+public import Library.Numerics.Float64.Lgamma.LgammaDb
+public import Library.Numerics.Float64.Lgamma.LgammaCancel
+
+@[expose] public section
 
 /-!
 Proofs of the approximation statements of `LgammaApprox`, which the floating-point proof of

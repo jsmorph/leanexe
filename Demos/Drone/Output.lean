@@ -1,4 +1,8 @@
-import Demos.Drone.Forward
+module
+
+public import Demos.Drone.Forward
+
+@[expose] public section
 
 /-! The output of `compute`: the stopped final state is reachable, the parents in the table lead
 back along an admitted flight that attains the least cost, and `compute` returns the altitude and

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcSeries
-import Library.Numerics.Float64.Erf.ErfTailBase
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcSeries
+public import Library.Numerics.Float64.Erf.ErfTailBase
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 The certificate of a polynomial `Z` in `1/x²` against `x erfcx x = x exp (x²) erfc x`, from a

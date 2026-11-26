@@ -1,7 +1,11 @@
-import LeanExe.Pipeline.Allocation
-import LeanExe.Pipeline.Aborts
-import LeanExe.Runtime.Defs
-import LeanExe.Runtime.Merge
+module
+
+public import LeanExe.Pipeline.Allocation
+public import LeanExe.Pipeline.Aborts
+public import LeanExe.Runtime.Defs
+public import LeanExe.Runtime.Merge
+
+@[expose] public section
 
 /-!
 Specifications of the runtime functions that compiled code calls.

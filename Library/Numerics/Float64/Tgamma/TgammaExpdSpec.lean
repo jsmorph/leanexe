@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaExpd
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaExpd
+
+@[expose] public section
 
 /-!
 **The specification of `Tgamma.asExpd`** for `1 ≤ x + l ≤ 1000` and `|l| ≤ 2 ^ -40`: the result

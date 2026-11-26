@@ -1,9 +1,13 @@
-import LeanExe.A64.Proof.LinuxCalls
-import LeanExe.A64.Proof.MachineSim
-import LeanExe.A64.Proof.Lift
-import LeanExe.A64.Proof.ImageRun
-import LeanExe.A64.Proof.PlatformLe
-import LeanExe.A64.Wasi
+module
+
+public import LeanExe.A64.Proof.LinuxCalls
+public import LeanExe.A64.Proof.MachineSim
+public import LeanExe.A64.Proof.Lift
+public import LeanExe.A64.Proof.ImageRun
+public import LeanExe.A64.Proof.PlatformLe
+public import LeanExe.A64.Wasi
+
+@[expose] public section
 
 /-!
 The process of the Linux call layer's binding as a machine of the simulation.  `ProcRunWith T R P

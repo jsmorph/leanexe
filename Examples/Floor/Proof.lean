@@ -1,5 +1,9 @@
-import Examples.Floor.Program
-import Examples.Floor.Spec
+module
+
+public import Examples.Floor.Program
+public import Examples.Floor.Spec
+
+@[expose] public section
 
 /-! The programs meet their specifications.  `floorDiv_spec` follows from Lean's truncating
 quotient and remainder (`Int64.toInt_div_of_ne_left`, `Int64.toInt_mod`) and `Int.fdiv_eq_tdiv`,

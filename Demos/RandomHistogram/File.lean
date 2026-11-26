@@ -1,5 +1,9 @@
-import Demos.RandomHistogram.Compiled
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.RandomHistogram.Compiled
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/randomHistogram.wasm`: the file
 holds `encode compiled.module`, and it decodes to the module of `compiled.bytes`. -/

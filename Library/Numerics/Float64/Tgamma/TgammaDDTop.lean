@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tgamma.TgammaDD
-import LeanExe.ProofKit.F64TopTwoSum
-import LeanExe.ProofKit.F64TopMul
-import Library.Numerics.Float64.Sinh.SinhWords
-import LeanExe.ProofKit.F64NearestHalf
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaDD
+public import LeanExe.ProofKit.F64TopTwoSum
+public import LeanExe.ProofKit.F64TopMul
+public import Library.Numerics.Float64.Sinh.SinhWords
+public import LeanExe.ProofKit.F64NearestHalf
+
+@[expose] public section
 
 /-!
 The double-double operations of `Tgamma` near the overflow threshold `2^1024 - 2^970`.

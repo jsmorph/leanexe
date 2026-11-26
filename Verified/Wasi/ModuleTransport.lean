@@ -1,5 +1,9 @@
-import Verified.Wasi.Module
-import Verified.Wasi.PureTransportSpecs
+module
+
+public import Verified.Wasi.Module
+public import Verified.Wasi.PureTransportSpecs
+
+@[expose] public section
 
 namespace Verified.Wasi.Module
 

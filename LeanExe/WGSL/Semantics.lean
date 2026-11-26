@@ -1,5 +1,9 @@
-import LeanExe.WGSL.Syntax
-import Interpreter.Wasm.IEEE32
+module
+
+public import LeanExe.WGSL.Syntax
+public import Interpreter.Wasm.IEEE32
+
+@[expose] public section
 
 /-!
 The meaning of a kernel under the sequential device model.  Binary32 operations compute Talos's

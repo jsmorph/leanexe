@@ -1,6 +1,10 @@
-import Library.Sorting.Insertion.Proof
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Sorting.Insertion.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-! The verified compiler's module of `sortInsert`.  The function borrows its input and builds the
 sorted array as the state of its loop, which grows in its own block.  `sortInsert_callSpec` composes

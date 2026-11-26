@@ -1,7 +1,11 @@
-import Verified.Wasi.After
-import Verified.Wasi.Code
-import Verified.Wasi.HostSpec
-import LeanExe.Wasi.RelatedExec
+module
+
+public import Verified.Wasi.After
+public import Verified.Wasi.Code
+public import Verified.Wasi.HostSpec
+public import LeanExe.Wasi.RelatedExec
+
+@[expose] public section
 
 namespace Verified.Wasi
 

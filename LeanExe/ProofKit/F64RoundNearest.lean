@@ -1,11 +1,15 @@
-import LeanExe.ProofKit.F64FullStep
-import LeanExe.ProofKit.F64NearestSum
-import LeanExe.ProofKit.F64PackingFinite
-import LeanExe.ProofKit.F64Approx
-import LeanExe.ProofKit.F64SignedRounding
-import LeanExe.ProofKit.F64UpperWord
-import LeanExe.ProofKit.F64Exact
-import Mathlib.Data.Int.Log
+module
+
+public import LeanExe.ProofKit.F64FullStep
+public import LeanExe.ProofKit.F64NearestSum
+public import LeanExe.ProofKit.F64PackingFinite
+public import LeanExe.ProofKit.F64Approx
+public import LeanExe.ProofKit.F64SignedRounding
+public import LeanExe.ProofKit.F64UpperWord
+public import LeanExe.ProofKit.F64Exact
+public import Mathlib.Data.Int.Log
+
+@[expose] public section
 
 /-!
 A sum or difference of finite words rounds to a nearest word of its exact value: no word has a

@@ -1,6 +1,10 @@
-import Verified.Examples.CompositionBase
-import Verified.ModuleComposition
-import Verified.ScalarAtoms
+module
+
+public import Verified.Examples.CompositionBase
+public import Verified.ModuleComposition
+public import Verified.ScalarAtoms
+
+@[expose] public section
 
 namespace Verified.Examples.CompositionBase
 

@@ -1,5 +1,9 @@
-import Demos.RunningSumFp.Stream
-import Verified.Wasi.ReflectCommand
+module
+
+public import Demos.RunningSumFp.Stream
+public import Verified.Wasi.ReflectCommand
+
+@[expose] public section
 
 namespace Demos.RunningSumFp
 

@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccGrowth
-import Library.Numerics.Float64.Lgamma.LgammaApprox
-import Library.Numerics.Float64.Lgamma.LgammaReflMid
-import Library.Numerics.Float64.Lgamma.LgammaEndCell
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccGrowth
+public import Library.Numerics.Float64.Lgamma.LgammaApprox
+public import Library.Numerics.Float64.Lgamma.LgammaReflMid
+public import Library.Numerics.Float64.Lgamma.LgammaEndCell
+
+@[expose] public section
 
 /-!
 Bounds on `ln |Γ x|` at the doubles where `Lgamma.accurate` runs: `|ln |Γ x||` lies from `2^-1000`

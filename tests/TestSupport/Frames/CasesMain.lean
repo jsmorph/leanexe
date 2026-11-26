@@ -1,4 +1,8 @@
-import TestSupport.Frames.Cases
+module
+
+public import TestSupport.Frames.Cases
+
+@[expose] public section
 
 /-! The cases of the module `frames` alone, for `tests/verified/run.sh --cases frames`.  With the
 argument `--serve`, it reads the input lines of `tests/frames/oracle.py` and prints the results. -/

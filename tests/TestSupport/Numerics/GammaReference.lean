@@ -1,4 +1,8 @@
-import TestSupport.Numerics.Reference
+module
+
+public import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! An integer reference for `lgamma` and `Γ`, for the checks of `Tgamma` and `Lgamma`.  For
 `y > 0`, `lgamma y = lgamma (y + N) - ln (y (y + 1) ⋯ (y + N - 1))` with `y + N ≥ 300`, where

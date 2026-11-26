@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaReflCore
-import Library.Numerics.Float64.Tgamma.GammaPi
-import LeanExe.ProofKit.RatExpLog
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaReflCore
+public import Library.Numerics.Float64.Tgamma.GammaPi
+public import LeanExe.ProofKit.RatExpLog
+
+@[expose] public section
 
 /-!
 Enclosures of `ln |Γ v|` at the 14 ends `v = ±(2k + 1)/4`, `k < 7`, of the windows of the accurate

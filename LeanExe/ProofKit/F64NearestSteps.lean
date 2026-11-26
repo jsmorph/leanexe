@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64FullStep
-import LeanExe.ProofKit.F64SignedRounding
+module
+
+public import LeanExe.ProofKit.F64FullStep
+public import LeanExe.ProofKit.F64SignedRounding
+
+@[expose] public section
 
 /-!
 One representable step from the nearest word of a nearby number.  Let `c` be a nearest word of

@@ -1,7 +1,11 @@
-import Demos.Avoidance.Flat
-import Demos.Conjunction.Flat
-import Library.Numerics.Interval.Encoding
-import Verified.Reflect.Command
+module
+
+public import Demos.Avoidance.Flat
+public import Demos.Conjunction.Flat
+public import Library.Numerics.Interval.Encoding
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The authorizer of `Demos/Avoidance/Program.lean` and the probability enclosure `pcBox` for
 interval inputs, compiled by the verified compiler with the interval operations, the library's

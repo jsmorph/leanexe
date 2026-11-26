@@ -1,5 +1,9 @@
-import Demos.Euler.ReconstructedProgram
-import TestSupport.Host
+module
+
+public import Demos.Euler.ReconstructedProgram
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The module cases of `euler`, one line per case in the format of
 `tests/modules/run.sh`. -/

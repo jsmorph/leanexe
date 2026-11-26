@@ -1,4 +1,8 @@
-import TestSupport.A64.Cosim
+module
+
+public import TestSupport.A64.Cosim
+
+@[expose] public section
 
 /-!
 The command `a64-cosim` of the co-simulation of the AArch64 model.  `a64-cosim gen SEED PER_FORM

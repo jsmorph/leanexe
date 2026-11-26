@@ -1,5 +1,9 @@
-import Verified.Examples.ScalarComposition
-import Verified.ProgramAppendCorrect
+module
+
+public import Verified.Examples.ScalarComposition
+public import Verified.ProgramAppendCorrect
+
+@[expose] public section
 
 namespace Verified.Examples.Relocation
 

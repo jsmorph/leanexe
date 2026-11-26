@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Log2.Compiled
-import Library.Numerics.Float64.Log.LogTables
-import Library.Numerics.Float64.Exp.ExpReductionBounds
+module
+
+public import Library.Numerics.Float64.Log2.Compiled
+public import Library.Numerics.Float64.Log.LogTables
+public import Library.Numerics.Float64.Exp.ExpReductionBounds
+
+@[expose] public section
 
 /-!
 Facts about each of the 64 entries of Arm's `log2` tables, checked by the kernel over the

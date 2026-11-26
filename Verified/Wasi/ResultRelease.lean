@@ -1,5 +1,9 @@
-import Verified.Wasi.ScratchContext
-import Verified.ArgsCorrect
+module
+
+public import Verified.Wasi.ScratchContext
+public import Verified.ArgsCorrect
+
+@[expose] public section
 
 namespace Verified.Wasi
 

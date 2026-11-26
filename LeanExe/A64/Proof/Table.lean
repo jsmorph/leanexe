@@ -1,5 +1,9 @@
-import LeanExe.A64.Table
-import LeanExe.A64.Proof.Bits
+module
+
+public import LeanExe.A64.Table
+public import LeanExe.A64.Proof.Bits
+
+@[expose] public section
 
 /-!
 Under the covered configuration, with memory holding `tableBytes` at `TTBR0_EL1`, translation

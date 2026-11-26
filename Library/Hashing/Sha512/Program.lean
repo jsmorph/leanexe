@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Loop
-import Library.Hashing.Words.Program
+module
+
+public import LeanExe.Dialect.Loop
+public import Library.Hashing.Words.Program
+
+@[expose] public section
 
 /-! SHA-512, SHA-384, SHA-512/256, and SHA-512/224 of FIPS 180-4 §6.4 to §6.7, for a message of
 `n` bytes packed eight to a word as `Library.Hashing.Words` describes.  `paddedWord` reads each

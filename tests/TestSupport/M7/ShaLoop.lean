@@ -1,10 +1,14 @@
-import TestSupport.M7.ShaStep
-import TestSupport.M7.ShaImages
-import TestSupport.M7.ShaSpec
-import TestSupport.M7.QemuLoop
-import LeanExe.M7.Proof.Board
-import LeanExe.Proof.AreaHeap
-import LeanExe.Requests.Reads
+module
+
+public import TestSupport.M7.ShaStep
+public import TestSupport.M7.ShaImages
+public import TestSupport.M7.ShaSpec
+public import TestSupport.M7.QemuLoop
+public import LeanExe.M7.Proof.Board
+public import LeanExe.Proof.AreaHeap
+public import LeanExe.Requests.Reads
+
+@[expose] public section
 
 /-!
 The loop theorems of the SHA-256 steps through the Cortex-M7 back end, from reset: `sha_loop` of

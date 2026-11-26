@@ -1,4 +1,8 @@
-import Demos.Rcv.Maine.Spec
+module
+
+public import Demos.Rcv.Maine.Spec
+
+@[expose] public section
 
 /-!
 Executable cases of the Maine specification.  Each `#guard` evaluates the specification when the

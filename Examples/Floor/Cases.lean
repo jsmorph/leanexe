@@ -1,4 +1,8 @@
-import Examples.Floor.Program
+module
+
+public import Examples.Floor.Program
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `floor`: the extremes of `Int64`, the values
 near 0, and odd and even values of both signs, in every pair. -/

@@ -1,6 +1,10 @@
-import Verified.Wasi.ProgramFacts
-import Verified.Wasi.CostFunctionSpec
-import Verified.Wasi.CostFunctionLift
+module
+
+public import Verified.Wasi.ProgramFacts
+public import Verified.Wasi.CostFunctionSpec
+public import Verified.Wasi.CostFunctionLift
+
+@[expose] public section
 
 namespace Verified.Wasi
 

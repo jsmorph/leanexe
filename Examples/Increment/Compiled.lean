@@ -1,6 +1,10 @@
-import Examples.ArrayCall
-import Examples.Increment.Proof
-import Verified.Reflect.Command
+module
+
+public import Examples.ArrayCall
+public import Examples.Increment.Proof
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `compute`.  `increment_call` composes the generated
 `compiled.compute.trapFree` with `compute_eq`: from a store in which `top` can rise by 120 bytes,

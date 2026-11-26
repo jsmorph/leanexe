@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erf.ErfTailEval
+module
+
+public import Library.Numerics.Float64.Erf.ErfTailEval
+
+@[expose] public section
 
 /-!
 The relative error of `s_erf.c`'s tail quotient `exp (-z² - 0.5625) exp (t)/x` against `erfc x`.

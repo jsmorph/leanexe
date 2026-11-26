@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Atan.AtanTheoremConst
-import LeanExe.ProofKit.LogRatioRemainder
+module
+
+public import Library.Numerics.Float64.Atan.AtanTheoremConst
+public import LeanExe.ProofKit.LogRatioRemainder
+
+@[expose] public section
 
 /-!
 Logarithms for `Log1p.log1p`'s proof.  `log (1 + v) = log (1 + s) - log (1 - s)` for

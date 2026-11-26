@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+
+@[expose] public section
 
 /-!
 The count of the Oakland ranked-choice tabulator over words, in the verified compiler's dialect.

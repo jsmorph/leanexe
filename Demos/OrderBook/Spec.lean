@@ -1,4 +1,8 @@
-import LeanExe.Base
+module
+
+public import LeanExe.Base
+
+@[expose] public section
 
 /-! The specification of the order book that [the requirements](requirements.md) describe.  The
 book is two lists of resting orders in priority order, and a command is a function of the book and

@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Bessel.BesselYnSmall
-import Library.Numerics.Float64.Tgamma.TgammaTop
-import LeanExe.ProofKit.F64ExactProduct
-import LeanExe.ProofKit.BesselModulus
+module
+
+public import Library.Numerics.Float64.Bessel.BesselYnSmall
+public import Library.Numerics.Float64.Tgamma.TgammaTop
+public import LeanExe.ProofKit.F64ExactProduct
+public import LeanExe.ProofKit.BesselModulus
+
+@[expose] public section
 
 /-!
 The orders 1 and -1 of `yn`, which return `y1 x` times `1.0` or `-1.0`, and the form of the

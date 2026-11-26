@@ -1,5 +1,9 @@
-import Verified.Examples.Grids
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Grids
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/grids.wasm`: the file holds
 `encode Grids.compiled.module`, and it decodes to the module of `Grids.compiled.bytes`. -/

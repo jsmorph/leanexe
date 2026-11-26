@@ -1,11 +1,15 @@
-import Library.Numerics.Float64.Asinh.AsinhTheoremBranches
-import Library.Numerics.Float64.Log.LogTheorem
-import Library.Numerics.Float64.Log1p.Log1pTheoremConst
-import LeanExe.ProofKit.F64Compose
-import Library.Numerics.Float64.Atan.AtanTwoErr
-import Mathlib.Analysis.SpecialFunctions.Arsinh
-import Mathlib.Analysis.SpecialFunctions.Arcosh
-import Mathlib.Analysis.Complex.ExponentialBounds
+module
+
+public import Library.Numerics.Float64.Asinh.AsinhTheoremBranches
+public import Library.Numerics.Float64.Log.LogTheorem
+public import Library.Numerics.Float64.Log1p.Log1pTheoremConst
+public import LeanExe.ProofKit.F64Compose
+public import Library.Numerics.Float64.Atan.AtanTwoErr
+public import Mathlib.Analysis.SpecialFunctions.Arsinh
+public import Mathlib.Analysis.SpecialFunctions.Arcosh
+public import Mathlib.Analysis.Complex.ExponentialBounds
+
+@[expose] public section
 
 /-!
 `log a + ln2` for `a ≥ 2 ^ 28`, the large branches of `Asinh.asinh` and `Asinh.acosh`.  `Log.log a`

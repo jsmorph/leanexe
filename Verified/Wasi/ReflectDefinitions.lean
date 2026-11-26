@@ -1,6 +1,10 @@
-import Verified.Reflect.Command
-import Verified.Wasi.ReflectLemmas
-import Verified.Wasi.ReflectTables
+module
+
+public import Verified.Reflect.Command
+public import Verified.Wasi.ReflectLemmas
+public import Verified.Wasi.ReflectTables
+
+@[expose] public section
 
 namespace Verified.Wasi.Reflect
 

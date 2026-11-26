@@ -1,6 +1,10 @@
-import Library.Hashing.XxHash64.Program
-import Library.Bytes.LittleEndian
-import Mathlib.Tactic
+module
+
+public import Library.Hashing.XxHash64.Program
+public import Library.Bytes.LittleEndian
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-! The XXH64 program computes the transcription.  The program's rotations by shifts are the
 transcription's `BitVec` rotations at each amount that XXH64 uses, so `stripeAt`, `converge`, and

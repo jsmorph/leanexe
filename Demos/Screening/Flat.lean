@@ -1,5 +1,9 @@
-import Demos.Screening.Program
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Screening.Program
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Screening
 

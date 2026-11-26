@@ -1,6 +1,10 @@
-import LeanExe.M7.Board
-import TestSupport.M7.Nucleo
-import TestSupport.M7.Crc
+module
+
+public import LeanExe.M7.Board
+public import TestSupport.M7.Nucleo
+public import TestSupport.M7.Crc
+
+@[expose] public section
 
 /-!
 The test of the setup of `LeanExe/M7/Setup.lean` on the NUCLEO-F767ZI: an image whose setup writes

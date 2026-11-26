@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Sinh.SinhCore
-import Library.Numerics.Float64.Sinh.SinhExpm1
-import Library.Numerics.Float64.Sinh.CoshSmall
-import Mathlib.Analysis.Complex.ExponentialBounds
-import Library.Numerics.Float64.Sinh.SinhSign
+module
+
+public import Library.Numerics.Float64.Sinh.SinhCore
+public import Library.Numerics.Float64.Sinh.SinhExpm1
+public import Library.Numerics.Float64.Sinh.CoshSmall
+public import Mathlib.Analysis.Complex.ExponentialBounds
+public import Library.Numerics.Float64.Sinh.SinhSign
+
+@[expose] public section
 
 /-!
 `Sinh.sinh` within three steps of `sinh x` for `2 ^ -28 ≤ abs(x) < 1`, where the code returns

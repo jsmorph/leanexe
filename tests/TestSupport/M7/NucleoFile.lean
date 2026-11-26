@@ -1,4 +1,8 @@
-import TestSupport.M7.NucleoLoop
+module
+
+public import TestSupport.M7.NucleoLoop
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of the echo of `usart3Tick` for the NUCLEO-F767ZI that

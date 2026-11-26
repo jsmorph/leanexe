@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Asin.AsinTheoremSpecial
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Asin.AsinTheoremSpecial
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorems for the module of `Asin.lean`, whose exports `asin` (function 3) and `acos`

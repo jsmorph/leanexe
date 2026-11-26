@@ -1,4 +1,8 @@
-import LeanExe.Pipeline.Implements
+module
+
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-!
 A structure whose `Flat` tuple holds arrays, such as a grid of cells with a time and a step

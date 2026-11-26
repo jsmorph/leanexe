@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Asinh.AsinhTheoremCompose
-import Library.Numerics.Float64.Asinh.AsinhTheoremMid
+module
+
+public import Library.Numerics.Float64.Asinh.AsinhTheoremCompose
+public import Library.Numerics.Float64.Asinh.AsinhTheoremMid
+
+@[expose] public section
 
 /-!
 `Asinh.asinh` from `2 ^ -28` to 2, before the sign: the code returns `log1p u` with

@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.Fma.Compiled
-import Library.Numerics.Arithmetic.Fma.FmaTheorem
-import Verified.Master
+module
+
+public import Library.Numerics.Arithmetic.Fma.Compiled
+public import Library.Numerics.Arithmetic.Fma.FmaTheorem
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Arithmetic.Fma
 

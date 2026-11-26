@@ -1,7 +1,11 @@
-import TestSupport.A64.Programs
-import TestSupport.A64.Sin
-import LeanExe.A64.File
-import LeanExe.A64.Proof.ImageTheorem
+module
+
+public import TestSupport.A64.Programs
+public import TestSupport.A64.Sin
+public import LeanExe.A64.File
+public import LeanExe.A64.Proof.ImageTheorem
+
+@[expose] public section
 
 /-!
 The theorems of the sine's arm64 Images, `sin10.img` and `sin1e22.img`, which `a64-programs emit`

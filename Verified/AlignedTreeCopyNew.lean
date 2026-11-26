@@ -1,12 +1,16 @@
-import Verified.AlignedTreeCopyCode
-import Verified.TreeTestCode
-import Verified.TreeAllocate
-import Verified.LocalFrame
-import Verified.TreeCopyCode
-import Verified.TreeStorage
-import Verified.TreeInitialize
-import Verified.TreeSelect
-import Verified.TreeBeginState
+module
+
+public import Verified.AlignedTreeCopyCode
+public import Verified.TreeTestCode
+public import Verified.TreeAllocate
+public import Verified.LocalFrame
+public import Verified.TreeCopyCode
+public import Verified.TreeStorage
+public import Verified.TreeInitialize
+public import Verified.TreeSelect
+public import Verified.TreeBeginState
+
+@[expose] public section
 
 /-!
 The slot tests and the start of a record's copy under the flag: the ports of the mask lemmas and

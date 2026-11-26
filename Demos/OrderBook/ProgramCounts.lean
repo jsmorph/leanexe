@@ -1,4 +1,8 @@
-import Demos.OrderBook.Program
+module
+
+public import Demos.OrderBook.Program
+
+@[expose] public section
 
 /-! Counts over [the program](Program.lean) that hold on every book, without the representation
 invariant.  A record adds at most 5,122 events of seven words to the event words of `run`: the

@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.PolyBound
+module
+
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 Tools that use `PolyBound.check`: products of polynomials, bounds over a union of intervals,

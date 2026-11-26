@@ -1,5 +1,9 @@
-import TestSupport.M7.ShaStep
-import TestSupport.M7.Windows
+module
+
+public import TestSupport.M7.ShaStep
+public import TestSupport.M7.Windows
+
+@[expose] public section
 
 /-!
 The kernel's check of the code of the SHA-256 step for USART3 that `m7-windows image sha-usart3`

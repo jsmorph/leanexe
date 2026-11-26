@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaAsym5
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAsym5
+
+@[expose] public section
 
 /-!
 **`Tgamma.asLgammaAsym`** within `2 ^ -60` of `log Γ X` for `X = xh + xl` with `4 ≤ xh ≤ 186`,

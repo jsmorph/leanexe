@@ -1,8 +1,12 @@
-import Verified.Wasi.CommandConditionalSpec
-import Verified.Wasi.CommandResultStore
-import Verified.Wasi.ConditionalCost
-import Verified.Wasi.CostCodeSpec
-import Verified.AlignedCorrect
+module
+
+public import Verified.Wasi.CommandConditionalSpec
+public import Verified.Wasi.CommandResultStore
+public import Verified.Wasi.ConditionalCost
+public import Verified.Wasi.CostCodeSpec
+public import Verified.AlignedCorrect
+
+@[expose] public section
 
 namespace Verified.Wasi
 

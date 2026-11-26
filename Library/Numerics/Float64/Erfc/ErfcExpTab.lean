@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Erfc.Compiled
-import LeanExe.ProofKit.PolyBound
-import Mathlib.Analysis.SpecialFunctions.Log.Basic
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.Compiled
+public import LeanExe.ProofKit.PolyBound
+public import Mathlib.Analysis.SpecialFunctions.Log.Basic
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 The tables `T1` and `T2` of `exp_1` in `Erfc`: entry `i` of `T1`, the words `2 i` and `2 i + 1` of

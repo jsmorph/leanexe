@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64AddEnclosure
-import LeanExe.ProofKit.F64DyadicBounds
+module
+
+public import LeanExe.ProofKit.F64AddEnclosure
+public import LeanExe.ProofKit.F64DyadicBounds
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Adjacent
 open CodeLib.IEEE64

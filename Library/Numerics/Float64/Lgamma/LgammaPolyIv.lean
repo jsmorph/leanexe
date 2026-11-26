@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaSinAccKern
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaSinAccKern
+
+@[expose] public section
 
 /-!
 `Lgamma.polyDD` at a nonnegative double-double point `xh + xl ≤ X`, with bounds per step that

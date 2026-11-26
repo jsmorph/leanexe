@@ -1,4 +1,8 @@
-import TestSupport.Hashing.CrcBitwiseCases
+module
+
+public import TestSupport.Hashing.CrcBitwiseCases
+
+@[expose] public section
 
 /-! The cases of the module `crcBitwise` alone, for `tests/verified/run.sh --cases crcBitwise`. -/
 
