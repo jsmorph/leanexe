@@ -329,18 +329,4 @@ def quicksort (xs : Array UInt64) : Array UInt64 :=
   let n := xs.size.toUInt64
   straightInsertion (stages 0 n 0 (LeanExe.build 128 fun _ => 0) xs)
 
-/-- Realizes the functional induction principles of `scanUp`, `scanDown`, and `part` here.
-`verified_compile` proves the termination of the loops it compiles from them with `fun_induction`,
-which realizes the principles in each module that compiles them.  Lean v4.36.0 refuses to import two
-such modules: it merges two realizations of a theorem only when the theorem concludes in a constant,
-and these conclude in their motive. -/
-theorem inductions_realized : True := by
-  have := @scanUp.induct
-  have := @scanUp.induct_unfolding
-  have := @scanDown.induct
-  have := @scanDown.induct_unfolding
-  have := @part.induct
-  have := @part.induct_unfolding
-  trivial
-
 end Library.Sorting.Quicksort

@@ -77,14 +77,6 @@ decreasing_by
   have := UInt64.toNat_lt e
   omega
 
-/-- Realizes `examineAt.induct` and `examineAt.induct_unfolding` in this module.  `verified_compile`
-proves the termination of the loop it compiles from `examineAt` with `fun_induction`, which
-realizes these principles in each module that compiles `examineAt`.  Lean v4.36.0 refuses to import
-two such modules, as `Demos.Rcv.TabulateBound` does: it merges two realizations of a theorem only
-when the theorem concludes in a constant, and these conclude in their motive. -/
-theorem examineAt_induct_realized : True :=
-  (fun _ _ => trivial) @examineAt.induct @examineAt.induct_unfolding
-
 /-- The 68 counters of a round with the continuing set `cont`: the counter of each of the `N`
 ballots' slots, where ballot `b` holds the `k` words from word `base + b k`. -/
 def tallyRound (ws : Array UInt64) (cont counted k N base : UInt64) : Array UInt64 :=
