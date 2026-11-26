@@ -6,11 +6,19 @@ public import Verified.Native
 public import Verified.Reflect.Definitions
 public import Verified.Reflect.TailDefinition
 public import Verified.Reflect.TailOptions
+public import Verified.Reflect.CommandOptions
 public import Verified.Reflect.RecursiveTypes
 public import Verified.Reflect.ScalarProof
 public import Verified.ProgramStatic
 public import Verified.AlignedProgram
 public import Verified.AlignedNative
+public meta import Verified.Reflect.Definitions
+public meta import Verified.Reflect.TailDefinition
+public meta import Verified.Reflect.TailOptions
+public meta import Verified.Reflect.CommandOptions
+public meta import Verified.Reflect.ScalarProof
+public meta import LeanExe.Native.Translate
+public meta import LeanExe.Native.Proof.Parts
 
 @[expose] public section
 
@@ -18,15 +26,9 @@ namespace Verified.Reflect
 
 open Lean Meta Elab Command Term
 
-register_option verified_compile.alignedNative : Bool := {
-  defValue := false
-  descr := "verified_compile also translates the module to C without the test of alignment and \
-    states p.f.nativeAligned for each function and wrapper of a program without byte literals"
-}
-
 /-- The list of the addresses and names of the tables `idxs` among the program's tables `tables`,
 named `tableNames`, which a wrapper's theorems state. -/
-def tableEntries (tables : Name) (tableNames : Array Name) (idxs : List Nat) :
+meta def tableEntries (tables : Name) (tableNames : Array Name) (idxs : List Nat) :
     MetaM Lean.Expr := do
   let entryTy ← mkAppM ``Prod #[mkConst ``UInt64,
     mkApp (mkConst ``Array [.zero]) (mkConst ``UInt64)]
@@ -39,7 +41,7 @@ def tableEntries (tables : Name) (tableNames : Array Name) (idxs : List Nat) :
   return listExpr entryTy entries
 
 /-- The definition of `r` as a function of the tuple of its arguments. -/
-def leanFun (r : Reflected) : MetaM Lean.Expr :=
+meta def leanFun (r : Reflected) : MetaM Lean.Expr :=
   withLocalDeclD `x r.argsType fun x => do
     let projs ← argProjsE x (paramModes r.params r.modes) r.params.length
     mkLambdaFVars #[x] (mkAppN (mkConst r.name) projs.toArray)
@@ -49,7 +51,7 @@ of the argument tuple `y`, whose left side is `b` up to the kernel's reduction. 
 redex of `r.name ps`, which the kernel reduces at the top of the equation `r.name ps = F y` before
 `congrArg` applies the flattening.  Under the flattening, the kernel would unfold `r.name` and the
 head of its body before it reduces the redex (see the rule for beta redexes in `reflect`). -/
-def meaningAt (r : Reflected) (F y b : Lean.Expr) : MetaM Lean.Expr := do
+meta def meaningAt (r : Reflected) (F y b : Lean.Expr) : MetaM Lean.Expr := do
   let ps ← argProjsE y (paramModes r.params r.modes) r.params.length
   let lean := mkAppN (mkConst r.name) ps.toArray
   let hbeta ← mkExpectedTypeHint (← mkEqRefl lean) (← mkEq lean (mkApp F y))
@@ -64,7 +66,7 @@ proof uses the definition's equation `r.meaningEq` through `Funs.get_there` and 
 which take `funs.get` to the meaning of the definition's function, and through plain lambdas for the
 flattenings, so that the kernel checks each step by matching terms and by beta reduction and never
 unfolds the definition or its loops. -/
-def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
+meta def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     (argsAgree resultAgree : Name) (transfer : Name := ``ImplementsA.transferAgree) :
     MetaM Lean.Expr := do
   let hTy ← inferType h
@@ -89,7 +91,7 @@ def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
 
 /-- `implementsProof` for a wrapper, whose theorem `h` is `ImplementsTables`, or, with
 `ImplementsTablesAligned.transferAgree` for `transfer`, `ImplementsTablesAligned`. -/
-def wrapperProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
+meta def wrapperProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     (argsAgree resultAgree : Name) (transfer : Name := ``ImplementsTables.transferAgree) :
     MetaM Lean.Expr := do
   let hTy ← inferType h
@@ -113,7 +115,7 @@ def wrapperProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, tables, pre, post,
       h, r.flatArgs, r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
 
-def staticProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
+meta def staticProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     (argsAgree resultAgree : Name) : MetaM Lean.Expr := do
   let hTy ← inferType h
   let #[α, γ, ia, ic, pool, aborts, m, entry, f, tables, pre, post] := hTy.getAppArgs
@@ -136,7 +138,7 @@ def staticProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
       tables, pre, post, h, r.flatArgs, r.flatResult, F, hF, mkConst argsAgree,
       mkConst resultAgree]
 
-def addStaticTheorem (base name : Name) (funsVal h : Lean.Expr) (r : Reflected)
+meta def addStaticTheorem (base name : Name) (funsVal h : Lean.Expr) (r : Reflected)
     (index : Nat) (tables? : Option Lean.Expr := none) : MetaM Unit := do
   let h ← mkAppM ``ImplementsStatic.lean #[h]
   let simple := Name.mkSimple r.name.getString!
@@ -154,7 +156,7 @@ def addStaticTheorem (base name : Name) (funsVal h : Lean.Expr) (r : Reflected)
 /-- The callee and the tables of a wrapper definition `fun params => g T₁ … Tₖ params`: `g` is a
 listed definition and each `Tᵢ` a constant of type `Array UInt64`, which `g` takes as borrowed
 arrays of words before the definition's own parameters. -/
-def wrapperShape? (name : Name) (callees : List Callee) : MetaM (Option (Callee × List Name)) := do
+meta def wrapperShape? (name : Name) (callees : List Callee) : MetaM (Option (Callee × List Name)) := do
   let info ← getConstInfoDefn name
   lambdaTelescope (← instantiateMVars info.value) fun params body => do
     let .const fn _ := body.getAppFn | return none
@@ -178,7 +180,7 @@ def wrapperShape? (name : Name) (callees : List Callee) : MetaM (Option (Callee 
 /-- Reflects the wrapper definition `name`, which applies `callee` to the tables `tables` and its
 own parameters, and adds `base.denote_eq`: the callee's meaning at the tables and the parameters
 is the flattening of `name` at the parameters, from the callee's own equation. -/
-def reflectWrapper (base name : Name) (callee : Callee) (tables : List Name) :
+meta def reflectWrapper (base name : Name) (callee : Callee) (tables : List Name) :
     MetaM Reflected := do
   let info ← getConstInfoDefn name
   lambdaTelescope (← instantiateMVars info.value) fun params body => do
@@ -200,7 +202,7 @@ wrapper's bound at its arguments is the callee's bound at the tables and the arg
 numeral that the callee's own equation states.  The proof is the chain of `Prog.bounds` from the
 callee's index, which the kernel checks against the wrapper's bound by unfolding `Wrapper.bound`
 and comparing the callee's index and environments. -/
-def wrapperBoundEquation (base name boundName : Name) (callee : Callee)
+meta def wrapperBoundEquation (base name boundName : Name) (callee : Callee)
     (progVal funsVal : Lean.Expr) : MetaM Unit := do
   let cb := callee.bound
   let info ← getConstInfoDefn name
@@ -266,7 +268,7 @@ def wrapperBoundEquation (base name boundName : Name) (callee : Callee)
 /-- `h0` with `old`, a table's entry `table.get f` in its statement, replaced by the function's own
 entry, from `chainAt env : old env = own`.  The kernel then never compares the table's entry with
 the function's own, which would unfold the compiler's bound. -/
-def rewriteEntry (h0 old : Lean.Expr) (chainAt : Lean.Expr → MetaM Lean.Expr) :
+meta def rewriteEntry (h0 old : Lean.Expr) (chainAt : Lean.Expr → MetaM Lean.Expr) :
     MetaM Lean.Expr := do
   let .forallE _ envTy _ _ ← inferType old
     | throwError "verified_compile: the table entry {old}"
@@ -290,11 +292,11 @@ Wasmtime 44 on aarch64 keeps 8 bytes for each value live across a call and 16 by
 the rest holds the functions without the depth parameter at the top of the chain.  The example
 `Recursion.deep` runs a frame of 32 positions, 26 of them live across the self-call, at depth 999,
 and its deepest frame calls two functions without the depth parameter. -/
-def depthPositions : Nat := 32
+meta def depthPositions : Nat := 32
 
 /-- Rejects a function whose code takes the call depth and needs more than `depthPositions`
 positions, from its body `body`. -/
-def checkPositions (name : Name) (body : Lean.Expr) : MetaM Unit := do
+meta def checkPositions (name : Name) (body : Lean.Expr) : MetaM Unit := do
   let n ← kernelWhnf (← mkAppM ``positions #[body, toExpr true])
   let some k := natOf n
     | throwError "verified_compile: cannot evaluate the positions of {name}"
@@ -303,7 +305,7 @@ def checkPositions (name : Name) (body : Lean.Expr) : MetaM Unit := do
       positions, more than the {depthPositions} that {depthLimit} nested calls may use"
 
 /-- `FVar.there (… (FVar.there FVar.here))` with `k` applications of `there`. -/
-def fvarStx {m : Type → Type} [Monad m] [MonadQuotation m] : Nat → m Term
+meta def fvarStx {m : Type → Type} [Monad m] [MonadQuotation m] : Nat → m Term
   | 0 => `(Verified.FVar.here)
   | k + 1 => do `(Verified.FVar.there $(← fvarStx k))
 
@@ -317,20 +319,20 @@ structure ProgramReflection where
   wraps : Array (Reflected × Callee × List Nat) := #[]
   tableNames : Array Name := #[]
 
-private def closedReflectionExpr (e : Lean.Expr) : MetaM Lean.Expr := do
+private meta def closedReflectionExpr (e : Lean.Expr) : MetaM Lean.Expr := do
   let e ← instantiateMVars e
   if e.hasExprMVar || e.hasLevelMVar || e.hasFVar then
     throwError "verified_compile: an expression remains open between definitions: {e}"
   return e
 
-private def closeReflected (r : Reflected) : MetaM Reflected := do
+private meta def closeReflected (r : Reflected) : MetaM Reflected := do
   return { r with
     argsType := ← closedReflectionExpr r.argsType
     resultType := ← closedReflectionExpr r.resultType
     flatArgs := ← closedReflectionExpr r.flatArgs
     flatResult := ← closedReflectionExpr r.flatResult }
 
-private def closeReflection (state : ProgramReflection) : MetaM ProgramReflection := do
+private meta def closeReflection (state : ProgramReflection) : MetaM ProgramReflection := do
   return { state with
     prog := ← closedReflectionExpr state.prog
     funs := ← closedReflectionExpr state.funs
@@ -342,7 +344,7 @@ private def closeReflection (state : ProgramReflection) : MetaM ProgramReflectio
 /-- Adds `fbase.sig_eq : f.sig = f.sigWith aborts depth` for the function or tail loop `f` over the
 signatures `sigs`, with `sig` and `sigWith` its kind's, and returns the flags as literals and the
 theorem.  Its check evaluates the body's flags once; the program's terms hold the stated flags. -/
-def addSigEq (fbase sig sigWith : Name) (sigs f : Lean.Expr) (aborts depth : Bool) :
+meta def addSigEq (fbase sig sigWith : Name) (sigs f : Lean.Expr) (aborts depth : Bool) :
     MetaM (Lean.Expr × Lean.Expr × Lean.Expr) := do
   let a := toExpr aborts
   let d := toExpr depth
@@ -351,7 +353,7 @@ def addSigEq (fbase sig sigWith : Name) (sigs f : Lean.Expr) (aborts depth : Boo
   addTheorem (fbase ++ `sig_eq) stmt (← mkExpectedTypeHint (← mkEqRefl lhs) stmt)
   return (a, d, mkConst (fbase ++ `sig_eq))
 
-def reflectProgramFunction (base name : Name) (state : ProgramReflection) :
+meta def reflectProgramFunction (base name : Name) (state : ProgramReflection) :
     TermElabM ProgramReflection := do
   let mut sigs := state.sigs
   let mut prog := state.prog
@@ -439,7 +441,7 @@ structure MaterializedProgram where
   base : Name
   pureHasLiterals : Bool
 
-def materializeProgram (base : Name) (state : ProgramReflection)
+meta def materializeProgram (base : Name) (state : ProgramReflection)
     (poolOverride? : Option Lean.Expr := none) (minPages : Nat := 16) :
     TermElabM MaterializedProgram := do
   let sigs := state.sigs
@@ -531,7 +533,7 @@ more when its static data needs them, and `(cap := C)` gives the translation `C`
 `lx_mem`.  Either option may appear alone, and `(pages := N)` precedes `(cap := C)` when both
 appear. -/
 @[command_elab verifiedCompile]
-def elabVerifiedCompile : CommandElab
+meta def elabVerifiedCompile : CommandElab
   | `(verified_compile $[(pages := $pages?)]? $[(cap := $cap?)]? $target := [$sources,*]) => do
     let minPages : Nat := (pages?.map (·.getNat)).getD 16
     let pagesLit : Term := Syntax.mkNumLit (toString minPages)
