@@ -311,14 +311,11 @@ theorem trCond_inv {F : Layout} {c : Source.Expr .bool} {ce : Expr} (h : trCond 
 /-- The `while` statement's test and the run of its body, which drops the body's declarations. -/
 theorem exec_while (ctx : Context) (run : Run) (c : Expr) (body : List Stmt) :
     Stmt.exec ctx run (.while_ c body) =
-      loopRuns (fun r => match c.eval ctx r.env with
-          | some (.bool b) => some b
-          | _ => none)
+      loopRuns (whileTest ctx c)
         (fun r => (Stmt.execList ctx r body).map fun inner =>
           { inner with env := inner.env.drop (inner.env.length - r.env.length) })
         loopBound run := by
   rw [Stmt.exec]
-  rfl
 
 /-- Running the translation of a statement whose denotation succeeds leaves an environment that
 agrees with the denoted locals. -/
@@ -477,9 +474,7 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
           have key : ∀ fuel Lc E, Env.Shape E env → F.Agrees Lc arrays ctx E → F.Writable E →
               Source.loopIter (fun l' => (Source.Expr.ltU (.get i) (.get l)).denote l' arrays)
                 (Source.Stmt.denote arrays body) fuel Lc = some L' →
-              ∃ E', loopRuns (fun r => match (lt64 wi wl).eval ctx r.env with
-                  | some (.bool b) => some b
-                  | _ => none)
+              ∃ E', loopRuns (whileTest ctx (lt64 wi wl))
                 (fun r => (Stmt.execList ctx r sb).map fun inner =>
                   { inner with env := inner.env.drop (inner.env.length - r.env.length) })
                 fuel ⟨E, writes, false⟩ = some ⟨E', writes, false⟩ ∧
@@ -515,7 +510,7 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
                   cases hxy : decide (x < y)
                   · simp only [hxy, Bool.false_eq_true, ↓reduceIte, Option.some.injEq] at hI
                     subst hI
-                    exact ⟨E, by simp [loopRuns, htest, hxy], hS, hAc, hWc⟩
+                    exact ⟨E, by simp [loopRuns, whileTest, htest, hxy], hS, hAc, hWc⟩
                   · simp only [hxy, ↓reduceIte] at hI
                     cases hbd : Source.Stmt.denote arrays body Lc with
                     | none => simp [hbd] at hI
@@ -529,7 +524,7 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
                       have hdrop : List.drop (added.length + E1.length - E.length) (added ++ E1) =
                           E1 := by
                         rw [hS1.length, Nat.add_sub_cancel, List.drop_left]
-                      simp [loopRuns, htest, hxy, hrun, hdrop, hrun']
+                      simp [loopRuns, whileTest, htest, hxy, hrun, hdrop, hrun']
           obtain ⟨E', hrun, hS, hA', hW'⟩ := key loopBound L env (Env.Shape.refl _) hA hW hden
           refine ⟨[], E', ?_, hS, by simp, hA', hW'⟩
           simp [Stmt.execList, exec_while, hrun]
