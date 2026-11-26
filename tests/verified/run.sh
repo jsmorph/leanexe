@@ -144,7 +144,7 @@ fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
 imports() {
-  sed -n -E 's/^import ([A-Za-z0-9_.]+).*/\1/p' "$@" |
+  sed -n -E 's/^(public )?(meta )?import (all )?([A-Za-z0-9_.]+).*/\4/p' "$@" |
     { grep -v -E '^(Init|Std|Lean|Lake)(\.|$)' || true; }
 }
 # Whether the part of the check for module $1 runs: every part without --cases, and with it only
@@ -314,7 +314,10 @@ if [ -z "$reference" ]; then
     echo tests/TestSupport.lean
   } | xargs awk -v package="$package" '
     FNR == 1 { m = FILENAME; sub(/^tests\//, "", m); sub(/\.lean$/, "", m); gsub("/", ".", m) }
-    /^import / && $2 ~ package { print m, $2 }
+    match($0, /^(public )?(meta )?import (all )?/) {
+      split(substr($0, RLENGTH + 1), name, " ")
+      if (name[1] ~ package) print m, name[1]
+    }
   ' >"$graph"
   # The inputs that every check of Lean files shares: this script and the dependencies.
   common_inputs=$(
