@@ -34,7 +34,7 @@ def verifiedAxpyArray32Kernel : LeanExe.WGSL.Module := axpyArray32Gpu.module
 def verifiedMatVec32Kernel : LeanExe.WGSL.Module := matVec32Gpu.module
 def verifiedCondMix32Kernel : LeanExe.WGSL.Module := condMix32Gpu.module
 
-private abbrev floatWords (x : Array Float32) : Array UInt64 :=
+abbrev floatWords (x : Array Float32) : Array UInt64 :=
   x.map fun v : Float32 => v.toBits.toUInt64
 
 /-- The kernel computes `scale32 a x`: with buffers holding `a` and `x`, an output of the result's

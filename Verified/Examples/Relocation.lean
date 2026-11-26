@@ -22,7 +22,7 @@ theorem libraryMeaning : libraryProgram.Meaning libraryFuns :=
 
 def callBoth (n : UInt64) : UInt64 := seed n + ScalarComposition.shiftedSum n
 
-private def signatures {S : List Sig} (_ : Prog S) : List Sig := S
+def signatures {S : List Sig} (_ : Prog S) : List Sig := S
 
 def caller : Func (signatures libraryProgram) where
   name := "callBoth"
