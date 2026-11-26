@@ -1,6 +1,7 @@
 module
 
 public import Verified.AlignedLoops
+import all Init.Data.Array.Basic
 
 @[expose] public section
 
