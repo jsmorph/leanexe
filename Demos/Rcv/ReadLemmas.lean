@@ -4,6 +4,10 @@ public import Demos.Rcv.Read
 public import Library.Numerics.Decimal.Int64Text.Inverse
 public import Mathlib.Data.Nat.BitIndices
 public import Mathlib.Tactic
+import all Init.Data.Repr
+import all Init.Data.ToString.Basic
+import all Init.Data.String.Basic
+import all Init.Data.String.Defs
 
 @[expose] public section
 
@@ -61,7 +65,7 @@ theorem number_eq_magnitude (d : UInt8) (ds : List UInt8) (h : d ≠ 0x30) :
   have hne : (d != 0x30) = true := by simpa using h
   simp only [hne, Bool.true_or, Bool.and_true, hiff, Function.comp_def]
 
-theorem decimal_zero : decimal 0 = [0x30] := rfl
+theorem decimal_zero : decimal 0 = [0x30] := by rfl
 
 theorem number_zero : number [0x30] = some 0 := rfl
 

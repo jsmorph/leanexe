@@ -7,6 +7,7 @@ public import LeanExe.Pipeline.Implements
 public import LeanExe.ProofKit.F64Bits
 public import LeanExe.ProofKit.F32Bits
 import all Init.Data.Nat.Fold
+import all Init.Data.Array.Basic
 
 @[expose] public section
 

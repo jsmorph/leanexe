@@ -3,6 +3,12 @@ module
 public import Library.Numerics.Decimal.Shared.StrconvGrammar
 public import Library.Numerics.Decimal.Shared.StrconvBinary32
 public import LeanExe.ProofKit.F64PositiveRounding
+import all Init.Data.Repr
+import all Init.Data.ToString.Basic
+import all Init.Data.String.Basic
+import all Init.Data.String.Defs
+import all Init.Data.Float.Float
+import all Init.Data.BitVec.BasicAux
 
 @[expose] public section
 

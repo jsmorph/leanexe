@@ -123,7 +123,7 @@ theorem Opaque.out {p : Prop} (h : Opaque p) : p := h
 
 open Lean Meta in
 /-- The conjuncts of `t`, a right-nested conjunction, with their proofs from `h`. -/
-partial def conjuncts (t h : Expr) : MetaM (List (Expr × Expr)) := do
+meta partial def conjuncts (t h : Expr) : MetaM (List (Expr × Expr)) := do
   if t.isAppOfArity ``And 2 then
     let a := t.appFn!.appArg!
     let b := t.appArg!

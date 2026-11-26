@@ -361,7 +361,7 @@ def lookupProof (context : Lean.Expr) (field : Name) (index : Nat) (value : Lean
   let found ← mkAppM ``GetElem?.getElem? #[values, mkNatLit index]
   closedDecideProof (← mkEq found (← mkAppM ``Option.some #[value]))
 
-private def memoryProof (context : Lean.Expr) : MetaM Lean.Expr := do
+def memoryProof (context : Lean.Expr) : MetaM Lean.Expr := do
   closedDecideProof (← mkEq (← whnf (← mkAppM ``Spec.Validity.Context.hasMemory #[context]))
     (toExpr true))
 
