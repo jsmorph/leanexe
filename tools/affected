@@ -80,7 +80,7 @@ const importers = new Map();
 const imports = new Map();
 const leanFiles = files.filter(f => f.endsWith('.lean') && f !== 'lakefile.lean');
 for (const f of leanFiles) {
-  for (const match of read(f).matchAll(/^import ([\w.]+)/gm)) {
+  for (const match of read(f).matchAll(/^(?:public )?(?:meta )?import (?:all )?([\w.]+)/gm)) {
     if (!internal.test(match[1])) continue;
     if (!importers.has(match[1])) importers.set(match[1], new Set());
     importers.get(match[1]).add(node(f));
