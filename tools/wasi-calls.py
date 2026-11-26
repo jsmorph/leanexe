@@ -356,6 +356,13 @@ def wrap(head, items, tail, indent, separator=","):
     return lines
 
 
+def lean_header(*imports):
+    """The header of a generated Lean file, the form of every module of the package: `module`, a
+    public import of each name of `imports`, and `@[expose] public section`."""
+    return ["module", "", *(f"public import {name}" for name in imports), "",
+            "@[expose] public section", ""]
+
+
 def lean_field(field):
     offset, width, source = field
     value = f".const {source[1]}" if isinstance(source, tuple) else f".{source}"
@@ -411,8 +418,7 @@ def render_table(flat):
 
 def render_calls(flat):
     return "\n".join([
-        "import LeanExe.Wasi.Calls",
-        "",
+        *lean_header("LeanExe.Wasi.Calls"),
         "/-!",
         "The descriptions of the flat Preview 1 functions, which `tools/wasi-calls.py` generates "
         "from the",
@@ -583,9 +589,7 @@ def render_typed(flat):
             if kind[0] == "record":
                 records[kind[4]] = kind
     return "\n".join([
-        "import LeanExe.Wasi.CallTable",
-        "import LeanExe.Wasi.Sys",
-        "",
+        *lean_header("LeanExe.Wasi.CallTable", "LeanExe.Wasi.Sys"),
         "/-!",
         "Typed functions of the flat Preview 1 functions, which `tools/wasi-calls.py` generates "
         "from the",
@@ -757,10 +761,8 @@ def render_reflect(flat):
         if record is not None:
             records[record[4]] = record
     return "\n".join([
-        "import Verified.Wasi.ReflectLemmas",
-        "import Verified.Wasi.ReflectSysOperation",
-        "import LeanExe.Wasi.SysCalls",
-        "",
+        *lean_header("Verified.Wasi.ReflectLemmas", "Verified.Wasi.ReflectSysOperation",
+                     "LeanExe.Wasi.SysCalls"),
         "/-!",
         "The `Flat` instances of the record result types, the reflection equations of the "
         "generated typed",
