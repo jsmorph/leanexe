@@ -15,21 +15,15 @@
    "configFile": "lakefile.toml"
   },
   {
-   "type": "path",
+   "url": "https://github.com/jsmorph/talos",
+   "type": "git",
+   "subDir": "interpreter",
    "scope": "",
-   "name": "Verifier",
-   "manifestFile": "lake-manifest.json",
-   "inherited": false,
-   "dir": ".lake/packages/CodeLib/verifier",
-   "configFile": "lakefile.toml"
-  },
-  {
-   "type": "path",
-   "scope": "",
+   "rev": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
    "name": "WasmInterpreterLean",
    "manifestFile": "lake-manifest.json",
-   "inherited": true,
-   "dir": ".lake/packages/CodeLib/codelib/../interpreter",
+   "inputRev": "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47",
+   "inherited": false,
    "configFile": "lakefile.toml"
   },
   {
