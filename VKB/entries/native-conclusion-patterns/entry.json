@@ -2,6 +2,7 @@
   "id": "native-conclusion-patterns",
   "goals": [
     "LeanExe.Native.NativeA A X cap mod T ps rs fd aborts f Pre Post",
+    "LeanExe.Native.NativeA A X cap mod T ps rs fd aborts f Pre' Post from the theorem under Pre",
     "Verified.NativeTablesA A X cap mod T ps rs fd aborts f tables Pre Post",
     "Verified.NativeStaticA A X cap mod T ps rs fd pool aborts f tables Pre Post"
   ],
@@ -10,20 +11,23 @@
     "Verified.Bare",
     "LeanExe.Native.Proof.Req",
     "LeanExe.Native.Proof.Ctl",
-    "TestSupport.Native.GcdNative"
+    "TestSupport.Native.GcdNative",
+    "Demos.Rcv.TabulateBound"
   ],
   "declarations": [
     "LeanExe.Native.NativeA",
     "Verified.NativeTablesA",
     "Verified.NativeStaticA",
     "LeanExe.Native.ImplementsA.native",
-    "LeanExe.Native.NativeA.unique"
+    "LeanExe.Native.NativeA.unique",
+    "LeanExe.Native.NativeA.weaken"
   ],
   "examples": [
     "LeanExe.Native.bare_of_nativeA",
     "Verified.bare_of_nativeTables",
     "LeanExe.Native.reqRuns_of_nativeA",
     "LeanExe.Native.ctlRuns_of_nativeA",
-    "TestSupport.Native.Gcd.loop_native_init"
+    "TestSupport.Native.Gcd.loop_native_init",
+    "Demos.Rcv.TabulateProgram.tabulate_native_size"
   ]
 }

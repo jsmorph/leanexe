@@ -22,7 +22,8 @@ the moved blocks keeps its bytes, remains a region of the final heap, and lies o
 result, as `ImplementsA` states.  `ImplementsA.native` derives `NativeA` from `ImplementsA`.
 `NativeImpl h` states it for the translation of the function of the theorem `h`, under the
 function's parameters and result, and `ImplementsA.nativeImpl` derives it from `h` and the
-presence of the function in the translation.
+presence of the function in the translation.  `NativeA.weaken` replaces the precondition of a
+`NativeA` theorem by any precondition that implies it when the C memory is related to the store.
 
 `alloc_native` and `release_native` transfer the runtime's theorems `alloc_spec_runs` and
 `release_run` to the C functions `lxf_alloc` and `lxf_release` of a translated module.
@@ -126,6 +127,21 @@ theorem ImplementsA.native {α β : Type} [Represent α] [Represent β] {A : Arc
   rcases hres with ⟨hs', vs, ⟨heap', hAt, hOwn, hCaps, hRegion, hPost⟩, hr⟩ | habort
   · exact .inl ⟨hs', vs, heap', hr, hAt, hOwn, hCaps, hRegion, hPost⟩
   · exact .inr habort
+
+open LeanExe.Pipeline in
+/-- A native call theorem holds under a precondition that, together with the relation of the C
+memory to the store, gives the precondition of the theorem. -/
+theorem NativeA.weaken {α β : Type} [Represent α] [Represent β] {A : Archi} {X : ExtSem}
+    {cap : Nat} {mod : Module} {T : Translation} {ps rs : List VT} {fd : function}
+    {aborts : Bool} {f : α → β} {Pre Pre' : α → Heap → Store Unit → Prop}
+    {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : NativeA A X cap mod T ps rs fd aborts f Pre Post)
+    (hpre : ∀ (E : Env) store heap x m, E.cap = cap → StoreRel A E store m →
+      Pre' x heap store → Pre x heap store) :
+    NativeA A X cap mod T ps rs fd aborts f Pre' Post := by
+  intro E hE hG hcap hnres hF store heap params x hHeap hPre hArgs hSep hCapS htyped m hst hs
+  exact h E hE hG hcap hnres hF store heap params x hHeap (hpre E store heap x m hcap hst hPre)
+    hArgs hSep hCapS htyped m hst hs
 
 open LeanExe.Pipeline in
 /-- The translation of the entry of the theorem `h` computes its function as `h` states, under

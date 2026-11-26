@@ -525,7 +525,7 @@ theorem tabulate_native_size (A : LClight.Archi) (X : LClight.ExtSem) (L : Nat) 
         (fun b heap _ => b.data.size ≤ L ∧ heap.top.toNat + 80 * L + 33958029 ≤ 65536 * 11520)
         (fun b heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.tabulate.bound b) := by
   obtain ⟨fd, ps, rs, hfd, hsig, h⟩ := tabulate_native A X
-  refine ⟨fd, ps, rs, hfd, hsig, Demos.Rcv.TabulateProgram.nativeA_weaken h ?_⟩
+  refine ⟨fd, ps, rs, hfd, hsig, LeanExe.Native.NativeA.weaken h ?_⟩
   intro E store heap b m hcap hst hpre
   obtain ⟨hsize, hroom⟩ := hpre
   have hb := tabulate_bound b (by omega)
@@ -546,7 +546,7 @@ theorem tabulate_native_8800000 (A : LClight.Archi) (X : LClight.ExtSem) :
         (fun b heap _ => b.data.size ≤ 8800000 ∧ heap.top.toNat ≤ 16777216)
         (fun b heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + compiled.tabulate.bound b) := by
   obtain ⟨fd, ps, rs, hfd, hsig, h⟩ := tabulate_native_size A X 8800000
-  refine ⟨fd, ps, rs, hfd, hsig, Demos.Rcv.TabulateProgram.nativeA_weaken h ?_⟩
+  refine ⟨fd, ps, rs, hfd, hsig, LeanExe.Native.NativeA.weaken h ?_⟩
   intro E store heap b m _ _ hpre
   exact ⟨hpre.1, by omega⟩
 
