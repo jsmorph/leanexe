@@ -160,7 +160,7 @@ theorem G_half {x : ℝ} (hx : 0 ≤ x) : G (1 / 2) x = RealErf.erf (√(x / 2))
     have h0 : 0 < t := ht.1
     have hs : 0 < √(t / 2) := Real.sqrt_pos.mpr (by positivity)
     have hq : HasDerivAt (fun t : ℝ => √(t / 2)) (1 / 2 / (2 * √(t / 2))) t :=
-      ((hasDerivAt_id t).div_const 2).sqrt (by positivity)
+      ((hasDerivAt_id t).div_const 2).sqrt (by simp only [id]; positivity)
     have := (RealErf.hasDerivAt_erf (√(t / 2))).comp t hq
     refine this.congr_deriv ?_
     rw [pdf_eq h0.le, Real.Gamma_one_half_eq, RealErf.scale, Real.sq_sqrt (by positivity)]
