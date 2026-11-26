@@ -247,7 +247,7 @@ inductive Bind where
   | abs (f args : Expr)
 
 /-- The first event of the trace `t`, in the order of its paths, that reads the variable `x`. -/
-partial def findBind (x : Nat) (t : Expr) : MetaM (Option Bind) := do
+meta partial def findBind (x : Nat) (t : Expr) : MetaM (Option Bind) := do
   if let .const c _ := t then
     let some v := (← getConstInfo c).value? | return none
     return ← findBind x v
@@ -284,7 +284,7 @@ registers `σ`, with the stack pointer `sp`, the variables `ρ`, and the meaning
 abstract functions, or 0 or `true` when no event reads it.  A free Boolean of the traces selects
 among the results of `ConstrainUnpredictable`, and the path of an unaligned access that splits it
 into bytes asserts the first, `Constraint_NONE`. -/
-def witness (isBool : Bool) (b : Option Bind) (sp A ρ s σ : Expr) : MetaM Expr := do
+meta def witness (isBool : Bool) (b : Option Bind) (sp A ρ s σ : Expr) : MetaM Expr := do
   let some b := b | return if isBool then mkConst ``Bool.true else mkNatLit 0
   let opt ← match b with
     | .reg assume r al path =>
@@ -330,7 +330,7 @@ elab "mem_wit" : tactic => withMainContext do
   evalTactic (← `(tactic| refine ⟨$stx, ?_⟩))
 
 /-- The path that `e` states, with its node constant replaced by the node's definition. -/
-def unfoldRun (e : Expr) : MetaM Expr := do
+meta def unfoldRun (e : Expr) : MetaM Expr := do
   let e := e.consumeMData.headBeta
   unless e.isAppOfArity ``Trace.Run 8 do throwError "mem_unfold: not a path"
   let args := e.getAppArgs

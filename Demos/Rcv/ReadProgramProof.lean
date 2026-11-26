@@ -5,6 +5,7 @@ public import Demos.Rcv.ReadWords
 public import Demos.Rcv.ReadProof
 public import Library.Numerics.Decimal.Int64Text.Proof
 public import LeanExe.Dialect.Lemmas
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 
