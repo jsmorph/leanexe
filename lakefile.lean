@@ -411,6 +411,7 @@ lean_exe «native-emit» where
 lean_exe «native-bare» where
   srcDir := "tests"
   root := `TestSupport.Bare.Emit
+  supportInterpreter := true
 
 -- The translation of the tests/verified corpus to C (tests/native/verified.sh); not a default
 -- target.

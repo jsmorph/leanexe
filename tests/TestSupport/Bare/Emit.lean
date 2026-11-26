@@ -6,6 +6,7 @@ import TestSupport.Bare.Req
 import TestSupport.Bare.Records
 import Demos.Energy.Loop
 import LeanExe.Native.ClightCheck
+import TestSupport.Native.Load
 
 /-!
 The executable of the bare-metal programs' test (`tests/baremetal/programs.sh`).  Each case
@@ -47,6 +48,21 @@ programs with requests of `tests/baremetal/usart3.sh`, the cases of `usart3Cases
 USART3 of the NUCLEO-F767ZI's STM32F767ZI.  `native-bare gateway-run IN OUT` runs the energy controller's gateway in native Lean on
 the input records of `IN`, one line of 18 decimal words each, from its initial state, and writes
 its output records to `OUT`, one line of 6 words each, for comparison with a run of its program.
+
+The forms with a module write and check the program of a module that the command line names, such
+as a module of a project that requires this package.  They load the constant `CONSTANT`, the
+module of a `verified_compile` program, from the compiled Lean module `MODULE`, as
+`native-verified` does, translate it with the pages of `lx_mem` that the program's
+`p.translation_eq` states, and name the files after `NAME`.  `native-bare emit-in MODULE CONSTANT
+NAME K KIND DIR` and `native-bare check-in MODULE CONSTANT NAME K KIND DIR` write and check the
+program with input of the entry `K`, where `KIND` is `word`, `array`, or `words N`.
+`native-bare emit-ctl MODULE CONSTANT NAME K S0 DIR` and `check-ctl` with the same arguments do so
+for the controller of the step `K` from the state `S0`, and `native-bare emit-req MODULE CONSTANT
+NAME K WORDS DIR` and `check-req` with the same arguments for the program with requests of the
+step `K` from a state of the words `WORDS`, separated by commas.  Each `emit` form writes the C
+text and the names of the functions that take the call depth.  These forms carry no theorem, so
+the program that they write is the program of a theorem only when the theorem names the same
+module, entry, and arguments.
 -/
 
 open LeanExe.Native LeanExe.Requests LClight Wasm
@@ -164,31 +180,48 @@ def inCases : List InCase := [
       obtain ⟨t, r, h, hr, -⟩ := TestSupport.Bare.sha256_input A X pre hpre σ
       exact ⟨t, r, h, hr⟩ }]
 
-def emitIn (dir : String) (c : InCase) : IO Unit := do
-  let some t := translate nativeCap c.module
-    | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
-  match t.inText nativeCap c.k c.kind with
-  | .error e => throw <| IO.userError s!"native-bare: {c.name}: {e}"
-  | .ok text => IO.FS.writeFile s!"{dir}/{c.name}.c" text
-  IO.FS.writeFile s!"{dir}/{c.name}.depth"
-    (String.join ((t.depthNames c.module).map (· ++ "\n")))
-  IO.println s!"native-bare: {c.name}: written"
+/-- Writes the C text of the program with input of the entry `k` of `m`, translated with `cap`
+pages, as `DIR/NAME.c`, and the names of its functions that take the call depth as
+`DIR/NAME.depth`. -/
+def emitInWith (dir name : String) (m : Module) (cap k : Nat) (kind : OutKind) : IO Unit := do
+  let some t := translate cap m
+    | throw <| IO.userError s!"native-bare: {name}: the module does not translate"
+  match t.inText cap k kind with
+  | .error e => throw <| IO.userError s!"native-bare: {name}: {e}"
+  | .ok text => IO.FS.writeFile s!"{dir}/{name}.c" text
+  IO.FS.writeFile s!"{dir}/{name}.depth" (String.join ((t.depthNames m).map (· ++ "\n")))
+  IO.println s!"native-bare: {name}: written"
+
+def emitIn (dir : String) (c : InCase) : IO Unit :=
+  emitInWith dir c.name c.module nativeCap c.k c.kind
+
+/-- Compares the Clight that `clightgen` wrote as `DIR/NAME.v` with the whole program whose `main`
+follows the translation `t`, `tail` included, and returns whether they match. -/
+def checkWhole (dir name : String) (t : Translation)
+    (tail : List (ident × globdef (fundef function) type)) : IO Bool := do
+  let text ← IO.FS.readFile s!"{dir}/{name}.v"
+  match ClightCheck.check t text tail with
+  | .error e =>
+      IO.eprintln s!"native-bare: {name}: {e}"
+      pure false
+  | .ok [] =>
+      IO.println s!"native-bare: {name}: the clightgen program matches the whole program"
+      pure true
+  | .ok errors =>
+      for e in errors do IO.eprintln s!"native-bare: {name}: {e}"
+      pure false
+
+/-- Checks the program with input of the entry `k` of `m`, translated with `cap` pages, against
+`DIR/NAME.v`. -/
+def checkInWith (dir name : String) (m : Module) (cap k : Nat) (kind : OutKind) : IO Bool := do
+  let some t := translate cap m
+    | throw <| IO.userError s!"native-bare: {name}: the module does not translate"
+  checkWhole dir name t (inTail (inMain cap k kind))
 
 def checkIn (dir : String) : IO UInt32 := do
   let mut failed := false
   for c in inCases do
-    let some t := translate nativeCap c.module
-      | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
-    let text ← IO.FS.readFile s!"{dir}/{c.name}.v"
-    match ClightCheck.check t text (inTail (inMain nativeCap c.k c.kind)) with
-    | .error e =>
-        IO.eprintln s!"native-bare: {c.name}: {e}"
-        failed := true
-    | .ok [] =>
-        IO.println s!"native-bare: {c.name}: the clightgen program matches the whole program"
-    | .ok errors =>
-        for e in errors do IO.eprintln s!"native-bare: {c.name}: {e}"
-        failed := true
+    unless (← checkInWith dir c.name c.module nativeCap c.k c.kind) do failed := true
   pure (if failed then 1 else 0)
 
 /-- A controller program: the step `k` of `module`, the function `step` that it computes, the
@@ -218,14 +251,19 @@ def ctlBytes (step : UInt64 → UInt64 → UInt64) (x : UInt64) : Nat → UInt64
   | 0, _ => []
   | n + 1, s => let s' := step s x; encodeWord s' ++ ctlBytes step x n s'
 
+/-- Writes the C text of the controller of the step `k` of `m`, translated with `cap` pages, from
+the state `s0` as `DIR/NAME.c`, and the names of its functions that take the call depth as
+`DIR/NAME.depth`. -/
+def emitCtlWith (dir name : String) (m : Module) (cap k : Nat) (s0 : UInt64) : IO Unit := do
+  let some t := translate cap m
+    | throw <| IO.userError s!"native-bare: {name}: the module does not translate"
+  match t.ctlText k s0 with
+  | .error e => throw <| IO.userError s!"native-bare: {name}: {e}"
+  | .ok text => IO.FS.writeFile s!"{dir}/{name}.c" text
+  IO.FS.writeFile s!"{dir}/{name}.depth" (String.join ((t.depthNames m).map (· ++ "\n")))
+
 def emitCtl (dir : String) (c : CtlCase) : IO Unit := do
-  let some t := translate c.cap c.module
-    | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
-  match t.ctlText c.k c.s0 with
-  | .error e => throw <| IO.userError s!"native-bare: {c.name}: {e}"
-  | .ok text => IO.FS.writeFile s!"{dir}/{c.name}.c" text
-  IO.FS.writeFile s!"{dir}/{c.name}.depth"
-    (String.join ((t.depthNames c.module).map (· ++ "\n")))
+  emitCtlWith dir c.name c.module c.cap c.k c.s0
   match Wasm.Encoding.encode c.module with
   | .error e => throw <| IO.userError s!"native-bare: {c.name}: {e}"
   | .ok bytes => IO.FS.writeBinFile s!"{dir}/{c.name}.wasm" bytes
@@ -238,21 +276,17 @@ def emitCtl (dir : String) (c : CtlCase) : IO Unit := do
     ⟨(ctlBytes c.step (wordOfBytes c.input) c.windows c.s0).toArray⟩
   IO.println s!"native-bare: {c.name}: written"
 
+/-- Checks the controller of the step `k` of `m`, translated with `cap` pages, from the state
+`s0` against `DIR/NAME.v`. -/
+def checkCtlWith (dir name : String) (m : Module) (cap k : Nat) (s0 : UInt64) : IO Bool := do
+  let some t := translate cap m
+    | throw <| IO.userError s!"native-bare: {name}: the module does not translate"
+  checkWhole dir name t (inTail (ctlMain k s0))
+
 def checkCtl (dir : String) : IO UInt32 := do
   let mut failed := false
   for c in ctlCases do
-    let some t := translate c.cap c.module
-      | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
-    let text ← IO.FS.readFile s!"{dir}/{c.name}.v"
-    match ClightCheck.check t text (inTail (ctlMain c.k c.s0)) with
-    | .error e =>
-        IO.eprintln s!"native-bare: {c.name}: {e}"
-        failed := true
-    | .ok [] =>
-        IO.println s!"native-bare: {c.name}: the clightgen program matches the whole program"
-    | .ok errors =>
-        for e in errors do IO.eprintln s!"native-bare: {c.name}: {e}"
-        failed := true
+    unless (← checkCtlWith dir c.name c.module c.cap c.k c.s0) do failed := true
   pure (if failed then 1 else 0)
 
 /-- A program with requests: the step `k` of `module`, translated with `cap` pages, whose state
@@ -317,31 +351,32 @@ def gatewayRun (inPath outPath : String) : IO UInt32 := do
   IO.println s!"native-bare: gateway-run: {out.size} records"
   pure 0
 
-def emitReq (dir : String) (c : ReqCase) : IO Unit := do
-  let some t := translate c.cap c.module
-    | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
-  match t.reqText c.k (c.words c.s0) with
-  | .error e => throw <| IO.userError s!"native-bare: {c.name}: {e}"
-  | .ok text => IO.FS.writeFile s!"{dir}/{c.name}.c" text
-  IO.FS.writeFile s!"{dir}/{c.name}.depth"
-    (String.join ((t.depthNames c.module).map (· ++ "\n")))
-  IO.println s!"native-bare: {c.name}: written"
+/-- Writes the C text of the program with requests of the step `k` of `m`, translated with `cap`
+pages, from a state of the words `s0` as `DIR/NAME.c`, and the names of its functions that take
+the call depth as `DIR/NAME.depth`. -/
+def emitReqWith (dir name : String) (m : Module) (cap k : Nat) (s0 : List UInt64) : IO Unit := do
+  let some t := translate cap m
+    | throw <| IO.userError s!"native-bare: {name}: the module does not translate"
+  match t.reqText k s0 with
+  | .error e => throw <| IO.userError s!"native-bare: {name}: {e}"
+  | .ok text => IO.FS.writeFile s!"{dir}/{name}.c" text
+  IO.FS.writeFile s!"{dir}/{name}.depth" (String.join ((t.depthNames m).map (· ++ "\n")))
+  IO.println s!"native-bare: {name}: written"
+
+def emitReq (dir : String) (c : ReqCase) : IO Unit :=
+  emitReqWith dir c.name c.module c.cap c.k (c.words c.s0)
+
+/-- Checks the program with requests of the step `k` of `m`, translated with `cap` pages, from a
+state of the words `s0` against `DIR/NAME.v`. -/
+def checkReqWith (dir name : String) (m : Module) (cap k : Nat) (s0 : List UInt64) : IO Bool := do
+  let some t := translate cap m
+    | throw <| IO.userError s!"native-bare: {name}: the module does not translate"
+  checkWhole dir name t (reqTail (reqMain k s0))
 
 def checkReq (cases : List ReqCase) (dir : String) : IO UInt32 := do
   let mut failed := false
   for c in cases do
-    let some t := translate c.cap c.module
-      | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
-    let text ← IO.FS.readFile s!"{dir}/{c.name}.v"
-    match ClightCheck.check t text (reqTail (reqMain c.k (c.words c.s0))) with
-    | .error e =>
-        IO.eprintln s!"native-bare: {c.name}: {e}"
-        failed := true
-    | .ok [] =>
-        IO.println s!"native-bare: {c.name}: the clightgen program matches the whole program"
-    | .ok errors =>
-        for e in errors do IO.eprintln s!"native-bare: {c.name}: {e}"
-        failed := true
+    unless (← checkReqWith dir c.name c.module c.cap c.k (c.words c.s0)) do failed := true
   pure (if failed then 1 else 0)
 
 def check (dir : String) : IO UInt32 := do
@@ -349,23 +384,43 @@ def check (dir : String) : IO UInt32 := do
   for c in cases do
     let some t := translate nativeCap c.module
       | throw <| IO.userError s!"native-bare: {c.name}: the module does not translate"
-    let text ← IO.FS.readFile s!"{dir}/{c.name}.v"
-    match ClightCheck.check t text (bareTail (bareMain nativeCap c.k c.args c.kind)) with
-    | .error e =>
-        IO.eprintln s!"native-bare: {c.name}: {e}"
-        failed := true
-    | .ok [] => IO.println s!"native-bare: {c.name}: the clightgen program matches the whole program"
-    | .ok errors =>
-        for e in errors do IO.eprintln s!"native-bare: {c.name}: {e}"
-        failed := true
+    unless (← checkWhole dir c.name t (bareTail (bareMain nativeCap c.k c.args c.kind))) do
+      failed := true
   pure (if failed then 1 else 0)
 
 def usage : String :=
   "usage: native-bare emit|check|emit-in|check-in|emit-ctl|check-ctl|emit-req|check-req|" ++
     "emit-usart3|check-usart3 DIR, " ++
+    "native-bare emit-in|check-in MODULE CONSTANT NAME K word|array|words N DIR, " ++
+    "native-bare emit-ctl|check-ctl MODULE CONSTANT NAME K S0 DIR, " ++
+    "native-bare emit-req|check-req MODULE CONSTANT NAME K WORDS DIR, " ++
     "native-bare gateway-run IN OUT, or native-bare names"
 
-def main (args : List String) : IO UInt32 := do
+/-- A word written in decimal. -/
+def parseWord (text : String) : IO UInt64 := do
+  let some n := text.toNat? | throw <| IO.userError s!"native-bare: not a word: {text}\n{usage}"
+  unless n < UInt64.size do throw <| IO.userError s!"native-bare: not a word: {text}\n{usage}"
+  pure (UInt64.ofNat n)
+
+/-- A natural number written in decimal. -/
+def parseNat (text : String) : IO Nat := do
+  let some n := text.toNat? | throw <| IO.userError s!"native-bare: not a number: {text}\n{usage}"
+  pure n
+
+/-- The kind of result that `word`, `array`, or `words N` names, and the arguments after it. -/
+def parseKind : List String → IO (OutKind × List String)
+  | "word" :: rest => pure (.word, rest)
+  | "array" :: rest => pure (.array, rest)
+  | "words" :: n :: rest => do return (.words (← parseNat n), rest)
+  | _ => throw <| IO.userError usage
+
+/-- The module of the constant `constText` of the compiled Lean module `moduleText`, and the pages
+of `lx_mem` of its translation. -/
+unsafe def loadArgs (moduleText constText : String) : IO (Module × Nat) := do
+  let (_, m, cap) ← loadCap moduleText.toName constText.toName
+  pure (m, cap)
+
+unsafe def main (args : List String) : IO UInt32 := do
   match args with
   | ["emit", dir] =>
       IO.FS.createDirAll dir
@@ -380,6 +435,43 @@ def main (args : List String) : IO UInt32 := do
       for c in inCases do emitIn dir c
       pure 0
   | ["check-in", dir] => checkIn dir
+  | "emit-in" :: moduleText :: constText :: name :: kText :: rest => do
+      let k ← parseNat kText
+      let (kind, [dir]) ← parseKind rest | throw <| IO.userError usage
+      let (m, cap) ← loadArgs moduleText constText
+      IO.FS.createDirAll dir
+      emitInWith dir name m cap k kind
+      pure 0
+  | "check-in" :: moduleText :: constText :: name :: kText :: rest => do
+      let k ← parseNat kText
+      let (kind, [dir]) ← parseKind rest | throw <| IO.userError usage
+      let (m, cap) ← loadArgs moduleText constText
+      pure (if (← checkInWith dir name m cap k kind) then 0 else 1)
+  | ["emit-ctl", moduleText, constText, name, kText, s0Text, dir] => do
+      let k ← parseNat kText
+      let s0 ← parseWord s0Text
+      let (m, cap) ← loadArgs moduleText constText
+      IO.FS.createDirAll dir
+      emitCtlWith dir name m cap k s0
+      IO.println s!"native-bare: {name}: written"
+      pure 0
+  | ["check-ctl", moduleText, constText, name, kText, s0Text, dir] => do
+      let k ← parseNat kText
+      let s0 ← parseWord s0Text
+      let (m, cap) ← loadArgs moduleText constText
+      pure (if (← checkCtlWith dir name m cap k s0) then 0 else 1)
+  | ["emit-req", moduleText, constText, name, kText, wordsText, dir] => do
+      let k ← parseNat kText
+      let s0 ← (wordsText.splitOn ",").mapM parseWord
+      let (m, cap) ← loadArgs moduleText constText
+      IO.FS.createDirAll dir
+      emitReqWith dir name m cap k s0
+      pure 0
+  | ["check-req", moduleText, constText, name, kText, wordsText, dir] => do
+      let k ← parseNat kText
+      let s0 ← (wordsText.splitOn ",").mapM parseWord
+      let (m, cap) ← loadArgs moduleText constText
+      pure (if (← checkReqWith dir name m cap k s0) then 0 else 1)
   | ["emit-ctl", dir] =>
       IO.FS.createDirAll dir
       for c in ctlCases do emitCtl dir c
