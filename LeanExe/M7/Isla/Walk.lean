@@ -147,7 +147,7 @@ open Lean Meta Elab Tactic
 `LeanExe/A64/Isla/Walk.lean` gives it for the A64 semantics, or 0 or `false` when no event reads
 it.  A free Boolean of the M7 traces chooses how a register write treats bits 63 to 32, and
 `false` keeps them, the path to the outcome with the machine's high words. -/
-def m7Witness (isBool : Bool) (b : Option LeanExe.A64.Isla.Bind) (P δ ρ m σ : Expr) :
+meta def m7Witness (isBool : Bool) (b : Option LeanExe.A64.Isla.Bind) (P δ ρ m σ : Expr) :
     MetaM Expr := do
   let some b := b | return if isBool then mkConst ``Bool.false else mkNatLit 0
   let opt ← match b with

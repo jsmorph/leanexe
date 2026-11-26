@@ -6,6 +6,7 @@ public import LeanExe.Pipeline.FlatRecords
 public import LeanExe.ProofKit.F64Bits
 public import LeanExe.ProofKit.F64Convert
 public import LeanExe.ProofKit.F64Decoded
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 
