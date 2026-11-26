@@ -119,4 +119,11 @@ theorem quotient_log_mul_pow_zero (n d k : Nat) (hd : 0 < d) (hq : n / d = 0) :
 theorem negative_div (a b : Sign) : negative (a / b) = (negative a != negative b) := by
   cases a <;> cases b <;> rfl
 
+/-- The selection of IEEE 754-2019 `minimum` and `maximum` when neither operand is a NaN and
+not both are zeros. -/
+theorem minimum_maximum_eq (u v : UnpackedFloat) (hu : u ≠ .notANumber) (hv : v ≠ .notANumber)
+    (hz : ¬((∃ s, u = .zero s) ∧ ∃ s, v = .zero s)) :
+    u.minimum v = (if u.le v then u else v) ∧ u.maximum v = (if u.le v then v else u) := by
+  cases u <;> cases v <;> simp_all [UnpackedFloat.minimum, UnpackedFloat.maximum]
+
 end LeanExe.ProofKit.FloatCommon
