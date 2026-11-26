@@ -987,18 +987,22 @@ height first.  A generated constant of height 1, such as `p.module`, `p.program`
 leave the kernel to unfold the compiler's functions in the other term before the constant: at
 height 1 every `p.f.implements` of `Demos.Conjunction.Verified` evaluated the byte literals of the
 whole program, and unfolding a function defined by well-founded recursion first can exhaust the
-kernel's recursion, as a measure with a factor `2 ^ 64` does. -/
+kernel's recursion, as a measure with a factor `2 ^ 64` does.  The definition is exposed, as
+every definition of an `@[expose] public section` is, so that public statements and importers
+unfold it. -/
 def addDefinition (name : Name) (type value : Lean.Expr) : CoreM Unit := do
-  addAndCompile <| .defnDecl <| mkDefinitionValEx name [] type value
+  let decl := .defnDecl <| mkDefinitionValEx name [] type value
     (.regular (getMaxHeight (← getEnv) value + 1)) .safe [name]
+  addDecl decl (forceExpose := true)
+  compileDecl decl
 
 def addTheorem (name : Name) (type value : Lean.Expr) : CoreM Unit :=
   addDecl <| .thmDecl { name, levelParams := [], type, value }
 
 /-- A definition for the kernel only, without compiled code, for the literal bytes of a module,
-with a height above its value's, as `addDefinition` gives. -/
+with a height above its value's and exposed, as `addDefinition` gives. -/
 def addLiteral (name : Name) (type value : Lean.Expr) : CoreM Unit := do
-  addDecl <| .defnDecl <| mkDefinitionValEx name [] type value
+  addDecl (forceExpose := true) <| .defnDecl <| mkDefinitionValEx name [] type value
     (.regular (getMaxHeight (← getEnv) value + 1)) .safe [name]
 
 unsafe def evalModuleUnsafe (name : Name) : MetaM Wasm.Module :=
