@@ -1,6 +1,8 @@
 module
 
 public import LeanExe.ProofKit.Signed64Float
+import all Init.Data.SInt.Float
+import all Init.Data.SInt.Float32
 
 @[expose] public section
 

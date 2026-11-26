@@ -2,7 +2,6 @@ module
 
 public import Lean
 public import LeanExe.A64.Machine
-public import LeanExe.A64.Isla.TraceElab
 
 @[expose] public section
 

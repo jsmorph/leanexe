@@ -61,7 +61,7 @@ open Meta in
 /-- The number of first conjuncts that lead from a byte theorem's statement to an existential
 `∃ bytes, encode m = .ok bytes ∧ decode bytes = .ok m ∧ …`, and whether the existential has a
 conjunct after the decoding. -/
-private partial def bytesShape (type : Expr) : MetaM (Nat × Bool) := do
+private meta partial def bytesShape (type : Expr) : MetaM (Nat × Bool) := do
   let type ← whnf type
   if let some (first, _) := type.and? then
     let (depth, rest) ← bytesShape first

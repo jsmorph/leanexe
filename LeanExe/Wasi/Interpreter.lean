@@ -44,7 +44,7 @@ instance {α : Type} (reply : Transfer α) : Decidable reply.validErrno :=
   | .returned errno _ => inferInstanceAs (Decidable (errno.toNat ≤ 76))
   | .trapped _ _ => isTrue trivial
 
-private def runLoop (remaining index : UInt64) (state : σ)
+def runLoop (remaining index : UInt64) (state : σ)
     (test : UInt64 → σ → Bool) (step : UInt64 → σ → IO (Outcome σ)) :
     IO (Outcome σ) := do
   if h : remaining = 0 then
