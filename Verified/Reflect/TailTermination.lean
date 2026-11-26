@@ -78,7 +78,9 @@ Realized on the command's branch, they would join this module's public interface
 Lean v4.36.0 refuses to import two modules that hold such axioms for the same function: it merges
 two exported axioms only when the conclusion starts with a constant, and these conclude in their
 motive.  Lean v4.36.0 exports a principle realized on a proof's branch as a theorem, which it
-merges, and later versions do not export it (lean4#16623). -/
+merges, and later versions do not export it (lean4#16623).  The branch accepts only declarations
+under `name`, so the proof runs under `withDeclName name`, which names the auxiliary lemmas that
+`simp` adds after the theorem, as the elaborator does. -/
 def addTheoremOnBranch (name : Name) (type : Lean.Expr) (prove : TermElabM Lean.Expr) :
     TermElabM Unit := do
   let env ← getEnv
@@ -87,8 +89,9 @@ def addTheoremOnBranch (name : Name) (type : Lean.Expr) (prove : TermElabM Lean.
   async.commitSignature { name, levelParams := [], type }
   setEnv async.asyncEnv
   try
-    let value ← prove
-    addDecl <| .thmDecl { name, levelParams := [], type, value }
+    withDeclName name do
+      let value ← prove
+      addDecl <| .thmDecl { name, levelParams := [], type, value }
     async.commitConst (← getEnv)
     async.commitCheckEnv (← getEnv)
   finally
