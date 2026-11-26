@@ -19,7 +19,7 @@ open _root_.Demos.Gpt32
 open LeanExe.Source (Arg Arg.word Arg.float Arg.array)
 open _root_.Verified.PTX (LaunchSeq LaunchMeets)
 
-private abbrev floatWords (xs : Array Float32) : Array UInt64 :=
+abbrev floatWords (xs : Array Float32) : Array UInt64 :=
   xs.map fun x => x.toBits.toUInt64
 
 

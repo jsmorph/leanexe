@@ -9,7 +9,7 @@ namespace Demos.Gpt32.Verified
 open _root_.Demos.Gpt32 LeanExe.WGSL
 open LeanExe.Source (Arg Arg.word Arg.float Arg.array)
 
-private abbrev floatWords (xs : Array Float32) : Array UInt64 :=
+abbrev floatWords (xs : Array Float32) : Array UInt64 :=
   xs.map fun x => x.toBits.toUInt64
 
 theorem expGpu_fits (x : Array Float32) (hx : x.size < 2 ^ 29) :
