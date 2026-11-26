@@ -3,6 +3,7 @@ module
 public import Verified.Reflect.Definitions
 public import Verified.Reflect.RecursiveMatch
 public import Mathlib.Tactic.FinCases
+public meta import Verified.Reflect.RecursiveMatch
 
 @[expose] public section
 

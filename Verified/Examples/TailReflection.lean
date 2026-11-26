@@ -2,6 +2,7 @@ module
 
 public import Verified.Reflect.TailTermination
 public import Verified.Reflect.TailState
+public meta import Verified.Reflect.Definitions
 
 @[expose] public section
 
