@@ -3,7 +3,11 @@
 # dependencies = []
 # ///
 exec(open('genratio.py').read().split('if __name__')[0])
-head='''import Library.Numerics.Float64.Asin.AsinTheoremSupport
+head='''module
+
+public import Library.Numerics.Float64.Asin.AsinTheoremSupport
+
+@[expose] public section
 
 /-!
 The rational function of `Asin.asinRatio`, `t (pS0 + ... + pS5 t ^ 5)/(1 + qS1 t + ... + qS4 t ^ 4)`

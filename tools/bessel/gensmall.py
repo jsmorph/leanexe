@@ -253,7 +253,11 @@ def fmt(p, reals=(), rats=(), errs=()):
     return d
 
 def lean_j0(pieces):
-    out = ['''import Library.Numerics.Float64.Bessel.BesselSmallJ0
+    out = ['''module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallJ0
+
+@[expose] public section
 
 /-!
 The second form of `Bessel.j0`, `(1 + x/2)(1 - x/2) + z (z R(z)/S(z))` with `z = x x`, which the
@@ -361,7 +365,11 @@ theorem form2_%(k)d (xa : Float) (hf : Finite xa.toBits) (hs : Wasm.IEEE64.sign 
     return ''.join(out)
 
 def lean_y0(pieces, lg):
-    out = ['''import Library.Numerics.Float64.Bessel.BesselSmallJ0
+    out = ['''module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallJ0
+
+@[expose] public section
 
 /-!
 The main path of `Bessel.y0` below 2, `U(z)/V(z) + tpi (ĵ L̂)` with `z = x x`, for doubles `ĵ` and
@@ -591,7 +599,11 @@ def y1_small():
 
 def lean_y1(pieces, sm):
     UW, VW = y1_words()
-    out = ['''import Library.Numerics.Float64.Bessel.BesselSmallY0
+    out = ['''module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallY0
+
+@[expose] public section
 
 /-!
 The main path of `Bessel.y1` below 2, `x (U(z)/V(z)) + tpi (ĵ L̂ - 1/x)` with `z = x x`, for
@@ -807,8 +819,12 @@ theorem small_piece (x J L : Float) (hf : Finite x.toBits) (v : ℝ) (hv : value
 
 def lean_j1(pieces):
     out = []
-    out.append('''import Library.Numerics.Float64.Bessel.BesselSmallJ0
-import LeanExe.ProofKit.F64NearestScale
+    out.append('''module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallJ0
+public import LeanExe.ProofKit.F64NearestScale
+
+@[expose] public section
 
 /-!
 `Bessel.j1 x` for `|x| < 2`: the code computes `x/2 + x z R(z)/S(z)` with `z = x x` from

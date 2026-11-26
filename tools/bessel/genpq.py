@@ -107,9 +107,13 @@ def gen(order):
     P = 'P0' if order == 0 else 'P1'; Qf = 'Q0' if order == 0 else 'Q1'
     pre = 'BesselFd%d' % order
     out = []
-    out.append('''import Library.Numerics.Float64.Bessel.BesselPQRange
-import LeanExe.ProofKit.BesselFd%(o)da
-import LeanExe.ProofKit.BesselFd%(o)db
+    out.append('''module
+
+public import Library.Numerics.Float64.Bessel.BesselPQRange
+public import LeanExe.ProofKit.BesselFd%(o)da
+public import LeanExe.ProofKit.BesselFd%(o)db
+
+@[expose] public section
 
 /-!
 `Bessel.pAsym %(tab)s` and the `Q` term of `%(fn)s` on each of fdlibm's four ranges from 2 on, as
