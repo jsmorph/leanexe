@@ -114,7 +114,7 @@ theorem checkImports_sound {types : List Wasm.FuncType} {imports : List Wasm.Imp
   | error message => simp [result, Except.isOk, Except.toBool] at present
   | ok index => exact List.mem_of_getElem? index.property
 
-private inductive AtomicRule where
+inductive AtomicRule where
   | fixed (constructor : Name)
   | immediate (constructor : Name)
   | unary (constructor : Name)

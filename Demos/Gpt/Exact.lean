@@ -1,6 +1,7 @@
 module
 
 public import Demos.Gpt.Causal
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

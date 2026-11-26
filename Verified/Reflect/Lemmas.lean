@@ -6,6 +6,7 @@ public import LeanExe.Dialect.RepeatWhile
 public import LeanExe.Pipeline.Implements
 public import LeanExe.ProofKit.F64Bits
 public import LeanExe.ProofKit.F32Bits
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 
