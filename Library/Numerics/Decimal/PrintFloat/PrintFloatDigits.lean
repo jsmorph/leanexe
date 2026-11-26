@@ -4,6 +4,7 @@ public import Library.Numerics.Decimal.PrintFloat.Compiled
 public import Library.Numerics.Decimal.PrintFloat.PrintFloatShort
 public import Library.Numerics.Decimal.ParseFloat.ParseFloatScan
 public import Library.Numerics.Arithmetic.Uscale.UscaleDiv
+import all Init.Data.Repr
 
 @[expose] public section
 

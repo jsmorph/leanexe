@@ -2,6 +2,7 @@ module
 
 public import Demos.Gpt.Host
 public import Demos.Gpt.Verified
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

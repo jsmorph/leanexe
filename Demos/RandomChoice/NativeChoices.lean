@@ -3,6 +3,8 @@ module
 public import Demos.RandomChoice.Native
 public import Demos.RandomChoice.Output
 public import Demos.RandomHistogram.NativeCounts
+import all Init.Data.Nat.Fold
+import all Init.Data.Repr
 
 @[expose] public section
 

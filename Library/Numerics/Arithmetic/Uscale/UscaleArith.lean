@@ -2,6 +2,7 @@ module
 
 public import Library.Numerics.Arithmetic.Uscale.UscaleBase
 public import Mathlib.Data.Nat.Size
+public import Batteries.Data.UInt
 
 @[expose] public section
 

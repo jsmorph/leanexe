@@ -2,6 +2,7 @@ module
 
 public import Library.Numerics.Float64.Bessel.BesselStepF
 public import Library.Numerics.Float64.Bessel.BesselJ1Large
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

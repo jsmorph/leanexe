@@ -3,6 +3,7 @@ module
 public import Library.Numerics.Float64.Erfc.ErfcTrack4
 public import Library.Numerics.Float64.Erfc.ErfcAccMain
 public import Library.Numerics.Float64.Erfc.ErfcCast
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

@@ -7,6 +7,7 @@ public import Library.Hashing.Sha256.StreamProof
 public import Verified.Wasi.FunctionEntry
 public import Verified.Wasi.Handles
 public import LeanExe.Wasi.Bind
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

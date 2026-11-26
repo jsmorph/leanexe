@@ -2,6 +2,7 @@ module
 
 public import Library.Numerics.Float64.Erfc.ErfcAccMain
 public import Library.Numerics.Float64.Erfc.ErfcSeries
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

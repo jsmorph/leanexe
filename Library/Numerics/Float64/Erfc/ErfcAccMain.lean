@@ -4,6 +4,7 @@ public import Library.Numerics.Float64.Erfc.ErfcTrack3
 public import Library.Numerics.Float64.Erfc.ErfcFastMain
 public import Library.Numerics.Float64.Erfc.ErfcRound
 public import LeanExe.ProofKit.PolyBound
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

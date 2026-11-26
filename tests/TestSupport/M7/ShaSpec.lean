@@ -3,6 +3,7 @@ module
 public import TestSupport.M7.Sha
 public import Library.Hashing.Sha256.Proof
 public import LeanExe.Requests.Reads
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 
