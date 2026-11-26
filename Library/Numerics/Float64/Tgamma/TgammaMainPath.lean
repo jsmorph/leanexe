@@ -347,11 +347,11 @@ theorem mainPath_within (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest
       _ ≤ (1 / 2 ^ 54) ^ ((-I).toNat) := pow_le_pow_of_le_one (by positivity) (by norm_num) hJ7
       _ = ∏ j ∈ Finset.range (-I).toNat, (1 / 2 ^ 54 : ℝ) := by
         rw [Finset.prod_const, Finset.card_range]
-      _ ≤ _ := Finset.prod_le_prod (fun j _ => by positivity) (fun j _ => hgap j)
+      _ ≤ _ := Finset.prod_le_prod₀ (fun j _ => by positivity) (fun j _ => hgap j)
   have hW_hi : |W| ≤ 2 ^ 14 := by
     rw [hWabs]
     calc ∏ j ∈ Finset.range (-I).toNat, |vx + j| ≤ ∏ j ∈ Finset.range (-I).toNat, (4 : ℝ) :=
-          Finset.prod_le_prod (fun j _ => abs_nonneg _) (fun j hj => by
+          Finset.prod_le_prod₀ (fun j _ => abs_nonneg _) (fun j hj => by
             have hj1 : ((j + 1 : ℕ) : ℝ) ≤ (((-I).toNat : ℕ) : ℝ) := by
               exact_mod_cast Nat.succ_le_of_lt (Finset.mem_range.mp hj)
             push_cast at hj1

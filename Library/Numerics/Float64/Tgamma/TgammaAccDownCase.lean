@@ -74,7 +74,7 @@ theorem down_case (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hT 
   have hD4 : 4 ≤ Dv := by
     have h1 : ∏ _i ∈ Finset.range (M + 1), (4 : ℝ) ≤ Dv := by
       rw [hDvdef, D]
-      apply Finset.prod_le_prod (fun _ _ => by norm_num)
+      apply Finset.prod_le_prod₀ (fun _ _ => by norm_num)
       intro i hi
       have hi' : ((i + 1 : ℕ) : ℝ) ≤ (M + 1 : ℕ) := by
         exact_mod_cast Nat.succ_le_succ (Nat.lt_succ_iff.mp (Finset.mem_range.mp hi))
@@ -86,7 +86,7 @@ theorem down_case (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hT 
   have hD248 : Dv ≤ 2 ^ 248 := by
     have h1 : Dv ≤ ∏ _i ∈ Finset.range (M + 1), (2 : ℝ) ^ 8 := by
       rw [hDvdef, D]
-      apply Finset.prod_le_prod
+      apply Finset.prod_le_prod₀
       · intro i hi
         have hi' : ((i + 1 : ℕ) : ℝ) ≤ (M + 1 : ℕ) := by
           exact_mod_cast Nat.succ_le_succ (Nat.lt_succ_iff.mp (Finset.mem_range.mp hi))

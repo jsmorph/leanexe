@@ -140,7 +140,7 @@ theorem up_case (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hGap 
   have hprodb : |∏ j ∈ Finset.range (M + 1), (v + (j : ℝ))| ≤ 2 ^ (8 * (M + 1)) := by
     rw [Finset.abs_prod]
     calc ∏ j ∈ Finset.range (M + 1), |v + (j : ℝ)| ≤ ∏ _j ∈ Finset.range (M + 1), (2 : ℝ) ^ 8 := by
-          apply Finset.prod_le_prod (fun j _ => abs_nonneg _)
+          apply Finset.prod_le_prod₀ (fun j _ => abs_nonneg _)
           intro j hj
           have hj' : (j : ℝ) ≤ M := by
             exact_mod_cast Nat.lt_succ_iff.mp (Finset.mem_range.mp hj)
