@@ -795,7 +795,7 @@ step_talos() {
   local step='`tests/talos/run.sh`' cell="" pass fail skip
   if ! have wasm-tools; then
     record "$step" "not run: wasm-tools absent" "" ""
-  elif [ "$(git -C .lake/packages/CodeLib submodule status vendor/testsuite 2>/dev/null |
+  elif [ "$(git -C .lake/packages/WasmInterpreterLean submodule status vendor/testsuite 2>/dev/null |
       cut -c1)" != " " ]; then
     record "$step" "not run: the WebAssembly testsuite absent" "" ""
   else
@@ -806,7 +806,7 @@ step_talos() {
     if [ -n "$pass" ]; then
       cell="$(c "$pass") commands passed, $(c "$fail") failed, $(c "$skip") skipped"
       if grep -q -E "^talos: the report of [0-9]+ commands equals" "$log"; then
-        cell+="; report equal to CodeLib's"
+        cell+="; report equal to Talos's"
       fi
     fi
     record "$step" "$(outcome)" "$seconds" "$cell"
