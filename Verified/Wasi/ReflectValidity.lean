@@ -12,7 +12,7 @@ open Verified.Reflect
 
 initialize Lean.registerTraceClass `verified.wasi
 
-private def contextExpr (context : Wasm.Encoding.Spec.Validity.Context) : MetaM Lean.Expr := do
+def contextExpr (context : Wasm.Encoding.Spec.Validity.Context) : MetaM Lean.Expr := do
   let list := fun (type : Lean.Expr) (values : List Lean.Expr) => values.foldr
     (fun value tail => mkApp3 (mkConst ``List.cons [.zero]) type value tail)
     (mkApp (mkConst ``List.nil [.zero]) type)

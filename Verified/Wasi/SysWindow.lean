@@ -4,6 +4,7 @@ public import Verified.Wasi.SysIovecCall
 public import Verified.AlignedTailLoop
 public import Verified.Wasi.ReadAllBuffer
 public import LeanExe.Wasi.Window
+public import Batteries.Data.UInt
 
 @[expose] public section
 

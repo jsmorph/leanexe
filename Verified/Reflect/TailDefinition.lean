@@ -13,7 +13,7 @@ open Lean Meta Elab
 private def containsSelf (name : Name) (e : Lean.Expr) : Bool :=
   (e.find? (·.isConstOf name)).isSome
 
-private partial def tailCallsOnly (name : Name) (e : Lean.Expr) : MetaM Bool := do
+partial def tailCallsOnly (name : Name) (e : Lean.Expr) : MetaM Bool := do
   if !containsSelf name e then return true
   let e ← projReduce e
   if e.getAppFn.isConstOf name then
