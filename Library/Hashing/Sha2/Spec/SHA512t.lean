@@ -2,6 +2,9 @@
 module
 
 public import Library.Hashing.Sha2.Spec.HashAlgorithms
+import all Init.Data.Repr
+import all Init.Data.Range.Basic
+import all Batteries.Data.List.Basic
 
 @[expose] public section
 set_option autoImplicit true
