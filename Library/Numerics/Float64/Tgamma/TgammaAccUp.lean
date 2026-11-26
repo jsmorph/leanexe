@@ -319,7 +319,7 @@ theorem S_succ (v : ℝ) (m : ℕ) : S v (m + 1) = S v m * g v ((m + 1 : ℕ) : 
   rw [S, S, Finset.prod_range_succ]
 
 theorem S_le_one (v : ℝ) (m : ℕ) : S v m ≤ 1 :=
-  Finset.prod_le_one (fun _ _ => le_min zero_le_one (abs_nonneg _)) (fun _ _ => min_le_left _ _)
+  Finset.prod_le_one₀ (fun _ _ => le_min zero_le_one (abs_nonneg _)) (fun _ _ => min_le_left _ _)
 
 theorem S_nonneg (v : ℝ) (m : ℕ) : 0 ≤ S v m :=
   Finset.prod_nonneg (fun _ _ => le_min zero_le_one (abs_nonneg _))
