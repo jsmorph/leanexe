@@ -111,7 +111,7 @@ open Lean.Parser.Term in
 instance with `Tree.toNode`, the theorem `wellFormed`, always, and the `EncodeWellFormed`
 instance that it gives, only when the type has none, and, unless a field holds an enumeration
 or a sum, `fromTree` and the laws that `toTree` and `fromTree` are inverse. -/
-def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
+meta def deriveRecursiveType (layout : RecursiveLayout) : CommandElabM Unit :=
     withScope (fun scope => { scope with currNamespace := .anonymous }) do
   let root (name : Name) := mkIdent name
   let flatten := root (layout.decl `toTree)

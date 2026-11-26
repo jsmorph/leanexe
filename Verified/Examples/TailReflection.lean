@@ -3,6 +3,8 @@ module
 public import Verified.Reflect.TailTermination
 public import Verified.Reflect.TailState
 public meta import Verified.Reflect.Definitions
+public meta import Verified.Reflect.TailState
+public meta import Verified.Reflect.TailTermination
 
 @[expose] public section
 
