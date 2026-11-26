@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! CRC-32 of `Library.Hashing.Crc.Spec` by eight steps of the division for each byte, with no
 table.  The functions use no linear memory, global, or floating point, so a program of the
 Cortex-M7 back end that calls them has no area.  A register holds the remainder in its low 32 bits

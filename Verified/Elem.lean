@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! The element types of the verified compiler's source language: the values that hold no
 arrays and that an array, a tuple, or a word slot of a record may hold. -/
 

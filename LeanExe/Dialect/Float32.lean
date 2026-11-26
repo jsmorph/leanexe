@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Init.Data.SInt.Float32
 
 namespace LeanExe.Float32

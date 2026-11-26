@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! Lemmas about reads `xs[k]!` of arrays after `set!` and `push`, about the words of a prefix
 `xs.toList.take n`, and about an array's size as a word. -/
 

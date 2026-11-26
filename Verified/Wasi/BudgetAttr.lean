@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Lean
 
 /-! The simp attribute `charge_eqs`.  A budget proof of a WASI command gives it, as a local

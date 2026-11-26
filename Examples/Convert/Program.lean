@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-!
 Conversions between `Int64` and the floats.  `toDouble` and `toSingle` round a signed integer to
 the nearest binary64 or binary32 value, ties to even, as `Int64.toFloat` and `Int64.toFloat32` do.

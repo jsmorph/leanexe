@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Mathlib.Computability.RegularExpressions
 
 /-! Regular expressions over bytes, their languages, and the postfix form in which a pattern

@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Mathlib.Analysis.SpecialFunctions.Arcosh
 import Mathlib.Analysis.SpecialFunctions.Arsinh
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.InverseDeriv

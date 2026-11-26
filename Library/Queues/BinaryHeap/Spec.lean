@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! The specification of the priority queue: the operations run on a list that holds the queue's
 words in any order.  An insertion adds its value to the list.  A removal outputs the largest word of
 the list and deletes one copy of it, and a removal from an empty list outputs nothing.  The input

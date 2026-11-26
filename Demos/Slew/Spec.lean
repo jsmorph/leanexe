@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Mathlib.Analysis.SpecialFunctions.Trigonometric.Inverse
 import Mathlib.Analysis.SpecialFunctions.Sqrt
 

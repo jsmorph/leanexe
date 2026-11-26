@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! The specification, as the request in `request.txt` states it: for an input of at
 most eight words, the elements less than 100 in their original order; for a longer input, the empty
 array. -/

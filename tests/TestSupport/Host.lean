@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! Arguments and results in the kinds of `build/tools/leanexe-wasmtime-host`, for programs on
 words and word arrays: a word is one `i64` argument, an array one `array-u64` argument, and a
 tuple its components in order.  `lines` writes one sample per line in the format of

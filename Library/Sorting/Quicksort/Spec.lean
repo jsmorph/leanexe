@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! The specification of sorting: the array's elements in nondecreasing order, as Lean's
 `List.mergeSort` arranges them.  Words compare as unsigned numbers.  Exactly one list holds the same
 words with the same repetitions in nondecreasing order, so the specification names the result and

@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! # Common: byte ↔ bit utilities
 
 Canonical `byteToBits` (one byte → eight MSB-first booleans) plus

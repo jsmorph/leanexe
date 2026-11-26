@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 namespace Examples.PairSum
 
 /-- The sum of `a` and `b`, computed by folding over a temporary array. -/

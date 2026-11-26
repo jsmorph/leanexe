@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! Kadane's algorithm for the maximum segment sum in the verified compiler's dialect: one pass
 over an array of `Int64` values from the left.  The sums wrap modulo `2^64`, and `Proof.lean` proves
 that `mss` computes `maxSegmentSum` of the values read as integers when their absolute values sum

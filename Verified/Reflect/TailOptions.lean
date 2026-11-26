@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Lean
 
 register_option verified.tailLoops : Bool := {

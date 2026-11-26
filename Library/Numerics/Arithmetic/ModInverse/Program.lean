@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! The modular inverse by the extended Euclidean algorithm, Algorithm X of TAOCP §4.5.2, with
 Knuth's `u = m` and `v = a`, keeping only the coefficient of `a`.  The remainders `r0 > r1`,
 Knuth's `u3` and `v3`, start at `m` and `a mod m`, where Knuth's step X1 starts `v3` at `v`:

@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 namespace LeanExe
 
 /-- `xs` with `v` inserted at position `i`, before the element there, or appended when `i` is

@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-!
 The PTX subset of the kernels.  A kernel has one entry point whose parameters are 64-bit pointers
 to global buffers: the read-only inputs, then the output.  Registers have the classes `.b32`,

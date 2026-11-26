@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 namespace Examples.Axpy
 
 /-- `a * x + y` in binary64, with two roundings. -/

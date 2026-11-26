@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 namespace Examples.Scale
 
 /-- `a * b / c + 1` in wrapping 64-bit arithmetic.  Lean's division by zero

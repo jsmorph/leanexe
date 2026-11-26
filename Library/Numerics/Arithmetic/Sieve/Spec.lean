@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Mathlib.Data.Nat.Prime.Defs
 
 /-! The specification of the primes below a word `N`: the numbers `p < N` with `Nat.Prime p`,

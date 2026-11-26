@@ -1,3 +1,4 @@
+import LeanExe.Base
 import CodeLib.IEEE64.Roundoff
 
 /-! Integer guards for finite binary64 words, including zero and subnormals. -/

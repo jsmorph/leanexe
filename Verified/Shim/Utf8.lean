@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-!
 Core decides `ByteArray.IsValidUTF8` with `ByteArray.validateUTF8`, which checks each character of
 two, three, or four bytes with `ByteArray.utf8DecodeChar?.verify₂`, `verify₃`, or `verify₄`.  Each

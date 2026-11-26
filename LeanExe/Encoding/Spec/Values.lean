@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Init.Data.List.Lemmas
 
 namespace Wasm.Encoding.Spec

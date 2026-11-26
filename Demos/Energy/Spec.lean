@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
 
 /-! The physical model and the claims of the energy authorizer, in integers and reals.  A profile

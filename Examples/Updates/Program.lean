@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-!
 Array updates for execution tests of the compiler's update templates: chains of updates on an
 owned array, each applied to the result of the one inside it, and a `push` on a borrowed array,

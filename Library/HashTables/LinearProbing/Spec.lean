@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! The specification of the hash table: the operations run on a list of distinct keys, the keys
 that the table holds, in any order.  Code 0 inserts, code 1 looks up, and every other code deletes.
 An insertion adds an absent key while the list holds fewer than `M - 1` keys, a lookup tests

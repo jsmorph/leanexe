@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! SHA-3 of FIPS 202, *SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions*,
 August 2015, transcribed from §2.3, §3, §4, §5, §6, and Appendix B.1.  A string is a list of bits
 with `X[0]` first.  A state array of §3.1 is a function of its coordinates.  θ, π, and χ give

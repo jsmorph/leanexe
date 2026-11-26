@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 namespace Examples.Bucket
 
 /-- The index of the histogram bucket of width `width` starting at `lo` that

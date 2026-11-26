@@ -1,3 +1,4 @@
+import LeanExe.Base
 import CodeLib.Attrs
 import CodeLib.Basic
 import CodeLib.Entry

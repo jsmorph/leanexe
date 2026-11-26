@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! The uniqueness of a sorted permutation of words, which the sorting modules use to show that a
 program's result equals `List.mergeSort` of its input. -/
 

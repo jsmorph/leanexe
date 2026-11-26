@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 namespace Library.Numerics.Bounds
 
 abbrev absBits (bits : UInt64) : UInt64 := bits &&& 0x7FFFFFFFFFFFFFFF

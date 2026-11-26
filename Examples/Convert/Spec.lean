@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Interpreter.Wasm.IEEE64
 
 /-! The specifications: WebAssembly's signed conversions in Talos's IEEE 754 functions.

@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-!
 The requests of a step in the program with requests (`reqMain` of `LeanExe/Native/Bare.lean`),
 as functions of the verified compiler's dialect.  `main` writes the low 32 bits of a request

@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Mathlib.Tactic.TypeStar
 
 /-! # Common: `Array.foldl ∘ Array.ofFn` ↔ `Fin.foldl`

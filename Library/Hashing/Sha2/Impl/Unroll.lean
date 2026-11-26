@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-!
 # Loop unrolling helpers
 

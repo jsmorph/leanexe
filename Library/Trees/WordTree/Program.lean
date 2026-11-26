@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 namespace Library.Trees.WordTree
 
 /-- A binary tree with a word at each node. -/

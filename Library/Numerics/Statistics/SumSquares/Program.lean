@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 namespace Library.Numerics.Statistics.SumSquares
 
 /-- The sum of the squares of the elements, accumulated from the left in binary64. -/

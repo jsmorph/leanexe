@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Interpreter.Wasm.Locals
 
 /-!

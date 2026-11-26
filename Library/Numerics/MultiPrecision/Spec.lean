@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-! The specification of multiple-precision arithmetic.  A number is an array of digits in base
 `2^32`, least significant first, each held in a word.  `value u` is the number, and `digits n x` is
 the array of the `n` least significant digits of `x`, so it holds `x` modulo `2^(32 n)`.  The empty

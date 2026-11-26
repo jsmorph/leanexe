@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-!
 # SHA-512 family — performance-tuned implementation
 

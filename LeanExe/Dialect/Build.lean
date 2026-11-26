@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 namespace LeanExe
 
 /-- The array of length `n` whose element `i` is `f i`. -/

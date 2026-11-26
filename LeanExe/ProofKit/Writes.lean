@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-!
 Facts about lists of events and about an array after a list of writes, which the memory-model
 proofs of the WGSL and PTX targets share.

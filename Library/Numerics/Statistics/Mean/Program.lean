@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 namespace Library.Numerics.Statistics.Mean
 
 /-- The arithmetic mean, summed from the left in binary64.  It is NaN for an

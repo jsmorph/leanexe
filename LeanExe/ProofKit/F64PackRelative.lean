@@ -1,3 +1,4 @@
+import LeanExe.Base
 import CodeLib.IEEE64.Roundoff
 
 /-! Packing an integer magnitude into a binary64 word: the packed value's relative error,

@@ -1,3 +1,4 @@
+import LeanExe.Base
 import Batteries.Data.ByteArray
 
 /-! # Common: `ByteArray.get!` lemmas

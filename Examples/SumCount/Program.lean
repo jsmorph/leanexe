@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 namespace Examples.SumCount
 
 def sumCount (xs : Array UInt64) : Array UInt64 :=

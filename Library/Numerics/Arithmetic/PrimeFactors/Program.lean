@@ -1,3 +1,5 @@
+import LeanExe.Base
+
 /-!
 The number of prime factors of a word, counted with
 multiplicity, with 0 for 0 and 1.  `countFactors` divides out each divisor in increasing order while

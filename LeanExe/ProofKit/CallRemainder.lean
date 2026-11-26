@@ -1,3 +1,4 @@
+import LeanExe.Base
 import CodeLib.Entry
 
 namespace Wasm
