@@ -1,6 +1,7 @@
 module
 
 public import Verified.Wasi.Reflect
+public meta import Verified.Wasi.Reflect
 
 @[expose] public section
 

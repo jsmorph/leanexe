@@ -2,6 +2,7 @@ module
 
 public import Verified.Wasi.ReflectProgram
 public import LeanExe.Encoding.RoundTrip
+public meta import Verified.Wasi.ReflectProgram
 
 @[expose] public section
 

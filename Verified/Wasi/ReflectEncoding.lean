@@ -2,6 +2,8 @@ module
 
 public import Verified.Reflect.Definitions
 public import LeanExe.Encoding.Correctness
+public meta import Verified.Reflect.Definitions
+public meta import LeanExe.Encoding.Correctness
 
 @[expose] public section
 
@@ -10,7 +12,7 @@ namespace Verified.Wasi.Reflect
 open Lean Meta Elab Command Term
 open Verified.Reflect
 
-def emitEncoding (target : Name) (moduleName : Name) (refinements : Array Name := #[])
+meta def emitEncoding (target : Name) (moduleName : Name) (refinements : Array Name := #[])
     (validity? : Option Name := none) : CommandElabM Unit := do
   let base := (← getCurrNamespace) ++ target
   let moduleId := mkIdent moduleName

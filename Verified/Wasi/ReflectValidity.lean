@@ -2,6 +2,8 @@ module
 
 public import Verified.Reflect.Definitions
 public import LeanExe.Encoding.ValidityProof
+public meta import Verified.Reflect.Definitions
+public meta import LeanExe.Encoding.ValidityProof
 
 @[expose] public section
 
@@ -12,7 +14,7 @@ open Verified.Reflect
 
 initialize Lean.registerTraceClass `verified.wasi
 
-def contextExpr (context : Wasm.Encoding.Spec.Validity.Context) : MetaM Lean.Expr := do
+meta def contextExpr (context : Wasm.Encoding.Spec.Validity.Context) : MetaM Lean.Expr := do
   let list := fun (type : Lean.Expr) (values : List Lean.Expr) => values.foldr
     (fun value tail => mkApp3 (mkConst ``List.cons [.zero]) type value tail)
     (mkApp (mkConst ``List.nil [.zero]) type)
@@ -31,7 +33,7 @@ def contextExpr (context : Wasm.Encoding.Spec.Validity.Context) : MetaM Lean.Exp
     ← Wasm.Encoding.ValidityProof.typesExpr context.results,
     toExpr context.hasMemory]
 
-def emitValidity (target : Name) (moduleName : Name) : CommandElabM Unit := do
+meta def emitValidity (target : Name) (moduleName : Name) : CommandElabM Unit := do
   let wasmModule ← try liftTermElabM (evalModule moduleName) catch e =>
     throwError "verified_compile_wasi: cannot evaluate module {moduleName}: {e.toMessageData}"
   let base := (← getCurrNamespace) ++ target
