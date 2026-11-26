@@ -179,8 +179,6 @@ theorem moment_eq (n : UInt64) (M : Nat) :
   refine sum_congr rfl fun ws _ => ?_
   rw [prod_ite, prod_const_one, prod_const, one_mul]
   congr 2
-  ext i
-  simp
 
 /-- The sum over one word is at most `2^65`, since at most `2^63` words are rejected. -/
 theorem moment_word (n : UInt64) (hn : n ≠ 0) :

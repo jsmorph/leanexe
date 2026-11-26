@@ -682,7 +682,6 @@ theorem commW_eq {s : BmsState} {kind olen : UInt64} {crcOk : Bool} {sc : ScanW}
   · rw [seqFault, view_good hv hg]
     simp only [absS, scanAbs, Bool.true_and]
     congr 1
-    flag_eq
 
 theorem bitW_ne (P Q r : UInt64) :
     (bitW P r != bitW Q r) = (P.toNat.testBit (r.toNat % 64) != Q.toNat.testBit (r.toNat % 64)) := by
