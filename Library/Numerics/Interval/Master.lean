@@ -99,8 +99,8 @@ theorem extreme_status (up : Bool) (p q r s : Checked) :
 
 theorem extreme_value {up : Bool} {p q r s : Checked} (h : (extreme up p q r s).status = 0) :
     (extreme up p q r s).value =
-      if up then max (max p.value q.value) (max r.value s.value)
-      else min (min p.value q.value) (min r.value s.value) := by
+      if up then fmax (fmax p.value q.value) (fmax r.value s.value)
+      else fmin (fmin p.value q.value) (fmin r.value s.value) := by
   obtain ⟨h1, h2, h3, h4⟩ := extreme_accepted h
   unfold extreme
   simp only [h1, h2, h3, h4, beq_self_eq_true, Bool.and_self, ite_true]
@@ -394,7 +394,7 @@ theorem abs_status (a : Interval) : (abs a).status = 0 ↔ a.status = 0 := by
 theorem abs_fields {a : Interval} (h : (abs a).status = 0) :
     if 0 ≤ a.lo then (abs a).lo = a.lo ∧ (abs a).hi = a.hi
     else if a.hi ≤ 0 then (abs a).lo = -a.hi ∧ (abs a).hi = -a.lo
-    else (abs a).lo = 0 ∧ (abs a).hi = max (-a.lo) a.hi := by
+    else (abs a).lo = 0 ∧ (abs a).hi = fmax (-a.lo) a.hi := by
   unfold abs
   rw [ite_eq_left (beq_iff_eq.mpr (abs_sound h).1)]
   split_ifs <;> exact ⟨rfl, rfl⟩
@@ -413,7 +413,7 @@ theorem clamp_status (a : Interval) (lo hi : Float) :
     exact iff_of_false (by decide) hc
 
 theorem clamp_fields {a : Interval} {lo hi : Float} (h : (clamp a lo hi).status = 0) :
-    (clamp a lo hi).lo = max a.lo lo ∧ (clamp a lo hi).hi = min a.hi hi := by
+    (clamp a lo hi).lo = fmax a.lo lo ∧ (clamp a lo hi).hi = fmin a.hi hi := by
   unfold clamp at h ⊢
   by_cases hc : (a.status == 0 && finite lo && finite hi) = true
   · rw [ite_eq_left hc]
@@ -505,11 +505,12 @@ theorem decreasing_export :
 
 /-! ### Master theorems -/
 
-/-- The export `fmin`, called on two floats, returns Lean's `min` of them, which compares by
-IEEE 754 `≤`; for finite floats the result is finite and its value is the smaller value. -/
+/-- The export `fmin`, called on two floats, returns `fmin` of them, the smaller by IEEE 754 `≤`,
+which differs from Lean's `min` at `+0` and `-0` and at a NaN first operand; for finite floats the
+result is finite and its value is the smaller value. -/
 theorem fmin_master :
     Verified.Master compiled.module compiled.tables "fmin" compiled.fmin.bound (fun _ => True)
-      (fun (x : Float × Float) (y : Float) => y = min x.1 x.2 ∧
+      (fun (x : Float × Float) (y : Float) => y = fmin x.1 x.2 ∧
         (Finite x.1.toBits → Finite x.2.toBits →
           Finite y.toBits ∧ value y.toBits = min (value x.1.toBits) (value x.2.toBits))) :=
   .of_trapFree (.ofA compiled.fmin.trapFree) nofun fmin_export (fun _ _ _ _ _ => trivial)
@@ -517,11 +518,12 @@ theorem fmin_master :
 
 #print axioms fmin_master
 
-/-- The export `fmax`, called on two floats, returns Lean's `max` of them, which compares by
-IEEE 754 `≤`; for finite floats the result is finite and its value is the larger value. -/
+/-- The export `fmax`, called on two floats, returns `fmax` of them, the larger by IEEE 754 `≤`,
+which differs from Lean's `max` at `+0` and `-0` and at a NaN second operand; for finite floats the
+result is finite and its value is the larger value. -/
 theorem fmax_master :
     Verified.Master compiled.module compiled.tables "fmax" compiled.fmax.bound (fun _ => True)
-      (fun (x : Float × Float) (y : Float) => y = max x.1 x.2 ∧
+      (fun (x : Float × Float) (y : Float) => y = fmax x.1 x.2 ∧
         (Finite x.1.toBits → Finite x.2.toBits →
           Finite y.toBits ∧ value y.toBits = max (value x.1.toBits) (value x.2.toBits))) :=
   .of_trapFree (.ofA compiled.fmax.trapFree) nofun fmax_export (fun _ _ _ _ _ => trivial)
@@ -643,8 +645,8 @@ theorem neg_master :
 #print axioms neg_master
 
 /-- The export `extreme`, called on a direction `up` and checked values `p`, `q`, `r`, and `s`,
-accepts exactly when all four are accepted, and then returns Lean's `max` of their values for `up`
-and `min` otherwise; when the four values are finite, the result is finite and its value is the
+accepts exactly when all four are accepted, and then returns `fmax` of their values for `up` and
+`fmin` otherwise; when the four values are finite, the result is finite and its value is the
 greatest or the least of their values. -/
 theorem extreme_master :
     Verified.Master compiled.module compiled.tables "extreme" compiled.extreme.bound
@@ -657,8 +659,8 @@ theorem extreme_master :
         let s := x.2.2.2.2
         (c.status = 0 ↔ p.status = 0 ∧ q.status = 0 ∧ r.status = 0 ∧ s.status = 0) ∧
         (c.status = 0 → c.value =
-          if up then max (max p.value q.value) (max r.value s.value)
-          else min (min p.value q.value) (min r.value s.value)) ∧
+          if up then fmax (fmax p.value q.value) (fmax r.value s.value)
+          else fmin (fmin p.value q.value) (fmin r.value s.value)) ∧
         (c.status = 0 → Finite p.value.toBits → Finite q.value.toBits → Finite r.value.toBits →
           Finite s.value.toBits → Finite c.value.toBits ∧ value c.value.toBits =
             if up then max (max (value p.value.toBits) (value q.value.toBits))
@@ -867,8 +869,8 @@ theorem sqrt_master :
 
 /-- The export `abs`, called on an interval `a`, accepts exactly when `a` is accepted, and then
 returns `a` when `0 ≤ a.lo`, the interval from `-a.hi` to `-a.lo` when `a.hi ≤ 0`, and the
-interval from `0` to Lean's `max` of `-a.lo` and `a.hi` otherwise, an interval that contains `|x|`
-for every `x` in `a`. -/
+interval from `0` to `fmax` of `-a.lo` and `a.hi` otherwise, an interval that contains `|x|` for
+every `x` in `a`. -/
 theorem abs_master :
     Verified.Master compiled.module compiled.tables "abs" compiled.abs.bound (fun _ => True)
       (fun (a : Interval) (r : Interval) =>
@@ -876,7 +878,7 @@ theorem abs_master :
         (r.status = 0 →
           if 0 ≤ a.lo then r.lo = a.lo ∧ r.hi = a.hi
           else if a.hi ≤ 0 then r.lo = -a.hi ∧ r.hi = -a.lo
-          else r.lo = 0 ∧ r.hi = max (-a.lo) a.hi) ∧
+          else r.lo = 0 ∧ r.hi = fmax (-a.lo) a.hi) ∧
         (r.status = 0 → ∀ t, Contains a t → Contains r |t|)) :=
   .of_trapFree (.ofA compiled.abs.trapFree) nofun abs_export (fun _ _ _ _ _ => trivial)
     (fun _ _ _ _ _ h => h) fun _ _ _ a _ _ => ⟨abs_status a, abs_fields, fun h => (abs_sound h).2⟩
@@ -884,9 +886,9 @@ theorem abs_master :
 #print axioms abs_master
 
 /-- The export `clamp`, called on an interval `a` and floats `lo` and `hi`, accepts exactly when
-`a` is accepted and `lo` and `hi` are finite, and then returns the interval from Lean's `max` of
-`a.lo` and `lo` to Lean's `min` of `a.hi` and `hi`, which contains every `x` in `a` between the
-values of `lo` and `hi`. -/
+`a` is accepted and `lo` and `hi` are finite, and then returns the interval from `fmax` of `a.lo`
+and `lo` to `fmin` of `a.hi` and `hi`, which contains every `x` in `a` between the values of `lo`
+and `hi`. -/
 theorem clamp_master :
     Verified.Master compiled.module compiled.tables "clamp" compiled.clamp.bound (fun _ => True)
       (fun (x : Interval × Float × Float) (r : Interval) =>
@@ -894,7 +896,7 @@ theorem clamp_master :
         let lo := x.2.1
         let hi := x.2.2
         (r.status = 0 ↔ a.status = 0 ∧ Finite lo.toBits ∧ Finite hi.toBits) ∧
-        (r.status = 0 → r.lo = max a.lo lo ∧ r.hi = min a.hi hi) ∧
+        (r.status = 0 → r.lo = fmax a.lo lo ∧ r.hi = fmin a.hi hi) ∧
         (r.status = 0 → ∀ t, Contains a t → value lo.toBits ≤ t → t ≤ value hi.toBits →
           Contains r t)) :=
   .of_trapFree (.ofA compiled.clamp.trapFree) nofun clamp_export (fun _ _ _ _ _ => trivial)

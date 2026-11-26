@@ -17,8 +17,12 @@ structure Interval where
 
 abbrev rejected : Interval := ⟨1, 0, 0⟩
 
+/-- The smaller of `a` and `b` by `≤`.  It equals Lean's `min`, IEEE 754-2019's `minimum`, except
+that `fmin (+0) (-0)` is `+0` and `fmin NaN b` is `b`. -/
 def fmin (a b : Float) : Float := if a ≤ b then a else b
 
+/-- The larger of `a` and `b` by `≤`.  It equals Lean's `max`, IEEE 754-2019's `maximum`, except
+that `fmax (+0) (-0)` is `-0` and `fmax a NaN` is `a`. -/
 def fmax (a b : Float) : Float := if a ≤ b then b else a
 
 /-- The interval `[lo, hi]` for finite `lo ≤ hi`. -/
