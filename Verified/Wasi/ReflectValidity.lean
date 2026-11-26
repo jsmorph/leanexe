@@ -32,10 +32,8 @@ def contextExpr (context : Wasm.Encoding.Spec.Validity.Context) : MetaM Lean.Exp
     toExpr context.hasMemory]
 
 def emitValidity (target : Name) (moduleName : Name) : CommandElabM Unit := do
-  let wasmModule ← match evalModule (← getEnv) (← getOptions) moduleName with
-    | .ok value => pure value
-    | .error message =>
-      throwError "verified_compile_wasi: cannot evaluate module {moduleName}: {message}"
+  let wasmModule ← try liftTermElabM (evalModule moduleName) catch e =>
+    throwError "verified_compile_wasi: cannot evaluate module {moduleName}: {e.toMessageData}"
   let base := (← getCurrNamespace) ++ target
   let moduleId := mkIdent moduleName
   let predicate ← `(fun index : Nat =>

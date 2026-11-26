@@ -1000,13 +1000,13 @@ def addLiteral (name : Name) (type value : Lean.Expr) : CoreM Unit := do
   addDecl <| .defnDecl <| mkDefinitionValEx name [] type value
     (.regular (getMaxHeight (← getEnv) value + 1)) .safe [name]
 
-unsafe def evalModuleUnsafe (env : Environment) (opts : Options) (name : Name) :
-    Except String Wasm.Module :=
-  env.evalConst Wasm.Module opts name
+unsafe def evalModuleUnsafe (name : Name) : MetaM Wasm.Module :=
+  evalExpr' Wasm.Module ``Wasm.Module (mkConst name)
 
-/-- The module of the constant `name`, from its compiled code. -/
+/-- The module of the constant `name`, from its compiled code.  The module system evaluates only
+`meta` code, and `evalExpr'` evaluates a `meta` definition whose value is the constant. -/
 @[implemented_by evalModuleUnsafe]
-opaque evalModule (env : Environment) (opts : Options) (name : Name) : Except String Wasm.Module
+opaque evalModule (name : Name) : MetaM Wasm.Module
 
 /-- The component of the tuple `x` along `steps`: `false` for a pair's first component and `true`
 for its second. -/

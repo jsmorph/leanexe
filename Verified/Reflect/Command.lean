@@ -553,7 +553,7 @@ meta def elabVerifiedCompile : CommandElab
     let tableNames := state.tableNames
     let funsVal := state.funs
     let hasLiterals := materialized.pureHasLiterals
-    let noLiteralsName := mkPrivateName (← getEnv) (base ++ `noLiterals)
+    let noLiteralsName := base ++ `noLiterals
     unless hasLiterals do
       liftTermElabM do
         let literals ← mkAppM ``Prog.literals #[mkConst (base ++ `program)]
@@ -899,9 +899,8 @@ meta def elabVerifiedCompile : CommandElab
             |>.set! 9 (← instantiateMVars pre) |>.set! 10 (← instantiateMVars post))
           addTheorem (base ++ simple ++ `trapFree) claim proof
       j := j + 1
-    let evaluated ← match evalModule (← getEnv) (← getOptions) (base ++ `module) with
-      | .ok m => pure m
-      | .error e => throwError "verified_compile: cannot evaluate the module: {e}"
+    let evaluated ← try liftTermElabM (evalModule (base ++ `module)) catch e =>
+      throwError "verified_compile: cannot evaluate the module: {e.toMessageData}"
     -- The encoding, part by part: the native encoder gives the bytes of each part, and the kernel
     -- checks each function's body in its own theorem, so that one check holds one function.
     let parts ← match Wasm.Encoding.encodeParts evaluated with

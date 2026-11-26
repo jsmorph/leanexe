@@ -14,13 +14,12 @@ def emitEncoding (target : Name) (moduleName : Name) (refinements : Array Name :
     (validity? : Option Name := none) : CommandElabM Unit := do
   let base := (← getCurrNamespace) ++ target
   let moduleId := mkIdent moduleName
-  let parts ← match evalModule (← getEnv) (← getOptions) moduleName with
-    | .ok wasmModule => match Wasm.Encoding.encodeParts wasmModule with
-      | .ok parts => pure parts
-      | .error message =>
-        throwError "verified_compile_wasi: module {moduleName} does not encode: {message}"
+  let wasmModule ← try liftTermElabM (evalModule moduleName) catch e =>
+    throwError "verified_compile_wasi: cannot evaluate module {moduleName}: {e.toMessageData}"
+  let parts ← match Wasm.Encoding.encodeParts wasmModule with
+    | .ok parts => pure parts
     | .error message =>
-      throwError "verified_compile_wasi: cannot evaluate module {moduleName}: {message}"
+      throwError "verified_compile_wasi: module {moduleName} does not encode: {message}"
   let (sections, bodies, data) := parts
   let bytesTy := mkApp (mkConst ``List [.zero]) (mkConst ``UInt8)
   let bytesListTy := mkApp (mkConst ``List [.zero]) bytesTy
