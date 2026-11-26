@@ -98,7 +98,7 @@ theorem hashFrom_toVec (pre : ByteArray) (p : Nat) (hpre : pre.size = 128 * p) (
           (SHS.SHA512.Impl.toU64s (paddedBlock (pre ++ bytes msg n.toNat) (p + i)))) h.toVec := by
     intro k
     induction k with
-    | zero => intro _; rfl
+    | zero => intro _; simp only [Nat.fold_zero]
     | succ k ih =>
       intro hk
       rw [Nat.fold_succ, Nat.fold_succ, compress_toVec, ih (by omega),
@@ -121,7 +121,7 @@ theorem paddedBlock_pre (pre : ByteArray) (p : Nat) (hpre : pre.size = 128 * p)
 theorem fold_split {β : Type} (g : Nat → β → β) (init : β) (p : Nat) : ∀ N,
     Nat.fold (p + N) (fun i _ b => g i b) init =
       Nat.fold N (fun i _ b => g (p + i) b) (Nat.fold p (fun i _ b => g i b) init)
-  | 0 => rfl
+  | 0 => by simp only [Nat.add_zero, Nat.fold_zero]
   | N + 1 => by rw [← Nat.add_assoc, Nat.fold_succ, Nat.fold_succ, fold_split g init p N]
 
 /-- A fold over the padded blocks of `pre ++ data` is the fold over the blocks of `data` from the

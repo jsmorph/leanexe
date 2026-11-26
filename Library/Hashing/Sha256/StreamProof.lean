@@ -114,7 +114,9 @@ def blocksFold (data : ByteArray) (q : Nat) (s : SHS.SHA256.Impl.State) : SHS.SH
     s
 
 theorem blocksFold_zero (data : ByteArray) (s : SHS.SHA256.Impl.State) :
-    blocksFold data 0 s = s := rfl
+    blocksFold data 0 s = s := by
+  unfold blocksFold
+  rw [Nat.fold_zero]
 
 theorem blocksFold_succ (data : ByteArray) (q : Nat) (s : SHS.SHA256.Impl.State) :
     blocksFold data (q + 1) s = SHS.SHA256.Impl.compress (blocksFold data q s)
@@ -184,7 +186,9 @@ theorem blocksFold_append (pre c : ByteArray) (p : Nat) (hpre : pre.size = 64 * 
   generalize pre ++ c = whole at left right
   intro q
   induction q with
-  | zero => exact blocksFold_congr whole pre s p left
+  | zero =>
+    rw [Nat.add_zero, blocksFold_zero]
+    exact blocksFold_congr whole pre s p left
   | succ q ih => rw [← Nat.add_assoc, blocksFold_succ, blocksFold_succ, ih, right q]
 
 /-- A fold over the first `q` blocks reads no byte after them. -/
@@ -444,7 +448,8 @@ theorem stream_spec (pieces : List LeanExe.Bytes) (whole : ∀ c ∈ pieces, c.d
   have hj : joinAll pieces =
       pieces.foldl (fun a piece => a ++ piece.data) ByteArray.empty := rfl
   obtain ⟨hwhole, hstate⟩ :=
-    key pieces ByteArray.empty iv256 whole rfl (by rw [← hj]; omega) rfl
+    key pieces ByteArray.empty iv256 whole rfl (by rw [← hj]; omega)
+      (by rw [show ByteArray.empty.size / 64 = 0 from rfl, blocksFold_zero]; rfl)
   rw [← hj] at hwhole hstate
   have hs : b.size.toNat = b.data.size := LeanExe.Bytes.size_toNat b (by omega)
   have e := finish_spec (joinAll pieces) ((joinAll pieces).size / 64) (by omega) _ hstate b 0 b.size
