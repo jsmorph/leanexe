@@ -164,7 +164,7 @@ theorem ldexp_up (r e : Float) (K : ℤ) (hr : ff r) (hr1 : |fv r| ≤ 1 / 2 ^ 1
       exact_mod_cast this
     obtain ⟨q1f, q1v, q1m⟩ := pow2_val 1023.0 1023 c1f (by rw [c1v]; norm_num) (by norm_num)
       (by norm_num)
-    obtain ⟨m1f, m1v⟩ := mul_pow2_exact r _ hr q1f _ q1m (by norm_num; omega) (by norm_num; omega)
+    obtain ⟨m1f, m1v⟩ := mul_pow2_exact r _ hr q1f _ q1m (by norm_num <;> omega) (by norm_num; omega)
     obtain ⟨sf, sv⟩ := sub_exact (-e) 1023.0 nf c1f (by
       rw [nv, c1v, abs_le]; constructor <;>
         · have h1072 : ((-K : ℤ) : ℝ) ≤ 1072 := by exact_mod_cast (show -K ≤ 1072 by omega)
