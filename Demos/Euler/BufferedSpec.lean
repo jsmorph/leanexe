@@ -1,6 +1,7 @@
 module
 
 public import Demos.Euler.Buffered
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

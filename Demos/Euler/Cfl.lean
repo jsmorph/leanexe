@@ -3,6 +3,7 @@ module
 public import Demos.Euler.Enclosure
 public import LeanExe.ProofKit.F64DyadicBounds
 public import LeanExe.ProofKit.F64Convert
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

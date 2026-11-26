@@ -9,6 +9,7 @@ public import Mathlib.Data.ZMod.Basic
 public import Mathlib.Dynamics.PeriodicPts.Lemmas
 public import Mathlib.Tactic.LinearCombination
 public import Mathlib.Tactic.Ring
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

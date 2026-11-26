@@ -128,7 +128,7 @@ private inductive AtomicRule where
   | branchIf (index : Nat) (results : List ValueType)
   | control
 
-private structure Atomic where
+structure Atomic where
   inputs : List ValueType
   outputs : List ValueType
   rule : AtomicRule
@@ -205,7 +205,7 @@ def lookup (label : String) (values : List α) (index : Nat) : Except String α 
   | some value => .ok value
   | none => .error s!"{label} index {index} is out of bounds"
 
-private def controlResults (parameters results : Nat) (parameterTypes resultTypes : List ValueType) :
+def controlResults (parameters results : Nat) (parameterTypes resultTypes : List ValueType) :
     Except String (List ValueType) :=
   if parameters != 0 || parameterTypes != [] || results != resultTypes.length || resultTypes.length > 1 then
     .error "structured control is outside the zero-parameter, at-most-one-result encoding profile"
@@ -260,7 +260,7 @@ def atomic (context : Spec.Validity.Context) (instruction : Wasm.Instruction) :
     return ⟨[.i32], ← controlResults parameters results parameterTypes resultTypes, .control⟩
   | _ => throw s!"unsupported instruction: {repr instruction}"
 
-private def consume (stack required : List ValueType) : Except String (List ValueType) :=
+def consume (stack required : List ValueType) : Except String (List ValueType) :=
   if required.length > stack.length then .error "operand stack underflow"
   else if stack.drop (stack.length - required.length) != required then
     .error s!"operand types disagree: stack {repr stack}, required suffix {repr required}"
@@ -343,7 +343,7 @@ def instructionType (context instruction : Lean.Expr) (inputs outputs : List Val
     MetaM Lean.Expr := do
   mkAppM ``Spec.Validity.Instruction #[context, instruction, ← typesExpr inputs, ← typesExpr outputs]
 
-private def closedDecideProof (type : Lean.Expr) : MetaM Lean.Expr := do
+def closedDecideProof (type : Lean.Expr) : MetaM Lean.Expr := do
   let type ← instantiateMVars type
   if type.hasFVar || type.hasMVar then return ← mkDecideProof type
   -- The module's name keeps two modules that state the same fact from declaring one name.

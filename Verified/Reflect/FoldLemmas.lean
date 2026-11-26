@@ -3,6 +3,7 @@ module
 public import Verified.Reflect.BoundLemmas
 public import Verified.Reflect.FitsLemmas
 public import Verified.ArrayFold
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

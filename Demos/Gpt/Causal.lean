@@ -3,6 +3,7 @@ module
 public import Demos.Gpt.Program
 public import Mathlib.Tactic
 public import LeanExe.Dialect.Lemmas
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

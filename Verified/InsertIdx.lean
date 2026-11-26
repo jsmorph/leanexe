@@ -1,6 +1,7 @@
 module
 
 public import Verified.ArrayFold
+import all Init.Data.Array.Basic
 
 @[expose] public section
 

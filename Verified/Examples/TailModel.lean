@@ -2,6 +2,7 @@ module
 
 public import Verified.TailPaid
 public import Verified.Reflect.TailModes
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

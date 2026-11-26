@@ -48,7 +48,7 @@ theorem runSome_congr {P : Platform} {sp : SpReg} {A : Abstract} {ts : List Trac
 
 open Lean in
 /-- The value that the chain `ρ` of `Vars.set` on `fun _ => none` gives the variable `y`. -/
-partial def lookupVars (ρ : Expr) (y : Nat) : Option Expr :=
+partial meta def lookupVars (ρ : Expr) (y : Nat) : Option Expr :=
   if ρ.isAppOfArity ``Vars.set 3 then
     match ρ.appFn!.appArg!.nat? with
     | some x =>
@@ -87,7 +87,7 @@ dsimproc_decl reduceGpr (gpr _) := fun e => do
 open Lean in
 /-- Adds a definition of each node of the trace `t` under the footprint `F`, numbered from the
 counter, and returns the name of the definition of `t`. -/
-partial def addNodes (F : Name) (counter : IO.Ref Nat) (t : Expr) : CoreM Name := do
+partial meta def addNodes (F : Name) (counter : IO.Ref Nat) (t : Expr) : CoreM Name := do
   let i ← counter.modifyGet fun n => (n, n + 1)
   let name := F ++ Name.mkSimple s!"n{i}"
   let trace := mkConst ``Trace
@@ -133,7 +133,7 @@ partial def conjuncts (t h : Expr) : MetaM (List (Expr × Expr)) := do
 
 open Lean Meta in
 /-- The conjunction of the propositions `ps`, with its proof from the proofs of the parts. -/
-def mkConj : List (Expr × Expr) → Expr × Expr
+meta def mkConj : List (Expr × Expr) → Expr × Expr
   | [] => (mkConst ``True, mkConst ``True.intro)
   | [p] => p
   | (a, ha) :: ps =>

@@ -3,6 +3,7 @@ module
 public import Library.Hashing.Crc.Program
 public import Library.Hashing.Crc.Division
 public import Library.Bytes.Packed
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 

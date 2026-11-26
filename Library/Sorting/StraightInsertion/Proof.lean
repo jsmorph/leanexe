@@ -5,6 +5,7 @@ public import Library.Sorting.StraightInsertion.Spec
 public import Library.Sorting.Sorted
 public import LeanExe.Dialect.Lemmas
 public import Mathlib.Data.List.Sort
+import all Mathlib.Data.List.Sort
 
 @[expose] public section
 
