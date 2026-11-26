@@ -211,7 +211,7 @@ def isVarE (x : Nat) (b : Expr) : Bool :=
   b.isAppOfArity ``Base.var 1 && b.appArg!.nat? == some x
 
 /-- The strings of a list literal of string literals. -/
-def strList? (e : Expr) : Option (List String) := do
+meta def strList? (e : Expr) : Option (List String) := do
   let (_, xs) ← e.listLit?
   xs.mapM fun x => match x with
     | .lit (.strVal s) => some s
@@ -219,7 +219,7 @@ def strList? (e : Expr) : Option (List String) := do
 
 /-- Where the variable `x` lies in the register value `v`: at a path of fields, or at an index of
 a vector. -/
-def rvalPath? (x : Nat) (v : Expr) : Option (List String ⊕ Nat) :=
+meta def rvalPath? (x : Nat) (v : Expr) : Option (List String ⊕ Nat) :=
   if v.isAppOfArity ``RVal.base 1 then
     if isVarE x v.appArg! then some (.inl []) else none
   else if v.isAppOfArity ``RVal.struct 1 then do

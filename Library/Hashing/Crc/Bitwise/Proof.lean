@@ -4,6 +4,8 @@ public import Library.Hashing.Crc.Bitwise.Program
 public import Library.Hashing.Crc.Proof
 public import Library.Hashing.Words.Proof
 public import LeanExe.Requests.Records
+public import Batteries.Data.UInt
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 
