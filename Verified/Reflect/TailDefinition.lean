@@ -92,9 +92,10 @@ def reflectTailSource (base name eqName : Name) (sigs funs rest : Lean.Expr)
     addDefinition (base ++ `step) (← inferType step) step
     enableRealizationsForConst (base ++ `step)
     let step := mkConst (base ++ `step)
-    let acc ← deriveTailAcc name (base ++ `step) params state.type resultType
-    let wf ← tailWellFounded step params types state.type resultType acc
-    addTheorem (base ++ `wellFounded) (← inferType wf) wf
+    let wfType ← mkAppM ``WellFounded #[← tailRelation step state.type resultType]
+    addTheoremOnBranch (base ++ `wellFounded) wfType do
+      let acc ← deriveTailAcc name (base ++ `step) params state.type resultType
+      tailWellFounded step params types state.type resultType acc
     let wf := mkConst (base ++ `wellFounded)
     let nativeRank ← mkAppM ``Tail.rank #[step, wf]
     let rank ← withLocalDeclD `funs (mkApp (mkConst ``Funs) sigs) fun fs => do
