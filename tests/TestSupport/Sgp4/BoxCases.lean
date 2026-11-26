@@ -35,7 +35,7 @@ partial def boxes : IO Unit := do
   let rec go : IO Unit := do
     let text ← stdin.getLine
     if text.isEmpty then return
-    let words := (text.trim.splitOn " ").filterMap String.toNat?
+    let words := (text.trimAscii.copy.splitOn " ").filterMap String.toNat?
     match words.map fun w => Float.ofBits (UInt64.ofNat w) with
     | [n, e, incl, node, argp, m, bstar, t] =>
       IO.println (boxText (sgp4BoxAround n e incl node argp m bstar t))
@@ -53,7 +53,7 @@ partial def lines : IO Unit := do
     if line1.isEmpty then return
     let line2 ← stdin.getLine
     let time ← stdin.getLine
-    match time.trim.toNat? with
+    match time.trimAscii.copy.toNat? with
     | some w =>
       let t := around (Float.ofBits (UInt64.ofNat w))
       IO.println (boxText (Tle.propagate (bytes (line1.dropRightWhile (· == '\n')))

@@ -29,8 +29,8 @@ def evaluate (line : String) : Except String String := do
 
 def run (file : String) : IO UInt32 := do
   for line in (← IO.FS.lines file) do
-    if line.trim.isEmpty then continue
-    match evaluate line.trim with
+    if line.trimAscii.copy.isEmpty then continue
+    match evaluate line.trimAscii.copy with
     | .ok out => IO.println out
     | .error e => IO.eprintln e; return 1
   return 0

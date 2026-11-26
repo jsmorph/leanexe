@@ -88,7 +88,7 @@ partial def serve (n : Nat) (run : List Float → String) : IO Unit := do
   let rec go : IO Unit := do
     let text ← stdin.getLine
     if text.isEmpty then return
-    let words := (text.trim.splitOn " ").filterMap String.toNat?
+    let words := (text.trimAscii.copy.splitOn " ").filterMap String.toNat?
     if words.length != n then throw (IO.userError s!"expected {n} words: {text}")
     IO.println (run (words.map fun w => Float.ofBits (UInt64.ofNat w)))
     (← IO.getStdout).flush
