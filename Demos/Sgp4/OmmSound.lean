@@ -167,6 +167,7 @@ theorem field_sound (s : List UInt8) (hs : s.length < 2 ^ 32) {n : Num}
     refine ⟨fun x hx => by simp [numValue] at hx, fun _ h0 => ?_⟩
     unfold field at h0
     rw [ParseFloatTheorem.parse64_accept true s _ hs h] at h0
+    simp only [↓reduceIte] at h0
     have hf := around_finite h0
     unfold CodeLib.IEEE64.Finite at hf
     revert hf
