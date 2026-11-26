@@ -8,10 +8,11 @@ The theorem of the program with input of milestone B7 (`docs/native-bare-metal.m
 input around the export `sha256` of `Library.Hashing.Sha256.compiled`, function 11, whose four
 results `main` writes from the result globals.  For every sequence `σ` of the values that the
 volatile loads of `lx_in` read, `sha256_input` states that the program terminates with a trace
-that reads `σ` and with the trace and result that `InResult` describes: for a length `n` of at
-most `inMax`, the result 0 after the loads of the length and of the `n` bytes `b` and the stores
-of the 32 bytes of `SHS.SHA256.Impl.sha256` of the message, or the code of `unreachable` after
-the loads of the length when `alloc` traps.  `sha256_correct` of the transcription of FIPS 180-4
+that reads `σ` and with the trace and result that `InResultRoom` describes: for a length `n` of
+at most `inMax`, the result 0 after the loads of the length and of the `n` bytes `b` and the
+stores of the 32 bytes of `SHS.SHA256.Impl.sha256` of the message, and the result 64 after the
+loads of a longer length.  The initial heap has room for the allocation of `main` at every length
+up to `inMax`, so `alloc` cannot trap.  `sha256_correct` of the transcription of FIPS 180-4
 equates `Impl.sha256` with the standard's digest.
 -/
 
@@ -102,14 +103,27 @@ theorem sha256_runs (A : Archi) (X : ExtSem) {fd : function}
       rfl
   · cases habs
 
+theorem sha256_top_le : (Verified.initialHeap compiled.tables).top.toNat ≤ 1048576 := by decide
+
+/-- The initial heap has room for the allocation of `main` at every length up to `inMax`. -/
+theorem sha256_room (n : Nat) (hn : n ≤ inMax) :
+    (Verified.initialHeap compiled.tables).Room (nativeStore compiled.module nativeCap)
+      compiled.module (needOf n) := by
+  refine Heap.Within.room ?_ (by rw [TestSupport.Native.nativeStore_memoryCap]; decide)
+  unfold Heap.Within
+  rw [TestSupport.Native.nativeStore_memoryCap, needOf_toNat_eq hn]
+  have := sha256_top_le
+  unfold wordsOf inMax nativeCap at *
+  omega
+
 /-- The program with input around the export `sha256`: for every sequence `σ` of the values that
 the volatile loads read, it terminates with a trace that reads `σ`, with the trace and the result
-of `InResult` for the output `shaOut`. -/
+of `InResultRoom` for the output `shaOut`. -/
 theorem sha256_input (A : Archi) (X : ExtSem) (pre : List (ident × globdef (fundef function) type))
     (hpre : PrefixOk pre) (σ : Nat → int) :
     ∃ t r, bigstep_program_terminates A X
         (inProgram pre compiled.translation (inMain nativeCap 11 (.words 4))) t r ∧
-      Reads σ t ∧ InResult σ false shaOut t r := by
+      Reads σ t ∧ InResultRoom σ shaOut t r := by
   obtain ⟨fd, ps, rs, hfd, hsig, hnat⟩ := compiled.sha256.native A X
   obtain ⟨rfl, rfl⟩ := TestSupport.Native.sig_of hsig (ps0 := [.i64, .i64])
     (rs0 := [.i64, .i64, .i64, .i64]) (by decide +kernel)
@@ -125,10 +139,11 @@ theorem sha256_input (A : Archi) (X : ExtSem) (pre : List (ident × globdef (fun
   obtain ⟨hAt0, -, -⟩ : Verified.Ready compiled.module compiled.tables
       (Verified.initialHeap compiled.tables) compiled.module.initialStore :=
     Verified.Ready.initial rfl compiled.initial
-  obtain ⟨t, r, hb, hres⟩ := input_program compiled.translation_eq hpre
+  obtain ⟨t, r, hb, hres⟩ := input_program_room compiled.translation_eq hpre
     (Verified.compileWith_runtime compiled.program compiled.tables compiled.wrappers
       compiled.literalPool).alloc h0 hfd (.words 4) hty A X (heapAt_nativeStore hAt0 nativeCap)
-    (by rw [TestSupport.Native.nativeStore_memoryCap]; decide) (sha256_runs A X hnat h4) σ
-  exact ⟨t, r, hb, hres.reads, hres⟩
+    (by rw [TestSupport.Native.nativeStore_memoryCap]; decide) sha256_room
+    (sha256_runs A X hnat h4) σ
+  exact ⟨t, r, hb, hres.inResult.reads, hres⟩
 
 end TestSupport.Bare
