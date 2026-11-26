@@ -9,7 +9,7 @@ public import LeanExe.ProofKit.F32RoundDyadic
 @[expose] public section
 
 /-!
-Lean's `Float32.ofScientific` at `v4.34.1`, the meaning of every decimal literal of type
+Lean's `Float32.ofScientific` at `v4.36.0`, the meaning of every decimal literal of type
 `Float32`, is `round32` of the decimal (`ofScientific32_spec`).  The proof follows
 `StrconvOfScientific`: the fast path, for `m < 2 ^ 23` and `e ≤ 10`, is one binary32
 multiplication or division of exact values, and the model's path is a rounded product or quotient,

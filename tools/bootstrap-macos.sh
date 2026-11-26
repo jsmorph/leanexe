@@ -29,10 +29,10 @@ install_archive() {
   fi
 }
 
-install_archive https://github.com/leanprover/lean4/releases/download/v4.34.1 \
-  lean-4.34.1-darwin_aarch64.tar.zst \
-  65f22a4f047738ec742667b3247e836a86ebf06eabc12655c3dee00637e37866 \
-  lean-4.34.1-darwin_aarch64
+install_archive https://github.com/leanprover/lean4/releases/download/v4.36.0 \
+  lean-4.36.0-darwin_aarch64.tar.zst \
+  49acada8749ad1343eff1224a3d2510ac61ed53363d37b5e738e8c587e7deabd \
+  lean-4.36.0-darwin_aarch64
 install_archive https://github.com/bytecodealliance/wasm-tools/releases/download/v1.251.0 \
   wasm-tools-1.251.0-aarch64-macos.tar.gz \
   ed0fdbdaa80a5c7ef434ac583e1d8df0b8e45d718b08edf28ec27a74e4029897 \
