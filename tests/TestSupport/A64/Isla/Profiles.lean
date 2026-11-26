@@ -12,13 +12,13 @@ namespace TestSupport.A64.Isla
 open LeanExe.A64.Isla
 
 /-- The profile `tcg` holds the settings of `tests/isla/tcg/features`. -/
-theorem tcg_features : tcg.features = isla_features% "tests/isla/tcg/features" := rfl
+theorem tcg_features : tcg.features = isla_features% "../../../isla/tcg/features" := rfl
 
 /-- The profile `kvm` holds the settings of `tests/isla/kvm/features`. -/
-theorem kvm_features : kvm.features = isla_features% "tests/isla/kvm/features" := rfl
+theorem kvm_features : kvm.features = isla_features% "../../../isla/kvm/features" := rfl
 
 /-- The profile `sme` holds the settings of `tests/isla/sme/features`. -/
-theorem sme_features : sme.features = isla_features% "tests/isla/sme/features" := rfl
+theorem sme_features : sme.features = isla_features% "../../../isla/sme/features" := rfl
 
 end TestSupport.A64.Isla
 
