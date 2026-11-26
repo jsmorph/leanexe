@@ -177,7 +177,7 @@ local notation "pureContext" => Resource.PureContext.ofProg io.pure.program io.p
 
 open Lean Meta in
 /-- The value at index `i` of an environment given as a chain of `Env.cons`. -/
-private partial def envValueAt (env : Lean.Expr) (i : Nat) : MetaM (Option Lean.Expr) := do
+private meta partial def envValueAt (env : Lean.Expr) (i : Nat) : MetaM (Option Lean.Expr) := do
   match (← whnfR env).getAppFnArgs with
   | (``Env.cons, #[_, _, v, rest]) => if i == 0 then return some v else envValueAt rest (i - 1)
   | _ => return none
