@@ -10,7 +10,9 @@
     "a closed form with a factor that leaves the normal range",
     "a natural interval form of x̂ᵀ C x̂ that is too wide to decide",
     "a natural interval form of a closed form over an interval of time that is too wide to decide",
-    "Library.Numerics.Interval.Encloses of the intersection of two enclosures of one quantity"
+    "Library.Numerics.Interval.Encloses of the intersection of two enclosures of one quantity",
+    "Library.Numerics.Interval.Encloses (Library.Numerics.Interval.logI tab tab2 a) (Real.log z)",
+    "an interval that contains Real.log z for every z of an interval above zero"
   ],
   "modules": [
     "Library.Numerics.Bounds.Program",
@@ -18,6 +20,7 @@
     "Library.Numerics.Interval.Proof",
     "Library.Numerics.Interval.ArithEncloses",
     "Library.Numerics.Interval.Steps",
+    "Library.Numerics.Interval.FunctionsProof",
     "LeanExe.Dialect.Lemmas",
     "Demos.Conjunction.Model",
     "Demos.Conjunction.Soundness",
@@ -43,6 +46,9 @@
     "Library.Numerics.Interval.encloses_add",
     "Library.Numerics.Interval.increasing_sound",
     "Library.Numerics.Interval.decreasing_sound",
+    "Library.Numerics.Interval.logI",
+    "Library.Numerics.Interval.encloses_logI",
+    "Library.Numerics.Float64.Log.LogTheorem.log_within_one",
     "Library.Numerics.Interval.outward2_upper",
     "Library.Numerics.Interval.Steps.upper_of_position",
     "Library.Numerics.Interval.Steps.position_nextUp",

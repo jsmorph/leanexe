@@ -3,6 +3,7 @@ module
 public import Library.Numerics.Interval.Functions
 public import Library.Numerics.Interval.ArithEncloses
 public import Library.Numerics.Float64.Trig.TrigSinCos
+public import Library.Numerics.Float64.Log.LogTheorem
 public import LeanExe.ProofKit.Signed64Value
 public import Mathlib.Analysis.SpecialFunctions.Pow.Real
 public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
@@ -227,6 +228,26 @@ theorem encloses_cosI {a : Interval} {x : ℝ} (ha : Encloses a x) :
     Encloses (cosI Trig.invPi Trig.halfPi a) (Real.cos x) := fun h => by
   obtain ⟨sa, hc⟩ := cosI_sound h
   exact hc x (ha sa)
+
+theorem encloses_logI {a : Interval} {z : ℝ} (ha : Encloses a z) :
+    Encloses (logI Log.logTable Log.logTable2 a) (Real.log z) := by
+  intro hs
+  unfold logI at hs ⊢
+  by_cases hp : 0 < a.lo
+  · rw [ite_eq_left hp] at hs ⊢
+    have ha0 : a.status = 0 := by
+      unfold increasing at hs; exact beq_iff_eq.mp (join_accepted hs).1
+    have cz := ha ha0
+    obtain ⟨z0, zv⟩ := zero_value
+    have lo0 : 0 < value a.lo.toBits := by rw [← zv]; exact (lt_iff_value z0 cz.2.1).mp hp
+    have hmono : MonotoneOn Real.log (Set.Icc (value a.lo.toBits) (value a.hi.toBits)) :=
+      Real.strictMonoOn_log.monotoneOn.mono fun u hu => lt_of_lt_of_le lo0 hu.1
+    refine (increasing_sound hs hmono ?_ ?_).2 z cz
+    · intro hf; exact Log.LogTheorem.log_within_one _ hf lo0
+    · intro hf
+      exact Log.LogTheorem.log_within_one _ hf (lo0.trans_le (cz.2.2.2.1.trans cz.2.2.2.2))
+  · rw [ite_eq_right hp] at hs
+    exact absurd hs (by decide)
 
 /-! ### Powers -/
 
