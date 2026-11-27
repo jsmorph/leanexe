@@ -86,7 +86,9 @@ dsimproc_decl reduceGpr (gpr _) := fun e => do
 
 open Lean in
 /-- Adds a definition of each node of the trace `t` under the footprint `F`, numbered from the
-counter, and returns the name of the definition of `t`. -/
+counter, and returns the name of the definition of `t`.  Each definition is exposed, as every
+definition of an `@[expose] public section` is, so that an exported theorem such as
+`F.trace = F.n0` can unfold it. -/
 meta partial def addNodes (F : Name) (counter : IO.Ref Nat) (t : Expr) : CoreM Name := do
   let i ← counter.modifyGet fun n => (n, n + 1)
   let name := F ++ Name.mkSimple s!"n{i}"
@@ -101,7 +103,7 @@ meta partial def addNodes (F : Name) (counter : IO.Ref Nat) (t : Expr) : CoreM N
         (cs.foldr (fun c l => mkApp3 (mkConst ``List.cons [Level.zero]) trace (mkConst c) l)
           (mkApp (mkConst ``List.nil [Level.zero]) trace)))
     else pure t
-  addDecl (.defnDecl {
+  addDecl (forceExpose := true) (.defnDecl {
     name := name, levelParams := [], type := trace, value := val,
     hints := ReducibilityHints.abbrev, safety := DefinitionSafety.safe })
   return name
