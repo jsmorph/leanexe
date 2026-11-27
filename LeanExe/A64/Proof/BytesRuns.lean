@@ -499,6 +499,17 @@ theorem BytesRuns.congr {m : Module} {k : Nat} {inMax room : UInt64} {cap : Nat}
   rw [← hout msg hlen]
   exact h1 msg hlen hd
 
+/-- `BytesRuns` for a predicate `T'` of the statuses that `T` implies. -/
+theorem BytesRuns.mono {m : Module} {k : Nat} {inMax room : UInt64} {cap : Nat}
+    {Out : List UInt8 → List UInt8} {T T' : List UInt8 → UInt64 → Prop}
+    (h : BytesRuns m k inMax room cap Out T) (hT : ∀ msg c, T msg c → T' msg c) :
+    BytesRuns m k inMax room cap Out T' := by
+  intro P base area _ hg ms himage hpc hal hroom htop hstack h17 harea hamap habove hU hrx hpo
+  obtain ⟨h1, h2, h3⟩ := h P base area hg ms himage hpc hal hroom htop hstack h17 harea hamap
+    habove hU hrx hpo
+  exact ⟨fun msg hlen hd => (h1 msg hlen hd).imp id
+    fun ⟨ms', hr, hp, ht, ho⟩ => ⟨ms', hr, hp, hT msg _ ht, ho⟩, h2, h3⟩
+
 /-! ## The images -/
 
 /-- The platform of a ready boot state maps the UART as Device memory, outside Normal memory. -/
