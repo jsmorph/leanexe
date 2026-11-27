@@ -2,6 +2,7 @@ module
 
 public import TestSupport.Modules.Gcd
 public import TestSupport.Host
+public import TestSupport.Dialect.RepeatWhile
 public import TestSupport.Modules.PrimeFactors
 public import TestSupport.Numerics.Reference
 public import TestSupport.Numerics.ArcReference
