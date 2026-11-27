@@ -10,7 +10,7 @@ The program is the translation of a module, a volatile global `lx_out` that the 
 | --- | --- | --- | --- |
 | 1 | Lean definition | `p.run.native` | existing proofs |
 | 2 | `p.run.native` | `bigstep_program_terminates` of the whole program in the Lean copy | new Lean proof, described below |
-| 3 | Lean copy | CompCert's `Clight2.bigstep_program_terminates` of the program that `clightgen` reads | review, differential tests, the per-build check, and a renaming lemma |
+| 3 | Lean copy | CompCert's `Clight2.bigstep_program_terminates` of the program that `clightgen` reads | for the AArch64 programs of [the table of instances of N](../clightn/README.md#the-programs), Lean's and Rocq's proofs through the reference semantics N, which `clightn/check.sh` compares, under N's floating-point equations and the premise that `clightgen`'s exporter printed the program that `clightgen` holds; for other programs, review, differential tests, the per-build check, and a renaming lemma |
 | 4 | program that `clightgen` reads | program that `ccomp` compiles | trusted: one front end, with identifiers numbered differently |
 | 5 | Clight big-step termination | behaviour of the Asm program | composition of CompCert's proofs in Rocq, proved in `rocq/Clight2Asm.v` |
 | 6 | Asm program | machine | trusted: printer, assembler, linker, startup code, CompCert's run-time functions on ARMv7-M, CPU, and devices |
@@ -387,7 +387,7 @@ On the Cortex-M7, `tools/baremetal/armv7m/stack-bound.sh` applies the same rules
 [The trusted-base document](trusted-base.md#metal-bare-metal-images) lists these items, with the check and the source of each, together with the items of the other artifacts.  It also states the step from the Lean termination to the Coq judgment that the Rocq theorems take as their hypothesis.  The trusted base of a bare-metal image consists of these items:
 
 1. Lean's kernel, with `propext`, `Classical.choice`, and `Quot.sound`.
-2. The Lean copy of the Clight subset, with the program-level judgment, volatile accesses, and the pointer width, checked by review and by differential tests against `ccomp -interp` of a tree configured for each `Archi` instance.
+2. The Lean copy of the Clight subset, with the program-level judgment, volatile accesses, and the pointer width, checked by review and by differential tests against `ccomp -interp` of a tree configured for each `Archi` instance.  For the AArch64 programs of [the table of instances of N](../clightn/README.md#the-programs), Lean's and Rocq's proofs through the reference semantics N take the place of this item, and the trusted base holds instead N's floating-point equations, the parts of `clightn/check.sh` that [the trusted-base document](trusted-base.md#c-c-files-and-native-executables) lists, and the premise of each Rocq theorem that `clightgen`'s exporter printed the program that `clightgen` holds.
 3. The C printer and the front end that `ccomp` and `clightgen` share, checked per build up to a renaming of identifiers, the transcription `exportStmt` of the statement printer of `clightgen`'s exporter (`export/ExportClight.ml`, lines 88 to 136), and the assumption that `ccomp`'s numbering of identifiers renames `clightgen`'s by a map injective on the program's own identifiers.
 4. CompCert's Rocq proofs of the passes from Cshmgen to Asmgen, of `bigstep_semantics_sound`, and of Asm's determinacy, with CompCert's parameters and Coq's classical axioms, and Coq's kernel, which checks the composition and the uniqueness lemma.
 5. CompCert's extraction to OCaml and its printer of assembly.
