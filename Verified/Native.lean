@@ -49,6 +49,22 @@ def NativeTablesA {α β : Type} [Represent α] [Represent β] (A : Archi) (X : 
             Post x heap store heap' final) ∨
           (aborts = true ∧ StatusRel A E m' trapUnreachable))
 
+/-- A native theorem of a wrapper holds under a precondition that, together with the relation of
+the C memory to the store, gives the precondition of the theorem, as `LeanExe.Native.NativeA.weaken`
+states for `NativeA`. -/
+theorem NativeTablesA.weaken {α β : Type} [Represent α] [Represent β] {A : Archi} {X : ExtSem}
+    {cap : Nat} {mod : Module} {T : Translation} {ps rs : List VT} {fd : function}
+    {aborts : Bool} {f : α → β} {tables : List (UInt64 × Array UInt64)}
+    {Pre Pre' : α → Heap → Store Unit → Prop}
+    {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : NativeTablesA A X cap mod T ps rs fd aborts f tables Pre Post)
+    (hpre : ∀ (E : LeanExe.Native.Env) store heap x m, E.cap = cap → StoreRel A E store m →
+      Pre' x heap store → Pre x heap store) :
+    NativeTablesA A X cap mod T ps rs fd aborts f tables Pre' Post := by
+  intro E hE hG hcap hnres hF store heap params x hHeap hPre hT hArgs hSep hCapS htyped m hst hs
+  exact h E hE hG hcap hnres hF store heap params x hHeap (hpre E store heap x m hcap hst hPre)
+    hT hArgs hSep hCapS htyped m hst hs
+
 /-- The translation of the wrapper of the theorem `h` computes its function as `h` states. -/
 def NativeTablesImpl {α β : Type} [Represent α] [Represent β] {aborts : Bool} {mod : Module}
     {k : Nat} {f : α → β} {tables : List (UInt64 × Array UInt64)}

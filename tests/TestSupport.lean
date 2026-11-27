@@ -16,6 +16,7 @@ public import TestSupport.Native.AlignedCrc
 public import TestSupport.Native.ClightGen
 public import TestSupport.Native.EulerNative
 public import TestSupport.Native.ExamplesNative
+public import TestSupport.Modules.TableWrapper
 public import TestSupport.Native.GcdNative
 public import TestSupport.Native.Gpt32Native
 public import TestSupport.Native.LiteralsNative
