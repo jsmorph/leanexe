@@ -12,16 +12,16 @@ output as 32-bit words.  The inputs are those of the WebAssembly cases. -/
 
 namespace Examples.Binary32.VerifiedPtxCases
 
-private def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
+def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
 
-private def floatWords (x : List Float32) : Array UInt64 :=
+def floatWords (x : List Float32) : Array UInt64 :=
   (x.map fun v => v.toBits.toUInt64).toArray
 
-private def buffer (arg : LeanExe.Source.Arg) : String := s!"u64:{words arg.ptxBuffer.toList}"
+def buffer (arg : LeanExe.Source.Arg) : String := s!"u64:{words arg.ptxBuffer.toList}"
 
 /-- A case line for kernel `name` with `n` output elements, `extra` blocks of 64 threads beyond
 those that cover them, and the buffers of `inputs`. -/
-private def caseLine (name : String) (n extra : Nat) (inputs : List LeanExe.Source.Arg)
+def caseLine (name : String) (n extra : Nat) (inputs : List LeanExe.Source.Arg)
     (result : Array Float32) : String :=
   let blocks := (n + 63) / 64 + extra
   let initial := n.toUInt64 :: List.replicate n 0x7fc000017fc00001
