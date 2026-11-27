@@ -4,6 +4,7 @@ public import TestSupport.Modules.Gcd
 public import TestSupport.Host
 public import TestSupport.Modules.PrimeFactors
 public import TestSupport.Numerics.Reference
+public import TestSupport.Numerics.PowerSpectrumSpec
 public import TestSupport.Numerics.ArcReference
 public import TestSupport.Numerics.HyperbolicReference
 public import TestSupport.Numerics.PowerReference
