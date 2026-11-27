@@ -78,12 +78,14 @@ def subImmT : Footprint := isla_trace% "tests/isla/m7/sub-imm"
 /-- The footprint of `ADDW Rd, SP, #imm12`. -/
 def addwSpT : Footprint := isla_trace% "tests/isla/m7/addw-sp"
 
+set_option maxRecDepth 8000 in
 /-- The footprint of `SUBW Rd, SP, #imm12`. -/
 def subwSpT : Footprint := isla_trace% "tests/isla/m7/subw-sp"
 
 /-- The footprint of `ADDW SP, SP, #imm12`. -/
 def addwSpSpT : Footprint := isla_trace% "tests/isla/m7/addw-sp-sp"
 
+set_option maxRecDepth 8000 in
 /-- The footprint of `SUBW SP, SP, #imm12`. -/
 def subwSpSpT : Footprint := isla_trace% "tests/isla/m7/subw-sp-sp"
 
