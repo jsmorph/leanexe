@@ -67,6 +67,15 @@ theorems.  `tools/verified-request-check --freeze` supports only `Examples/<Name
 `spec.sha256` holds the output of `sha256sum` on `Spec.lean` and `Samples.lean`, and the demo's
 driver checks it with `sha256sum -c`.
 
+The conversion of leanexe to Lean's module system (`ad4562d27`) is the only commit that changed
+`Spec.lean` and `Samples.lean` after the reviewed version, that of `1cd5bc8aa`, and it changed only
+their header lines, so `spec.sha256` records the hashes of the files with the new lines.  In each
+file, it added `module` and a blank line before the imports, made each import public, and added a
+blank line and `@[expose] public section` after them.  The new import lines are `public import
+LeanExe.Dialect.Bytes` and `public import Library.Hashing.Words.Bytes` in `Spec.lean`, and `public
+import LeanExe.Dialect.Bytes` and `public import Library.Hashing.Words.Program` in `Samples.lean`.
+Every other line of the two files is the line that the two reviews above covered.
+
 ## Review of the command's specification
 
 A fresh agent reviewed `Meets` of [the command's specification](CommandSpec.lean) and the
