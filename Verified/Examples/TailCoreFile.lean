@@ -2,6 +2,7 @@ module
 
 public import Verified.Examples.TailCore
 public import LeanExe.Pipeline.FileBytes
+import all Init.Data.Nat.Fold
 
 @[expose] public section
 
