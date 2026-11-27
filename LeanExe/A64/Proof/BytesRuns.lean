@@ -23,7 +23,9 @@ satisfy a predicate `G` and one with the trap, whose preconditions hold at the s
 states that the block that the allocator returns, with the message's bytes written into it, holds
 a buffer of those bytes.  `bytes_runs` gives `BytesRuns` from one compiler theorem with the flag
 `aborts`, and `bytes_runs_on` from two with the trap only for a message that fails `G`, both
-with the precondition at every store whose memory has `cap` pages.  `image_bytes_run` joins
+with the precondition at every store whose memory has `cap` pages.  `borrowed_callStore` keeps an
+array of the initial store, such as a wrapper's table, borrowed at the store of the call, which
+the wrapper forms of `Verified/BytesRuns.lean` use.  `image_bytes_run` joins
 `BytesRuns` to the startup, and `image_bytes_run_at` states it at every base.
 -/
 
@@ -332,6 +334,40 @@ theorem callStore_memoryCap (m : Module) (cap : Nat) (heap : Heap) (msg : List U
   unfold callStore Store.memoryCap
   rw [(storeBytes_globals _ _ msg).2.2, Heap.allocateStore_memoryCaps]
   rfl
+
+/-- The writes of the message stay inside the block that the allocator returns. -/
+theorem callStore_writesWithin {heap : Heap} {m : Module} {cap : Nat} {msg : List UInt8}
+    (hAt : heap.At (m.initialStore : Store Unit)) (hlen : msg.length ≤ 4294967296)
+    (hFits : heap.Fits (allocSize (UInt64.ofNat msg.length))) :
+    WritesWithin (heap.allocateStore (initStore m cap) (allocSize (UInt64.ofNat msg.length)) 1)
+      (callStore m cap heap msg)
+      (FixedArrayAllocate.root heap.top (allocSize (UInt64.ofNat msg.length)) heap.free).toNat
+      (allocatedCapacity (allocSize (UInt64.ofNat msg.length)) heap.free).toNat := by
+  have hBlock : (heap.allocate (allocSize (UInt64.ofNat msg.length))).Block
+      (heap.allocateStore (initStore m cap) (allocSize (UInt64.ofNat msg.length)) 1)
+      (FixedArrayAllocate.root heap.top (allocSize (UInt64.ofNat msg.length)) heap.free)
+      (allocatedCapacity (allocSize (UInt64.ofNat msg.length)) heap.free) 1 :=
+    (heapAt_initStore hAt cap).allocate_block 1 hFits
+  have hcap := allocated_capacity (allocSize (UInt64.ofNat msg.length)) heap.free
+  have hneed : msg.length ≤ (allocSize (UInt64.ofNat msg.length)).toNat := by
+    have := le_allocSize (bytes := UInt64.ofNat msg.length)
+      (by rw [UInt64.toNat_ofNat']; simp only [Nat.reducePow] at *; omega)
+    rwa [UInt64.toNat_ofNat', Nat.mod_eq_of_lt (by simp only [Nat.reducePow]; omega)] at this
+  have haddr := hBlock.address
+  have hmem := hBlock.memory
+  exact storeBytes_write _ _ msg (by omega) _ (by omega)
+
+/-- An array borrowed at the module's initial store, such as a table of a wrapper, stays borrowed
+at the store of the call, after the allocation of the message's block and the writes of the
+message. -/
+theorem borrowed_callStore {heap : Heap} {m : Module} {cap : Nat} {msg : List UInt8}
+    {p : UInt64} {ws : Array UInt64} (hAt : heap.At (m.initialStore : Store Unit))
+    (hlen : msg.length ≤ 4294967296) (hFits : heap.Fits (allocSize (UInt64.ofNat msg.length)))
+    (hB : heap.Borrowed (m.initialStore : Store Unit) p ws) :
+    (heap.allocate (allocSize (UInt64.ofNat msg.length))).Borrowed (callStore m cap heap msg) p
+      ws :=
+  Heap.Borrowed.allocate_within (borrowed_initStore hB cap) (heapAt_initStore hAt cap) hFits
+    (callStore_writesWithin hAt hlen hFits)
 
 /-- `BytesRuns` from two theorems of the entry, for a module whose function 0 is the allocator:
 `htf`, without the trap, for the messages that satisfy `G`, and `himpl`, which may trap, for the
