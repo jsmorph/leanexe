@@ -4,6 +4,7 @@ public import TestSupport.A64.WasiElf
 public import TestSupport.A64.ElfWitness
 public import Demos.RandomChoice.NativeChoices
 public import LeanExe.A64.File
+import all Init.Data.List.SplitOn.Basic
 
 @[expose] public section
 
