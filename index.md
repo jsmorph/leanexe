@@ -159,7 +159,7 @@ Word reductions use `UInt64` arithmetic modulo `2^64` and start from zero, one, 
 
 ### 4.2. Binary64 reductions
 
-Binary64 reductions follow the stated order, including the definitions' NaNs and signed zeros.  Missing flags read as false, and missing numeric entries read as zero.  Numerical-error bounds remain open.
+Binary64 reductions follow the stated order, including the definitions' NaNs and signed zeros.  Missing flags read as false, and missing numeric entries read as zero.  For finite terms whose magnitudes sum to at most `2^1022`, the master theorems bound the error of each sum against the exact sum `Σ x_i`: `γ_(n-1) Σ |x_i|` for the left-to-right sum of `n` terms of `total` and of `select`, and `γ_d Σ |x_i|` with `d = ⌈log₂ (hi - lo)⌉` for `sumRange`, where `γ_k = k / (2^53 - k)`.  The master theorem of `largest` states the element that IEEE 754-2019's `maximum` selects.
 
 | Entry | Forms | Implementation | Behavior | Theorems, claims, and limits |
 |---|---|---|---|---|
@@ -170,7 +170,7 @@ Binary64 reductions follow the stated order, including the definitions' NaNs and
 
 ## 5. Statistics
 
-Mean and sum of squares allocate nothing, so their generated execution theorems state that the modules compute them bit for bit without a trap.  Both sum left to right from zero, and the sum of squares rounds each multiplication and each addition separately.  Numerical-error bounds remain open.
+Mean and sum of squares allocate nothing, so their generated execution theorems state that the modules compute them bit for bit without a trap.  Both sum left to right from zero, and the sum of squares rounds each multiplication and each addition separately.  For `n` finite floats, the master theorems bound the error against the exact values: the mean lies within `γ_n Σ |x_i| / n + 2^-1075` of `(Σ x_i) / n` when `Σ |x_i| ≤ 2^1021`, and the sum of squares within `γ_n Σ x_i^2 + n / 2^1074` of `Σ x_i^2` when `Σ x_i^2 ≤ 2^1021`, where `γ_k = k / (2^53 - k)`.
 
 | Entry | Forms | Implementation | Behavior | Theorems, claims, and limits |
 |---|---|---|---|---|
@@ -235,7 +235,7 @@ The integer-order theorems exclude `2 ≤ |x| < 2^302` with `|n| > |x|/2`.  That
 
 ## 7. Linear algebra
 
-[The linear-algebra library](Library/Numerics/LinearAlgebra/README.md) supplies vector and matrix operations that both GPT demos use.  Matrices are row-major flat arrays.  Dimensions and indices use `UInt64` arithmetic modulo `2^64`, and missing entries read as zero.  Multiplication and addition round separately, and dot products accumulate left to right from zero.  The execution theorems keep that order under the generated memory and recursion conditions, and numerical-error bounds remain open.
+[The linear-algebra library](Library/Numerics/LinearAlgebra/README.md) supplies vector and matrix operations that both GPT demos use.  Matrices are row-major flat arrays.  Dimensions and indices use `UInt64` arithmetic modulo `2^64`, and missing entries read as zero.  Multiplication and addition round separately, and dot products accumulate left to right from zero.  The execution theorems keep that order under the generated memory and recursion conditions.  For finite inputs within stated magnitudes, the master theorems bound the error of each result against the exact value: an entry of `dot`, `matVec`, `matMul`, `matMulT`, or `matVec32`, a sum of `k` products, lies within `γ_k Σ |x_i y_i|` of the exact sum, plus a term for products below the normal range, where `γ_k = k / (2^p - k)` for the format's precision `p`; an entry of `linear32`, which adds a bias `b` to such a sum, lies within `γ_(k+1) (Σ |x_i y_i| + |b|)` plus that term; `axpy`, `grid`, and `axpyArray32` have `γ_2` bounds of a product and a sum; and `add`, `add32`, and `scale32` have the bound of one rounding.
 
 | Entry | Forms | Implementation | Behavior | Theorems, claims, and limits |
 |---|---|---|---|---|
