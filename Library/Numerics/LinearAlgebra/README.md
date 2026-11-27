@@ -14,6 +14,8 @@ The definitions determine the output lengths.  Binary64 `axpy` returns the lengt
 Matrix products return the requested row count or the word product of their output dimensions.
 
 Each family's `Compiled` module proves execution, allocation, and trap-free statements under the
-verified compiler's premises.  These statements preserve floating-point operation order.  Further
-numerical-error bounds remain future work.  The [binary64 GPT](../../../Demos/Gpt/README.md) and
+verified compiler's premises.  These statements preserve floating-point operation order.  Each
+family's `Master` module bounds the error of each result against the exact value for finite inputs
+within stated magnitudes, with `γ_k = k / (2^p - k)` for a sum of `k` products in a format of
+precision `p`.  The [binary64 GPT](../../../Demos/Gpt/README.md) and
 [binary32 GPT](../../../Demos/Gpt32/README.md) demos import these functions.
