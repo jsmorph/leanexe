@@ -3,6 +3,9 @@ module
 public import Demos.Sgp4.Program
 public import Verified.Reflect.Command
 public import Demos.Sgp4.Flat
+public meta import Library.Numerics.Float64.Exp.Program
+public meta import Library.Numerics.Float64.Pow.Program
+public meta import Library.Numerics.Float64.Trig.Program
 
 @[expose] public section
 

@@ -3,6 +3,7 @@ module
 public import Demos.Conjunction.Accuracy
 public import Verified.Reflect.Command
 public import Demos.Conjunction.AccuracyFlat
+public meta import Library.Numerics.Float64.Exp.Program
 
 @[expose] public section
 

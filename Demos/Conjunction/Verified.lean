@@ -3,6 +3,8 @@ module
 public import Demos.Conjunction.Message
 public import Verified.Reflect.Command
 public import Demos.Conjunction.Flat
+public meta import Library.Numerics.Float64.Exp.Program
+public meta import Library.Numerics.Float64.Erfc.Program
 
 @[expose] public section
 

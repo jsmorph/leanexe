@@ -3,6 +3,7 @@ module
 public import Demos.Orbit.LambertBox
 public import Verified.Reflect.Command
 public import Demos.Orbit.LambertFlat
+public meta import Library.Numerics.Float64.Log.Program
 
 @[expose] public section
 

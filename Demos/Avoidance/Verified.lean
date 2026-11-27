@@ -4,6 +4,7 @@ public import Demos.Avoidance.Flat
 public import Demos.Conjunction.Flat
 public import Library.Numerics.Interval.Encoding
 public import Verified.Reflect.Command
+public meta import Library.Numerics.Float64.Exp.Program
 
 @[expose] public section
 
