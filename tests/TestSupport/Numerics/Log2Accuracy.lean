@@ -4,6 +4,10 @@ public import Library.Numerics.Float64.Log2.Program
 public import TestSupport.Numerics.WorstCases
 public import Library.Numerics.Float64.Log10.Program
 public import TestSupport.Numerics.PowerReference
+public meta import Library.Numerics.Float64.Log2.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import Library.Numerics.Float64.Log10.Program
+public meta import TestSupport.Numerics.PowerReference
 
 @[expose] public section
 

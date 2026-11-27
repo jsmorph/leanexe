@@ -3,6 +3,9 @@ module
 public import Library.Numerics.Float64.Asinh.Program
 public import TestSupport.Numerics.WorstCases
 public import TestSupport.Numerics.HyperbolicReference
+public meta import Library.Numerics.Float64.Asinh.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.HyperbolicReference
 
 @[expose] public section
 

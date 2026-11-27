@@ -3,6 +3,9 @@ module
 public import Library.Numerics.Decimal.ParseFloat.Program
 public import Library.Numerics.Decimal.Shared.StrconvDecode
 public import Interpreter.Wasm.IEEE64
+public meta import Library.Numerics.Decimal.ParseFloat.Program
+public meta import Library.Numerics.Decimal.Shared.StrconvDecode
+public meta import Interpreter.Wasm.IEEE64
 
 @[expose] public section
 

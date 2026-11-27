@@ -2,6 +2,8 @@ module
 
 public import Library.Numerics.Arithmetic.Fma.Program
 public import TestSupport.Numerics.Reference
+public meta import Library.Numerics.Arithmetic.Fma.Program
+public meta import TestSupport.Numerics.Reference
 
 @[expose] public section
 

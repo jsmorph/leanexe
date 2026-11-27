@@ -3,6 +3,9 @@ module
 public import Library.Numerics.Float64.Erfc.Program
 public import TestSupport.Numerics.WorstCases
 public import TestSupport.Numerics.ErfReference
+public meta import Library.Numerics.Float64.Erfc.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.ErfReference
 
 @[expose] public section
 

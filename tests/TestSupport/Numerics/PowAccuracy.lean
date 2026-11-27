@@ -3,6 +3,9 @@ module
 public import Library.Numerics.Float64.Pow.Program
 public import TestSupport.Numerics.WorstCases
 public import TestSupport.Numerics.PowerReference
+public meta import Library.Numerics.Float64.Pow.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.PowerReference
 
 @[expose] public section
 

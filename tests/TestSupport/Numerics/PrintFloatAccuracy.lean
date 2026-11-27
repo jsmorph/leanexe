@@ -3,6 +3,9 @@ module
 public import Library.Numerics.Decimal.PrintFloat.Program
 public import Library.Numerics.Decimal.ParseFloat.Program
 public import Library.Numerics.Decimal.Shared.StrconvRound
+public meta import Library.Numerics.Decimal.PrintFloat.Program
+public meta import Library.Numerics.Decimal.ParseFloat.Program
+public meta import Library.Numerics.Decimal.Shared.StrconvRound
 
 @[expose] public section
 

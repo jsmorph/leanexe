@@ -3,6 +3,9 @@ module
 public import Library.Numerics.Float64.Bessel.Program
 public import TestSupport.Numerics.WorstCases
 public import TestSupport.Numerics.BesselReference
+public meta import Library.Numerics.Float64.Bessel.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.BesselReference
 
 @[expose] public section
 

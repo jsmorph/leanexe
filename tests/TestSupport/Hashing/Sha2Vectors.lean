@@ -4,6 +4,10 @@ public import Library.Hashing.Sha256.Program
 public import Library.Hashing.Sha512.Program
 public import Library.Hashing.Sha2.Spec
 public import TestSupport.Hashing.Packing
+public meta import Library.Hashing.Sha256.Program
+public meta import Library.Hashing.Sha512.Program
+public meta import Library.Hashing.Sha2.Spec
+public meta import TestSupport.Hashing.Packing
 
 @[expose] public section
 

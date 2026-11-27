@@ -4,6 +4,10 @@ public import Library.Regex.Program
 public import Library.Regex.Spec
 public import Library.Bytes.Packed
 public import TestSupport.Regex.Generate
+public meta import Library.Regex.Program
+public meta import Library.Regex.Spec
+public meta import Library.Bytes.Packed
+public meta import TestSupport.Regex.Generate
 
 @[expose] public section
 

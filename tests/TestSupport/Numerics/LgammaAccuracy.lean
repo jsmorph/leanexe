@@ -3,6 +3,9 @@ module
 public import Library.Numerics.Float64.Lgamma.Program
 public import TestSupport.Numerics.WorstCases
 public import TestSupport.Numerics.GammaReference
+public meta import Library.Numerics.Float64.Lgamma.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.GammaReference
 
 @[expose] public section
 

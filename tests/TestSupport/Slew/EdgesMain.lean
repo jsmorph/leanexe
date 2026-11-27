@@ -1,6 +1,7 @@
 module
 
 public import TestSupport.Slew.Edges
+public meta import TestSupport.Slew.Edges
 
 @[expose] public section
 

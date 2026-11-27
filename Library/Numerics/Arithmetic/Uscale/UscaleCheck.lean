@@ -1,6 +1,7 @@
 module
 
 public import Library.Numerics.Arithmetic.Uscale.Compiled
+public meta import Library.Numerics.Arithmetic.Uscale.Compiled
 
 @[expose] public section
 

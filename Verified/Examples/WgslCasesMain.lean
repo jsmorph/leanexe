@@ -2,6 +2,8 @@ module
 
 public import Verified.Examples.WgslCases
 public import Examples.Binary32.VerifiedGpuCases
+public meta import Verified.Examples.WgslCases
+public meta import Examples.Binary32.VerifiedGpuCases
 
 @[expose] public section
 

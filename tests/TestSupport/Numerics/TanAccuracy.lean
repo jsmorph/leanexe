@@ -3,6 +3,9 @@ module
 public import Library.Numerics.Float64.Tan.Program
 public import TestSupport.Numerics.WorstCases
 public import TestSupport.Numerics.Reference
+public meta import Library.Numerics.Float64.Tan.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.Reference
 
 @[expose] public section
 

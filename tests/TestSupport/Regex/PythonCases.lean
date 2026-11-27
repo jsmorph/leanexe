@@ -1,6 +1,7 @@
 module
 
 public import TestSupport.Regex.Generate
+public meta import TestSupport.Regex.Generate
 
 @[expose] public section
 

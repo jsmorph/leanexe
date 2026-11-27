@@ -3,6 +3,9 @@ module
 public import Library.Hashing.Hmac.Program
 public import Library.Hashing.Hmac.Spec
 public import TestSupport.Hashing.Packing
+public meta import Library.Hashing.Hmac.Program
+public meta import Library.Hashing.Hmac.Spec
+public meta import TestSupport.Hashing.Packing
 
 @[expose] public section
 

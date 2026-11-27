@@ -2,6 +2,8 @@ module
 
 public import Library.Numerics.Fourier.Program
 public import TestSupport.Numerics.Reference
+public meta import Library.Numerics.Fourier.Program
+public meta import TestSupport.Numerics.Reference
 
 @[expose] public section
 

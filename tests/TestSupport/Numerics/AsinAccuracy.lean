@@ -3,6 +3,9 @@ module
 public import Library.Numerics.Float64.Asin.Program
 public import TestSupport.Numerics.WorstCases
 public import TestSupport.Numerics.ArcReference
+public meta import Library.Numerics.Float64.Asin.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.ArcReference
 
 @[expose] public section
 
