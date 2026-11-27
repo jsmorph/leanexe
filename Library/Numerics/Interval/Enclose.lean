@@ -244,7 +244,8 @@ meta partial def chain (rules : Array Name) (g : MVarId) : TacticM Unit := g.wit
     chain rules (← split g' fvars[2]!)
   | _, _ => solve rules g
 
-/-- Proves that an interval function made by `enclosure_def` encloses its real function. -/
+/-- Proves that an interval function encloses a real function whose body has the same chain of
+`let` bindings, such as the pair that `enclosure_def` declares or a hand-written pair. -/
 elab "enclose" : tactic => withTheReader Core.Context ({ · with maxHeartbeats := 0 }) do
   let g ← getMainGoal
   let rules ← labelled `enclose
