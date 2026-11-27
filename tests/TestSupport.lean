@@ -58,6 +58,8 @@ public import TestSupport.A64.CicSigned
 public import TestSupport.A64.Int64Text
 public import TestSupport.A64.Uart
 public import TestSupport.A64.RunsMono
+public import TestSupport.A64.Twice
+public import TestSupport.Bare.InputOn
 public import TestSupport.A64.Mss
 
 @[expose] public section
