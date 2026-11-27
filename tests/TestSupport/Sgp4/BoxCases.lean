@@ -56,8 +56,8 @@ partial def lines : IO Unit := do
     match time.trimAscii.copy.toNat? with
     | some w =>
       let t := around (Float.ofBits (UInt64.ofNat w))
-      IO.println (boxText (Tle.propagate (bytes (line1.dropRightWhile (· == '\n')))
-        (bytes (line2.dropRightWhile (· == '\n'))) t))
+      IO.println (boxText (Tle.propagate (bytes (line1.dropEndWhile (· == '\n')).copy)
+        (bytes (line2.dropEndWhile (· == '\n')).copy) t))
     | none => throw (IO.userError s!"expected a time: {time}")
     go
   go
