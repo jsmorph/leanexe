@@ -1250,8 +1250,11 @@ IMPORT = re.compile(r"^(public )?(meta )?import (all )?")
 
 def mutate(group, src, out, form=None):
     """Writes SRC with the planted errors of GROUP to OUT, and prints the differences that the
-    check must report.  A Lean file also imports the reader and calls it, unless it does.  A
-    module imports it with meta import, which run_cmd needs in a module."""
+    check must report.  A Lean file also imports the reader and calls it, unless it does.  The
+    copy of a module drops the keyword module and the modifiers of its imports, so that it is a
+    file outside the module system, as the instances' files and clightn/read.lean are: a module
+    imports another module's theorems as axioms (Lean/Environment.lean), which the reader prints
+    as not theorems."""
     text = open(src).read()
     keys = []
     plants = MUTATIONS[group] if group in MUTATIONS else instance_mutations(group, form)
@@ -1276,8 +1279,8 @@ def mutate(group, src, out, form=None):
     if group.startswith("lean") and "run_cmd ClightN.Read.dump" not in text:
         lines = text.split("\n")
         last = max(i for i, l in enumerate(lines) if IMPORT.match(l))
-        meta = "meta " if "module" in lines[:last] else ""
-        lines.insert(last + 1, f"{meta}import LeanExe.Native.ClightN.Read")
+        header = [IMPORT.sub("import ", l) for l in lines[:last + 1] if l != "module"]
+        lines = header + ["import LeanExe.Native.ClightN.Read"] + lines[last + 1:]
         text = "\n".join(lines) + "\nrun_cmd ClightN.Read.dump\n"
     open(out, "w").write(text)
     print(",".join(keys))
