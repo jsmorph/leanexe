@@ -81,22 +81,8 @@ theorem acosI_encloses {a : Interval} {z : ℝ} (ha : Encloses a z) (h0 : -1 ≤
     exact Asin.AcosTheorem.acos_within_one _ hf (abs_le.mpr ⟨by linarith, bhi⟩)
 
 theorem logI_encloses {a : Interval} {z : ℝ} (ha : Encloses a z) :
-    Encloses (logI Log.logTable Log.logTable2 a) (Real.log z) := by
-  intro hs
-  unfold logI at hs ⊢
-  split_ifs at hs ⊢ with hp
-  · have ha0 : a.status = 0 := by
-      unfold increasing at hs; exact beq_iff_eq.mp (join_accepted hs).1
-    have cz := ha ha0
-    obtain ⟨z0, zv⟩ := zero_value
-    have lo0 : 0 < value a.lo.toBits := by rw [← zv]; exact (lt_iff_value z0 cz.2.1).mp hp
-    have hmono : MonotoneOn Real.log (Set.Icc (value a.lo.toBits) (value a.hi.toBits)) :=
-      Real.strictMonoOn_log.monotoneOn.mono fun u hu => lt_of_lt_of_le lo0 hu.1
-    refine (increasing_sound hs hmono ?_ ?_).2 z cz
-    · intro hf; exact Log.LogTheorem.log_within_one _ hf lo0
-    · intro hf
-      exact Log.LogTheorem.log_within_one _ hf (lo0.trans_le (cz.2.2.2.1.trans cz.2.2.2.2))
-  · exact absurd hs (by decide)
+    Encloses (logI Log.logTable Log.logTable2 a) (Real.log z) :=
+  Library.Numerics.Interval.encloses_logI ha
 
 theorem arcoshI_encloses {a : Interval} {z : ℝ} (ha : Encloses a z) :
     Encloses (arcoshI Log.logTable Log.logTable2 a) (arcosh z) := by

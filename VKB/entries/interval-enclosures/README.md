@@ -22,7 +22,9 @@ and `Library.Numerics.Interval.Steps.two_down` give the real bounds, from
 `Library.Numerics.Interval.Steps.upper_of_position` and
 `Library.Numerics.Interval.Steps.position_nextUp`, and
 `LeanExe.ProofKit.F64SignedRounding.within_of_nonneg` converts the statement of `exp`, which uses
-the nonnegative reference.  For a loop that adds panels, apply `LeanExe.Dialect.loop_induction`
+the nonnegative reference.  `Library.Numerics.Interval.encloses_logI` encloses `Real.log` over an
+interval above zero by `increasing_sound` with
+`Library.Numerics.Float64.Log.LogTheorem.log_within_one`.  For a loop that adds panels, apply `LeanExe.Dialect.loop_induction`
 with the invariant that an accepted sum of the first `k` panels contains the integral from the
 first partition point to point `k`, and bound each panel with
 `Demos.Conjunction.Model.integral_eq_width_mul`.  For a chain of arithmetic operations,
