@@ -747,7 +747,8 @@ class Check:
 
         def length(id):
             if id not in chain:
-                chain[id] = history.get(id, 600) + max((length(x) for x in dependents.get(id, [])), default=0)
+                chain[id] = history.get(id, self.items[id].get('est') or 600) + \
+                    max((length(x) for x in dependents.get(id, [])), default=0)
             return chain[id]
         pending.sort(key=lambda it: -length(it['id']))
         idle = None

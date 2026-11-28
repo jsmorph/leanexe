@@ -29,24 +29,35 @@
 # loads any module, it builds every module it loads and the executables it runs in one `lake build`
 # under tools/leanrun, with the caller's LEANRUN_THREADS and LEANRUN_MEMORY_HIGH, since
 # native-verified reads a module's compiled file without checking it against the source.
-# With --module, which may repeat, the script runs only the modules named.  Its products lie in OUT,
+# With --module, which may repeat, the script runs only the modules named, and with --slice K/N only
+# the cases whose place in the work list is K modulo N, so that N runs share the cases of the
+# modules; the slice 0 reports the cases that do not run.  Each module's line also gives the
+# seconds that its cases took, summed over the jobs.  The products lie in OUT,
 # build/baremetal/verified unless --out names another directory.
-# Usage: tests/baremetal/verified.sh [--out OUT] [--module NAME]...
+# Usage: tests/baremetal/verified.sh [--out OUT] [--slice K/N] [--module NAME]...
 set -euo pipefail
 only=""
 out=""
+slice=0/1
 while [ "$#" -ne 0 ]; do
-  if [ "$#" -lt 2 ] || [ -z "$2" ] || { [ "$1" != "--module" ] && [ "$1" != "--out" ]; }; then
-    echo "usage: tests/baremetal/verified.sh [--out OUT] [--module NAME]..." >&2
+  if [ "$#" -lt 2 ] || [ -z "$2" ] ||
+      { [ "$1" != "--module" ] && [ "$1" != "--out" ] && [ "$1" != "--slice" ]; }; then
+    echo "usage: tests/baremetal/verified.sh [--out OUT] [--slice K/N] [--module NAME]..." >&2
     exit 2
   fi
-  if [ "$1" = "--module" ]; then
-    only+=" $2 "
-  else
-    out=$2
-  fi
+  case $1 in
+    --module) only+=" $2 " ;;
+    --out) out=$2 ;;
+    --slice) slice=$2 ;;
+  esac
   shift 2
 done
+if ! [[ $slice =~ ^([0-9]+)/([1-9][0-9]*)$ ]] || [ "${BASH_REMATCH[1]}" -ge "${BASH_REMATCH[2]}" ]; then
+  echo "usage: tests/baremetal/verified.sh: --slice K/N needs 0 <= K < N" >&2
+  exit 2
+fi
+slice_k=${BASH_REMATCH[1]}
+slice_n=${BASH_REMATCH[2]}
 # Whether the module $1 runs: every module without --module, and otherwise the modules named.
 selected() {
   [ -z "$only" ] || [[ $only == *" $1 "* ]]
@@ -163,6 +174,14 @@ while IFS='|' read -r module name rest; do
   fi
 done <"$modcases"
 
+if [ "$slice_n" -gt 1 ]; then
+  awk -v k="$slice_k" -v n="$slice_n" '(NR - 1) % n == k' "$out/work.txt" >"$out/work.slice"
+  mv "$out/work.slice" "$out/work.txt"
+  if [ "$slice_k" -ne 0 ]; then
+    omitted=()
+  fi
+fi
+
 # Runs the host of module $1 with the arguments that follow, in the directory $w, and leaves
 # its standard output and error in $w/stdout.txt and $w/stderr.txt, its exit status in $code,
 # its stack high-water mark in $stack, and any report of an exception in $exception.
@@ -207,14 +226,16 @@ inline_files() {
 }
 
 # Runs the work lines of shard $1 and writes one result line per case to $out/results.$1: the
-# module, pass or fail, the high-water mark, and for a failure its description.
+# module, pass or fail, the high-water mark, the largest stack of a call and its bound, the
+# case's microseconds, and for a failure its description.
 run_shard() {
   w=$out/shard.$1
   mkdir -p "$w"
   local res=$out/results.$1
   : >"$res"
-  local kind name export result args expected live allocsMax got held allocs frees message
+  local kind name export result args expected live allocsMax got held allocs frees message t0
   while IFS='|' read -r kind name export result args expected live allocsMax; do
+    t0=${EPOCHREALTIME/./}
     read -ra argv <<<"$args"
     inline_files "${argv[@]}"
     argv=("${inlined[@]}")
@@ -271,9 +292,11 @@ run_shard() {
       message="$export $args: the stack's high-water mark reached its size"
     fi
     if [ -z "$message" ]; then
-      printf '%s|pass|%s|%s|%s|\n' "$name" "${stack:-0}" "$used" "$ubound" >>"$res"
+      printf '%s|pass|%s|%s|%s|%s|\n' "$name" "${stack:-0}" "$used" "$ubound" \
+        "$((${EPOCHREALTIME/./} - t0))" >>"$res"
     else
-      printf '%s|fail|%s|%s|%s|%s\n' "$name" "${stack:-0}" "$used" "$ubound" "$message" >>"$res"
+      printf '%s|fail|%s|%s|%s|%s|%s\n' "$name" "${stack:-0}" "$used" "$ubound" \
+        "$((${EPOCHREALTIME/./} - t0))" "$message" >>"$res"
     fi
   done < <(awk -v k="$1" -v n="$jobs" '(NR - 1) % n == k' "$out/work.txt")
 }
@@ -304,19 +327,20 @@ awk -F'|' '
   $2 == "pass" || $2 == "fail" {
     if ($3 + 0 > stack[$1]) stack[$1] = $3 + 0
     if ($4 + 0 >= used[$1]) { used[$1] = $4 + 0; bound[$1] = $5 + 0 }
+    us[$1] += $6
   }
   $2 == "omitted" { omit[$1] += $3; seen[$1] = 1 }
   END {
     for (m in seen) {
-      printf "baremetal verified: %s passed %d failed %d not run %d stack %d module %d bound %d\n",
-        m, pass[m], fail[m], omit[m], stack[m], used[m], bound[m]
+      printf "baremetal verified: %s passed %d failed %d not run %d stack %d module %d bound %d seconds %.1f\n",
+        m, pass[m], fail[m], omit[m], stack[m], used[m], bound[m], us[m] / 1e6
       tp += pass[m]; tf += fail[m]; to += omit[m]
     }
     printf "baremetal verified: total passed %d failed %d not run %d\n", tp, tf, to > "/dev/stderr"
   }' "$out/results.txt" 2>"$out/total.txt" | sort
 cat "$out/total.txt"
 echo "baremetal verified: $(wc -l <"$out/work.txt") cases in $seconds s with $jobs jobs"
-awk -F'|' '$2 == "fail" { print "fail: " $1 " " $6 }' "$out/results.txt"
+awk -F'|' '$2 == "fail" { print "fail: " $1 " " $7 }' "$out/results.txt"
 echo "baremetal verified: modules without a translation:${untranslated:- none}"
 if [ "${#unbuilt[@]}" -eq 0 ]; then
   echo "baremetal verified: modules that do not build: none"

@@ -114,20 +114,79 @@ WORK = 'build/check/work'
 
 
 def item(id, step, cmd, mem=4, cpus=1, tools=(), deps=(), inputs=(), outputs=(), exclusive=(),
-         timeout=7200, env=None, primary=False, scripts=(), targets=(), portable=False, peak=None):
+         timeout=7200, env=None, primary=False, scripts=(), targets=(), portable=False, peak=None, est=None):
     """An item.  cmd is a bash command; targets are Lake targets it reads, and scripts are the files
     whose text names the Lake executables it runs, which the build also includes.  An item runs on
     an AArch64 machine, where the tree's executables were built, unless it is portable: it then
     reads only modules, which Lean reads on any machine.  peak is the expected peak memory in GiB,
     which a machine's peak_max compares with the larger of it and the recorded peak."""
     return {
-        'peak': peak,
+        'peak': peak, 'est': est,
         'targets': list(targets),
         'id': id, 'step': step, 'cmd': cmd, 'mem': mem, 'cpus': cpus,
         'tools': sorted(set(tools) | {'lean'} | (set() if portable else {'aarch64'})), 'deps': list(deps), 'inputs': list(inputs),
         'outputs': list(outputs), 'exclusive': list(exclusive), 'timeout': timeout,
         'env': env or {}, 'primary': primary, 'scripts': list(scripts),
     }
+
+
+BM_OVERHEAD = 90
+BM_MODULE = 5
+
+
+def baremetal_seconds(root):
+    """The seconds of each module's cases in tests/baremetal/verified.sh, summed over its jobs: the
+    driver's own figure from the last run's logs, or else the module's cases times the seconds a
+    case took in its group."""
+    out = {}
+    for d in ('passes', 'logs'):
+        base = os.path.join(root, 'build/check', d, 'baremetal-verified')
+        if not os.path.isdir(base):
+            continue
+        for f in sorted(os.listdir(base)):
+            with open(os.path.join(base, f), errors='replace') as h:
+                text = h.read()
+            rows = re.findall(r'^baremetal verified: ([^ ]+) passed ([0-9]+) failed ([0-9]+) not run [0-9]+ stack [0-9]+ '
+                              r'module [0-9]+ bound [0-9]+(?: seconds ([0-9.]+))?$', text, re.M)
+            phase = re.search(r'^baremetal verified: ([0-9]+) cases in ([0-9]+) s with ([0-9]+) jobs$', text, re.M)
+            cases = sum(int(p) + int(q) for _, p, q, _ in rows)
+            per = int(phase.group(2)) * int(phase.group(3)) / cases if phase and cases else 0
+            for name, p, q, sec in rows:
+                value = float(sec) if sec else (int(p) + int(q)) * per
+                out[name] = out.get(name, 0) + value
+        if out:
+            break
+    return out
+
+
+def baremetal_groups(root, modules, n, jobs):
+    """n groups of modules of about equal seconds by the largest first, and the slices of the
+    modules above one group's share, as (id, modules, slice, expected wall seconds)."""
+    seconds = baremetal_seconds(root)
+    known = sorted(seconds.values())
+    default = known[len(known) // 2] if known else 1.0
+    weight = {m: seconds.get(m, default) for m in modules}
+    share = sum(weight.values()) / n
+    out = []
+    groups = []
+    for m in modules:
+        k = int(weight[m] // share) + (1 if weight[m] % share > share / 4 else 0) if weight[m] > share else 1
+        if k > 1:
+            for i in range(k):
+                out.append((f'baremetal-verified/{m}.{i + 1}', [m], f'{i}/{k}',
+                            round(weight[m] / k / jobs + BM_OVERHEAD + BM_MODULE)))
+        else:
+            groups.append(m)
+    bins = [[0.0, []] for _ in range(max(1, n - len(out)))]
+    for m in sorted(groups, key=lambda m: -weight[m]):
+        b = min(bins, key=lambda b: b[0])
+        b[0] += weight[m]
+        b[1].append(m)
+    for i, (w, ms) in enumerate(bins):
+        if ms:
+            out.append((f'baremetal-verified/{i + 1:02d}', sorted(ms, key=modules.index), None,
+                        round(w / jobs + BM_OVERHEAD + BM_MODULE * len(ms))))
+    return out
 
 
 def registry(root, name):
@@ -248,15 +307,14 @@ def items(root):
     for name in ['programs', 'inputs', 'ctl']:
         add(item(f'baremetal-{name}', f'baremetal-{name}', f'ACCEL=tcg tests/baremetal/{name}.sh',
                  mem=2, tools=bm + ['clightgen'], inputs=tree, scripts=[f'tests/baremetal/{name}.sh']))
-    translated = modules
     # A group runs JOBS QEMU processes at once, each a little above one CPU, so three of them take
-    # four CPUs.
-    for i, group in enumerate(chunks(translated, 24)):
-        id = f'baremetal-verified/{i + 1:02d}'
+    # four CPUs.  The groups hold about the same seconds of cases, and a module of more than one
+    # group's share runs in slices of its own.
+    for id, group, slice, seconds in baremetal_groups(root, modules, 24, 3):
         add(item(id, 'baremetal-verified',
                  f'JOBS=3 tests/baremetal/verified.sh --out {WORK}/{id}' +
-                 ''.join(f' --module {n}' for n in group),
-                 mem=6, cpus=4, tools=bm, inputs=tree, scripts=['tests/baremetal/verified.sh']))
+                 (f' --slice {slice}' if slice else '') + ''.join(f' --module {n}' for n in group),
+                 mem=6, cpus=4, tools=bm, inputs=tree, scripts=['tests/baremetal/verified.sh'], est=seconds))
     add(item('a64-images', 'a64-images', 'ACCEL=tcg tests/baremetal/a64-images.sh', mem=20, cpus=2,
              tools=['qemu', 'aarch64'], inputs=tree, scripts=['tests/baremetal/a64-images.sh']))
     add(item('a64-uart', 'a64-uart', 'ACCEL=tcg tests/baremetal/a64-uart.sh', mem=7,
@@ -553,12 +611,14 @@ def count_baremetal_verified(runs, root, passed):
     total = sum_pairs(r'^baremetal verified: total passed ([0-9]+) failed ([0-9]+) not run ([0-9]+)$', ls)
     if not total:
         return ''
-    modules = matches(r'^baremetal verified: [^ ]+ passed [0-9]+ failed [0-9]+ not run [0-9]+ stack ', ls)
+    modules = len({m.group(1) for line in ls
+                   if (m := re.match(r'^baremetal verified: ([^ ]+) passed [0-9]+ failed [0-9]+ not run [0-9]+ stack ', line))})
     cell = f"{c(total[0])} cases passed, {c(total[1])} failed, {c(total[2])} not run, in {nouns(modules, 'module', 'modules')}"
-    untranslated = sum(names_count(m.group(1)) for line in ls
-                       if (m := re.match(r'^baremetal verified: modules without a translation: ?(.*)$', line)))
+    untranslated = len({n for line in ls
+                        if (m := re.match(r'^baremetal verified: modules without a translation: ?(.*)$', line))
+                        for n in m.group(1).split() if n != 'none'})
     cell += f"; {nouns(untranslated, 'module', 'modules')} without a translation"
-    unbuilt = matches(r'^baremetal verified: module that does not build: ', ls)
+    unbuilt = len({line.split(':')[2] for line in ls if line.startswith('baremetal verified: module that does not build: ')})
     cell += f"; {nouns(unbuilt, 'module that does', 'modules that do')} not build"
     return cell
 
