@@ -2,29 +2,29 @@
 
 This inventory lists every form and procedure that the [Revised⁴ Report](https://standards.scheme.org/official/r4rs.pdf) marks essential, at the arities that the report marks essential, with the clause that defines it and its status in this interpreter.  §1.3.1 makes a feature essential only when its entry says so, so a non-essential arity of an essential procedure, such as `(- z1 z2 z3)` or `(apply proc arg1 … args)`, appears under its own row as outside the profile.  [The profile](profile.md) states the implementation choices that the report leaves open, each with its clause, and [the journal](devnotes.md) records the stages of the work.
 
-A status of *this request* assigns the feature to milestones 1 and 2: the reference semantics of `Demos/Scheme/Semantics/` and the executable machine compiled by the verified compiler.  The Reference column names the definitions of the namespace `Demos.Scheme.Semantics` that implement the feature, the Machine column those of the executable machine, and the Cases column the programs of the corpus `Demos.Scheme.Corpus.all` that test it.  The theorem `corpus_outcomes` of `Demos/Scheme/Semantics/CorpusCheck.lean` states that the reference semantics gives every program of the corpus its expected outcome, which the corpus states by hand.  A status of *milestone 4* assigns the feature to the complete language of the design's fourth milestone.  The report's syntax keywords `=>`, `delay`, `do`, `let*`, and `else` in a position other than a final clause belong to non-essential forms, and the reserved-keyword rule of §2.1 still applies to them.
+A status of *this request* assigns the feature to milestones 1 and 2: the reference semantics of `Demos/Scheme/Semantics/` and the executable machine compiled by the verified compiler.  The Reference column names the definitions of the namespace `Demos.Scheme.Semantics` that implement the feature, the Machine column those of the namespace `Demos.Scheme.Machine` of the executable machine, and the Cases column the programs of the corpus `Demos.Scheme.Corpus.all` that test it.  The theorem `corpus_outcomes` of `Demos/Scheme/Semantics/CorpusCheck.lean` states that the reference semantics gives every program of the corpus its expected outcome, which the corpus states by hand.  A status of *milestone 4* assigns the feature to the complete language of the design's fourth milestone.  The report's syntax keywords `=>`, `delay`, `do`, `let*`, and `else` in a position other than a final clause belong to non-essential forms, and the reserved-keyword rule of §2.1 still applies to them.
 
 ## Syntax
 
 | Form | Clause | Status | Reference | Machine | Cases |
 |---|---|---|---|---|---|
-| Variable reference | §4.1.1 | This request | `expand`, `step` on `.var` | | `shared-cell`, `unbound`, `letrec-undefined` |
-| `(quote datum)`, `'datum` | §4.1.2 | This request | `expand`, `allocExpr` | | `dotted-data`, `quoted-vector`, `immutable-literal` |
-| Self-evaluating constants: booleans, numbers, characters, strings | §4.1.2 | This request | `expand` | | `string-char`, `range-max` |
-| Procedure call `(operator operand …)` | §4.1.3 | This request | `step`, `Frame.fn`, `Frame.arg` | | `operand-order`, `operator-first`, `not-procedure`, `arity` |
-| `(lambda formals body)`, with formals `(var …)`, `var`, and `(var … . var)` | §4.1.4 | This request | `expand`, `lambdaFormals`, `bindArgs` | | `apply-rest-fresh`, `fresh-reentry`, `duplicate`, `arity` |
-| `(if test consequent alternate)` | §4.1.5 | This request | `expand`, `Frame.branch` | | `repeated-escape`, `one-armed-if` |
-| `(set! var expression)` | §4.1.6 | This request | `expand`, `Frame.assign` | | `shared-cell`, `set-unbound` |
-| `(cond clause …)`, with `(test expression …)`, `(test)`, and a final `(else expression …)` | §4.2.1, §7.3 | This request | `expandCond` | | `cond-test-clause`, `else-misplaced` |
-| `(case key clause …)`, with a final `else` clause | §4.2.1, §7.3 | This request | `expandCase` | | `case-capture`, `case-else`, `case-none`, `duplicate-case` |
-| `(and test …)` | §4.2.1, §7.3 | This request | `expandAnd`, `andCore` | | `and-temporaries`, `and-once`, `or-and-empty` |
-| `(or test …)` | §4.2.1, §7.3 | This request | `expandOr`, `orCore` | | `or-42`, `or-temporaries`, `or-once`, `or-and-empty` |
-| `(let bindings body)` | §4.2.2, §7.3 | This request | `letCore` | | `or-42`, `keyword-variable` |
-| `(letrec bindings body)` | §4.2.2, §7.3 | This request | `letrecCore` | | `letrec-reentry`, `letrec-staging`, `letrec-mutual`, `letrec-undefined` |
-| `(begin expression …)` | §4.2.3, §7.3 | This request | `beginCore` | | `begin-expression` |
-| `(quasiquote template)`, `` `template ``, with `unquote`, `unquote-splicing`, nesting, and vector templates | §4.2.6, §7.1.4 | This request | `qq` | | `quasiquote-capture`, `nested-quasiquote`, `quasiquote-vector`, `quasiquote-double` |
-| Top-level `(define var expression)` | §5.2, §5.2.1 | This request | `expandTop`, `Frame.define` | | `redefinition`, `forward-global`, `define-shorthand` |
-| Top-level `(begin definition …)` | §5.2, §7.1.5 | This request | `expandTops`, `allDefinitions` | | `begin-definitions`, `internal-define` |
+| Variable reference | §4.1.1 | This request | `expand`, `step` on `.var` | `expandStep`, `varCode` | `shared-cell`, `unbound`, `letrec-undefined` |
+| `(quote datum)`, `'datum` | §4.1.2 | This request | `expand`, `allocExpr` | `expandForm` | `dotted-data`, `quoted-vector`, `immutable-literal` |
+| Self-evaluating constants: booleans, numbers, characters, strings | §4.1.2 | This request | `expand` | `expandStep` | `string-char`, `range-max` |
+| Procedure call `(operator operand …)` | §4.1.3 | This request | `step`, `Frame.fn`, `Frame.arg` | `expandStep`, `startList` | `operand-order`, `operator-first`, `not-procedure`, `arity` |
+| `(lambda formals body)`, with formals `(var …)`, `var`, and `(var … . var)` | §4.1.4 | This request | `expand`, `lambdaFormals`, `bindArgs` | `expandLambda`, `parseFormals`, `lambdaDone` | `apply-rest-fresh`, `fresh-reentry`, `duplicate`, `arity` |
+| `(if test consequent alternate)` | §4.1.5 | This request | `expand`, `Frame.branch` | `expandIf` | `repeated-escape`, `one-armed-if` |
+| `(set! var expression)` | §4.1.6 | This request | `expand`, `Frame.assign` | `expandSet` | `shared-cell`, `set-unbound` |
+| `(cond clause …)`, with `(test expression …)`, `(test)`, and a final `(else expression …)` | §4.2.1, §7.3 | This request | `expandCond` | `expandCondStep` | `cond-test-clause`, `else-misplaced` |
+| `(case key clause …)`, with a final `else` clause | §4.2.1, §7.3 | This request | `expandCase` | `expandCase`, `caseClause`, `caseBody` | `case-capture`, `case-else`, `case-none`, `duplicate-case` |
+| `(and test …)` | §4.2.1, §7.3 | This request | `expandAnd`, `andCore` | `expandOrAnd`, `andCore` | `and-temporaries`, `and-once`, `or-and-empty` |
+| `(or test …)` | §4.2.1, §7.3 | This request | `expandOr`, `orCore` | `expandOrAnd`, `orCore` | `or-42`, `or-temporaries`, `or-once`, `or-and-empty` |
+| `(let bindings body)` | §4.2.2, §7.3 | This request | `letCore` | `expandLet`, `startBindings` | `or-42`, `keyword-variable` |
+| `(letrec bindings body)` | §4.2.2, §7.3 | This request | `letrecCore` | `expandLetrec` | `letrec-reentry`, `letrec-staging`, `letrec-mutual`, `letrec-undefined` |
+| `(begin expression …)` | §4.2.3, §7.3 | This request | `beginCore` | `expandForm`, `beginCore` | `begin-expression` |
+| `(quasiquote template)`, `` `template ``, with `unquote`, `unquote-splicing`, nesting, and vector templates | §4.2.6, §7.1.4 | This request | `qq` | `expandQQ` | `quasiquote-capture`, `nested-quasiquote`, `quasiquote-vector`, `quasiquote-double` |
+| Top-level `(define var expression)` | §5.2, §5.2.1 | This request | `expandTop`, `Frame.define` | `topExpand` | `redefinition`, `forward-global`, `define-shorthand` |
+| Top-level `(begin definition …)` | §5.2, §7.1.5 | This request | `expandTops`, `allDefinitions` | `allDefinitions`, `topWalk` | `begin-definitions`, `internal-define` |
 | A program: a sequence of commands and definitions | §5.1, §7.1.5 | This request | `start`, `prepare`, `Frame.top` | | `toplevel-reentry`, `empty-program` |
 
 The forms below are not essential, and the profile omits them.
@@ -43,14 +43,14 @@ The forms below are not essential, and the profile omits them.
 
 | Feature | Clause | Status | Reference | Machine | Cases |
 |---|---|---|---|---|---|
-| Identifiers, with case folding | §2.1, §7.1.1 | This request | `readAtom` | | `case-folding` |
-| Comments and whitespace | §2.2, §7.1.1 | This request | `skipAtmosphere` | | `repeated-escape` |
-| Booleans `#t`, `#f` | §6.1, §7.1.1 | This request | `readHash` | | `predicates` |
-| Integers in radixes 2, 8, 10, and 16, with exactness prefixes | §6.5.4, §7.1.1 | This request | `readNumeral` | | `radixes`, `inexact-literal`, `decimal-literal`, `range-literal` |
-| Characters `#\x`, `#\space`, `#\newline` | §6.6, §7.1.1 | This request | `readChar` | | `string-char`, `bad-char` |
-| Strings with `\"` and `\\` | §6.7, §7.1.1 | This request | `readString` | | `string-char` |
-| Lists, dotted lists, and vectors | §6.3, §6.8, §7.1.2 | This request | `readList`, `readVector` | | `dotted-data`, `bad-dot`, `incomplete`, `unexpected-close` |
-| Abbreviations `'`, `` ` ``, `,`, `,@` | §6.3, §7.1.2 | This request | `abbreviated` | | `quasiquote-quote` |
+| Identifiers, with case folding | §2.1, §7.1.1 | This request | `readAtom` | `readAtom`, `intern` | `case-folding` |
+| Comments and whitespace | §2.2, §7.1.1 | This request | `skipAtmosphere` | `skipAtmosphere` | `repeated-escape` |
+| Booleans `#t`, `#f` | §6.1, §7.1.1 | This request | `readHash` | `readHash` | `predicates` |
+| Integers in radixes 2, 8, 10, and 16, with exactness prefixes | §6.5.4, §7.1.1 | This request | `readNumeral` | `Numeric.readNumeral` | `radixes`, `inexact-literal`, `decimal-literal`, `range-literal` |
+| Characters `#\x`, `#\space`, `#\newline` | §6.6, §7.1.1 | This request | `readChar` | `readChar` | `string-char`, `bad-char` |
+| Strings with `\"` and `\\` | §6.7, §7.1.1 | This request | `readString` | `readString` | `string-char` |
+| Lists, dotted lists, and vectors | §6.3, §6.8, §7.1.2 | This request | `readList`, `readVector` | `readStep`, `readClose`, `deliver` | `dotted-data`, `bad-dot`, `incomplete`, `unexpected-close` |
+| Abbreviations `'`, `` ` ``, `,`, `,@` | §6.3, §7.1.2 | This request | `abbreviated` | `readStep`, `deliver` | `quasiquote-quote` |
 
 ## Procedures
 

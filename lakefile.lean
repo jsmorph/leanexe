@@ -250,6 +250,10 @@ lean_exe «verified-cases-orderbook» where
   srcDir := "tests"
   root := `TestSupport.OrderBook.CasesMain
 
+lean_exe «verified-cases-scheme» where
+  srcDir := "tests"
+  root := `TestSupport.Scheme.CasesMain
+
 lean_exe «verified-cases-rcv» where
   srcDir := "tests"
   root := `TestSupport.Rcv.CasesMain

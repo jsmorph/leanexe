@@ -1,6 +1,6 @@
 # R4RS Scheme
 
-This demo is an interpreter for the essential features of R4RS Scheme, with a reference semantics in ordinary Lean and an executable reader, expander, and evaluator in the verified compiler's dialect.  The work follows the milestones of a design that a user supplied, and this tree holds its first: the source contract.  [The clause inventory](inventory.md) lists every essential form and procedure with its status, [the profile](profile.md) states the choices that the report leaves to an implementation, and [the journal](devnotes.md) records the decisions and the stages.
+This demo is an interpreter for the essential features of R4RS Scheme, with a reference semantics in ordinary Lean and an executable reader, expander, and evaluator in the verified compiler's dialect.  The work follows the milestones of a design that a user supplied, and this tree holds its first, the source contract, and the reader and expander of its second.  [The clause inventory](inventory.md) lists every essential form and procedure with its status, [the profile](profile.md) states the choices that the report leaves to an implementation, and [the journal](devnotes.md) records the decisions and the stages.
 
 ## The reference semantics
 
@@ -27,3 +27,8 @@ The kernel evaluates each run, and the theorems depend on the axioms `propext`, 
 | `Demos.Scheme.ReportCheck.cross_check` | On the three programs, the transcription's answer is the reference semantics's result. |
 | `Demos.Scheme.ReportCheck.cross_check_more` | The same for nine programs that reach rest lists, `apply`, `car`, `cdr`, `set-car!`, `eqv?`, an escape through `apply`, and the translation of definitions. |
 | `Demos.Scheme.Report.new_unallocated` | The allocator meets the axiom of p. 34: `new σ` is not in use in `σ`. |
+
+## The executable interpreter
+
+The modules of `Demos/Scheme/Machine/` hold the interpreter in the verified compiler's dialect: one record with an arena of five-word slots and an output buffer, and a step function that dispatches on the phase.  The reader reads one token at each step and the expander follows the reference expander function by function, each with its pending work in frames of the arena.  `Demos.Scheme.Machine.runWith names mode cap outCap fuel src` runs at most `fuel` steps and returns a status byte and text: in mode 0 the data of the program, in mode 1 the code of its forms, in a tagged form.  The case executable `verified-cases-scheme` of `tests/TestSupport/Scheme/CasesMain.lean` compares both modes with the reference semantics on the corpus and 60 programs of syntax and fails at a difference.
+

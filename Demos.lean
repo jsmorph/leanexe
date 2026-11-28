@@ -202,6 +202,17 @@ public import Demos.RandomHistogram.Native
 public import Demos.RandomHistogram.NativeCounts
 public import Demos.Scheme.Acceptance
 public import Demos.Scheme.Corpus
+public import Demos.Scheme.Machine.Code
+public import Demos.Scheme.Machine.Codes
+public import Demos.Scheme.Machine.Convert
+public import Demos.Scheme.Machine.Expand
+public import Demos.Scheme.Machine.Names
+public import Demos.Scheme.Machine.Numeric
+public import Demos.Scheme.Machine.Print
+public import Demos.Scheme.Machine.Read
+public import Demos.Scheme.Machine.Run
+public import Demos.Scheme.Machine.State
+public import Demos.Scheme.Machine.Text
 public import Demos.Scheme.Report
 public import Demos.Scheme.ReportCheck
 public import Demos.Scheme.Semantics.CorpusCheck
