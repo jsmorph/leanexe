@@ -1,5 +1,9 @@
-import Library.Sorting.RadixSort.Compiled
-import Verified.Master
+module
+
+public import Library.Sorting.RadixSort.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Sorting.RadixSort
 

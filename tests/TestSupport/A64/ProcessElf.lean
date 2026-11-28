@@ -1,8 +1,12 @@
-import Demos.OrderBook.ProcessModule
-import Demos.RunningSum.Module
-import Demos.RunningSumFp.Module
-import LeanExe.A64.Proof.WasiProgram
-import Verified.Wasi.ProcessFacts
+module
+
+public import Demos.OrderBook.ProcessModule
+public import Demos.RunningSum.Module
+public import Demos.RunningSumFp.Module
+public import LeanExe.A64.Proof.WasiProgram
+public import Verified.Wasi.ProcessFacts
+
+@[expose] public section
 
 /-!
 The three WASI process modules whose functions have frames of 4,096 bytes or more as native

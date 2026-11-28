@@ -1,5 +1,9 @@
-import Verified.ShimA64.Strings
-import LeanExe.A64.Proof.WasiPreopen
+module
+
+public import Verified.ShimA64.Strings
+public import LeanExe.A64.Proof.WasiPreopen
+
+@[expose] public section
 
 /-!
 The stubs of the preopened directory against the shim's host environment: `prestatStub_sim` and

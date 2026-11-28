@@ -1,7 +1,11 @@
-import Verified.Wasi.CodeAnalysis
-import Verified.Wasi.Wrappers
-import Verified.Wasi.ReadAllCode
-import Verified.Wasi.SysCode
+module
+
+public import Verified.Wasi.CodeAnalysis
+public import Verified.Wasi.Wrappers
+public import Verified.Wasi.ReadAllCode
+public import Verified.Wasi.SysCode
+
+@[expose] public section
 
 namespace Verified.Wasi
 

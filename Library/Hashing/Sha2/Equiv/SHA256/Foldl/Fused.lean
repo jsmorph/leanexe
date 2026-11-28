@@ -1,5 +1,9 @@
-import Library.Hashing.Sha2.Equiv.SHA256.Foldl.Schedule
-import Library.Hashing.Sha2.Equiv.SHA256.Foldl.Sequential
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA256.Foldl.Schedule
+public import Library.Hashing.Sha2.Equiv.SHA256.Foldl.Sequential
+
+@[expose] public section
 
 /-! # Pure-foldl form of the spec compression — fused
 

@@ -1,4 +1,8 @@
-import Verified.Wasi.ReflectLemmas
+module
+
+public import Verified.Wasi.ReflectLemmas
+
+@[expose] public section
 
 /-! The reflection of `LeanExe.Wasi.withOpen`.  `reflect` writes `withOpen` as the canonical
 expansion that its docstring shows: the open, a test of the errno, the error continuation followed

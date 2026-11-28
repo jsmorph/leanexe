@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64PackingModel
-import CodeLib.IEEE64.Rounders
+module
+
+public import LeanExe.ProofKit.F64PackingModel
+public import CodeLib.IEEE64.Rounders
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64DyadicBounds
 open CodeLib.IEEE64

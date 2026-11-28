@@ -1,6 +1,13 @@
-import Library.Numerics.Float64.Exp.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.Reference
+module
+
+public import Library.Numerics.Float64.Exp.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.Reference
+public meta import Library.Numerics.Float64.Exp.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Exp.exp` against `Reference.exp` rounded to the nearest double.  Arm states
 an error of 0.511 units in the last place, so each result must lie within one unit of the reference.

@@ -1,10 +1,14 @@
-import Library.Numerics.Float64.Log.Compiled
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.Signed64Value
-import CodeLib.IEEE64.Conversions
+module
+
+public import Library.Numerics.Float64.Log.Compiled
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.Signed64Value
+public import CodeLib.IEEE64.Conversions
+
+@[expose] public section
 
 /-!
 The word arithmetic of `Log.logCore`.  The argument word `ix` stands for `(2 ^ 52 + f) 2 ^ (E - 1075)`

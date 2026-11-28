@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccSmall
-import Library.Numerics.Float64.Tgamma.TgammaRecip
-import Library.Numerics.Float64.Tgamma.TgammaSpecial
-import LeanExe.ProofKit.GammaBasic
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccSmall
+public import Library.Numerics.Float64.Tgamma.TgammaRecip
+public import Library.Numerics.Float64.Tgamma.TgammaSpecial
+public import LeanExe.ProofKit.GammaBasic
+
+@[expose] public section
 
 /-!
 **The accurate path of `Tgamma` below `1/4`** within one step of `Γ`.  With `R = 1/|x|`, the

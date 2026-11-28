@@ -1,6 +1,11 @@
-import Verified.Wasi.ReflectCommand
-import Verified.Wasi.ProcessCode
-import LeanExe.Encoding.RoundTrip
+module
+
+public import Verified.Wasi.ReflectCommand
+public import Verified.Wasi.ProcessCode
+public import LeanExe.Encoding.RoundTrip
+public meta import Verified.Wasi.ProcessCode
+
+@[expose] public section
 
 namespace Verified.Examples.WasiProcess
 

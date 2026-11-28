@@ -398,18 +398,22 @@ class Renderer:
 
 def render(spec, rocq_paths, lean_paths):
     """Writes the rendering of each file of spec: the first to NSpec.v and Spec.lean, each
-    further one to its Rocq module and to a Lean module that imports Spec.lean."""
+    further one to its Rocq module and to a Lean module that imports Spec.lean.  Spec.lean, the
+    package's module LeanExe.Native.ClightN.Spec, has the module header of the package's modules,
+    and each further Lean rendering, which the check compiles outside the package, plain imports."""
     sys.setrecursionlimit(1000000)
     for part, (rocq_path, lean_path) in enumerate(zip(rocq_paths, lean_paths)):
         requires = "Require NBase." if part == 0 else "Require NBase NSpec.\nImport NSpec."
-        imports = "import LeanExe.Native.ClightN." + ("Base" if part == 0 else "Spec")
+        header = (["module", "", "public import LeanExe.Native.ClightN.Base", "",
+                   "@[expose] public section"] if part == 0 else
+                  ["import LeanExe.Native.ClightN.Spec"])
         out = {"rocq": ["(* Rendered by clightn/nsx.py from the specification of N.  Do not "
                         "edit. *)",
                         "From Coq Require Import ZArith String.",
                         "Require Coqlib Integers Floats Values AST Memory Events Ctypes Cop "
                         "Clight ClightBigstep.", requires, ""],
                "lean": ["-- Rendered by clightn/nsx.py from the specification of N.  Do not edit.",
-                        imports, "", "set_option autoImplicit false",
+                        *header, "", "set_option autoImplicit false",
                         "set_option maxRecDepth 100000"] +
                        (["set_option maxHeartbeats 0"] if part > 0 else []) +
                        ["", f"namespace {LEAN_SPEC}", ""]}
@@ -1240,11 +1244,17 @@ def instance_mutations(group, form):
 
 DECL_START = r"^(\s*\| {name} :|(def|theorem|inductive|Definition|Theorem|Inductive) {name}\b)"
 DECL_NEXT = r"^(\s*\| \S+ :|(def|theorem|inductive|Definition|Theorem|Lemma|Inductive|end) |$)"
+# The start of an import, with the modifiers of Lean's grammar (Lean/Parser/Module/Syntax.lean).
+IMPORT = re.compile(r"^(public )?(meta )?import (all )?")
 
 
 def mutate(group, src, out, form=None):
     """Writes SRC with the planted errors of GROUP to OUT, and prints the differences that the
-    check must report.  A Lean file also imports the reader and calls it, unless it does."""
+    check must report.  A Lean file also imports the reader and calls it, unless it does.  The
+    copy of a module drops the keyword module and the modifiers of its imports, so that it is a
+    file outside the module system, as the instances' files and clightn/read.lean are: a module
+    imports another module's theorems as axioms (Lean/Environment.lean), which the reader prints
+    as not theorems."""
     text = open(src).read()
     keys = []
     plants = MUTATIONS[group] if group in MUTATIONS else instance_mutations(group, form)
@@ -1268,8 +1278,9 @@ def mutate(group, src, out, form=None):
         keys.append(key)
     if group.startswith("lean") and "run_cmd ClightN.Read.dump" not in text:
         lines = text.split("\n")
-        last = max(i for i, l in enumerate(lines) if l.startswith("import "))
-        lines.insert(last + 1, "import LeanExe.Native.ClightN.Read")
+        last = max(i for i, l in enumerate(lines) if IMPORT.match(l))
+        header = [IMPORT.sub("import ", l) for l in lines[:last + 1] if l != "module"]
+        lines = header + ["import LeanExe.Native.ClightN.Read"] + lines[last + 1:]
         text = "\n".join(lines) + "\nrun_cmd ClightN.Read.dump\n"
     open(out, "w").write(text)
     print(",".join(keys))

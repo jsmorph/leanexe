@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccWin
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccWin
+
+@[expose] public section
 
 /-!
 The selection of `Lgamma.rootRange`, the choice of a polynomial about a negative zero: either the

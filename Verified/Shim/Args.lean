@@ -1,6 +1,10 @@
-import Verified.Shim.Host
-import Verified.Wasi.SysRule
-import LeanExe.Wasi.Sys
+module
+
+public import Verified.Shim.Host
+public import Verified.Wasi.SysRule
+public import LeanExe.Wasi.Sys
+
+@[expose] public section
 
 /-!
 The block that a command's `args` asks for under the shim's host.  A successful `args_sizes_get`

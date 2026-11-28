@@ -10,8 +10,12 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
 that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import Interpreter.Wasm.IEEE64
-import LeanExe.Native.Clight.Integers
+module
+
+public import Interpreter.Wasm.IEEE64
+public import LeanExe.Native.Clight.Integers
+
+@[expose] public section
 
 /-!
 The floating-point numbers of CompCert 3.18's `lib/Floats.v`.

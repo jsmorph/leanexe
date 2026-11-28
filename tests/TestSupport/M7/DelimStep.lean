@@ -1,5 +1,9 @@
-import LeanExe.M7.Proof.Main
-import TestSupport.M7.Delim
+module
+
+public import LeanExe.M7.Proof.Main
+public import TestSupport.M7.Delim
+
+@[expose] public section
 
 /-!
 The step theorems of the echo of records of `tests/TestSupport/M7/Delim.lean` on the Cortex-M7:

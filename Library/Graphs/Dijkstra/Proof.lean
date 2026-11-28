@@ -1,7 +1,11 @@
-import Library.Graphs.Dijkstra.Heap
-import Library.Graphs.Dijkstra.Spec
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
+module
+
+public import Library.Graphs.Dijkstra.Heap
+public import Library.Graphs.Dijkstra.Spec
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+
+@[expose] public section
 
 /-! The proof that `dijkstra` returns the least walk lengths.  A tentative length below `2^64 - 1`
 is the length of a walk, every vertex that is not done and has a tentative length below `2^64 - 1`

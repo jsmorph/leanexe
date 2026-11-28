@@ -1,4 +1,8 @@
-import Demos.Sgp4.Spec
+module
+
+public import Demos.Sgp4.Spec
+
+@[expose] public section
 
 /-!
 The two-body limit of the model, theorem S2 of the design.  With `J2`, `J3/J2`, `J4`, and the drag

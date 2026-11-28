@@ -1,9 +1,13 @@
-import Verified.Wasi.LoopContext
-import Verified.Wasi.LoopCommand
-import Verified.Wasi.LoopRelease
-import Verified.Wasi.CommandCodeSpec
-import Verified.Wasi.Cleanup
-import Verified.Wasi.CostCodeSpec
+module
+
+public import Verified.Wasi.LoopContext
+public import Verified.Wasi.LoopCommand
+public import Verified.Wasi.LoopRelease
+public import Verified.Wasi.CommandCodeSpec
+public import Verified.Wasi.Cleanup
+public import Verified.Wasi.CostCodeSpec
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,5 +1,9 @@
-import Library.Hashing.Words.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Library.Hashing.Words.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! Each word structure is represented as the tuple of its fields, in declaration order. -/
 

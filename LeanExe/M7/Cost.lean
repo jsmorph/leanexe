@@ -1,6 +1,10 @@
-import LeanExe.M7.Gen
-import LeanExe.M7.Div
-import Interpreter.Wasm.Semantics
+module
+
+public import LeanExe.M7.Gen
+public import LeanExe.M7.Div
+public import Interpreter.Wasm.Semantics
+
+@[expose] public section
 
 /-!
 The instructions that the generated code executes for a run of Talos.  `costOne fuel m st s ar inst

@@ -1,5 +1,9 @@
-import Verified.Wasi.WrapperCode
-import Verified.Wasi.Relocation
+module
+
+public import Verified.Wasi.WrapperCode
+public import Verified.Wasi.Relocation
+
+@[expose] public section
 
 namespace Verified.Wasi
 

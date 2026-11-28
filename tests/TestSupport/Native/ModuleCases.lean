@@ -1,5 +1,11 @@
-import Demos.Euler.Cases
-import Examples.Shape.Cases
+module
+
+public import Demos.Euler.Cases
+public import Examples.Shape.Cases
+public meta import Demos.Euler.Cases
+public meta import Examples.Shape.Cases
+
+@[expose] public section
 
 /-!
 The module cases of `euler` and of `shapes`, which `tests/verified/run.sh` checks through

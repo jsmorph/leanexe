@@ -1,5 +1,9 @@
-import LeanExe.Native.Subset
-import LeanExe.Native.Clight.Clight
+module
+
+public import LeanExe.Native.Subset
+public import LeanExe.Native.Clight.Clight
+
+@[expose] public section
 
 /-!
 The translator from a Talos module to a Clight program, in the form that `clightgen` produces

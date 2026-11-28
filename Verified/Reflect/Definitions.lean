@@ -1,20 +1,25 @@
-import Verified.Correct
-import Verified.Instantiate
-import Verified.Reflect.Lemmas
-import Verified.Reflect.BoundPass
-import Verified.Reflect.Modes
-import Verified.Reflect.FoldLemmas
-import Verified.Reflect.ListFoldLemmas
-import Verified.Reflect.TreeLemmas
-import Verified.Reflect.TreeNodeLemmas
-import Verified.Reflect.NativeList
-import Verified.Reflect.NativeTree
-import Verified.Reflect.RecursiveLayout
-import Verified.Reflect.TailBoundLemmas
-import LeanExe.Encoding.RoundTrip
-import LeanExe.Encoding.Completeness.Writes
-import LeanExe.ProofKit.Signed64Float
-import LeanExe.Pipeline.Int64
+module
+
+public import Verified.Correct
+public import Verified.Instantiate
+public import Verified.Reflect.Lemmas
+public import Verified.Reflect.BoundPass
+public import Verified.Reflect.Modes
+public import Verified.Reflect.FoldLemmas
+public import Verified.Reflect.ListFoldLemmas
+public import Verified.Reflect.TreeLemmas
+public import Verified.Reflect.TreeNodeLemmas
+public import Verified.Reflect.NativeList
+public import Verified.Reflect.NativeTree
+public import Verified.Reflect.RecursiveLayout
+public import Verified.Reflect.TailBoundLemmas
+public import LeanExe.Encoding.RoundTrip
+public import LeanExe.Encoding.Completeness.Writes
+public import LeanExe.ProofKit.Signed64Float
+public import LeanExe.ProofKit.FloatMinMax
+public import LeanExe.Pipeline.Int64
+
+@[expose] public section
 
 /-! The reflector.  `verified_compile p := [f, g, …]` reads the listed Lean definitions, writes
 each as a source function, and proves its equation `denote (reflect f) = f` from the lemmas of
@@ -982,27 +987,31 @@ height first.  A generated constant of height 1, such as `p.module`, `p.program`
 leave the kernel to unfold the compiler's functions in the other term before the constant: at
 height 1 every `p.f.implements` of `Demos.Conjunction.Verified` evaluated the byte literals of the
 whole program, and unfolding a function defined by well-founded recursion first can exhaust the
-kernel's recursion, as a measure with a factor `2 ^ 64` does. -/
+kernel's recursion, as a measure with a factor `2 ^ 64` does.  The definition is exposed, as
+every definition of an `@[expose] public section` is, so that public statements and importers
+unfold it. -/
 def addDefinition (name : Name) (type value : Lean.Expr) : CoreM Unit := do
-  addAndCompile <| .defnDecl <| mkDefinitionValEx name [] type value
+  let decl := .defnDecl <| mkDefinitionValEx name [] type value
     (.regular (getMaxHeight (← getEnv) value + 1)) .safe [name]
+  addDecl decl (forceExpose := true)
+  compileDecl decl
 
 def addTheorem (name : Name) (type value : Lean.Expr) : CoreM Unit :=
   addDecl <| .thmDecl { name, levelParams := [], type, value }
 
 /-- A definition for the kernel only, without compiled code, for the literal bytes of a module,
-with a height above its value's, as `addDefinition` gives. -/
+with a height above its value's and exposed, as `addDefinition` gives. -/
 def addLiteral (name : Name) (type value : Lean.Expr) : CoreM Unit := do
-  addDecl <| .defnDecl <| mkDefinitionValEx name [] type value
+  addDecl (forceExpose := true) <| .defnDecl <| mkDefinitionValEx name [] type value
     (.regular (getMaxHeight (← getEnv) value + 1)) .safe [name]
 
-unsafe def evalModuleUnsafe (env : Environment) (opts : Options) (name : Name) :
-    Except String Wasm.Module :=
-  env.evalConst Wasm.Module opts name
+unsafe def evalModuleUnsafe (name : Name) : MetaM Wasm.Module :=
+  evalExpr' Wasm.Module ``Wasm.Module (mkConst name)
 
-/-- The module of the constant `name`, from its compiled code. -/
+/-- The module of the constant `name`, from its compiled code.  The module system evaluates only
+`meta` code, and `evalExpr'` evaluates a `meta` definition whose value is the constant. -/
 @[implemented_by evalModuleUnsafe]
-opaque evalModule (env : Environment) (opts : Options) (name : Name) : Except String Wasm.Module
+opaque evalModule (name : Name) : MetaM Wasm.Module
 
 /-- The component of the tuple `x` along `steps`: `false` for a pair's first component and `true`
 for its second. -/
@@ -2643,11 +2652,22 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let word := (← whnfR α).isConstOf ``UInt64 || (← whnfR α).isConstOf ``Int64
     unless (← isFloat α) || word do
       throwError "verified_compile: unsupported {fn} on {α}"
-    -- `min` and `max` on floats and words are `if a ≤ b`, with operands that are not variables
-    -- bound first.
+    -- Operands that are not variables are bound first.  On floats, `min` and `max` are IEEE
+    -- 754-2019's `minimum` and `maximum`, which `FloatMinMax` writes with `<`, `==`, and `|||` or
+    -- `&&&` on the bit patterns of two zeros.  On words they are `if a ≤ b`, which the kernel
+    -- reduces them to.
     let bind := [false, false, !(← projReduce a).isFVar, !(← projReduce b).isFVar]
     if bind.any id then
       return ← reflectAs (← bindArgs e.getAppFn [α, inst, a, b] bind #[] #[]) e
+    if ← isFloat α then
+      let thm := match fn == ``Min.min, (← whnfR α).isConstOf ``Float32 with
+        | true, false => ``LeanExe.ProofKit.FloatMinMax.min_eq
+        | false, false => ``LeanExe.ProofKit.FloatMinMax.max_eq
+        | true, true => ``LeanExe.ProofKit.FloatMinMax.min32_eq
+        | false, true => ``LeanExe.ProofKit.FloatMinMax.max32_eq
+      let eq ← mkAppM thm #[a, b]
+      let some (_, T, _) := (← inferType eq).eq? | throwError "verified_compile: the equation {eq}"
+      return ← reflectVia T (← mkExpectedTypeHint eq (← mkEq T e))
     let cond ← mkAppM ``LE.le #[a, b]
     let t ← if fn == ``Min.min then mkAppM ``ite #[cond, a, b] else mkAppM ``ite #[cond, b, a]
     reflectAs t e

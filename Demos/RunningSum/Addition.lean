@@ -1,5 +1,9 @@
-import Demos.RunningSum.MagnitudeCombine
-import Demos.RunningSum.Compare
+module
+
+public import Demos.RunningSum.MagnitudeCombine
+public import Demos.RunningSum.Compare
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

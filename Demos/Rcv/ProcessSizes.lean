@@ -1,6 +1,10 @@
-import Demos.Rcv.ProcessFlat
-import Demos.Rcv.ProcessFuture
-import Verified.ChargeFacts
+module
+
+public import Demos.Rcv.ProcessFlat
+public import Demos.Rcv.ProcessFuture
+public import Verified.ChargeFacts
+
+@[expose] public section
 
 /-! The sizes that the charges of the compiled process need.  `Sized` states that a state holds a
 report of at most `outputLimit` bytes, and `copyLimit` bounds the copy of such a state.

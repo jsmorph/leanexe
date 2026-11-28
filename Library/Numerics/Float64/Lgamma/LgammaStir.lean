@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaStirSeries
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaStirSeries
+
+@[expose] public section
 
 /-!
 The fast path's Stirling series of `Lgamma.lgammaWith` from `border 19 = 8.29541` to `2 ^ 52`:

@@ -1,6 +1,10 @@
-import Demos.Euler.Reference.Accepted
-import Demos.Euler.ReconstructedBalance
-import Demos.Euler.FirstOrderBalance
+module
+
+public import Demos.Euler.Reference.Accepted
+public import Demos.Euler.ReconstructedBalance
+public import Demos.Euler.FirstOrderBalance
+
+@[expose] public section
 
 /-! The boundary flux of each solver's balance against the exact Rusanov flux.  The balance of a
 sweep subtracts the computed flux at the first and last faces of each line.  When the sweep is

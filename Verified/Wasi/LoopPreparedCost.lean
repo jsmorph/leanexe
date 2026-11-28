@@ -1,9 +1,13 @@
-import Verified.Wasi.LoopPrepared
-import Verified.Wasi.LoopCostAdvance
-import Verified.Wasi.LoopTestGuarded
-import Verified.Wasi.LoopBodyCost
-import Verified.Wasi.LoopFinishCost
-import Verified.Wasi.LoopCostCode
+module
+
+public import Verified.Wasi.LoopPrepared
+public import Verified.Wasi.LoopCostAdvance
+public import Verified.Wasi.LoopTestGuarded
+public import Verified.Wasi.LoopBodyCost
+public import Verified.Wasi.LoopFinishCost
+public import Verified.Wasi.LoopCostCode
+
+@[expose] public section
 
 namespace Verified.Wasi
 

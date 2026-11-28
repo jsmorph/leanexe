@@ -1,5 +1,9 @@
-import Library.Sorting.Quicksort.Compiled
-import Verified.Master
+module
+
+public import Library.Sorting.Quicksort.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Sorting.Quicksort
 

@@ -1,9 +1,13 @@
-import Library.Numerics.Limiters.Minmod.Proof
-import Demos.Euler.RealState
-import Demos.Euler.ReconstructedProgram
-import Demos.Euler.Equations.Minmod
-import LeanExe.ProofKit.F64SymmetricFaces
-import LeanExe.ProofKit.F64Halving
+module
+
+public import Library.Numerics.Limiters.Minmod.Proof
+public import Demos.Euler.RealState
+public import Demos.Euler.ReconstructedProgram
+public import Demos.Euler.Equations.Minmod
+public import LeanExe.ProofKit.F64SymmetricFaces
+public import LeanExe.ProofKit.F64Halving
+
+@[expose] public section
 
 /-! The accuracy of the reconstructed solver's rounded reconstruction against the exact minmod
 reconstruction of `Equations.Minmod`.  The rounded slope differs from the exact slope of the

@@ -1,7 +1,15 @@
-import Library.Hashing.Sha256.Program
-import Library.Hashing.Sha512.Program
-import Library.Hashing.Sha2.Spec
-import TestSupport.Hashing.Packing
+module
+
+public import Library.Hashing.Sha256.Program
+public import Library.Hashing.Sha512.Program
+public import Library.Hashing.Sha2.Spec
+public import TestSupport.Hashing.Packing
+public meta import Library.Hashing.Sha256.Program
+public meta import Library.Hashing.Sha512.Program
+public meta import Library.Hashing.Sha2.Spec
+public meta import TestSupport.Hashing.Packing
+
+@[expose] public section
 
 /-! A native check of SHA-256 and SHA-224 in `Library.Hashing.Sha256` and the SHA-512 family in
 `Library.Hashing.Sha512` on the NIST CAVP vectors in `data/hashing/sha2/`: every short and long

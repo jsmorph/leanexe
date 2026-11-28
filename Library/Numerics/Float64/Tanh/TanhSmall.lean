@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.TanhWords
+module
+
+public import Library.Numerics.Float64.Tanh.TanhWords
+
+@[expose] public section
 
 /-!
 The branch `2 ^ -28 ≤ abs(x) < 1` of fdlibm's `tanh`, which returns `-t / (t + 2)` with

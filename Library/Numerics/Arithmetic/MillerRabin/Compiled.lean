@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.MillerRabin.Proof
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Numerics.Arithmetic.MillerRabin.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-! The verified compiler's module of modular exponentiation and the strong probable-prime test.
 The program allocates nothing, so the generated `trapFree` theorems exclude a trap without a

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erf.ErfSmallPieces0
+module
+
+public import Library.Numerics.Float64.Erf.ErfSmallPieces0
+
+@[expose] public section
 
 /-!
 Intervals 37 to 73 of the first range of `s_erf.c` for `erf`, from `x = 0.421875` to `0.84375`.

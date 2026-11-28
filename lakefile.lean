@@ -15,7 +15,7 @@ package leanexe where
   leanOptions := if fast then #[⟨`debug.skipKernelTC, true⟩] else #[]
 
 /-- The revision of Talos that supplies both CodeLib and WasmInterpreterLean. -/
-def talosRev : String := "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47"
+def talosRev : String := "468f66de75d4386ebe08808af2cb6970257ec6f2"
 
 -- CodeLib requires WasmInterpreterLean by the path `../interpreter`.  Lake would record that
 -- package in this manifest at `.lake/packages/CodeLib/codelib/../interpreter`, and a workspace
@@ -142,6 +142,16 @@ lean_exe «siphash-vectors» where
 lean_exe «xxhash64-vectors» where
   srcDir := "tests"
   root := `TestSupport.Hashing.XxHash64Vectors
+
+-- The native checks of tests/regex/run.sh, compiled, since the interpreter of `lean --run` takes
+-- most of an hour over the native check's inputs; not default targets.
+lean_exe «regex-native» where
+  srcDir := "tests"
+  root := `TestSupport.Regex.Native
+
+lean_exe «regex-python-cases» where
+  srcDir := "tests"
+  root := `TestSupport.Regex.PythonCases
 
 -- The case generators of tests/verified/run.sh, compiled so that their runs fit the driver's time
 -- limit; not default targets.

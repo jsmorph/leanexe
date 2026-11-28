@@ -1,4 +1,8 @@
-import Demos.RandomChoice.Spec
+module
+
+public import Demos.RandomChoice.Spec
+
+@[expose] public section
 
 /-! The specification of `putPicks`, a function of the WASI command `choose N K` of the request in
 `Demos/RandomChoice/request.txt`.  The command draws random words into a buffer, one draw at a

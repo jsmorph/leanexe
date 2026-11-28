@@ -1,4 +1,8 @@
-import Verified.Wasi.ProcessEntryProofs
+module
+
+public import Verified.Wasi.ProcessEntryProofs
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,4 +1,9 @@
-import Mathlib
+module
+
+public import LeanExe.Base
+public import Mathlib
+
+@[expose] public section
 
 /-!
 The error of the compensated reciprocal of `Tan.kernelTan`, in real numbers scaled by `w`: with

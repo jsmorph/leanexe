@@ -1,5 +1,9 @@
-import Library.Trees.Avl.Compiled
-import Verified.Master
+module
+
+public import Library.Trees.Avl.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Trees.Avl
 

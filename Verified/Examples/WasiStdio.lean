@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 namespace StdioExample
 open LeanExe LeanExe.Wasi

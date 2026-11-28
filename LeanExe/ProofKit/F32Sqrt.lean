@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F32SqrtFinite
-import LeanExe.ProofKit.F32Add
+module
+
+public import LeanExe.ProofKit.F32SqrtFinite
+public import LeanExe.ProofKit.F32Add
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32Sqrt
 open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32SqrtFinite FloatCommon

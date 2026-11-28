@@ -1,7 +1,13 @@
-import Library.Hashing.Crc.Bitwise.Program
-import Library.Hashing.Crc.Proof
-import Library.Hashing.Words.Proof
-import LeanExe.Requests.Records
+module
+
+public import Library.Hashing.Crc.Bitwise.Program
+public import Library.Hashing.Crc.Proof
+public import Library.Hashing.Words.Proof
+public import LeanExe.Requests.Records
+public import Batteries.Data.UInt
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-! The bitwise functions of `Library.Hashing.Crc.Bitwise` equal the table program of
 `Library.Hashing.Crc` for every argument.  A step of the division is linear over GF(2),

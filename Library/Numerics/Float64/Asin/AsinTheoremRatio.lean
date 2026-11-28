@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Asin.AsinTheoremSupport
+module
+
+public import Library.Numerics.Float64.Asin.AsinTheoremSupport
+
+@[expose] public section
 
 /-!
 The rational function of `Asin.asinRatio`, `t (pS0 + ... + pS5 t ^ 5)/(1 + qS1 t + ... + qS4 t ^ 4)`

@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.PrimeFactors.Proof
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Arithmetic.PrimeFactors.Proof
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `countFactors` and `compute`.  The reflector reads the
 condition `remaining ≤ 1 ∨ divisor ≤ 1` as the disjunction of its two decisions and compiles the

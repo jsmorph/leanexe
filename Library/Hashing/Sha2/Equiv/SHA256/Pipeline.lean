@@ -1,8 +1,12 @@
-import Library.Hashing.Sha2.Equiv.SHA256.Compress.Impl
-import Library.Hashing.Sha2.Equiv.SHA256.Compress.Match
-import Library.Hashing.Sha2.Equiv.SHA256.Padding.Equiv
-import Library.Hashing.Sha2.Equiv.SHA256.Padding.ByteDecoding
-import Library.Hashing.Sha2.Equiv.SHA256.Padding.Parsing
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA256.Compress.Impl
+public import Library.Hashing.Sha2.Equiv.SHA256.Compress.Match
+public import Library.Hashing.Sha2.Equiv.SHA256.Padding.Equiv
+public import Library.Hashing.Sha2.Equiv.SHA256.Padding.ByteDecoding
+public import Library.Hashing.Sha2.Equiv.SHA256.Padding.Parsing
+
+@[expose] public section
 
 /-! # Pipeline composition helpers
 

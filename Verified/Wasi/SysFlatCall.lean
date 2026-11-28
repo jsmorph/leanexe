@@ -1,6 +1,10 @@
-import Verified.Wasi.SysLower
-import Verified.Wasi.SysCost
-import Interpreter.Wasm.Wp.Call
+module
+
+public import Verified.Wasi.SysLower
+public import Verified.Wasi.SysCost
+public import Interpreter.Wasm.Wp.Call
+
+@[expose] public section
 
 /-! The host call of a flat request.  The output buffer and the result words in the scratch area
 are the request's regions; they lie in memory, apart from one another, at aligned pointers, so the

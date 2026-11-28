@@ -1,4 +1,8 @@
-import Library.Combinatorics.DancingLinks.Count
+module
+
+public import Library.Combinatorics.DancingLinks.Count
+
+@[expose] public section
 
 /-! Reading the options word by word, as step X1 does.  The state of `readStep` holds the finished
 options and the current run: a nonzero word extends the run, and a zero finishes a nonempty

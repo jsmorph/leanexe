@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcFastAll
-import Library.Numerics.Float64.Erfc.ErfcTest
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcFastAll
+public import Library.Numerics.Float64.Erfc.ErfcTest
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 The fast path of `cr_erfc` below `0x1.713786d9c7c09p+1`.  For `x < 0`, `erfc x = 1 + erf (-x)`, and

@@ -1,4 +1,8 @@
-import TestSupport.A64.Programs
+module
+
+public import TestSupport.A64.Programs
+
+@[expose] public section
 
 /-!
 The command `a64-programs emit DIR` of the AArch64 back end's bare-metal programs.  For each program

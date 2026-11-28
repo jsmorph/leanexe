@@ -1,6 +1,10 @@
-import Verified.Wasi.ResultRelease
-import Verified.Wasi.WriteCommand
-import Verified.Wasi.CostResults
+module
+
+public import Verified.Wasi.ResultRelease
+public import Verified.Wasi.WriteCommand
+public import Verified.Wasi.CostResults
+
+@[expose] public section
 
 namespace Verified.Wasi
 

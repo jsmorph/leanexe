@@ -1,11 +1,15 @@
-import TestSupport.A64.Programs
-import TestSupport.A64.Gcd
-import TestSupport.A64.Crc
-import TestSupport.A64.Sha
-import TestSupport.A64.Fold
-import TestSupport.A64.Cic
-import LeanExe.A64.File
-import LeanExe.A64.Proof.ImageTheorem
+module
+
+public import TestSupport.A64.Programs
+public import TestSupport.A64.Gcd
+public import TestSupport.A64.Crc
+public import TestSupport.A64.Sha
+public import TestSupport.A64.Fold
+public import TestSupport.A64.Cic
+public import LeanExe.A64.File
+public import LeanExe.A64.Proof.ImageTheorem
+
+@[expose] public section
 
 /-!
 The theorems of the arm64 Images that `a64-programs emit` writes.

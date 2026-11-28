@@ -1,7 +1,11 @@
-import Demos.OrderBook.Program
-import TestSupport.OrderBook.Edges
-import TestSupport.OrderBook.Words
-import Library.Random.SplitMix64.Program
+module
+
+public import Demos.OrderBook.Program
+public import TestSupport.OrderBook.Edges
+public import TestSupport.OrderBook.Words
+public import Library.Random.SplitMix64.Program
+
+@[expose] public section
 
 /-! The cases of the module `orderbook`: the export `run` on the samples, the single records, the
 edge streams, and random streams that SplitMix64 draws from fixed seeds, from the empty book and

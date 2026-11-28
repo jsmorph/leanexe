@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Trig.TrigSinTail
+module
+
+public import Library.Numerics.Float64.Trig.TrigSinTail
+
+@[expose] public section
 
 /-!
 The rounding error of `Trig.kernelSin x 0 false`, the sine kernel without a tail.  For

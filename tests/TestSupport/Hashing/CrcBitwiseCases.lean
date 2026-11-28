@@ -1,5 +1,9 @@
-import Library.Hashing.Crc.Program
-import TestSupport.Hashing.Packing
+module
+
+public import Library.Hashing.Crc.Program
+public import TestSupport.Hashing.Packing
+
+@[expose] public section
 
 /-! The cases of the module `crcBitwise`.  The calls of `data/hashing/crc/bitwise.txt` carry the
 results that `zlib.crc32` gives: `crc32Reg` from registers below 2^32, and `crc32Byte` and

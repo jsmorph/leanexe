@@ -1,4 +1,8 @@
-import Verified.Wasi.LoopCostInvariant
+module
+
+public import Verified.Wasi.LoopCostInvariant
+
+@[expose] public section
 
 namespace Verified.Wasi
 

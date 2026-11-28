@@ -1,4 +1,8 @@
-import Verified.Wasi.LoopTestGuarded
+module
+
+public import Verified.Wasi.LoopTestGuarded
+
+@[expose] public section
 
 namespace Verified.Wasi
 

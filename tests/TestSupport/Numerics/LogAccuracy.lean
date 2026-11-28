@@ -1,6 +1,13 @@
-import Library.Numerics.Float64.Log.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.Reference
+module
+
+public import Library.Numerics.Float64.Log.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.Reference
+public meta import Library.Numerics.Float64.Log.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Log.log` against `Reference.log` rounded to the nearest double.  Arm's
 comments bound the error below one unit in the last place, so each result must lie within one unit

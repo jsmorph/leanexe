@@ -1,4 +1,9 @@
-import Library.Numerics.Arithmetic.Uscale.Compiled
+module
+
+public import Library.Numerics.Arithmetic.Uscale.Compiled
+public meta import Library.Numerics.Arithmetic.Uscale.Compiled
+
+@[expose] public section
 
 /-! A native check of `Uscale`'s routines against Lean's `Nat` on pseudo-random operands of up to
 120 limbs: `mulSmall`, `shl`, `le`, `sub`, `bitLen`, `divBits`, `scaledQuot`, and `pow10`.  The

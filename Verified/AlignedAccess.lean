@@ -1,6 +1,10 @@
-import Verified.After
-import LeanExe.ProofKit.AlignedExec
-import LeanExe.Pipeline.AlignedHeap
+module
+
+public import Verified.After
+public import LeanExe.ProofKit.AlignedExec
+public import LeanExe.Pipeline.AlignedHeap
+
+@[expose] public section
 
 /-!
 Aligned accesses to an array's words.  The code of an array read and of an array write computes

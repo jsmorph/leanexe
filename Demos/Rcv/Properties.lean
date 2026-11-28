@@ -1,4 +1,8 @@
-import Demos.Rcv.Holder
+module
+
+public import Demos.Rcv.Holder
+
+@[expose] public section
 
 /-!
 The properties of instant runoff of [the requirements](requirements.md), section "Properties of

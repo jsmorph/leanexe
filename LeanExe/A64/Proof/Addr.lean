@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.StartupCode
-import LeanExe.A64.Proof.Straight
-import LeanExe.A64.Proof.Memory
+module
+
+public import LeanExe.A64.Proof.StartupCode
+public import LeanExe.A64.Proof.Straight
+public import LeanExe.A64.Proof.Memory
+
+@[expose] public section
 
 /-!
 The run of the `ADRP` and `ADD` that `addrOf` emits.  `ADRP` adds to the program counter's page the

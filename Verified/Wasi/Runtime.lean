@@ -1,7 +1,11 @@
-import Verified.Wasi.PureTransportSpecs
-import Verified.Bytes.Allocation
-import Verified.Bytes.Release
-import Verified.Wasi.ABI
+module
+
+public import Verified.Wasi.PureTransportSpecs
+public import Verified.Bytes.Allocation
+public import Verified.Bytes.Release
+public import Verified.Wasi.ABI
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,4 +1,8 @@
-import Demos.Energy.Spec
+module
+
+public import Demos.Energy.Spec
+
+@[expose] public section
 
 /-! The integer conditions of the acceptance rule and the theorem that they bound every admitted
 trajectory.  `Conditions p q c` states, in integers, the tests of each side on which the window's

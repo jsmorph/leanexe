@@ -1,6 +1,10 @@
-import Demos.Geolocation.Spec
-import Demos.Frames.Program
-import Demos.Screening.Program
+module
+
+public import Demos.Geolocation.Spec
+public import Demos.Frames.Program
+public import Demos.Screening.Program
+
+@[expose] public section
 
 /-!
 The geolocation program.  `locateWith` reads an array of binary64 values, encloses the receivers'

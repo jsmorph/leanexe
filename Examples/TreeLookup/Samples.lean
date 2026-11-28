@@ -1,3 +1,7 @@
+module
+
+@[expose] public section
+
 namespace Examples.TreeLookup
 
 /-- A search tree with keys 50, 30, 70, 20, 40, 60, and 80 in breadth-first order, each with ten

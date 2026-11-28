@@ -1,5 +1,9 @@
-import LeanExe.WGSL.Syntax
-import Interpreter.Wasm.IEEE32
+module
+
+public import LeanExe.WGSL.Syntax
+public import Interpreter.Wasm.IEEE32
+
+@[expose] public section
 
 /-!
 The meaning of a kernel under the sequential device model.  Binary32 operations compute Talos's
@@ -143,6 +147,12 @@ def loopRuns (test : Run → Option Bool) (body : Run → Option Run) : Nat → 
       if run.returned then some run
       else do if (← test run) then loopRuns test body fuel (← body run) else some run
 
+/-- The test of `while c`: the value of `c` when it is a Boolean, and `none` otherwise. -/
+def whileTest (ctx : Context) (c : Expr) (run : Run) : Option Bool :=
+  match c.eval ctx run.env with
+  | some (.bool b) => some b
+  | _ => none
+
 mutual
   /-- One statement. -/
   def Stmt.exec (ctx : Context) (run : Run) : Stmt → Option Run
@@ -169,10 +179,7 @@ mutual
         -- Declarations inside the block go out of scope; assignments to outer variables stay.
         some { inner with env := inner.env.drop (inner.env.length - run.env.length) }
     | .while_ c body =>
-        loopRuns
-          (fun r => match c.eval ctx r.env with
-            | some (.bool b) => some b
-            | _ => none)
+        loopRuns (whileTest ctx c)
           (fun r => (Stmt.execList ctx r body).map fun inner =>
             { inner with env := inner.env.drop (inner.env.length - r.env.length) })
           loopBound run

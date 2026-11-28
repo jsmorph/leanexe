@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.RealErf
-import Mathlib.MeasureTheory.Integral.Prod
-import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
+module
+
+public import LeanExe.ProofKit.RealErf
+public import Mathlib.MeasureTheory.Integral.Prod
+public import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
+
+@[expose] public section
 
 /-!
 The two-dimensional probability of collision.  `pc` is the integral of a Gaussian density with

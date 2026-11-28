@@ -1,8 +1,12 @@
-import Verified.Examples.WasiReadAllMessage
-import Verified.Wasi.BudgetTactics
-import Verified.Wasi.FunctionEntry
-import Verified.FieldsArgs
-import Verified.TailExpand
+module
+
+public import Verified.Examples.WasiReadAllMessage
+public import Verified.Wasi.BudgetTactics
+public import Verified.Wasi.FunctionEntry
+public import Verified.FieldsArgs
+public import Verified.TailExpand
+
+@[expose] public section
 
 /-!
 readAll's message corollary for a class of reply sequences.  `Steady F L I R` holds when `R`

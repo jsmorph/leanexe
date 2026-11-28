@@ -1,16 +1,20 @@
-import Verified.Wasi.SysFlat
-import Verified.Wasi.SysRecord
-import Verified.Wasi.SysIovec
-import Verified.Wasi.SysPoll
-import Verified.Wasi.SysReported
-import Verified.Wasi.SysResult
-import Verified.Wasi.CostCodeSpec
-import Verified.Wasi.CompilerFacts
-import Verified.Wasi.CostResults
-import Verified.Wasi.ResourcePrefix
-import Verified.Wasi.ResultRelease
-import Verified.Wasi.WriteCommand
-import Verified.Wasi.BindContext
+module
+
+public import Verified.Wasi.SysFlat
+public import Verified.Wasi.SysRecord
+public import Verified.Wasi.SysIovec
+public import Verified.Wasi.SysPoll
+public import Verified.Wasi.SysReported
+public import Verified.Wasi.SysResult
+public import Verified.Wasi.CostCodeSpec
+public import Verified.Wasi.CompilerFacts
+public import Verified.Wasi.CostResults
+public import Verified.Wasi.ResourcePrefix
+public import Verified.Wasi.ResultRelease
+public import Verified.Wasi.WriteCommand
+public import Verified.Wasi.BindContext
+
+@[expose] public section
 
 /-! The command `sys`: its code from the argument variables to the result words, with its
 correctness and its cost.  `ValueResult` is the outcome that both specifications need of a `sys`

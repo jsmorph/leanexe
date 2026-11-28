@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Trig.TrigPi
+module
+
+public import Library.Numerics.Float64.Trig.TrigPi
+
+@[expose] public section
 
 /-!
 Bounds on `π` within `2 ^ -128` for the Taylor models of `lgamma`, from `TrigPi`'s enclosure by

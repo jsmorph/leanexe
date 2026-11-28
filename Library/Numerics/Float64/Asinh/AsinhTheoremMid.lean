@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Asinh.AsinhTheoremLarge
-import LeanExe.ProofKit.F64RelError
+module
+
+public import Library.Numerics.Float64.Asinh.AsinhTheoremLarge
+public import LeanExe.ProofKit.F64RelError
+
+@[expose] public section
 
 /-!
 The middle branch of `Asinh.asinh`, `2 ≤ |x| < 2 ^ 29`: the code computes

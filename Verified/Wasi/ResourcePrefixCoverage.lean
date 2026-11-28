@@ -1,4 +1,8 @@
-import Verified.Wasi.ResourceAdvanceCoverage
+module
+
+public import Verified.Wasi.ResourceAdvanceCoverage
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

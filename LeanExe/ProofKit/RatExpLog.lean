@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.RealExpError
-import LeanExe.ProofKit.PolyBound
+module
+
+public import LeanExe.ProofKit.RealExpError
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 Enclosures of `exp` and `log` at rational points, checked by the kernel.  `expSum q n` is the

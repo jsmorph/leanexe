@@ -1,5 +1,9 @@
-import Library.Combinatorics.NextPermutation.Compiled
-import Verified.Master
+module
+
+public import Library.Combinatorics.NextPermutation.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Combinatorics.NextPermutation
 

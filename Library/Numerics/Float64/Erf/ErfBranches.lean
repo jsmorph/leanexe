@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Erf.Compiled
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64Sign
-import LeanExe.ProofKit.F64PositiveOrder
+module
+
+public import Library.Numerics.Float64.Erf.Compiled
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64Sign
+public import LeanExe.ProofKit.F64PositiveOrder
+
+@[expose] public section
 
 /-!
 The paths of `Erf.erfWith` by the value of the argument.  The code compares the

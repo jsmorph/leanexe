@@ -1,4 +1,8 @@
-import Verified.Examples.Records
+module
+
+public import Verified.Examples.Records
+
+@[expose] public section
 
 /-! A program of the verified compiler: arrays of structures.  An array of
 structures with `Flat` instances holds each element's flattening in consecutive words, as an array

@@ -1,5 +1,9 @@
-import Std.Data.HashMap
-import TestSupport.M7.BoardCosim
+module
+
+public import Std.Data.HashMap
+public import TestSupport.M7.BoardCosim
+
+@[expose] public section
 
 /-!
 The command `m7-cosim` of the co-simulation of the Cortex-M7 model.  `m7-cosim gen SEED PER_FORM

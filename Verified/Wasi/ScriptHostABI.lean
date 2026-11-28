@@ -1,5 +1,9 @@
-import Verified.Wasi.ScriptHostModel
-import Verified.Wasi.OracleHost
+module
+
+public import Verified.Wasi.ScriptHostModel
+public import Verified.Wasi.OracleHost
+
+@[expose] public section
 
 namespace Verified.Wasi.ScriptHost
 

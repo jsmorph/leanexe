@@ -1,7 +1,11 @@
-import Verified.AlignedCorrect
-import Verified.Wasi.LoopPrepared
-import Verified.Wasi.LoopPrepare
-import Verified.Wasi.CompilerFacts
+module
+
+public import Verified.AlignedCorrect
+public import Verified.Wasi.LoopPrepared
+public import Verified.Wasi.LoopPrepare
+public import Verified.Wasi.CompilerFacts
+
+@[expose] public section
 
 namespace Verified.Wasi
 

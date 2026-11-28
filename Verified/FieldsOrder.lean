@@ -1,4 +1,8 @@
-import Verified.FieldsExpr
+module
+
+public import Verified.FieldsExpr
+
+@[expose] public section
 
 namespace Verified
 

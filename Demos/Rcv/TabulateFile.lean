@@ -1,5 +1,9 @@
-import Demos.Rcv.Tabulate
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Rcv.Tabulate
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! The file theorems of `build/verified/rcvTabulate.wasm`, which `tests/verified/run.sh` checks
 after it writes the file: the file holds `encode compiled.module`, and it decodes to the module of

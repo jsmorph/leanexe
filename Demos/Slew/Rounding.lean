@@ -1,5 +1,9 @@
-import Demos.Slew.Program
-import LeanExe.ProofKit.F64Approx
+module
+
+public import Demos.Slew.Program
+public import LeanExe.ProofKit.F64Approx
+
+@[expose] public section
 
 /-! Binary64 facts for the slew planner's error lemmas.  `val x` is the real value of the float
 `x` and `Fin x` states that it is finite.  The comparisons, `max`, `min`, and negation of finite
@@ -58,27 +62,59 @@ theorem lt_iff_val {a b : Float} (ha : Fin a) (hb : Fin b) : a < b ↔ val a < v
   rw [F64Bits.lt_iff, lt_value _ _ ha hb, decide_eq_true_iff]
   rfl
 
+/-- A signed zero is finite. -/
+theorem signMask_finite (s : Bool) : Finite (Wasm.IEEE64.signMask s) := by
+  unfold CodeLib.IEEE64.Finite
+  cases s <;> decide
+
+theorem signMask_scaledMagnitude (s : Bool) :
+    Wasm.IEEE64.scaledMagnitude (Wasm.IEEE64.signMask s) = 0 := by
+  cases s <;> decide
+
+theorem value_eq_zero {x : UInt64} (h : Wasm.IEEE64.scaledMagnitude x = 0) : value x = 0 := by
+  simp [value, Wasm.IEEE64.scaledValue, h]
+
 theorem max_val {a b : Float} (ha : Fin a) (hb : Fin b) :
     Fin (max a b) ∧ val (max a b) = max (val a) (val b) := by
   have e := F64Bits.toBits_max a b
-  rw [le_value _ _ ha hb] at e
+  simp only [Wasm.IEEE64.max, not_nan_of_finite ha, not_nan_of_finite hb, Bool.or_self,
+    Bool.false_eq_true, ite_false] at e
+  rw [lt_value _ _ ha hb] at e
   simp only [Fin, val, e]
-  by_cases h : value a.toBits ≤ value b.toBits
-  · simp only [h, decide_true, ite_true]
-    exact ⟨hb, (max_eq_right h).symm⟩
-  · simp only [h, decide_false, Bool.false_eq_true, ite_false]
-    exact ⟨ha, (max_eq_left (le_of_lt (not_le.mp h))).symm⟩
+  by_cases hz : Wasm.IEEE64.scaledMagnitude a.toBits = 0 ∧ Wasm.IEEE64.scaledMagnitude b.toBits = 0
+  · simp only [hz.1, hz.2, beq_self_eq_true, Bool.and_self, ite_true]
+    rw [value_eq_zero hz.1, value_eq_zero hz.2, value_eq_zero (signMask_scaledMagnitude _),
+      max_self]
+    exact ⟨signMask_finite _, rfl⟩
+  · have hz' : (Wasm.IEEE64.scaledMagnitude a.toBits == 0 &&
+        Wasm.IEEE64.scaledMagnitude b.toBits == 0) = false := by simpa using hz
+    simp only [hz', Bool.false_eq_true, ite_false]
+    by_cases h : value a.toBits < value b.toBits
+    · simp only [h, decide_true, ite_true]
+      exact ⟨hb, (max_eq_right h.le).symm⟩
+    · simp only [h, decide_false, Bool.false_eq_true, ite_false]
+      exact ⟨ha, (max_eq_left (not_lt.mp h)).symm⟩
 
 theorem min_val {a b : Float} (ha : Fin a) (hb : Fin b) :
     Fin (min a b) ∧ val (min a b) = min (val a) (val b) := by
   have e := F64Bits.toBits_min a b
-  rw [le_value _ _ ha hb] at e
+  simp only [Wasm.IEEE64.min, not_nan_of_finite ha, not_nan_of_finite hb, Bool.or_self,
+    Bool.false_eq_true, ite_false] at e
+  rw [lt_value _ _ ha hb] at e
   simp only [Fin, val, e]
-  by_cases h : value a.toBits ≤ value b.toBits
-  · simp only [h, decide_true, ite_true]
-    exact ⟨ha, (min_eq_left h).symm⟩
-  · simp only [h, decide_false, Bool.false_eq_true, ite_false]
-    exact ⟨hb, (min_eq_right (le_of_lt (not_le.mp h))).symm⟩
+  by_cases hz : Wasm.IEEE64.scaledMagnitude a.toBits = 0 ∧ Wasm.IEEE64.scaledMagnitude b.toBits = 0
+  · simp only [hz.1, hz.2, beq_self_eq_true, Bool.and_self, ite_true]
+    rw [value_eq_zero hz.1, value_eq_zero hz.2, value_eq_zero (signMask_scaledMagnitude _),
+      min_self]
+    exact ⟨signMask_finite _, rfl⟩
+  · have hz' : (Wasm.IEEE64.scaledMagnitude a.toBits == 0 &&
+        Wasm.IEEE64.scaledMagnitude b.toBits == 0) = false := by simpa using hz
+    simp only [hz', Bool.false_eq_true, ite_false]
+    by_cases h : value a.toBits < value b.toBits
+    · simp only [h, decide_true, ite_true]
+      exact ⟨ha, (min_eq_left h.le).symm⟩
+    · simp only [h, decide_false, Bool.false_eq_true, ite_false]
+      exact ⟨hb, (min_eq_right (not_lt.mp h)).symm⟩
 
 theorem neg_val {a : Float} (ha : Fin a) : Fin (-a) ∧ val (-a) = -val a := by
   have h := fapprox_neg (fapprox_val ha)

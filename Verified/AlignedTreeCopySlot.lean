@@ -1,21 +1,25 @@
-import Verified.AlignedTreeCopyBuffer
-import Verified.TreeSlotCode
-import Verified.LocalFrame
-import Verified.TreeCopyInvariant
-import Verified.TreeAdvance
-import Verified.TreeCopyLocals
-import Verified.TreeAllocate
-import Verified.TreeCopyCode
-import Verified.TreeStorage
-import Verified.TreeInitialize
-import Verified.TreeSelect
-import Verified.TreeBeginState
-import Verified.TreeCopyStartInv
-import Verified.TreeTestCode
-import Verified.TreeCopyBufferCode
-import Verified.TreeRestore
-import Verified.TreeNodeLayout
-import Verified.TreeCopyCompleteInv
+module
+
+public import Verified.AlignedTreeCopyBuffer
+public import Verified.TreeSlotCode
+public import Verified.LocalFrame
+public import Verified.TreeCopyInvariant
+public import Verified.TreeAdvance
+public import Verified.TreeCopyLocals
+public import Verified.TreeAllocate
+public import Verified.TreeCopyCode
+public import Verified.TreeStorage
+public import Verified.TreeInitialize
+public import Verified.TreeSelect
+public import Verified.TreeBeginState
+public import Verified.TreeCopyStartInv
+public import Verified.TreeTestCode
+public import Verified.TreeCopyBufferCode
+public import Verified.TreeRestore
+public import Verified.TreeNodeLayout
+public import Verified.TreeCopyCompleteInv
+
+@[expose] public section
 
 /-!
 The copy of one slot and the end of a record's copy under the flag: the ports of

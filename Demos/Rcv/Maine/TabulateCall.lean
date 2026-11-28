@@ -1,7 +1,11 @@
-import Demos.Rcv.Maine.Tabulate
-import Demos.Rcv.Maine.TabulateProof
-import Verified.Call
-import Verified.Congr
+module
+
+public import Demos.Rcv.Maine.Tabulate
+public import Demos.Rcv.Maine.TabulateProof
+public import Verified.Call
+public import Verified.Congr
+
+@[expose] public section
 
 /-!
 The call theorems of the Maine module.  `count_callSpec` is the call theorem over words: from a

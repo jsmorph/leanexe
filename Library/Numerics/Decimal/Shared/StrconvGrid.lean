@@ -1,4 +1,8 @@
-import Library.Numerics.Arithmetic.Fma.FmaGrid
+module
+
+public import Library.Numerics.Arithmetic.Fma.FmaGrid
+
+@[expose] public section
 
 /-!
 The grid of a binary format with precision `p` and infinity exponent field `F`, in units of the

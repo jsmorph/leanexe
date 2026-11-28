@@ -1,5 +1,9 @@
-import Verified.Wasi.ResourcePrefix
-import Verified.BoundFacts
+module
+
+public import Verified.Wasi.ResourcePrefix
+public import Verified.BoundFacts
+
+@[expose] public section
 
 /-! Compositional bounds on the resource semantics of effect commands.  `Bounded` states that every
 run and every prefix of a command uses at most a budget and has enough frames, and `Rule` gives,

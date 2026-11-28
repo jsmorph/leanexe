@@ -1,4 +1,9 @@
-import Mathlib.Tactic
+module
+
+public import LeanExe.Base
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-!
 The alignment of the two addends of `Fma.fmaBits`.  Both are normalized to `[2 ^ 125, 2 ^ 126)`

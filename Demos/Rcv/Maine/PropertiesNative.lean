@@ -1,4 +1,8 @@
-import Demos.Rcv.Maine.Variants
+module
+
+public import Demos.Rcv.Maine.Variants
+
+@[expose] public section
 
 /-!
 Native tests of the statements of T12, T13, T14, and T15 of [the requirements](requirements.md),

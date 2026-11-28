@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcBytes
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcBytes
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/erfc.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Library/Numerics/Float64/Erfc/ErfcFile.lean`: the file holds

@@ -1,5 +1,9 @@
-import Verified.TreeCopyStep
-import Verified.TreeInitialize
+module
+
+public import Verified.TreeCopyStep
+public import Verified.TreeInitialize
+
+@[expose] public section
 
 namespace Verified
 

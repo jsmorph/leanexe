@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaAsymSeries
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAsymSeries
+
+@[expose] public section
 
 /-!
 The kernel checks of the three polynomials of `Lgamma.asLgammaAsymAccurate`'s Stirling series,

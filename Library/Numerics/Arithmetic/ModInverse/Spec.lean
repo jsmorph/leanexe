@@ -1,4 +1,9 @@
-import Mathlib.Data.ZMod.Basic
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.ZMod.Basic
+
+@[expose] public section
 
 /-! The specification of the modular inverse.  For `m ≥ 2` and `a` coprime to `m`, the inverse of
 `a` modulo `m` is the value in `[0, m)` of the inverse of `a` in `ZMod m`, the integers modulo `m`.

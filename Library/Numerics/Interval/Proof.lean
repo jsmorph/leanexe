@@ -1,8 +1,12 @@
-import Library.Numerics.Interval.Program
-import Library.Numerics.Bounds.Proof
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64Sign
-import Library.Numerics.Interval.Steps
+module
+
+public import Library.Numerics.Interval.Program
+public import Library.Numerics.Bounds.Proof
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64Sign
+public import Library.Numerics.Interval.Steps
+
+@[expose] public section
 
 /-!
 Soundness of the interval operations.  `Contains i x` states that the interval `i` is accepted,

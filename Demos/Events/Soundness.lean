@@ -1,4 +1,8 @@
-import Demos.Events.Isolation
+module
+
+public import Demos.Events.Isolation
+
+@[expose] public section
 
 /-!
 The theorems of `events` over its input array.  `Condition xs t` is the event's condition at

@@ -1,5 +1,9 @@
-import LeanExe.WGSL.Semantics
-import LeanExe.ProofKit.F32Bits
+module
+
+public import LeanExe.WGSL.Semantics
+public import LeanExe.ProofKit.F32Bits
+
+@[expose] public section
 
 /-!
 Lemmas that kernels share: the 32-bit words of a Wasm array of 64-bit words, the comparison of

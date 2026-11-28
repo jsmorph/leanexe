@@ -1,6 +1,10 @@
-import TestSupport.A64.Conv32
-import LeanExe.A64.Proof.ProgramRuns
-import LeanExe.Native.Bare
+module
+
+public import TestSupport.A64.Conv32
+public import LeanExe.A64.Proof.ProgramRuns
+public import LeanExe.Native.Bare
+
+@[expose] public section
 
 /-!
 The theorem of the binary32 conversions' bare-metal program for AArch64, in the form `ProgramRuns`,

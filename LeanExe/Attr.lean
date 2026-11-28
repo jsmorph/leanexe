@@ -1,4 +1,9 @@
-import Lean
+module
+
+public import LeanExe.Base
+public import Lean
+
+@[expose] public section
 
 /-!
 # Simp attribute registrations

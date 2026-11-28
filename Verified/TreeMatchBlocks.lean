@@ -1,4 +1,8 @@
-import Verified.TreeLayout
+module
+
+public import Verified.TreeLayout
+
+@[expose] public section
 
 namespace Verified
 

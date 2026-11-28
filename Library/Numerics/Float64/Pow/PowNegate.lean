@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64SignedRounding
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64Sign
+module
+
+public import LeanExe.ProofKit.F64SignedRounding
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64Sign
+
+@[expose] public section
 
 /-!
 Rounding commutes with negation.  `roundScaledMagnitude true n` is the negation of

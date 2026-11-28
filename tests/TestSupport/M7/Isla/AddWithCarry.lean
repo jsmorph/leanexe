@@ -1,5 +1,10 @@
-import LeanExe.M7.Isla.Arith
-import LeanExe.M7.Isla.Profile
+module
+
+public import LeanExe.M7.Isla.Arith
+public import LeanExe.M7.Isla.Profile
+public import LeanExe.A64.Isla.TraceElab
+
+@[expose] public section
 
 /-!
 Theorems of `Agrees` for the forms of `LeanExe/M7/Machine.lean` that compute `AddWithCarry`, from
@@ -73,12 +78,14 @@ def subImmT : Footprint := isla_trace% "tests/isla/m7/sub-imm"
 /-- The footprint of `ADDW Rd, SP, #imm12`. -/
 def addwSpT : Footprint := isla_trace% "tests/isla/m7/addw-sp"
 
+set_option maxRecDepth 8000 in
 /-- The footprint of `SUBW Rd, SP, #imm12`. -/
 def subwSpT : Footprint := isla_trace% "tests/isla/m7/subw-sp"
 
 /-- The footprint of `ADDW SP, SP, #imm12`. -/
 def addwSpSpT : Footprint := isla_trace% "tests/isla/m7/addw-sp-sp"
 
+set_option maxRecDepth 8000 in
 /-- The footprint of `SUBW SP, SP, #imm12`. -/
 def subwSpSpT : Footprint := isla_trace% "tests/isla/m7/subw-sp-sp"
 

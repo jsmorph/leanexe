@@ -1,5 +1,9 @@
-import Demos.RunningSum.Program
-import LeanExe.Dialect.Lemmas
+module
+
+public import Demos.RunningSum.Program
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

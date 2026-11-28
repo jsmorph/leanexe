@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! SplitMix64, Sebastiano Vigna's generator (https://prng.di.unimi.it/splitmix64.c):
 each step adds `0x9e3779b97f4a7c15` to a 64-bit state and mixes the new state into an
 output word with two multiply-and-xor rounds and a final xor.  Arithmetic wraps modulo

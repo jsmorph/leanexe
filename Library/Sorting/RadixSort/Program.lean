@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 /-! Least-significant-digit radix sort of an array of words, TAOCP §5.2.5, with eight passes of
 distribution counting, Algorithm D of TAOCP §5.2, one for each byte from the least significant.

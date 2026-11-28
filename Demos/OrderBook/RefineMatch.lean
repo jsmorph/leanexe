@@ -1,5 +1,9 @@
-import Demos.OrderBook.RefineEffects
-import Demos.OrderBook.RefineHelpers
+module
+
+public import Demos.OrderBook.RefineEffects
+public import Demos.OrderBook.RefineHelpers
+
+@[expose] public section
 
 /-! Matching and submission of [the program](Program.lean) against `Spec.fill` and `Spec.submit`.
 The loop invariant `MatchInv` relates a state of the `repeatWhile` of `fill` to the outcome of

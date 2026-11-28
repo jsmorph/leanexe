@@ -1,6 +1,10 @@
-import Library.Numerics.Statistics.SumSquares.Compiled
-import Library.Numerics.Reductions.Binary64
-import Verified.Master
+module
+
+public import Library.Numerics.Statistics.SumSquares.Compiled
+public import Library.Numerics.Reductions.Binary64
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Statistics.SumSquares
 

@@ -1,5 +1,9 @@
-import Verified.Wasi.SysRecord
-import Verified.Wasi.NestedBytes
+module
+
+public import Verified.Wasi.SysRecord
+public import Verified.Wasi.NestedBytes
+
+@[expose] public section
 
 /-! The parts of the code of an iovec call.  Its parameters are those of `iovecParams`: a handle, an
 iovec, a 64-bit word for `fd_pread` and `fd_pwrite`, and the result word.  The code tests the

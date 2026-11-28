@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.BesselPQ
-import LeanExe.ProofKit.BesselConstants
-import LeanExe.ProofKit.BesselAsym
+module
+
+public import LeanExe.ProofKit.BesselPQ
+public import LeanExe.ProofKit.BesselConstants
+public import LeanExe.ProofKit.BesselAsym
+
+@[expose] public section
 
 /-!
 Enclosures of `P`, `Q`, and their derivatives at `x = 2`, where the chains of `BesselChain`

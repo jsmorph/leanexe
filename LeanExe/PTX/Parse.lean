@@ -1,4 +1,8 @@
-import LeanExe.PTX.Print
+module
+
+public import LeanExe.PTX.Print
+
+@[expose] public section
 
 /-!
 The parser of the printed kernel format.  The lexer splits the text at spaces and newlines and

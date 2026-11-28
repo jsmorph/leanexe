@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 /-! A command that writes a file with the iovec calls, reads it back, and polls a clock and the
 file.  `main` opens the file `n` under `Handle.preopened` with `withOpen`, created and truncated,

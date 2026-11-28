@@ -1,4 +1,8 @@
-import Demos.Rcv.ProcessFuture
+module
+
+public import Demos.Rcv.ProcessFuture
+
+@[expose] public section
 
 /-! The correctness of [the tabulator's process](Process.lean) under StreamFold's host assumptions.
 `process_output` states that every run of `begin` on an input of at most `limit` bytes, from an

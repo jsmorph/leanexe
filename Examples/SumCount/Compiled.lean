@@ -1,5 +1,9 @@
-import Examples.SumCount.Program
-import Verified.Reflect.Command
+module
+
+public import Examples.SumCount.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `sumCount`, whose result is the two-word literal
 `#[sum, size]`, which the reflector reads as two pushes onto `#[]`.  `compiled.sumCount.trapFree`

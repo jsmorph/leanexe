@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Atan.AtanTwoErr
+module
+
+public import Library.Numerics.Float64.Atan.AtanTwoErr
+
+@[expose] public section
 
 /-!
 `Atan.atan q` for the rounded quotient `q = |y/x|` of `Atan.atan2`, against `arctan Q` for the

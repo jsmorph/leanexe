@@ -1,9 +1,13 @@
-import Library.Random.SplitMix64.Compiled
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64NearestDiv
-import LeanExe.ProofKit.F64Magnitude
-import Verified.Master
+module
+
+public import Library.Random.SplitMix64.Compiled
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64NearestDiv
+public import LeanExe.ProofKit.F64Magnitude
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Random.SplitMix64
 

@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Exp.ExpEvaluationBounds
-import LeanExe.ProofKit.F64ErrorTrack
-import LeanExe.ProofKit.PolyBound
-import LeanExe.ProofKit.TaylorRemainder
+module
+
+public import Library.Numerics.Float64.Exp.ExpEvaluationBounds
+public import LeanExe.ProofKit.F64ErrorTrack
+public import LeanExe.ProofKit.PolyBound
+public import LeanExe.ProofKit.TaylorRemainder
+
+@[expose] public section
 
 /-!
 The polynomial of Arm's `exp_inline` as `pow` uses it, whose residual includes the tail `xtail` of

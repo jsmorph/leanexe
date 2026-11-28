@@ -1,5 +1,9 @@
-import Library.Trees.Avl.Spec
-import TestSupport.Host
+module
+
+public import Library.Trees.Avl.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of balanced tree search and insertion. -/
 

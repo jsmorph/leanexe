@@ -1,6 +1,10 @@
-import Verified.Correct
-import Verified.Instantiate
-import LeanExe.ProofKit.BorrowedKept
+module
+
+public import Verified.Correct
+public import Verified.Instantiate
+public import LeanExe.ProofKit.BorrowedKept
+
+@[expose] public section
 
 /-!
 The call of an entry of a verified compilation from a ready store.  A store is ready for a module

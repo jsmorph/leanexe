@@ -1,4 +1,8 @@
-import LeanExe.TalosCompat
+module
+
+public import LeanExe.TalosCompat
+
+@[expose] public section
 
 namespace Verified
 

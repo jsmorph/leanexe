@@ -1,8 +1,12 @@
-import Verified.Wasi.ABI
-import Verified.Wasi.Observed
-import Verified.Bytes.Memory
-import Interpreter.Wasm.Host.Registry
-import LeanExe.Runtime.Tree
+module
+
+public import Verified.Wasi.ABI
+public import Verified.Wasi.Observed
+public import Verified.Bytes.Memory
+public import Interpreter.Wasm.Host.Registry
+public import LeanExe.Runtime.Tree
+
+@[expose] public section
 
 namespace Verified.Wasi
 

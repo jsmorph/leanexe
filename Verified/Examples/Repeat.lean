@@ -1,5 +1,9 @@
-import Library.Arrays.Filter.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Arrays.Filter.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: `LeanExe.repeatWhile`, a loop that stops when
 its condition fails.  The programs use words, floats, pairs that hold arrays, and a structure as

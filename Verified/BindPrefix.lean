@@ -1,4 +1,8 @@
-import Verified.ContextAppend
+module
+
+public import Verified.ContextAppend
+
+@[expose] public section
 
 namespace Verified
 

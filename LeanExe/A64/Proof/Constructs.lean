@@ -1,11 +1,15 @@
-import LeanExe.A64.Proof.Control
-import LeanExe.A64.Proof.Call
-import LeanExe.A64.Proof.Memory
-import LeanExe.A64.Proof.ByteMemory
-import LeanExe.A64.Proof.Memory32
-import LeanExe.A64.Proof.Float32
-import LeanExe.ProofKit.Exec
-import Interpreter.Wasm.Semantics.Lemmas
+module
+
+public import LeanExe.A64.Proof.Control
+public import LeanExe.A64.Proof.Call
+public import LeanExe.A64.Proof.Memory
+public import LeanExe.A64.Proof.ByteMemory
+public import LeanExe.A64.Proof.Memory32
+public import LeanExe.A64.Proof.Float32
+public import LeanExe.ProofKit.Exec
+public import Interpreter.Wasm.Semantics.Lemmas
+
+@[expose] public section
 
 /-!
 The simulation of instruction lists and of the constructs `block`, `loop`, and `if`.  The

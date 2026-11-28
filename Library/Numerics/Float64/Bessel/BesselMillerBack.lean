@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Bessel.BesselMillerStep
-import Library.Numerics.Float64.Bessel.BesselMillerT
-import Library.Numerics.Float64.Bessel.BesselMillerLog
-import Library.Numerics.Float64.Bessel.BesselJ0Large
-import Library.Numerics.Float64.Trig.TrigSinCos
+module
+
+public import Library.Numerics.Float64.Bessel.BesselMillerStep
+public import Library.Numerics.Float64.Bessel.BesselMillerT
+public import Library.Numerics.Float64.Bessel.BesselMillerLog
+public import Library.Numerics.Float64.Bessel.BesselJ0Large
+public import Library.Numerics.Float64.Trig.TrigSinCos
+
+@[expose] public section
 
 /-!
 The loop of `jn`'s backward recurrence up to `J₁`.  The state `(a, b, t, dᵢ)` after `m` steps

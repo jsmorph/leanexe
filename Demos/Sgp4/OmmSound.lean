@@ -1,7 +1,11 @@
-import Demos.Sgp4.Omm
-import Demos.Sgp4.BoxSound
-import Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
-import Library.Numerics.Decimal.Shared.StrconvRound
+module
+
+public import Demos.Sgp4.Omm
+public import Demos.Sgp4.BoxSound
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
+public import Library.Numerics.Decimal.Shared.StrconvRound
+
+@[expose] public section
 
 /-!
 Soundness of the reader of decimal values.  `around_encloses` states that the interval from one
@@ -167,6 +171,7 @@ theorem field_sound (s : List UInt8) (hs : s.length < 2 ^ 32) {n : Num}
     refine ⟨fun x hx => by simp [numValue] at hx, fun _ h0 => ?_⟩
     unfold field at h0
     rw [ParseFloatTheorem.parse64_accept true s _ hs h] at h0
+    simp only [↓reduceIte] at h0
     have hf := around_finite h0
     unfold CodeLib.IEEE64.Finite at hf
     revert hf

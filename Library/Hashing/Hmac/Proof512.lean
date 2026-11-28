@@ -1,5 +1,9 @@
-import Library.Hashing.Hmac.Bits
-import Library.Hashing.Sha512.Proof
+module
+
+public import Library.Hashing.Hmac.Bits
+public import Library.Hashing.Sha512.Proof
+
+@[expose] public section
 
 /-! HMAC-SHA-512 computes FIPS 198-1.  `implHmac512` is HMAC computed with the copied byte-level
 implementation `SHS.SHA512.Impl.sha512`.  `implHmac512_spec` shows that its digest is the

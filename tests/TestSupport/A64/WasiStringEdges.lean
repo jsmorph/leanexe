@@ -1,4 +1,8 @@
-import LeanExe.A64.Wasi
+module
+
+public import LeanExe.A64.Wasi
+
+@[expose] public section
 
 /-!
 Modules that call `args_sizes_get` or `args_get` once with chosen pointers, for the runs of

@@ -1,5 +1,9 @@
-import Library.Numerics.Bounds.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Library.Numerics.Bounds.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 namespace Library.Numerics.Bounds
 

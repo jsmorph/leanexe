@@ -1,4 +1,8 @@
-import TestSupport.Slew.Cases
+module
+
+public import TestSupport.Slew.Cases
+
+@[expose] public section
 
 /-! The cases of the module `slew` alone, for `tests/verified/run.sh --cases slew`.  With the
 argument `--summary`, it prints the count of each class's statuses instead of the cases. -/

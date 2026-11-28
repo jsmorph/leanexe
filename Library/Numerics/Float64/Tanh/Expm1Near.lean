@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tanh.Expm1Theorem
-import Library.Numerics.Float64.Tanh.Expm1NearForms
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1Theorem
+public import Library.Numerics.Float64.Tanh.Expm1NearForms
+
+@[expose] public section
 
 /-!
 `Tanh.expm1` with the error before its last rounding, for the arguments that `tanh` passes.  For

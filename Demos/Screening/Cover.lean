@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
+module
+
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+
+@[expose] public section
 
 /-!
 Loops that build an array from the cells of another.  Each step appends to the accumulator, so

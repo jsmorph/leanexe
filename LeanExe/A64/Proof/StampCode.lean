@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.LinuxProgram
-import LeanExe.A64.Stamp
+module
+
+public import LeanExe.A64.Proof.LinuxProgram
+public import LeanExe.A64.Stamp
+
+@[expose] public section
 
 /-!
 The code of the stamp program's entry routine `genStampMain` and of its program

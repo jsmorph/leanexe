@@ -1,5 +1,9 @@
-import Demos.Rcv.RefineBits
-import LeanExe.Dialect.ArrayLemmas
+module
+
+public import Demos.Rcv.RefineBits
+public import LeanExe.Dialect.ArrayLemmas
+
+@[expose] public section
 
 /-!
 The tally of a round: `Demos.Rcv.Program.examineAt` gives the slot of `Demos.Rcv.Spec.interpret`,

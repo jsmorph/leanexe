@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Asinh.AtanhTheoremBranches
-import Library.Numerics.Float64.Asinh.AsinhTheoremCompose
-import Library.Numerics.Float64.Asinh.AsinhTheoremMid
-import Mathlib.Analysis.SpecialFunctions.Artanh
+module
+
+public import Library.Numerics.Float64.Asinh.AtanhTheoremBranches
+public import Library.Numerics.Float64.Asinh.AsinhTheoremCompose
+public import Library.Numerics.Float64.Asinh.AsinhTheoremMid
+public import Mathlib.Analysis.SpecialFunctions.Artanh
+
+@[expose] public section
 
 /-!
 `Asinh.atanh` below `1/2`: the code returns `0.5 log1p w` with `w = 2a + 2a·a/(1 - a)` for

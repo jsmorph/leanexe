@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 namespace LeanExe.ProofKit.Signed32
 
 def extend8Bits (value : UInt32) : UInt32 :=

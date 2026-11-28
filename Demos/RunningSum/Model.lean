@@ -1,6 +1,10 @@
-import Demos.RunningSum.Kernel
-import Demos.StreamFold.Model
-import Mathlib.Data.List.Forall2
+module
+
+public import Demos.RunningSum.Kernel
+public import Demos.StreamFold.Model
+public import Mathlib.Data.List.Forall2
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

@@ -1,4 +1,8 @@
-import Verified.Wasi.Source
+module
+
+public import Verified.Wasi.Source
+
+@[expose] public section
 
 /-! The handle check of a command.  `Command.HandleCheck helpers marks command` holds when the
 command opens and closes descriptors only in the shape that `reflect` gives `LeanExe.Wasi.withOpen`

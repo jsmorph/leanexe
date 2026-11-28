@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Log.LogNearMain
-import Library.Numerics.Float64.Log.LogTheorem
-import LeanExe.ProofKit.F64Approx
+module
+
+public import Library.Numerics.Float64.Log.LogNearMain
+public import Library.Numerics.Float64.Log.LogTheorem
+public import LeanExe.ProofKit.F64Approx
+
+@[expose] public section
 
 /-!
 The error of `Log.log` as a distance for every finite argument with positive value: the result

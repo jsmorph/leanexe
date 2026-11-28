@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.BesselRecur
-import LeanExe.ProofKit.BesselModulus
+module
+
+public import Library.Numerics.Float64.Bessel.BesselRecur
+public import LeanExe.ProofKit.BesselModulus
+
+@[expose] public section
 
 /-!
 Signs and sizes of `J_m(x)` and `Y_m(x)` for `0 < x ≤ 2`, where `z = x²/4 ≤ 1`.  The series of

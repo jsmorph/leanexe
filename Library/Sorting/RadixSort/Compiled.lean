@@ -1,6 +1,10 @@
-import Library.Sorting.RadixSort.Proof
-import Verified.Reflect.Command
-import Verified.Congr
+module
+
+public import Library.Sorting.RadixSort.Proof
+public import Verified.Reflect.Command
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of radix sort.  By the compiler's rules, which the verified
 compiler's manual states, the compiler translates the loops of `countDigits` and `distribute` and

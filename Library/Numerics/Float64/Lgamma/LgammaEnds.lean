@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaFastWalk
-import Library.Numerics.Float64.Lgamma.LgammaEndCell
-import Library.Numerics.Float64.Lgamma.LgammaEndEncl
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaFastWalk
+public import Library.Numerics.Float64.Lgamma.LgammaEndCell
+public import Library.Numerics.Float64.Lgamma.LgammaEndEncl
+
+@[expose] public section
 
 /-!
 The fast path of `Lgamma.lgammaR` at the 14 ends `x = ±(2k + 1)/4`, `k < 7`, of the windows of the

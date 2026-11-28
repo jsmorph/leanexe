@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowLogCases
+module
+
+public import Library.Numerics.Float64.Pow.PowLogCases
+
+@[expose] public section
 
 /-!
 The relative error of `Pow.powLog`: for every positive `x` other than 1, given by its normalized

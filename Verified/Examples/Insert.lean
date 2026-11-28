@@ -1,6 +1,10 @@
-import Library.Sorting.Insertion.Program
-import Library.Arrays.Filter.Program
-import Verified.Examples.Records
+module
+
+public import Library.Sorting.Insertion.Program
+public import Library.Arrays.Filter.Program
+public import Verified.Examples.Records
+
+@[expose] public section
 
 /-! A program of the verified compiler: `LeanExe.insertAt` and `LeanExe.eraseAt`.
 An insertion takes the array with room for one more element, as `push` does, and moves the

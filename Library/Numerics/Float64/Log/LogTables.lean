@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log.Compiled
-import LeanExe.ProofKit.TaylorRemainder
+module
+
+public import Library.Numerics.Float64.Log.Compiled
+public import LeanExe.ProofKit.TaylorRemainder
+
+@[expose] public section
 
 /-!
 Facts about each of the 128 entries of Arm's tables in `Log.lean`, checked by the kernel over the

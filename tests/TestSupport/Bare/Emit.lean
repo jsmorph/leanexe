@@ -1,12 +1,16 @@
-import TestSupport.Bare.Gcd
-import TestSupport.Bare.Theorems
-import TestSupport.Bare.Input
-import TestSupport.Bare.Ctl
-import TestSupport.Bare.Req
-import TestSupport.Bare.Records
-import Demos.Energy.Loop
-import LeanExe.Native.ClightCheck
-import TestSupport.Native.Load
+module
+
+public import TestSupport.Bare.Gcd
+public import TestSupport.Bare.Theorems
+public import TestSupport.Bare.Input
+public import TestSupport.Bare.Ctl
+public import TestSupport.Bare.Req
+public import TestSupport.Bare.Records
+public import Demos.Energy.Loop
+public import LeanExe.Native.ClightCheck
+public import TestSupport.Native.Load
+
+@[expose] public section
 
 /-!
 The executable of the bare-metal programs' test (`tests/baremetal/programs.sh`).  Each case

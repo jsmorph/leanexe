@@ -1,7 +1,11 @@
-import Verified.TreeNodeArgs
-import Verified.FieldsMixedArgs
-import Verified.TreeParent
-import Verified.TreeAssembleCode
+module
+
+public import Verified.TreeNodeArgs
+public import Verified.FieldsMixedArgs
+public import Verified.TreeParent
+public import Verified.TreeAssembleCode
+
+@[expose] public section
 
 namespace Verified
 

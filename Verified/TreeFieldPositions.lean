@@ -1,4 +1,8 @@
-import Verified.TreeFieldLocs
+module
+
+public import Verified.TreeFieldLocs
+
+@[expose] public section
 
 namespace Verified
 
@@ -13,7 +17,7 @@ theorem treeFieldLocs_word_get (fields : List Bool) :
     cases bit
     · by_cases hz : i.val = 0
       · simp [fieldPosition, hz, treeFieldLocs]
-      · rw [fieldPosition, dite_eq_left rfl, dite_eq_right hz]
+      · unfold fieldPosition; simp only [↓reduceDIte, hz]
         simp only [Fin.val_succ, treeFieldLocs, List.getElem_cons_succ]
         rw [ih]
         simp only
@@ -36,7 +40,7 @@ theorem treeFieldLocs_child_get (fields : List Bool) :
       exact ih _ _ _
     · by_cases hz : i.val = 0
       · simp [fieldPosition, hz, treeFieldLocs]
-      · rw [fieldPosition, dite_eq_left rfl, dite_eq_right hz]
+      · unfold fieldPosition; simp only [↓reduceDIte, hz]
         simp only [Fin.val_succ, treeFieldLocs, List.getElem_cons_succ]
         rw [ih]
         simp only
@@ -55,7 +59,7 @@ theorem treeFieldTypes_word_get (fields : List Bool) :
     · by_cases hz : i.val = 0
       · simp only [fieldPosition, dite_true, hz, treeFieldTypes, List.getD_cons_zero]
         cases tys <;> rfl
-      · rw [fieldPosition, dite_eq_left rfl, dite_eq_right hz]
+      · unfold fieldPosition; simp only [↓reduceDIte, hz]
         simp only [Fin.val_succ, treeFieldTypes, List.getD_cons_succ]
         rw [ih]
         obtain ⟨k, hk⟩ : ∃ k, i.val = k + 1 := ⟨i.val - 1, by omega⟩
@@ -79,7 +83,7 @@ theorem treeFieldTypes_child_get (fields : List Bool) :
       exact ih _ _
     · by_cases hz : i.val = 0
       · simp [fieldPosition, hz, treeFieldTypes]
-      · rw [fieldPosition, dite_eq_left rfl, dite_eq_right hz]
+      · unfold fieldPosition; simp only [↓reduceDIte, hz]
         simp only [Fin.val_succ, treeFieldTypes, List.getD_cons_succ]
         exact ih _ _
 

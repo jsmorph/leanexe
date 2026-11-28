@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaLogd
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaLogd
+
+@[expose] public section
 
 /-!
 The reduction `Lgamma.logReduce` that `Lgamma.asLogdAccurate` shares with `Lgamma.asLogd`, for

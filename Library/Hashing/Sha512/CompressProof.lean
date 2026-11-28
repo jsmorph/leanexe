@@ -1,6 +1,11 @@
-import Library.Hashing.Sha512.Program
-import Library.Hashing.Words.Proof
-import Library.Hashing.Sha2.Equiv.SHA512.Compress.Impl
+module
+
+public import Library.Hashing.Sha512.Program
+public import Library.Hashing.Words.Proof
+public import Library.Hashing.Sha2.Equiv.SHA512.Compress.Impl
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-! `compress` equals `SHS.SHA512.Impl.compress`, the compression of FIPS 180-4 §6.4.2 in the
 copied implementation, which `SHS.Equiv.SHA512.compress_correct` proves equal to the

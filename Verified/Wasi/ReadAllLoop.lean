@@ -1,8 +1,12 @@
-import Verified.Wasi.ReadAllCode
-import Verified.Wasi.ReadAllBuffer
-import Verified.Wasi.ReadCall
-import Verified.Wasi.ReadProof
-import Verified.Wasi.Write
+module
+
+public import Verified.Wasi.ReadAllCode
+public import Verified.Wasi.ReadAllBuffer
+public import Verified.Wasi.ReadCall
+public import Verified.Wasi.ReadProof
+public import Verified.Wasi.Write
+
+@[expose] public section
 
 /-! The read loop of `readAll`.  Each pass reads at most 4,096 bytes into the buffer's tail, and the
 loop ends at an errno, at a read of no bytes, or when more than the limit is held.  The invariant

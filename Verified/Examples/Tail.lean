@@ -1,5 +1,9 @@
-import Verified.Reflect.Command
-import Verified.Examples.TailReflection
+module
+
+public import Verified.Reflect.Command
+public import Verified.Examples.TailReflection
+
+@[expose] public section
 
 namespace Verified.Examples.Tail
 

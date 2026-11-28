@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Trig.TrigKernelSpec
-import Library.Numerics.Float64.Trig.TrigCosKernel
-import Library.Numerics.Float64.Trig.TrigReduce
-import Library.Numerics.Float64.Trig.TrigStep
+module
+
+public import Library.Numerics.Float64.Trig.TrigKernelSpec
+public import Library.Numerics.Float64.Trig.TrigCosKernel
+public import Library.Numerics.Float64.Trig.TrigReduce
+public import Library.Numerics.Float64.Trig.TrigStep
+
+@[expose] public section
 
 /-!
 The reduced path of `sin` and `cos`: for a reduction `Reduced xa n y0 y1`, the sine and cosine

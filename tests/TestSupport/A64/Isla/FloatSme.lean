@@ -1,4 +1,9 @@
-import LeanExe.A64.Isla.Float
+module
+
+public import LeanExe.A64.Isla.Float
+public import LeanExe.A64.Isla.TraceElab
+
+@[expose] public section
 
 /-!
 The theorems of `tests/TestSupport/A64/Isla/Float.lean` under the profile `sme`, from the traces of

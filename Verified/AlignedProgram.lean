@@ -1,5 +1,9 @@
-import Verified.AlignedEntries
-import Verified.AlignedCopy
+module
+
+public import Verified.AlignedEntries
+public import Verified.AlignedCopy
+
+@[expose] public section
 
 /-!
 The alignment theorems of a compiled program without byte literals, which `verified_compile`

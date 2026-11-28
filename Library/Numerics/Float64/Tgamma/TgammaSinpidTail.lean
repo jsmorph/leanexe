@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tgamma.TgammaSinpidPoly
-import Library.Numerics.Float64.Tgamma.TgammaSinpidParts
-import Library.Numerics.Float64.Tgamma.TgammaSinpidComb
-import Library.Numerics.Float64.Tgamma.TgammaSinpidTab
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidPoly
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidParts
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidComb
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidTab
+
+@[expose] public section
 
 /-!
 The code of `Tgamma.asSinpid` after the argument reduction and the table lookups, as `sinTail`,

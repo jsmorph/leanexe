@@ -1,5 +1,9 @@
-import TestSupport.Native.Common
-import Demos.Euler.Verified
+module
+
+public import TestSupport.Native.Common
+public import Demos.Euler.Verified
+
+@[expose] public section
 
 /-!
 The theorems that `verified_compile` adds for the Euler solvers, the exit criterion of milestone

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcHardRows
-import Library.Numerics.Float64.Erfc.ErfcAsymAccFin
-import Library.Numerics.Float64.Erf.ErfTailPieces0
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcHardRows
+public import Library.Numerics.Float64.Erfc.ErfcAsymAccFin
+public import Library.Numerics.Float64.Erf.ErfTailPieces0
+
+@[expose] public section
 
 /-!
 The input `0x1.a8f7bfbd15495p+4` of `erfc_asympt_accurate`, whose value of `erfc` lies in the

@@ -1,13 +1,17 @@
-import Library.Random.Sampling.Program
-import Library.Random.Sampling.Spec
-import Library.Random.Sampling.Scale
-import Library.Sorting.Heapsort.Proof
-import LeanExe.Dialect.Lemmas
-import Mathlib.Algebra.Order.BigOperators.Group.Finset
-import Mathlib.Algebra.Order.BigOperators.GroupWithZero.Finset
-import Mathlib.Algebra.BigOperators.Fin
-import Mathlib.Algebra.BigOperators.Intervals
-import Mathlib.Data.Fintype.BigOperators
+module
+
+public import Library.Random.Sampling.Program
+public import Library.Random.Sampling.Spec
+public import Library.Random.Sampling.Scale
+public import Library.Sorting.Heapsort.Proof
+public import LeanExe.Dialect.Lemmas
+public import Mathlib.Algebra.Order.BigOperators.Group.Finset
+public import Mathlib.Algebra.Order.BigOperators.GroupWithZero.Finset
+public import Mathlib.Algebra.BigOperators.Fin
+public import Mathlib.Algebra.BigOperators.Intervals
+public import Mathlib.Data.Fintype.BigOperators
+
+@[expose] public section
 
 /-! The proof that `shuffle` satisfies `Shuffles`.  `byIndices k m a` is Algorithm P with given
 indices: for `j` from `m` down to 1 it exchanges the words at `k j` and `j`.  With indices
@@ -396,12 +400,12 @@ theorem shuffle_count (xs ys : Array UInt64) (hs : xs.size < 2 ^ 32) (hd : xs.to
     exact scale_card (xs.size - 1 - t + 1) (kk (xs.size - 1 - t)) (by omega) (by omega)
       (by simp at this; omega)
   constructor
-  · apply Finset.prod_le_prod (fun _ _ => Nat.zero_le _)
+  · apply Finset.prod_le_prod₀ (fun _ _ => Nat.zero_le _)
     intro t ht
     have ht' := Finset.mem_range.mp ht
     rw [show 1 + (xs.size - 1 - 1 - t) + 1 = xs.size - 1 - t + 1 by omega]
     exact (hb t ht).1
-  · apply Finset.prod_le_prod (fun _ _ => Nat.zero_le _)
+  · apply Finset.prod_le_prod₀ (fun _ _ => Nat.zero_le _)
     intro t ht
     have ht' := Finset.mem_range.mp ht
     rw [show 2 ^ 64 + (1 + (xs.size - 1 - 1 - t)) = 2 ^ 64 + (xs.size - 1 - t + 1) - 1 by omega,

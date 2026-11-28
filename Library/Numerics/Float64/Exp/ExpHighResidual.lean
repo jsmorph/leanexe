@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Exp.ExpHighSubtraction
-import Library.Numerics.Float64.Exp.ExpHighPartBounds
-import Library.Numerics.Float64.Exp.ExpReductionSelection
+module
+
+public import Library.Numerics.Float64.Exp.ExpHighSubtraction
+public import Library.Numerics.Float64.Exp.ExpHighPartBounds
+public import Library.Numerics.Float64.Exp.ExpReductionSelection
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpHighResidual
 open CodeLib.IEEE64

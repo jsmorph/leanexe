@@ -1,6 +1,10 @@
-import Verified.TreeSource
-import Verified.Compile
-import Verified.Correct
+module
+
+public import Verified.TreeSource
+public import Verified.Compile
+public import Verified.Correct
+
+@[expose] public section
 
 namespace Verified.Examples.TreeCore
 

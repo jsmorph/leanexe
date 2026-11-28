@@ -1,5 +1,9 @@
-import LeanExe.Pipeline.RuntimeSpec
-import LeanExe.Pipeline.Records
+module
+
+public import LeanExe.Pipeline.RuntimeSpec
+public import LeanExe.Pipeline.Records
+
+@[expose] public section
 
 /-!
 `release` on a tree of records.  The runtime's loop takes the head of the pending list,

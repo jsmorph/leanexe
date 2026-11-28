@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpNegativeFinal
-import LeanExe.ProofKit.RealExpError
+module
+
+public import Library.Numerics.Float64.Exp.ExpNegativeFinal
+public import LeanExe.ProofKit.RealExpError
+
+@[expose] public section
 
 /-!
 The special path of `Exp.exp` for `768 < abs a < 1024`, with coarse bounds.  The reduction keeps

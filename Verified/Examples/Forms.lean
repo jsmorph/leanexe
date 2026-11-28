@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! Array literals with elements, and conjunctions and disjunctions of propositions in conditions.
 The reflector reads `#[a₁, …, aₙ]` as `((#[].push a₁).push …).push aₙ`, and `if p ∧ q` and

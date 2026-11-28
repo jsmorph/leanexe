@@ -52,6 +52,12 @@ capitalized, and every file of the run is in `Examples/Name/`, a new directory.
 | `journal.md` | Journal of the run. |
 | `README.md` | Description of the result. |
 
+Every Lean file of the run is a module of Lean's module system, as every file of the repository's
+libraries is: it begins with `module`, imports each module with `public import`, and opens
+`@[expose] public section` after the imports, as the template of `Compiled.lean` in Stage 2 shows.
+A file that imports no other module of the repository imports `LeanExe.Base`, which sets instance
+priorities for every module of the libraries.  A module cannot import a file that is not a module.
+
 `expected` has type `α → β`, where `α` is `UInt64`, `Array UInt64`, or a tuple of these, one
 component per parameter of `compute` in order, and `β` is `UInt64` or `Array UInt64`.  This version
 of the skill supports no other types.  If the request needs one, say so and stop before stage 1.
@@ -115,8 +121,12 @@ check and `--run` reject each one with its file and line, and they accept the sa
 library definitions it calls, each callee before its callers:
 
 ```lean
-import Examples.Name.Program
-import Verified.Reflect.Command
+module
+
+public import Examples.Name.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Examples.Name
 
@@ -222,9 +232,9 @@ lesson as a proposal in the same form in `journal.md`.
    commands.
 3. Add the module to the verified tests.  Add the line
    `Examples.Name.Compiled:Examples.Name.compiled.module:NAME` to [the verified module
-   registry](../../../tests/verified/modules.txt) and `import
+   registry](../../../tests/verified/modules.txt) and `public import
    Examples.Name.Compiled` to [`Examples/Verified.lean`](../../../Examples/Verified.lean).  Add
-   `import Examples.Name.Spec` and `import Examples.Name.Samples` to [the verified
+   `public import Examples.Name.Spec` and `public import Examples.Name.Samples` to [the verified
    cases](../../../Verified/Examples/Cases.lean), and at the end of `portCases` a loop that prints
    each sample in the verified driver's format, as the running-maximum loop does:
 

@@ -1,6 +1,10 @@
-import Demos.Screening.Spec
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
+module
+
+public import Demos.Screening.Spec
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 /-!
 The screening program.  `screenWith` reads an array of 25 binary64 values, applies the

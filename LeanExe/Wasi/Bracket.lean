@@ -1,7 +1,11 @@
-import LeanExe.Wasi.CallTable
-import LeanExe.Wasi.ReadAll
-import LeanExe.Wasi.RelatedExec
-import LeanExe.Wasi.RelatedPrefix
+module
+
+public import LeanExe.Wasi.CallTable
+public import LeanExe.Wasi.ReadAll
+public import LeanExe.Wasi.RelatedExec
+public import LeanExe.Wasi.RelatedPrefix
+
+@[expose] public section
 
 /-! The discipline of `withOpen` over traces.  `WellBracketed stack trace stack'` reads a trace
 from left to right with a stack of descriptor numbers, the descriptors of the open brackets with

@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.Call
+module
+
+public import LeanExe.A64.Proof.Call
+
+@[expose] public section
 
 /-!
 The simulation of the instructions that read and write the module's store in the area at X17:

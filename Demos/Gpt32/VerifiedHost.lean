@@ -1,7 +1,11 @@
-import Demos.Gpt32.VerifiedDispatch
-import Demos.Gpt32.VerifiedKernels
-import Demos.Gpt32.Compose
-import LeanExe.WGSL.MemoryModelProof
+module
+
+public import Demos.Gpt32.VerifiedDispatch
+public import Demos.Gpt32.VerifiedKernels
+public import Demos.Gpt32.Compose
+public import LeanExe.WGSL.MemoryModelProof
+
+@[expose] public section
 
 /-!
 The device of `leanexe-webgpu-host session` with the WGSL kernels of `kernelMap`, and the host

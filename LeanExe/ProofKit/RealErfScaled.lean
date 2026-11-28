@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.RealErf
+module
+
+public import LeanExe.ProofKit.RealErf
+
+@[expose] public section
 
 /-!
 `erfcxN x = erfcx x / (2/√π) = (√π/2) exp (x²) erfc x`, which satisfies `erfcxN' = 2 x erfcxN - 1`

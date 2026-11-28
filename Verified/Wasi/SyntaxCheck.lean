@@ -1,5 +1,9 @@
-import LeanExe.Encoding.FormCheck
-import Verified.Wasi.ProgramCorrect
+module
+
+public import LeanExe.Encoding.FormCheck
+public import Verified.Wasi.ProgramCorrect
+
+@[expose] public section
 
 namespace Verified.Wasi
 

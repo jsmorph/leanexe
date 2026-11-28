@@ -1,4 +1,9 @@
-import CodeLib.IEEE64.Roundoff
+module
+
+public import LeanExe.Base
+public import CodeLib.IEEE64.Roundoff
+
+@[expose] public section
 
 /-! Integer guards for finite binary64 words, including zero and subnormals. -/
 namespace LeanExe.ProofKit.F64Order

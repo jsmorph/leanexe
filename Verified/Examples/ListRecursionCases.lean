@@ -1,5 +1,9 @@
-import Verified.Examples.ListRecursion
-import Examples.Trees.Cases
+module
+
+public import Verified.Examples.ListRecursion
+public import Examples.Trees.Cases
+
+@[expose] public section
 
 namespace Verified.Examples.ListRecursion
 

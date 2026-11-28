@@ -1,8 +1,12 @@
-import Verified.Reflect.Command
-import Demos.Drone.Costs
-import Demos.Drone.Extend
-import Demos.Drone.Flat
-import Demos.Drone.WholeFlight
+module
+
+public import Verified.Reflect.Command
+public import Demos.Drone.Costs
+public import Demos.Drone.Extend
+public import Demos.Drone.Flat
+public import Demos.Drone.WholeFlight
+
+@[expose] public section
 
 /-! The drone planner of `Demos/Drone/Program.lean`, compiled unchanged by the verified compiler.
 The planner finds the flight of least duration over up to 64 stations of terrain, with the

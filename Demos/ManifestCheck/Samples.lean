@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Bytes
-import Library.Hashing.Words.Program
+module
+
+public import LeanExe.Dialect.Bytes
+public import Library.Hashing.Words.Program
+
+@[expose] public section
 
 /-! Sample inputs of the manifest checker's pure core.  `H0` and `H1` are the SHA-256 digests of
 the empty message and of `abc` in hex, and `D0` and `D1` the same digests as four words, eight

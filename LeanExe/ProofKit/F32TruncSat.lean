@@ -1,5 +1,10 @@
-import LeanExe.ProofKit.F32Decoded
-import LeanExe.ProofKit.F32Nearest
+module
+
+public import LeanExe.ProofKit.F32Decoded
+public import LeanExe.ProofKit.F32Nearest
+import all Init.Data.SInt.Float32
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32TruncSat
 open Float.Model Float.Model.UnpackedFloat FloatCommon

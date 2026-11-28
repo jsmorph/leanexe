@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.BesselPQRange
-import LeanExe.ProofKit.BesselPQ
+module
+
+public import Library.Numerics.Float64.Bessel.BesselPQRange
+public import LeanExe.ProofKit.BesselPQ
+
+@[expose] public section
 
 /-!
 The last steps of `j0`, `y0`, `j1`, and `y1` from 2 on: `invsqrtpi · (P̂ ĉc ∓ Q̂ ŝs) / √x` and

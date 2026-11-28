@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Bytes
-import Library.Hashing.Sha256.Program
+module
+
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Bytes
+public import Library.Hashing.Sha256.Program
+
+@[expose] public section
 
 /-! SHA-256 of a message that arrives in pieces, with constant memory.  The state is the hash
 value of FIPS 180-4 §6.2.2 after a prefix of whole blocks, `iv256` before the first.  `update h b q`

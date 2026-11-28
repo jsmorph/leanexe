@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.Signed32
-import Interpreter.Wasm.IEEE32
-import Mathlib.Tactic
+module
+
+public import LeanExe.ProofKit.Signed32
+public import Interpreter.Wasm.IEEE32
+public import Mathlib.Tactic
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.QuantizedInt32
 open LeanExe.ProofKit.Signed32

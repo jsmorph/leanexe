@@ -1,6 +1,10 @@
-import Demos.Screening.Program
-import Demos.Screening.Cover
-import Library.Numerics.Interval.Proof
+module
+
+public import Demos.Screening.Program
+public import Demos.Screening.Cover
+public import Library.Numerics.Interval.Proof
+
+@[expose] public section
 
 /-!
 The enclosures of an object's quantities and positions, and the soundness of the two filters.

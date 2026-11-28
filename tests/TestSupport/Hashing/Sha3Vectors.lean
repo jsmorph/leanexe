@@ -1,6 +1,10 @@
-import Library.Hashing.Sha3.Spec
-import Library.Hashing.Sha3.Program
-import TestSupport.Hashing.Packing
+module
+
+public import Library.Hashing.Sha3.Spec
+public import Library.Hashing.Sha3.Program
+public import TestSupport.Hashing.Packing
+
+@[expose] public section
 
 /-! A check of the FIPS 202 transcription `Library.Hashing.Sha3.Spec` and the programs of
 `Library.Hashing.Sha3` on the NIST CAVP vectors in `data/hashing/sha3/`.  The transcription runs

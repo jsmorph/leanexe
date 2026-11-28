@@ -1,5 +1,9 @@
-import Verified.Wasi.LoopSemantics
-import Verified.Wasi.LoopContext
+module
+
+public import Verified.Wasi.LoopSemantics
+public import Verified.Wasi.LoopContext
+
+@[expose] public section
 
 namespace Verified.Wasi
 

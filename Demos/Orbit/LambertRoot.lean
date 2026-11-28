@@ -1,6 +1,10 @@
-import Demos.Orbit.Lambert
-import Mathlib.Topology.Order.IntermediateValue
-import Mathlib.MeasureTheory.Integral.DominatedConvergence
+module
+
+public import Demos.Orbit.Lambert
+public import Mathlib.Topology.Order.IntermediateValue
+public import Mathlib.MeasureTheory.Integral.DominatedConvergence
+
+@[expose] public section
 
 /-!
 The monotonicity of Izzo's time of flight and the existence and uniqueness of its root.  For

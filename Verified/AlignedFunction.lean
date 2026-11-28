@@ -1,6 +1,10 @@
-import Verified.AlignedExprCorrect
-import Verified.AlignedEnv
-import Verified.CodeMask
+module
+
+public import Verified.AlignedExprCorrect
+public import Verified.AlignedEnv
+public import Verified.CodeMask
+
+@[expose] public section
 
 /-!
 The function level under the flag.  `bodyFunction_runsX` is `bodyFunction_runs` with `RunsX` for

@@ -1,4 +1,8 @@
-import Demos.Euler.Equations.Jacobian
+module
+
+public import Demos.Euler.Equations.Jacobian
+
+@[expose] public section
 
 namespace Demos.Euler.Equations
 open scoped Matrix

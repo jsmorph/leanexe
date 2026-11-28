@@ -1,5 +1,9 @@
-import Demos.Gate.Program
-import TestSupport.Host
+module
+
+public import Demos.Gate.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the module `chisquare`.  `cases` prints the module cases of `tail`, `cdf`, and
 `quantile` for `tests/verified/run.sh`, and `bits` prints the bit patterns of the inputs and results that

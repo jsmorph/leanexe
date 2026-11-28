@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 /-! A command that reads three clocks and two buffers of random bytes and writes what they gave to
 stdout.  `main` reads clock 0 (realtime), clock 1 (monotonic), and clock 2 (process CPU time), and

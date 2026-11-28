@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Erfc.ErfcAsymAccHL
-import Library.Numerics.Float64.Erfc.ErfcTest
-import Library.Numerics.Float64.Erfc.ErfcCast
-import LeanExe.ProofKit.F64MulBounds
-import LeanExe.ProofKit.F64NearestSteps
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAsymAccHL
+public import Library.Numerics.Float64.Erfc.ErfcTest
+public import Library.Numerics.Float64.Erfc.ErfcCast
+public import LeanExe.ProofKit.F64MulBounds
+public import LeanExe.ProofKit.F64NearestSteps
+
+@[expose] public section
 
 /-!
 The final scaling of `erfc_asympt_accurate`: `res = ldexp (h + l, K)`, and for a subnormal `res`
@@ -160,7 +164,7 @@ theorem ldexp_up (r e : Float) (K : ℤ) (hr : ff r) (hr1 : |fv r| ≤ 1 / 2 ^ 1
       exact_mod_cast this
     obtain ⟨q1f, q1v, q1m⟩ := pow2_val 1023.0 1023 c1f (by rw [c1v]; norm_num) (by norm_num)
       (by norm_num)
-    obtain ⟨m1f, m1v⟩ := mul_pow2_exact r _ hr q1f _ q1m (by norm_num; omega) (by norm_num; omega)
+    obtain ⟨m1f, m1v⟩ := mul_pow2_exact r _ hr q1f _ q1m (by norm_num <;> omega) (by norm_num; omega)
     obtain ⟨sf, sv⟩ := sub_exact (-e) 1023.0 nf c1f (by
       rw [nv, c1v, abs_le]; constructor <;>
         · have h1072 : ((-K : ℤ) : ℝ) ≤ 1072 := by exact_mod_cast (show -K ≤ 1072 by omega)

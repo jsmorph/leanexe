@@ -1,7 +1,11 @@
-import Verified.Wasi.HostSpec
-import Verified.Wasi.WrapperCode
-import LeanExe.ProofKit.MemoryFrame
-import Verified.LocalFrame
+module
+
+public import Verified.Wasi.HostSpec
+public import Verified.Wasi.WrapperCode
+public import LeanExe.ProofKit.MemoryFrame
+public import Verified.LocalFrame
+
+@[expose] public section
 
 namespace Verified.Wasi
 

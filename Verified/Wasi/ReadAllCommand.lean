@@ -1,13 +1,17 @@
-import Verified.Wasi.ReadAllProof
-import Verified.Wasi.CallWrappers
-import Verified.Wasi.AfterScratch
-import Verified.Wasi.CommandSpec
-import Verified.Wasi.Return
-import Verified.Wasi.CommandCodeSpec
-import Verified.Wasi.CostCodeSpec
-import Verified.Wasi.CompilerFacts
-import Verified.Wasi.ResourceCompilerCost
-import Verified.AlignedCorrect
+module
+
+public import Verified.Wasi.ReadAllProof
+public import Verified.Wasi.CallWrappers
+public import Verified.Wasi.AfterScratch
+public import Verified.Wasi.CommandSpec
+public import Verified.Wasi.Return
+public import Verified.Wasi.CommandCodeSpec
+public import Verified.Wasi.CostCodeSpec
+public import Verified.Wasi.CompilerFacts
+public import Verified.Wasi.ResourceCompilerCost
+public import Verified.AlignedCorrect
+
+@[expose] public section
 
 /-! The command `readAll limit`: the code of the limit, then the code of `readAll` in the calling
 function, with its correctness and its cost. -/

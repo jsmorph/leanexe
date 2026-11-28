@@ -1,5 +1,9 @@
-import Library.Combinatorics.DancingLinks.BuildInit
-import Library.Combinatorics.DancingLinks.Cover
+module
+
+public import Library.Combinatorics.DancingLinks.BuildInit
+public import Library.Combinatorics.DancingLinks.Cover
+
+@[expose] public section
 
 /-! Adding a node at the bottom of a column, the write of step X1 for each nonzero word.
 `append` performs the writes of the program for a new node `p` of item `c`, above every node of

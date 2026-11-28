@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Sinpi.SinpiExactTan
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiExactTan
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The accuracy theorems for `Sinpi.sinpi`, `Sinpi.cospi`, and `Sinpi.tanpi`.  For every finite

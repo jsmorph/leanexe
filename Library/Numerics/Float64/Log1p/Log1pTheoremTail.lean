@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Log1p.Log1pTheoremK0
-import LeanExe.ProofKit.F64HalfUlp
-import LeanExe.ProofKit.F64WithinSelf
-import LeanExe.ProofKit.F64Near
-import Mathlib.Analysis.Complex.ExponentialBounds
-import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+module
+
+public import Library.Numerics.Float64.Log1p.Log1pTheoremK0
+public import LeanExe.ProofKit.F64HalfUlp
+public import LeanExe.ProofKit.F64WithinSelf
+public import LeanExe.ProofKit.F64Near
+public import Mathlib.Analysis.Complex.ExponentialBounds
+public import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+
+@[expose] public section
 
 /-!
 `Log1p.log1pTail f c k hu` for `k ≠ 0`, against `y = K log 2 + log (1 + f) + log (1 + t)`, where

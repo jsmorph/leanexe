@@ -1,7 +1,11 @@
-import Verified.Wasi.EffectAnalysis
-import Verified.Wasi.ABI
-import Verified.Wasi.PureTransport
-import Verified.After
+module
+
+public import Verified.Wasi.EffectAnalysis
+public import Verified.Wasi.ABI
+public import Verified.Wasi.PureTransport
+public import Verified.After
+
+@[expose] public section
 
 namespace Verified.Wasi
 

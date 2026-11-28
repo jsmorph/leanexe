@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Log1p.Log1pTheoremTail
+module
+
+public import Library.Numerics.Float64.Log1p.Log1pTheoremTail
+
+@[expose] public section
 
 /-!
 Error bounds of `Log1p.log1pTail` for `x ≥ 0`, in the form `F64Near.Near`: the exact value of the

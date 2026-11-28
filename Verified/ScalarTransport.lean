@@ -1,5 +1,9 @@
-import Verified.ScalarCalibration
-import LeanExe.ProofKit.Sequencing
+module
+
+public import Verified.ScalarCalibration
+public import LeanExe.ProofKit.Sequencing
+
+@[expose] public section
 
 namespace Wasm
 

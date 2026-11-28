@@ -1,17 +1,21 @@
-import Verified.Shim.Memory
-import Verified.Shim.Replies
-import Verified.Shim.Host
-import Verified.Shim.Env
-import Verified.Shim.SysEnv
-import Verified.Shim.Clocks
-import Verified.Shim.Strings
-import Verified.Shim.Files
-import Verified.Shim.Satisfies
-import Verified.Shim.Footprint
-import Verified.Shim.Trace
-import Verified.Shim.Descriptors
-import Verified.Shim.Utf8
-import Verified.Shim.Held
-import Verified.Shim.Streams
-import Verified.Shim.Args
-import Verified.Shim.Images
+module
+
+public import Verified.Shim.Memory
+public import Verified.Shim.Replies
+public import Verified.Shim.Host
+public import Verified.Shim.Env
+public import Verified.Shim.SysEnv
+public import Verified.Shim.Clocks
+public import Verified.Shim.Strings
+public import Verified.Shim.Files
+public import Verified.Shim.Satisfies
+public import Verified.Shim.Footprint
+public import Verified.Shim.Trace
+public import Verified.Shim.Descriptors
+public import Verified.Shim.Utf8
+public import Verified.Shim.Held
+public import Verified.Shim.Streams
+public import Verified.Shim.Args
+public import Verified.Shim.Images
+
+@[expose] public section

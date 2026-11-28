@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinh.SinhMid
+module
+
+public import Library.Numerics.Float64.Sinh.SinhMid
+
+@[expose] public section
 
 /-!
 The bounds `E` of `SinhMid.mid_steps` from 1 to 22: `1.9803 u` on the path `k = 1` of `expm1`,

@@ -1,4 +1,8 @@
-import LeanExe.M7.Proof.Bounds
+module
+
+public import LeanExe.M7.Proof.Bounds
+
+@[expose] public section
 
 /-!
 The simulation of the forms that access the area, `load64`, `store64`, `globalGet`, and

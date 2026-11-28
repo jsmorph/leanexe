@@ -1,5 +1,9 @@
-import Lean
-import LeanExe.Native.Translate
+module
+
+public import Lean
+public import LeanExe.Native.Translate
+
+@[expose] public section
 
 /-!
 The loading of a module constant that `native-verified` and `native-bare` share.  `loadCap`
@@ -12,7 +16,7 @@ open Lean LeanExe.Native
 unsafe def loadEnv (moduleName constName : Name) : IO (Environment × Wasm.Module) := do
   initSearchPath (← findSysroot)
   let env ← importModules
-    #[{ module := moduleName, importAll := false, isExported := true, isMeta := false }] {}
+    #[{ module := moduleName, importAll := false, isExported := true, isMeta := true }] {}
   return (env, ← IO.ofExcept <| env.evalConst Wasm.Module {} constName)
 
 unsafe def loadModule (moduleName constName : Name) : IO Wasm.Module :=

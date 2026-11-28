@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Loop
-import Library.Hashing.Words.Program
+module
+
+public import LeanExe.Dialect.Loop
+public import Library.Hashing.Words.Program
+
+@[expose] public section
 
 /-! SHA-256 and SHA-224 of FIPS 180-4 §6.2 and §6.3, for a message of `n` bytes packed eight to a
 word as `Library.Hashing.Words` describes.  The words of the algorithm are 32 bits wide, and the

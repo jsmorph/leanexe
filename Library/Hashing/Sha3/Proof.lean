@@ -1,5 +1,9 @@
-import Library.Hashing.Sha3.SpongeProof
-import Library.Hashing.Words.Bytes
+module
+
+public import Library.Hashing.Sha3.SpongeProof
+public import Library.Hashing.Words.Bytes
+
+@[expose] public section
 
 /-! The lane programs compute the SHA-3 functions of the transcription.  A message of `n` bytes is
 `messageBits msg n`, the first `n` bytes of the packed array read least significant bit first in

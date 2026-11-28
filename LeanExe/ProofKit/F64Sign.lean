@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Sub
+module
+
+public import LeanExe.ProofKit.F64Sub
+
+@[expose] public section
 
 /-!
 Lean's negation and absolute value of binary64 values in terms of Talos's

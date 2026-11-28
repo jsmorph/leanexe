@@ -1,4 +1,8 @@
-import Demos.Drone.Dynamics
+module
+
+public import Demos.Drone.Dynamics
+
+@[expose] public section
 
 /-! The ticks of an admitted edge: the exact duration of a moving segment, the rest duration of
 a rest-to-rest segment, and a bound on every edge's cost. -/

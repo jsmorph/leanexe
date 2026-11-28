@@ -1,5 +1,10 @@
-import Mathlib.Logic.Relation
-import Mathlib.Order.Bounds.Defs
+module
+
+public import LeanExe.Base
+public import Mathlib.Logic.Relation
+public import Mathlib.Order.Bounds.Defs
+
+@[expose] public section
 
 /-! The specification of equivalence classes.  The count `n` is a word, and `LeastLabels` takes its
 value as a natural number.  Pair `t`, for `t` below the lengths of both arrays, relates `js[t]` and

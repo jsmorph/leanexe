@@ -1,4 +1,8 @@
-import Demos.Orbit.GibbsBox
+module
+
+public import Demos.Orbit.GibbsBox
+
+@[expose] public section
 
 /-!
 Soundness of Gibbs' interval program.  `gibbsBox_sound` (G2) states that the intervals of a

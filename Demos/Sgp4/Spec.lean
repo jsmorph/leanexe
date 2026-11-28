@@ -1,5 +1,9 @@
-import Library.Numerics.Interval.Enclose
-import Demos.Sgp4.KeplerBox
+module
+
+public import Library.Numerics.Interval.Enclose
+public import Demos.Sgp4.KeplerBox
+
+@[expose] public section
 
 /-!
 The near-Earth SGP4 model over the real numbers, with an interval program for each part.

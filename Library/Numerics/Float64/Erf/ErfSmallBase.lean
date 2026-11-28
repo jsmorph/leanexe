@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Erf.ErfKernelSmall
-import Library.Numerics.Float64.Erf.Compiled
-import LeanExe.ProofKit.F64Horner
-import LeanExe.ProofKit.F64DivApprox
-import LeanExe.ProofKit.F64AddNearest
-import LeanExe.ProofKit.F64Bits
+module
+
+public import Library.Numerics.Float64.Erf.ErfKernelSmall
+public import Library.Numerics.Float64.Erf.Compiled
+public import LeanExe.ProofKit.F64Horner
+public import LeanExe.ProofKit.F64DivApprox
+public import LeanExe.ProofKit.F64AddNearest
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-!
 The rounding error of `x R̂` on the first range of `s_erf.c`, where `R̂ = erfSmall (x x)` is the

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp2.Exp10Constants
-import Library.Numerics.Float64.Exp2.Exp2Evaluation
+module
+
+public import Library.Numerics.Float64.Exp2.Exp10Constants
+public import Library.Numerics.Float64.Exp2.Exp2Evaluation
+
+@[expose] public section
 
 /-!
 The polynomial of `Exp2.exp10Core`, `C0 r + C1 r ^ 2 + C2 r ^ 3 + C3 r ^ 4 + C4 r ^ 5`, against

@@ -1,5 +1,11 @@
-import Library.Numerics.Fourier.Program
-import TestSupport.Numerics.Reference
+module
+
+public import Library.Numerics.Fourier.Program
+public import TestSupport.Numerics.Reference
+public meta import Library.Numerics.Fourier.Program
+public meta import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! A native check that `Library.Numerics.Fourier.dft`, `Library.Numerics.Fourier.inverse`, and `Library.Numerics.Fourier.powerSpectrum` behave as
 their mathematical counterparts, on finite values.  Some facts hold exactly in floating point: an

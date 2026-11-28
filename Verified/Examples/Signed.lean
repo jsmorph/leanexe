@@ -1,6 +1,10 @@
-import Verified.Reflect.Command
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
+module
+
+public import Verified.Reflect.Command
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+
+@[expose] public section
 
 /-! `Int64` in the verified compiler's dialect: one function for each place where the reflector
 admits an `Int64` value: the comparisons and `>>>` as the source language's signed comparisons and

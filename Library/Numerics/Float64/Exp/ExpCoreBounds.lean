@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpCoreState
-import Library.Numerics.Float64.Exp.ExpTableReconstruction
+module
+
+public import Library.Numerics.Float64.Exp.ExpCoreState
+public import Library.Numerics.Float64.Exp.ExpTableReconstruction
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpCoreBounds
 open CodeLib.IEEE64

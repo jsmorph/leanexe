@@ -1,5 +1,9 @@
-import Library.Numerics.Fourier.Transform
-import Verified.Master
+module
+
+public import Library.Numerics.Fourier.Transform
+public import Verified.Master
+
+@[expose] public section
 
 /-!
 The master theorems of the discrete Fourier transform.  A signal of `n` complex values
@@ -400,6 +404,148 @@ theorem interleave (s : Array Float) (h : s.size < 2 ^ 29) (hf : ∀ v ∈ s, Fi
       rw [Library.Numerics.Reductions.Binary64.zero_bits]
       exact Library.Numerics.Reductions.Binary64.finite_zero
 
+/-- The power spectrum of an array of `n < 2 ^ 29` finite floats `s_j` with
+`M = Σ_j |s_j| ≤ 2 ^ 500` has `n / 2 + 1` floats (none for `n = 0`), the float `k` finite and
+within `5 M E + 3 E ^ 2 + 5 M ^ 2 / 2 ^ 53 + 3 / 2 ^ 1075` of
+`|X_k| ^ 2 = (Σ_j s_j cos θ_jk) ^ 2 + (Σ_j s_j sin θ_jk) ^ 2`, where
+`E = (γ_(n-1) + 2 ^ -46) M + n / 2 ^ 1071` is the error of the transform and
+`γ_k = k / (2 ^ 53 - k)`.  `powerSpectrum_master` is its projection. -/
+theorem powerSpectrum_spec (s : Array Float) (hs : s.size < 2 ^ 29)
+    (hf : ∀ v ∈ s, Finite v.toBits)
+    (hM : ∑ j ∈ Finset.range s.size, |value s[j]!.toBits| ≤ 2 ^ 500) :
+    let M := ∑ j ∈ Finset.range s.size, |value s[j]!.toBits|
+    let E := (((s.size - 1 : ℕ) : ℝ) / (2 ^ 53 - (s.size - 1 : ℕ)) + 1 / 2 ^ 46) * M +
+      s.size / 2 ^ 1071
+    (powerSpectrum s).size = (if s.size = 0 then 0 else s.size / 2 + 1) ∧
+      ∀ k < (powerSpectrum s).size,
+        Finite (powerSpectrum s)[k]!.toBits ∧
+        |value (powerSpectrum s)[k]!.toBits -
+            ((∑ j ∈ Finset.range s.size,
+                value s[j]!.toBits * Real.cos (2 * Real.pi * j * k / s.size)) ^ 2 +
+              (∑ j ∈ Finset.range s.size,
+                value s[j]!.toBits * Real.sin (2 * Real.pi * j * k / s.size)) ^ 2)| ≤
+          5 * M * E + 3 * E ^ 2 + 5 * M ^ 2 / 2 ^ 53 + 3 / 2 ^ 1075 := by
+  obtain ⟨hxsz, hxget, hxf⟩ := interleave s hs hf
+  set xs := LeanExe.build (2 * s.size.toUInt64) fun i =>
+    if i % 2 == 0 then s[(i / 2).toNat]! else 0.0 with hxs
+  set ys := transformWith Library.Numerics.Float64.Trig.invPi
+    Library.Numerics.Float64.Trig.halfPi (-1.0) xs with hys
+  have hps : powerSpectrum s = LeanExe.build
+      (if s.size.toUInt64 == 0 then 0 else s.size.toUInt64 / 2 + 1) fun k =>
+        ys[(2 * k).toNat]! * ys[(2 * k).toNat]! +
+          ys[(2 * k + 1).toNat]! * ys[(2 * k + 1).toNat]! := rfl
+  have hhalf : xs.size / 2 = s.size := by rw [hxsz]; omega
+  have hxs2 : xs.size < 2 ^ 30 := by rw [hxsz]; omega
+  have hcount : (if s.size.toUInt64 == 0 then (0 : UInt64) else s.size.toUInt64 / 2 + 1).toNat =
+      if s.size = 0 then 0 else s.size / 2 + 1 := by
+    have hN := LeanExe.Dialect.size_toUInt64 s (by omega)
+    by_cases hz : s.size = 0
+    · have : s.size.toUInt64 = 0 := UInt64.toNat_inj.mp (by rw [hN, hz]; rfl)
+      simp [hz]
+    · have : (s.size.toUInt64 == 0) = false := by
+        rw [beq_eq_false_iff_ne]; intro h0
+        have := congrArg UInt64.toNat h0; rw [hN] at this; exact hz this
+      simp only [this, Bool.false_eq_true, ↓reduceIte, hz]
+      rw [UInt64.toNat_add, UInt64.toNat_div, hN]
+      simp only [UInt64.reduceToNat]
+      omega
+  dsimp only
+  rw [hps]
+  refine ⟨by rw [LeanExe.Dialect.build_size, hcount], fun k hk => ?_⟩
+  rw [LeanExe.Dialect.build_size, hcount] at hk
+  have hs0 : s.size ≠ 0 := by intro hz; rw [ite_eq_left hz] at hk; omega
+  rw [ite_eq_right hs0] at hk
+  have hkN : k < s.size := by omega
+  have hk64 : (UInt64.ofNat k).toNat = k :=
+    UInt64.toNat_ofNat_of_lt' (by have : UInt64.size = 2 ^ 64 := rfl; omega)
+  have i0 : (2 * UInt64.ofNat k).toNat = 2 * k := by
+    rw [UInt64.toNat_mul, hk64]; simp only [UInt64.reduceToNat]; omega
+  have i1 : (2 * UInt64.ofNat k + 1).toNat = 2 * k + 1 := by
+    rw [UInt64.toNat_add, UInt64.toNat_mul, hk64]; simp only [UInt64.reduceToNat]; omega
+  rw [LeanExe.Dialect.build_get (by rw [hcount, ite_eq_right hs0]; exact hk)]
+  simp only [i0, i1]
+  obtain ⟨hysz, hyg⟩ := transform_get (-1.0) xs hxs2
+  obtain ⟨e0, e1⟩ := hyg k (by rw [hhalf]; exact hkN)
+  have hMx : ∑ j ∈ Finset.range (xs.size / 2),
+      (|value xs[2 * j]!.toBits| + |value xs[2 * j + 1]!.toBits|) =
+      ∑ j ∈ Finset.range s.size, |value s[j]!.toBits| := by
+    rw [hhalf]
+    refine Finset.sum_congr rfl fun j hj => ?_
+    obtain ⟨g0, g1⟩ := hxget j (Finset.mem_range.mp hj)
+    rw [g0, g1, Library.Numerics.Reductions.Binary64.zero_bits,
+      Library.Numerics.Reductions.Binary64.value_zero, abs_zero, add_zero]
+  obtain ⟨h0, h1⟩ := transform_spec (-1.0) (-1) neg_one_approx (by norm_num) xs hxs2 hxf
+    (by rw [hMx]; exact hM.trans (by norm_num)) k (by rw [hhalf]; exact hkN)
+  rw [hMx, hhalf] at h0 h1
+  rw [hhalf] at e0 e1
+  rw [← e0] at h0
+  rw [← e1] at h1
+  have hA : ∑ j ∈ Finset.range s.size,
+      (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / s.size) -
+        value xs[2 * j + 1]!.toBits * (-1 * Real.sin (2 * Real.pi * j * k / s.size))) =
+      ∑ j ∈ Finset.range s.size, value s[j]!.toBits * Real.cos (2 * Real.pi * j * k / s.size) := by
+    refine Finset.sum_congr rfl fun j hj => ?_
+    obtain ⟨g0, g1⟩ := hxget j (Finset.mem_range.mp hj)
+    rw [g0, g1, Library.Numerics.Reductions.Binary64.zero_bits,
+      Library.Numerics.Reductions.Binary64.value_zero]
+    ring
+  have hB : ∑ j ∈ Finset.range s.size,
+      (value xs[2 * j]!.toBits * (-1 * Real.sin (2 * Real.pi * j * k / s.size)) +
+        value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / s.size)) =
+      -∑ j ∈ Finset.range s.size,
+        value s[j]!.toBits * Real.sin (2 * Real.pi * j * k / s.size) := by
+    rw [← Finset.sum_neg_distrib]
+    refine Finset.sum_congr rfl fun j hj => ?_
+    obtain ⟨g0, g1⟩ := hxget j (Finset.mem_range.mp hj)
+    rw [g0, g1, Library.Numerics.Reductions.Binary64.zero_bits,
+      Library.Numerics.Reductions.Binary64.value_zero]
+    ring
+  rw [hA] at h0
+  rw [hB] at h1
+  set M := ∑ j ∈ Finset.range s.size, |value s[j]!.toBits|
+  have hM0 : 0 ≤ M := Finset.sum_nonneg fun _ _ => abs_nonneg _
+  have hAM : |∑ j ∈ Finset.range s.size,
+      value s[j]!.toBits * Real.cos (2 * Real.pi * j * k / s.size)| ≤ M := by
+    refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun j _ => ?_)
+    rw [abs_mul]
+    exact mul_le_of_le_one_right (abs_nonneg _) (Real.abs_cos_le_one _)
+  have hBM : |-∑ j ∈ Finset.range s.size,
+      value s[j]!.toBits * Real.sin (2 * Real.pi * j * k / s.size)| ≤ M := by
+    rw [abs_neg]
+    refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun j _ => ?_)
+    rw [abs_mul]
+    exact mul_le_of_le_one_right (abs_nonneg _) (Real.abs_sin_le_one _)
+  have hγ1 : ((s.size - 1 : ℕ) : ℝ) / (2 ^ 53 - (s.size - 1 : ℕ)) ≤ 1 := by
+    have : ((s.size - 1 : ℕ) : ℝ) ≤ 2 ^ 52 := by
+      exact_mod_cast (show s.size - 1 ≤ 2 ^ 52 by omega)
+    rw [div_le_one (by linarith)]
+    linarith
+  have hγ0 : 0 ≤ ((s.size - 1 : ℕ) : ℝ) / (2 ^ 53 - (s.size - 1 : ℕ)) :=
+    div_nonneg (Nat.cast_nonneg _) (by
+      have : ((s.size - 1 : ℕ) : ℝ) ≤ 2 ^ 52 := by
+        exact_mod_cast (show s.size - 1 ≤ 2 ^ 52 by omega)
+      linarith)
+  have hE0 : 0 ≤ (((s.size - 1 : ℕ) : ℝ) / (2 ^ 53 - (s.size - 1 : ℕ)) + 1 / 2 ^ 46) * M +
+      (s.size : ℝ) / 2 ^ 1071 :=
+    add_nonneg (mul_nonneg (add_nonneg hγ0 (by norm_num)) hM0)
+      (div_nonneg (Nat.cast_nonneg _) (by norm_num))
+  have hE : (((s.size - 1 : ℕ) : ℝ) / (2 ^ 53 - (s.size - 1 : ℕ)) + 1 / 2 ^ 46) * M +
+      (s.size : ℝ) / 2 ^ 1071 ≤ 2 * M + 1 := by
+    have h1 : (((s.size - 1 : ℕ) : ℝ) / (2 ^ 53 - (s.size - 1 : ℕ)) + 1 / 2 ^ 46) * M ≤
+        2 * M := mul_le_mul_of_nonneg_right (by
+          have : (1 : ℝ) / 2 ^ 46 ≤ 1 := by norm_num
+          linarith) hM0
+    have h2 : (s.size : ℝ) / 2 ^ 1071 ≤ 1 := by
+      rw [div_le_one (by positivity)]
+      have : (s.size : ℝ) ≤ 2 ^ 29 := by exact_mod_cast (show s.size ≤ 2 ^ 29 by omega)
+      linarith [show (2 : ℝ) ^ 29 ≤ 2 ^ 1071 by norm_num]
+    linarith
+  have hsq := square_sum _ _ _ _ M _ h0 h1 hAM hBM hM hE0 hE
+  rw [neg_sq] at hsq
+  exact ⟨hsq.1, hsq.2⟩
+
+#print axioms powerSpectrum_spec
+
 /-- The export `powerSpectrum`, called on an array of `n` finite floats `s_j` with
 `M = Σ_j |s_j| ≤ 2 ^ 500`, returns `n / 2 + 1` finite floats (none for `n = 0`), the float `k`
 within `5 M E + 3 E ^ 2 + 5 M ^ 2 / 2 ^ 53 + 3 / 2 ^ 1075` of `|X_k| ^ 2 =
@@ -423,128 +569,8 @@ theorem powerSpectrum_master :
             5 * M * E + 3 * E ^ 2 + 5 * M ^ 2 / 2 ^ 53 + 3 / 2 ^ 1075) :=
   .of_trapFree compiled.powerSpectrum.trapFree (Verified.tables_at [0, 1] (by decide) rfl)
     powerSpectrum_export (fun _ _ _ _ h => h) (fun _ _ _ _ _ h => h)
-    fun _ _ _ s ⟨_, _, hss⟩ hD => by
-      have hs := size_lt hss.values.size_lt_memory32
-      obtain ⟨hxsz, hxget, hxf⟩ := interleave s hs hD.1
-      set xs := LeanExe.build (2 * s.size.toUInt64) fun i =>
-        if i % 2 == 0 then s[(i / 2).toNat]! else 0.0 with hxs
-      set ys := transformWith Library.Numerics.Float64.Trig.invPi
-        Library.Numerics.Float64.Trig.halfPi (-1.0) xs with hys
-      have hps : powerSpectrum s = LeanExe.build
-          (if s.size.toUInt64 == 0 then 0 else s.size.toUInt64 / 2 + 1) fun k =>
-            ys[(2 * k).toNat]! * ys[(2 * k).toNat]! +
-              ys[(2 * k + 1).toNat]! * ys[(2 * k + 1).toNat]! := rfl
-      have hhalf : xs.size / 2 = s.size := by rw [hxsz]; omega
-      have hxs2 : xs.size < 2 ^ 30 := by rw [hxsz]; omega
-      have hcount : (if s.size.toUInt64 == 0 then (0 : UInt64) else s.size.toUInt64 / 2 + 1).toNat =
-          if s.size = 0 then 0 else s.size / 2 + 1 := by
-        have hN := LeanExe.Dialect.size_toUInt64 s (by omega)
-        by_cases hz : s.size = 0
-        · have : s.size.toUInt64 = 0 := UInt64.toNat_inj.mp (by rw [hN, hz]; rfl)
-          simp [hz]
-        · have : (s.size.toUInt64 == 0) = false := by
-            rw [beq_eq_false_iff_ne]; intro h0
-            have := congrArg UInt64.toNat h0; rw [hN] at this; exact hz this
-          simp only [this, Bool.false_eq_true, ↓reduceIte, hz]
-          rw [UInt64.toNat_add, UInt64.toNat_div, hN]
-          simp only [UInt64.reduceToNat]
-          omega
-      dsimp only
-      rw [hps]
-      refine ⟨by rw [LeanExe.Dialect.build_size, hcount], fun k hk => ?_⟩
-      rw [LeanExe.Dialect.build_size, hcount] at hk
-      have hs0 : s.size ≠ 0 := by intro hz; rw [ite_eq_left hz] at hk; omega
-      rw [ite_eq_right hs0] at hk
-      have hkN : k < s.size := by omega
-      have hk64 : (UInt64.ofNat k).toNat = k :=
-        UInt64.toNat_ofNat_of_lt' (by have : UInt64.size = 2 ^ 64 := rfl; omega)
-      have i0 : (2 * UInt64.ofNat k).toNat = 2 * k := by
-        rw [UInt64.toNat_mul, hk64]; simp only [UInt64.reduceToNat]; omega
-      have i1 : (2 * UInt64.ofNat k + 1).toNat = 2 * k + 1 := by
-        rw [UInt64.toNat_add, UInt64.toNat_mul, hk64]; simp only [UInt64.reduceToNat]; omega
-      rw [LeanExe.Dialect.build_get (by rw [hcount, ite_eq_right hs0]; exact hk)]
-      simp only [i0, i1]
-      obtain ⟨hysz, hyg⟩ := transform_get (-1.0) xs hxs2
-      obtain ⟨e0, e1⟩ := hyg k (by rw [hhalf]; exact hkN)
-      have hMx : ∑ j ∈ Finset.range (xs.size / 2),
-          (|value xs[2 * j]!.toBits| + |value xs[2 * j + 1]!.toBits|) =
-          ∑ j ∈ Finset.range s.size, |value s[j]!.toBits| := by
-        rw [hhalf]
-        refine Finset.sum_congr rfl fun j hj => ?_
-        obtain ⟨g0, g1⟩ := hxget j (Finset.mem_range.mp hj)
-        rw [g0, g1, Library.Numerics.Reductions.Binary64.zero_bits,
-          Library.Numerics.Reductions.Binary64.value_zero, abs_zero, add_zero]
-      obtain ⟨h0, h1⟩ := transform_spec (-1.0) (-1) neg_one_approx (by norm_num) xs hxs2 hxf
-        (by rw [hMx]; exact hD.2.trans (by norm_num)) k (by rw [hhalf]; exact hkN)
-      rw [hMx, hhalf] at h0 h1
-      rw [hhalf] at e0 e1
-      rw [← e0] at h0
-      rw [← e1] at h1
-      have hA : ∑ j ∈ Finset.range s.size,
-          (value xs[2 * j]!.toBits * Real.cos (2 * Real.pi * j * k / s.size) -
-            value xs[2 * j + 1]!.toBits * (-1 * Real.sin (2 * Real.pi * j * k / s.size))) =
-          ∑ j ∈ Finset.range s.size, value s[j]!.toBits * Real.cos (2 * Real.pi * j * k / s.size) := by
-        refine Finset.sum_congr rfl fun j hj => ?_
-        obtain ⟨g0, g1⟩ := hxget j (Finset.mem_range.mp hj)
-        rw [g0, g1, Library.Numerics.Reductions.Binary64.zero_bits,
-          Library.Numerics.Reductions.Binary64.value_zero]
-        ring
-      have hB : ∑ j ∈ Finset.range s.size,
-          (value xs[2 * j]!.toBits * (-1 * Real.sin (2 * Real.pi * j * k / s.size)) +
-            value xs[2 * j + 1]!.toBits * Real.cos (2 * Real.pi * j * k / s.size)) =
-          -∑ j ∈ Finset.range s.size,
-            value s[j]!.toBits * Real.sin (2 * Real.pi * j * k / s.size) := by
-        rw [← Finset.sum_neg_distrib]
-        refine Finset.sum_congr rfl fun j hj => ?_
-        obtain ⟨g0, g1⟩ := hxget j (Finset.mem_range.mp hj)
-        rw [g0, g1, Library.Numerics.Reductions.Binary64.zero_bits,
-          Library.Numerics.Reductions.Binary64.value_zero]
-        ring
-      rw [hA] at h0
-      rw [hB] at h1
-      set M := ∑ j ∈ Finset.range s.size, |value s[j]!.toBits|
-      have hM0 : 0 ≤ M := Finset.sum_nonneg fun _ _ => abs_nonneg _
-      have hAM : |∑ j ∈ Finset.range s.size,
-          value s[j]!.toBits * Real.cos (2 * Real.pi * j * k / s.size)| ≤ M := by
-        refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun j _ => ?_)
-        rw [abs_mul]
-        nlinarith [Real.abs_cos_le_one (2 * Real.pi * j * k / s.size),
-          abs_nonneg (value s[j]!.toBits),
-          abs_nonneg (Real.cos (2 * Real.pi * j * k / s.size))]
-      have hBM : |-∑ j ∈ Finset.range s.size,
-          value s[j]!.toBits * Real.sin (2 * Real.pi * j * k / s.size)| ≤ M := by
-        rw [abs_neg]
-        refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun j _ => ?_)
-        rw [abs_mul]
-        nlinarith [Real.abs_sin_le_one (2 * Real.pi * j * k / s.size),
-          abs_nonneg (value s[j]!.toBits),
-          abs_nonneg (Real.sin (2 * Real.pi * j * k / s.size))]
-      have hγ1 : ((s.size - 1 : ℕ) : ℝ) / (2 ^ 53 - (s.size - 1 : ℕ)) ≤ 1 := by
-        have : ((s.size - 1 : ℕ) : ℝ) ≤ 2 ^ 52 := by
-          exact_mod_cast (show s.size - 1 ≤ 2 ^ 52 by omega)
-        rw [div_le_one (by linarith)]
-        linarith
-      have hγ0 : 0 ≤ ((s.size - 1 : ℕ) : ℝ) / (2 ^ 53 - (s.size - 1 : ℕ)) :=
-        div_nonneg (Nat.cast_nonneg _) (by
-          have : ((s.size - 1 : ℕ) : ℝ) ≤ 2 ^ 52 := by
-            exact_mod_cast (show s.size - 1 ≤ 2 ^ 52 by omega)
-          linarith)
-      have hE0 : 0 ≤ (((s.size - 1 : ℕ) : ℝ) / (2 ^ 53 - (s.size - 1 : ℕ)) + 1 / 2 ^ 46) * M +
-          (s.size : ℝ) / 2 ^ 1071 := by positivity
-      have hE : (((s.size - 1 : ℕ) : ℝ) / (2 ^ 53 - (s.size - 1 : ℕ)) + 1 / 2 ^ 46) * M +
-          (s.size : ℝ) / 2 ^ 1071 ≤ 2 * M + 1 := by
-        have h1 : (((s.size - 1 : ℕ) : ℝ) / (2 ^ 53 - (s.size - 1 : ℕ)) + 1 / 2 ^ 46) * M ≤
-            2 * M := mul_le_mul_of_nonneg_right (by
-              have : (1 : ℝ) / 2 ^ 46 ≤ 1 := by norm_num
-              linarith) hM0
-        have h2 : (s.size : ℝ) / 2 ^ 1071 ≤ 1 := by
-          rw [div_le_one (by positivity)]
-          have : (s.size : ℝ) ≤ 2 ^ 29 := by exact_mod_cast (show s.size ≤ 2 ^ 29 by omega)
-          linarith [show (2 : ℝ) ^ 29 ≤ 2 ^ 1071 by norm_num]
-        linarith
-      have hsq := square_sum _ _ _ _ M _ h0 h1 hAM hBM hD.2 hE0 hE
-      rw [neg_sq] at hsq
-      exact ⟨hsq.1, hsq.2⟩
+    fun _ _ _ s ⟨_, _, hss⟩ hD =>
+      powerSpectrum_spec s (size_lt hss.values.size_lt_memory32) hD.1 hD.2
 
 #print axioms powerSpectrum_master
 

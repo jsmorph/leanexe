@@ -1,6 +1,10 @@
-import Demos.Rcv.Process
-import Demos.StreamFold.StreamHost
-import Verified.Wasi.ProcessTotalSource
+module
+
+public import Demos.Rcv.Process
+public import Demos.StreamFold.StreamHost
+public import Verified.Wasi.ProcessTotalSource
+
+@[expose] public section
 
 /-! The control of [the process](Process.lean)'s steps: the bounds on the output that each step
 keeps, the accounting of partial writes, and the termination of the steps under StreamFold's

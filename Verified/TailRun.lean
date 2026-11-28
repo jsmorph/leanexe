@@ -1,4 +1,9 @@
-import Lean
+module
+
+public import LeanExe.Base
+public import Lean
+
+@[expose] public section
 
 /-! Finite tail runs: a step continues with another state or returns a value.  The natural
 index counts continuing steps and occurs only in proofs. -/

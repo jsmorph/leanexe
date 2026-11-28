@@ -1,4 +1,9 @@
-import Mathlib.Tactic
+module
+
+public import LeanExe.Base
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-! The error of the Rusanov flux formula when its inputs have errors. -/
 

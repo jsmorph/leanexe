@@ -1,4 +1,8 @@
-import Demos.Rcv.Read
+module
+
+public import Demos.Rcv.Read
+
+@[expose] public section
 
 /-!
 The count of the Maine module that [the requirements](requirements.md) state, over shared

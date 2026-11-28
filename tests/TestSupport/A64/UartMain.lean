@@ -1,6 +1,10 @@
-import TestSupport.A64.Uart
-import TestSupport.A64.Flip
-import TestSupport.A64.Mss
+module
+
+public import TestSupport.A64.Uart
+public import TestSupport.A64.Flip
+public import TestSupport.A64.Mss
+
+@[expose] public section
 
 /-!
 The command `a64-uart emit DIR` of the AArch64 images that read their input from the UART.  It

@@ -1,5 +1,9 @@
-import Demos.Attitude.Soundness
-import Demos.Attitude.QSoundness
+module
+
+public import Demos.Attitude.Soundness
+public import Demos.Attitude.QSoundness
+
+@[expose] public section
 
 /-! The knowledge-error share of the slew planner's `ε`.  `plan_premise` takes a flown map `A`
 with `vangle (A b) (C b) ≤ ε` for every unit `b`, where `C` is the commanded attitude.  When the

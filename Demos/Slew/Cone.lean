@@ -1,5 +1,9 @@
-import Demos.Slew.Error
-import Demos.Slew.Normalize
+module
+
+public import Demos.Slew.Error
+public import Demos.Slew.Normalize
+
+@[expose] public section
 
 /-! The rounding errors of one cone of the edge check.  For an attitude `qa`, a body vector `b`,
 and a cone axis `u` whose squared norms lie within `3e-12` of 1, and an axis `n` within `5.2 u`

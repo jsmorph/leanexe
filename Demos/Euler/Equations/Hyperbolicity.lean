@@ -1,5 +1,9 @@
-import Demos.Euler.Equations.Rotation
-import Demos.Euler.Equations.Eigenbasis
+module
+
+public import Demos.Euler.Equations.Rotation
+public import Demos.Euler.Equations.Eigenbasis
+
+@[expose] public section
 
 /-! Hyperbolicity in every unit direction: at an admissible state, the directional flux has
 the derivative `directionalJacobian`, which has a basis of real eigenvectors with eigenvalues

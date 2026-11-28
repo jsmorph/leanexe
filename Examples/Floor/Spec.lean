@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! The specifications over the integers: the quotient rounded toward negative infinity, the floor
 of the mean, and the bound of a value by an interval. -/
 

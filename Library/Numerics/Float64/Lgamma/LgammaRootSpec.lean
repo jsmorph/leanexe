@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaRootPath
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaRootPath
+
+@[expose] public section
 
 /-!
 **One range of the polynomials about the negative zeros** of `Lgamma.accurate`, from the shifted

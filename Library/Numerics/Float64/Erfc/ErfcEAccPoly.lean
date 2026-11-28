@@ -1,6 +1,11 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack4
-import Library.Numerics.Float64.Erfc.ErfcAccMain
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack4
+public import Library.Numerics.Float64.Erfc.ErfcAccMain
+public import Library.Numerics.Float64.Erfc.ErfcCast
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-!
 The polynomial of `exp_accurate` in `Erfc`: for the double-double `Y = yh + yl` of the reduced
@@ -84,12 +89,16 @@ theorem eaccCore_eq (tab : Array UInt64) (k yh yl : Float) :
 
 theorem loopC_eq (tab : Array UInt64) (yh yl : Float) (s : Float × Float) :
     LeanExe.loop 7 s (bodyC tab yh yl) = bodyC tab yh yl 6 (bodyC tab yh yl 5 (bodyC tab yh yl 4
-      (bodyC tab yh yl 3 (bodyC tab yh yl 2 (bodyC tab yh yl 1 (bodyC tab yh yl 0 s)))))) := rfl
+      (bodyC tab yh yl 3 (bodyC tab yh yl 2 (bodyC tab yh yl 1 (bodyC tab yh yl 0 s)))))) := by
+  simp only [LeanExe.loop, show (7 : UInt64).toNat = 7 from rfl, Nat.fold_succ, Nat.fold_zero]
+  rfl
 
 theorem loopD_eq (tab : Array UInt64) (yh yl : Float) (s : Float × Float) :
     LeanExe.loop 8 s (bodyD tab yh yl) = bodyD tab yh yl 7 (bodyD tab yh yl 6 (bodyD tab yh yl 5
       (bodyD tab yh yl 4 (bodyD tab yh yl 3 (bodyD tab yh yl 2 (bodyD tab yh yl 1
-        (bodyD tab yh yl 0 s))))))) := rfl
+        (bodyD tab yh yl 0 s))))))) := by
+  simp only [LeanExe.loop, show (8 : UInt64).toNat = 8 from rfl, Nat.fold_succ, Nat.fold_zero]
+  rfl
 
 /-- `P (Y) = (E0 + E1) + (E2 + E3) Y + ... + (E14 + E15) Y^7 + E16 Y^8 + ... + E27 Y^19`. -/
 def eaccPoly (q : List ℚ) : List ℚ :=

@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-!
 Core decides `ByteArray.IsValidUTF8` with `ByteArray.validateUTF8`, which checks each character of
 two, three, or four bytes with `ByteArray.utf8DecodeChar?.verify₂`, `verify₃`, or `verify₄`.  Each
@@ -27,8 +33,8 @@ theorem forall_uint8 {P : UInt8 → Prop} (h : ∀ n (hn : n < UInt8.size), P (U
     (w : UInt8) : P w := by
   simpa using h w.toNat w.toNat_lt
 
-theorem isInvalidContinuationByte_eq (x : UInt8) :
-    isInvalidContinuationByte x = !(0x80 ≤ x && x < 0xC0) := by
+theorem isUTF8ContinuationByte_eq (x : UInt8) :
+    x.isUTF8ContinuationByte = (0x80 ≤ x && x < 0xC0) := by
   revert x
   refine forall_uint8 ?_
   decide +kernel
@@ -73,7 +79,7 @@ theorem verify₂_iff {w x : UInt8} (h₀ : 0xC0 ≤ w) (h₁ : w < 0xE0) :
   have := w.toNat_lt
   have := x.toNat_lt
   simp only [UInt8.le_iff_toNat_le, UInt8.lt_iff_toNat_lt, UInt8.reduceToNat] at h₀ h₁
-  simp [verify₂, isInvalidContinuationByte_eq, UInt8.le_iff_toNat_le, UInt8.lt_iff_toNat_lt,
+  simp [verify₂, isUTF8ContinuationByte_eq, UInt8.le_iff_toNat_le, UInt8.lt_iff_toNat_lt,
     UInt32.le_iff_toNat_le, *]
   omega
 
@@ -85,7 +91,7 @@ theorem verify₃_iff {w x y : UInt8} (h₀ : 0xE0 ≤ w) (h₁ : w < 0xF0) :
   have := x.toNat_lt
   have := y.toNat_lt
   simp only [UInt8.le_iff_toNat_le, UInt8.lt_iff_toNat_lt, UInt8.reduceToNat] at h₀ h₁
-  simp [verify₃, isInvalidContinuationByte_eq, UInt8.le_iff_toNat_le, UInt8.lt_iff_toNat_lt,
+  simp [verify₃, isUTF8ContinuationByte_eq, UInt8.le_iff_toNat_le, UInt8.lt_iff_toNat_lt,
     UInt32.le_iff_toNat_le, UInt32.lt_iff_toNat_lt, ← UInt8.toNat_inj, *]
   omega
 
@@ -98,7 +104,7 @@ theorem verify₄_iff {w x y z : UInt8} (h₀ : 0xF0 ≤ w) (h₁ : w < 0xF8) :
   have := y.toNat_lt
   have := z.toNat_lt
   simp only [UInt8.le_iff_toNat_le, UInt8.lt_iff_toNat_lt, UInt8.reduceToNat] at h₀ h₁
-  simp [verify₄, isInvalidContinuationByte_eq, UInt8.le_iff_toNat_le, UInt8.lt_iff_toNat_lt,
+  simp [verify₄, isUTF8ContinuationByte_eq, UInt8.le_iff_toNat_le, UInt8.lt_iff_toNat_lt,
     UInt32.le_iff_toNat_le, ← UInt8.toNat_inj, *]
   omega
 

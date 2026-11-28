@@ -1,8 +1,12 @@
-import Library.Strings.Kmp.Program
-import Library.Strings.Kmp.Spec
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
-import Mathlib.Data.List.Sort
+module
+
+public import Library.Strings.Kmp.Program
+public import Library.Strings.Kmp.Spec
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+public import Mathlib.Data.List.Sort
+
+@[expose] public section
 
 /-! The proof that `occurrences` returns the positions of the occurrences of the pattern.  `Pre P T
 s i` states that the first `s` bytes of `P` equal the `s` bytes of `T` that end before position `i`.

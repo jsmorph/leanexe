@@ -1,7 +1,11 @@
-import Demos.Euler.Equations.CharacteristicSpeed
-import Demos.Euler.Equations.LaxFriedrichs
-import Mathlib.Tactic.Positivity
-import Mathlib.Tactic.NormNum
+module
+
+public import Demos.Euler.Equations.CharacteristicSpeed
+public import Demos.Euler.Equations.LaxFriedrichs
+public import Mathlib.Tactic.Positivity
+public import Mathlib.Tactic.NormNum
+
+@[expose] public section
 
 /-! The Rusanov flux and update in exact arithmetic.  The interface flux is the local
 Lax–Friedrichs flux of `xFlux`, so it has the two-wave form of `LaxFriedrichs`.  An update of a

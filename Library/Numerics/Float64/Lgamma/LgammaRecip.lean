@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaRecip
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRecip
+
+@[expose] public section
 
 /-!
 The reciprocal `zh = 1/x` with the correction `(fma zh (-x) 1) zh` of the Stirling series in

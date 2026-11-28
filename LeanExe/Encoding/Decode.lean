@@ -1,4 +1,9 @@
-import Interpreter.Wasm.Syntax
+module
+
+public import LeanExe.Base
+public import Interpreter.Wasm.Syntax
+
+@[expose] public section
 
 /-!
 Binary decoder for the subset of WebAssembly that `Wasm.Encoding.encode` produces:

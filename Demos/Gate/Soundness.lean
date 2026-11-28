@@ -1,8 +1,12 @@
-import Demos.Gate.Program
-import Demos.Gate.Model
-import Demos.Conjunction.AccuracySoundness
-import Library.Numerics.Interval.FunctionsProof
-import Library.Numerics.Float64.Erfc.ErfcTheorem
+module
+
+public import Demos.Gate.Program
+public import Demos.Gate.Model
+public import Demos.Conjunction.AccuracySoundness
+public import Library.Numerics.Interval.FunctionsProof
+public import Library.Numerics.Float64.Erfc.ErfcTheorem
+
+@[expose] public section
 
 /-!
 Soundness of the chi-square programs.  `tail_sound` and `cdf_sound` state that an accepted

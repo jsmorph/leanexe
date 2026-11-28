@@ -1,5 +1,10 @@
-import Verified.Reflect.Command
-import Library.Trees.WordTree.Reflected
+module
+
+public import Verified.Reflect.Command
+public import Library.Trees.WordTree.Reflected
+public meta import Library.Trees.WordTree.Program
+
+@[expose] public section
 
 /-! Sums whose constructors hold heap values: packed bytes, arrays, and recursive types.  Each
 sum's `Flat` instance places a constructor's fields in the tuple and fills the other components

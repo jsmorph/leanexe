@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Atan.AtanTwoBits
-import LeanExe.ProofKit.F64Saturate
+module
+
+public import Library.Numerics.Float64.Atan.AtanTwoBits
+public import LeanExe.ProofKit.F64Saturate
+
+@[expose] public section
 
 /-!
 `Atan.atan2` at a NaN.  fdlibm's test for a NaN input holds when either input is a NaN

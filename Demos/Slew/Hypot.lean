@@ -1,4 +1,8 @@
-import Demos.Slew.Axis
+module
+
+public import Demos.Slew.Axis
+
+@[expose] public section
 
 /-! The amplitude `√(A² + B²)` of the edge check's sinusoid.  The program computes `√(a a + b b)`
 from approximations `a` and `b` of `A` and `B`.  When `a² + b² ≥ 2⁻¹⁰⁰⁰`, the result lies within

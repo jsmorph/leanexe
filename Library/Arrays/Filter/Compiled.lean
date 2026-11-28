@@ -1,5 +1,9 @@
-import Library.Arrays.Filter.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Arrays.Filter.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Arrays.Filter
 

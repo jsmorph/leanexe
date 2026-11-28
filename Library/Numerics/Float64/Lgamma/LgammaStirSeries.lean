@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaFastMid
-import Library.Numerics.Float64.Lgamma.LgammaRecip
-import Library.Numerics.Float64.Tgamma.TgammaMul
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaFastMid
+public import Library.Numerics.Float64.Lgamma.LgammaRecip
+public import Library.Numerics.Float64.Tgamma.TgammaMul
+
+@[expose] public section
 
 /-!
 The term `S (1/x²)/x` of the fast path's Stirling series in `Lgamma.lgammaWith`, for `x` from

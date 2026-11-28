@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.TanhMain
+module
+
+public import Library.Numerics.Float64.Tanh.TanhMain
+
+@[expose] public section
 
 /-!
 The exceptional results of `Tanh.tanh`: both zeros return themselves, positive infinity returns 1,

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselMillerReal
-import Library.Numerics.Float64.Bessel.BesselStepF
-import Library.Numerics.Float64.Bessel.BesselSmallJ0
+module
+
+public import Library.Numerics.Float64.Bessel.BesselMillerReal
+public import Library.Numerics.Float64.Bessel.BesselStepF
+public import Library.Numerics.Float64.Bessel.BesselSmallJ0
+
+@[expose] public section
 
 /-!
 The loop of `jn`'s backward recurrence that chooses the depth `k` of the continued fraction, for

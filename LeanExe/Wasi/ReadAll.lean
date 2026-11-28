@@ -1,4 +1,8 @@
-import LeanExe.Wasi.Semantics
+module
+
+public import LeanExe.Wasi.Semantics
+
+@[expose] public section
 
 /-! `readAll limit` reads the standard input into one byte string until a read returns an errno or
 no bytes, or until the string holds more than `limit` bytes.  It is a bounded loop of reads of

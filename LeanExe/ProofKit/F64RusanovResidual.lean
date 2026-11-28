@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RoundingResidual
+module
+
+public import LeanExe.ProofKit.F64RoundingResidual
+
+@[expose] public section
 
 /-! The rounding certificate and error bound of one component of a rounded Rusanov flux. -/
 

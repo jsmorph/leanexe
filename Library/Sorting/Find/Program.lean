@@ -1,4 +1,8 @@
-import Library.Sorting.Quicksort.Program
+module
+
+public import Library.Sorting.Quicksort.Program
+
+@[expose] public section
 
 /-! Hoare's FIND on an array of words, in place, with indices from 0 and subfiles written as
 half-open ranges `[l, e)`.  `find` partitions the subfile that holds position `k` around its first

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Trig.TrigKernelWords
-import Library.Numerics.Float64.Trig.TrigKernelWide
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+module
+
+public import Library.Numerics.Float64.Trig.TrigKernelWords
+public import Library.Numerics.Float64.Trig.TrigKernelWide
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+
+@[expose] public section
 
 /-!
 The rounding error of `Trig.kernelSin x y true`, the sine kernel with the tail `y` of a reduced

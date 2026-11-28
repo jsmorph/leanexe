@@ -1,4 +1,9 @@
-import Mathlib.Data.Nat.Prime.Defs
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.Nat.Prime.Defs
+
+@[expose] public section
 
 /-! The specification of the primes below a word `N`: the numbers `p < N` with `Nat.Prime p`,
 Mathlib's primality, in increasing order, as words.  Every number below `N` is below `2^64`, so each

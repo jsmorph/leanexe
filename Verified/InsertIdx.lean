@@ -1,4 +1,9 @@
-import Verified.ArrayFold
+module
+
+public import Verified.ArrayFold
+import all Init.Data.Array.Basic
+
+@[expose] public section
 
 namespace Verified
 

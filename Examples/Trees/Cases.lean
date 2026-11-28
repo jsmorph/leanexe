@@ -1,5 +1,9 @@
-import Examples.Trees.Program
-import TestSupport.Host
+module
+
+public import Examples.Trees.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Trees for the verified compiler's cases: `KeyTree.describe` writes a tree in the host's
 preorder form, `KeyTree.arbitrary`, `KeyTree.chain`, and `KeyTree.leftChain` build trees, and

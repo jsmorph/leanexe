@@ -1,5 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselStepF
-import Library.Numerics.Float64.Bessel.BesselSmallSigns
+module
+
+public import Library.Numerics.Float64.Bessel.BesselStepF
+public import Library.Numerics.Float64.Bessel.BesselSmallSigns
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-!
 `jn` below `2^-30`, where the code returns `0` for `n > 33` and otherwise `(x/2)^n/n!` from a loop

@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.BinaryGcd.Proof
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Numerics.Arithmetic.BinaryGcd.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-! The verified compiler's module of the binary GCD.  The compiler translates the tail recursions
 of `removeTwos`, `commonTwos`, and `oddGcd` into loops.  `binaryGcd_callSpec` composes the

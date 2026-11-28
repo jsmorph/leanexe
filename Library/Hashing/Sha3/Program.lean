@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import Library.Hashing.Words.Program
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import Library.Hashing.Words.Program
+
+@[expose] public section
 
 /-! SHA3-224, SHA3-256, SHA3-384, SHA3-512, SHAKE128, and SHAKE256 of FIPS 202 on 64-bit lanes, for
 a message of `n` bytes packed eight to a word as `Library.Hashing.Words` describes.  Word `i` of

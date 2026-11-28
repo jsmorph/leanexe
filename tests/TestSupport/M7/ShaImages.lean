@@ -1,7 +1,11 @@
-import LeanExe.M7.Board
-import LeanExe.M7.Setup
-import TestSupport.M7.Qemu
-import TestSupport.M7.Sha
+module
+
+public import LeanExe.M7.Board
+public import LeanExe.M7.Setup
+public import TestSupport.M7.Qemu
+public import TestSupport.M7.Sha
+
+@[expose] public section
 
 /-!
 The images of the SHA-256 step through the Cortex-M7 back end, both from the state `shaInit`: the

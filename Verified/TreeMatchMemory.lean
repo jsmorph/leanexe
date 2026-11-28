@@ -1,5 +1,9 @@
-import Verified.TreeAssembleTyped
-import Verified.TreeDetach
+module
+
+public import Verified.TreeAssembleTyped
+public import Verified.TreeDetach
+
+@[expose] public section
 
 namespace Verified
 

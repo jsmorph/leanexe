@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaPolyDD
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPolyDD
+
+@[expose] public section
 
 /-!
 `Lgamma.polyDD` with bounds that depend on the step (`polyDD_steps`).

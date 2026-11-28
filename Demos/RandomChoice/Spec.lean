@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Bytes
+module
+
+public import LeanExe.Dialect.Bytes
+
+@[expose] public section
 
 /-! The specifications of the pure core of the request in `Demos/RandomChoice/request.txt`:
 `parseSpec`, the value of an argument of the command line, `pickSpec`, the integer in [1, N] that a

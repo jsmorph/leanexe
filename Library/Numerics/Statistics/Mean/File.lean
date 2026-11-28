@@ -1,5 +1,9 @@
-import Library.Numerics.Statistics.Mean.Compiled
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Numerics.Statistics.Mean.Compiled
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/mean.wasm`: the file holds
 `encode compiled.module`, and it decodes to the module of `compiled.bytes`. -/

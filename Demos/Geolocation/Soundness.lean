@@ -1,5 +1,9 @@
-import Demos.Geolocation.Search
-import Demos.Frames.Soundness
+module
+
+public import Demos.Geolocation.Search
+public import Demos.Frames.Soundness
+
+@[expose] public section
 
 /-!
 The theorems of `locate` over its input array.  An admissible parameter (`Admissible`) is a choice

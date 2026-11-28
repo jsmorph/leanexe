@@ -1,4 +1,8 @@
-import Demos.RunningSumFp.PrintCharges
+module
+
+public import Demos.RunningSumFp.PrintCharges
+
+@[expose] public section
 
 /-! Bounds on the generated allocation bounds of the binary64 parser that the running sum
 compiles.  The digits of a decimal significand cost at most 716,264 bytes, since `decParse` keeps

@@ -1,4 +1,8 @@
-import Library.Hashing.Sha2.Impl.Unroll
+module
+
+public import Library.Hashing.Sha2.Impl.Unroll
+
+@[expose] public section
 
 /-!
 # SHA-256 — performance-tuned implementation

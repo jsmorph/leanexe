@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccFinish
-import Library.Numerics.Float64.Tgamma.TgammaAccPre
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccFinish
+public import Library.Numerics.Float64.Tgamma.TgammaAccPre
+
+@[expose] public section
 
 /-!
 The case `x < j` of the accurate path of `Tgamma` from `1/4`: `j = 4`, `-184 < x < 4`, and the loop
@@ -140,7 +144,7 @@ theorem up_case (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hGap 
   have hprodb : |∏ j ∈ Finset.range (M + 1), (v + (j : ℝ))| ≤ 2 ^ (8 * (M + 1)) := by
     rw [Finset.abs_prod]
     calc ∏ j ∈ Finset.range (M + 1), |v + (j : ℝ)| ≤ ∏ _j ∈ Finset.range (M + 1), (2 : ℝ) ^ 8 := by
-          apply Finset.prod_le_prod (fun j _ => abs_nonneg _)
+          apply Finset.prod_le_prod₀ (fun j _ => abs_nonneg _)
           intro j hj
           have hj' : (j : ℝ) ≤ M := by
             exact_mod_cast Nat.lt_succ_iff.mp (Finset.mem_range.mp hj)

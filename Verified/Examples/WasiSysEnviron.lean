@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 /-! A command that writes its environment: the count and the size that `environ` returns, each as
 eight little-endian bytes, and then the variables, each as `NAME=VALUE` followed by a zero byte.

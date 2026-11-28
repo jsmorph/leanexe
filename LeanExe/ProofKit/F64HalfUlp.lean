@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64Approx
-import LeanExe.ProofKit.F64RoundingScale
+module
+
+public import LeanExe.ProofKit.F64Approx
+public import LeanExe.ProofKit.F64RoundingScale
+
+@[expose] public section
 
 /-!
 The rounding error of a sum or difference is at most half the spacing of the binade below the

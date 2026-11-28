@@ -1,11 +1,15 @@
-import Library.Numerics.Float64.Bessel.BesselOrderLoops
-import Library.Numerics.Float64.Bessel.BesselDivTop
-import LeanExe.ProofKit.F64TopMul
-import LeanExe.ProofKit.F64TopPack
-import LeanExe.ProofKit.F64Saturate
-import LeanExe.ProofKit.F64PackingFinite
-import LeanExe.ProofKit.F64NegateOps
-import LeanExe.ProofKit.F64TwoSum
+module
+
+public import Library.Numerics.Float64.Bessel.BesselOrderLoops
+public import Library.Numerics.Float64.Bessel.BesselDivTop
+public import LeanExe.ProofKit.F64TopMul
+public import LeanExe.ProofKit.F64TopPack
+public import LeanExe.ProofKit.F64Saturate
+public import LeanExe.ProofKit.F64PackingFinite
+public import LeanExe.ProofKit.F64NegateOps
+public import LeanExe.ProofKit.F64TwoSum
+
+@[expose] public section
 
 /-!
 One step `(t ⊘ x) ⊗ b ⊖ a` of `yn`'s forward loop at every magnitude, for the loop below 2, where

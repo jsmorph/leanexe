@@ -1,6 +1,13 @@
-import Library.Numerics.Float64.Tanh.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.Reference
+module
+
+public import Library.Numerics.Float64.Tanh.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.Reference
+public meta import Library.Numerics.Float64.Tanh.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Tanh.expm1` and `Library.Numerics.Float64.Tanh.tanh` against `Reference.expm1` and `Reference.tanh`
 rounded to the nearest double.  fdlibm states an error below one unit in the last place for `expm1`,

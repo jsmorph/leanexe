@@ -1,7 +1,12 @@
-import Mathlib.Data.Real.Basic
-import Mathlib.Algebra.Order.Group.MinMax
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.Ring
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.Real.Basic
+public import Mathlib.Algebra.Order.Group.MinMax
+public import Mathlib.Tactic.Linarith
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-! The minmod slope of a reconstruction in exact arithmetic, componentwise over any index type:
 it preserves constant and linear profiles, it is symmetric under reflection, the two faces

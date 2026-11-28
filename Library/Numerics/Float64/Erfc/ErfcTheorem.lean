@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcMainPath
-import Library.Numerics.Arithmetic.Fma.FmaSpecTheorem
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcMainPath
+public import Library.Numerics.Arithmetic.Fma.FmaSpecTheorem
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Erfc.erfc`: for every finite binary64 input the result lies within one

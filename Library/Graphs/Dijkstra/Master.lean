@@ -1,5 +1,9 @@
-import Library.Graphs.Dijkstra.Compiled
-import Verified.Master
+module
+
+public import Library.Graphs.Dijkstra.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Graphs.Dijkstra
 

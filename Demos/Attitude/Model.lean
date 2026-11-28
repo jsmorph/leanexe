@@ -1,4 +1,8 @@
-import Demos.Slew.Premise
+module
+
+public import Demos.Slew.Premise
+
+@[expose] public section
 
 /-! TRIAD over the real numbers.  `frame a b` is the triad `(ā, n, ā × n)` with `n` the unit normal
 of `a` and `b`, and `triadMap b1 b2 r1 r2` is the map that sends the frame of the measurements

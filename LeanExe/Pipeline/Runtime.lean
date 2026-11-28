@@ -1,6 +1,10 @@
-import LeanExe.Runtime.FreeList
-import LeanExe.ProofKit.Array
-import LeanExe.Dialect.Bytes
+module
+
+public import LeanExe.Runtime.FreeList
+public import LeanExe.ProofKit.Array
+public import LeanExe.Dialect.Bytes
+
+@[expose] public section
 
 namespace LeanExe.Pipeline
 

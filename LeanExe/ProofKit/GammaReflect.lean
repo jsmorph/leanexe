@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.TaylorCheck
-import LeanExe.ProofKit.GammaModels
+module
+
+public import LeanExe.ProofKit.TaylorCheck
+public import LeanExe.ProofKit.GammaModels
+
+@[expose] public section
 
 /-!
 Kernel-checked values of `lgamma` at negative non-integer rationals, through the reflection

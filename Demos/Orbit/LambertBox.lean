@@ -1,8 +1,12 @@
-import Demos.Orbit.GibbsBox
-import Demos.Orbit.LambertRoot
-import Library.Numerics.Float64.Asin.Program
-import Library.Numerics.Float64.Log.Program
-import LeanExe.Dialect.Loop
+module
+
+public import Demos.Orbit.GibbsBox
+public import Demos.Orbit.LambertRoot
+public import Library.Numerics.Float64.Asin.Program
+public import Library.Numerics.Float64.Log.Program
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 The interval program of Lambert's problem in Izzo's formulation.  `geometry` states `λ` and the

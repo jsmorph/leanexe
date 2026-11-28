@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcFastMain
-import Library.Numerics.Float64.Erfc.ErfcSeries
-import Library.Numerics.Float64.Erfc.ErfcRound
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcFastMain
+public import Library.Numerics.Float64.Erfc.ErfcSeries
+public import Library.Numerics.Float64.Erfc.ErfcRound
+
+@[expose] public section
 
 /-!
 `cr_erf_fast` below `1/16` (`Erfc.erfFastTiny`).  The code evaluates `z Q (z²)` for the odd

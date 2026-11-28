@@ -1,5 +1,9 @@
-import Library.Numerics.Interval.Enclose
-import Demos.Avoidance.KeplerRoot
+module
+
+public import Library.Numerics.Interval.Enclose
+public import Demos.Avoidance.KeplerRoot
+
+@[expose] public section
 
 /-!
 The model of the authorizer, stated once for the real numbers and for intervals.  Each

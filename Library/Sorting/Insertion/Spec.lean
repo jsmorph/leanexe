@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! The specification of `sortInsert`: the array's elements in nondecreasing order, as Lean's
 `List.mergeSort` arranges them, with words compared as unsigned numbers.  Exactly one list holds the
 same words with the same repetitions in nondecreasing order, so the specification names the result

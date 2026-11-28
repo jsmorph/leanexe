@@ -1,6 +1,10 @@
-import Demos.RunningSum.Compiled
-import Demos.RunningSum.Stream
-import Verified.Wasi.ReflectCommand
+module
+
+public import Demos.RunningSum.Compiled
+public import Demos.RunningSum.Stream
+public import Verified.Wasi.ReflectCommand
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

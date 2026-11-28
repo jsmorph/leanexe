@@ -1,6 +1,10 @@
-import LeanExe.Dialect.RepeatWhile
-import Mathlib.Data.Finset.Max
-import Mathlib.Data.Finset.Card
+module
+
+public import LeanExe.Dialect.RepeatWhile
+public import Mathlib.Data.Finset.Max
+public import Mathlib.Data.Finset.Card
+
+@[expose] public section
 
 /-! The lists of dancing links, stated pointwise.  A column with header `c` and present nodes `Q`,
 all above `c`, is the cyclic list of `c` and the nodes of `Q` in increasing order: `nxt c Q x` is

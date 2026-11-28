@@ -1,4 +1,8 @@
-import LeanExe.M7.Boot
+module
+
+public import LeanExe.M7.Boot
+
+@[expose] public section
 
 /-!
 The kernel's check of a generated image in parts.  The memory of the kernel's evaluation of

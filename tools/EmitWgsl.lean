@@ -8,7 +8,7 @@ parser reads the text back as `c`. -/
 unsafe def emit (moduleName constName : Name) (path : System.FilePath) : IO Unit := do
   initSearchPath (← findSysroot)
   let env ← importModules
-    #[{ module := moduleName, importAll := false, isExported := true, isMeta := false }] {}
+    #[{ module := moduleName, importAll := false, isExported := true, isMeta := true }] {}
   let kernel ← IO.ofExcept <| env.evalConst LeanExe.WGSL.Module {} constName
   let text := kernel.print
   match LeanExe.WGSL.Module.parse text with

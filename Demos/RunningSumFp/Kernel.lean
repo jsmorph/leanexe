@@ -1,5 +1,9 @@
-import Demos.RunningSumFp.ArithmeticProof
-import Demos.RunningSumFp.StreamView
+module
+
+public import Demos.RunningSumFp.ArithmeticProof
+public import Demos.RunningSumFp.StreamView
+
+@[expose] public section
 
 namespace Demos.RunningSumFp
 

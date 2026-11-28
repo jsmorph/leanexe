@@ -1,4 +1,8 @@
-import Demos.Energy.Operation
+module
+
+public import Demos.Energy.Operation
+
+@[expose] public section
 
 /-! The meaning of the authorizer's words in the specification's terms.  `profileOf` and
 `snapshotOf` read the profile table and the input words into the records of `Spec`, `limitsOf`

@@ -1,4 +1,8 @@
-import Demos.Rcv.ReadProgramProof
+module
+
+public import Demos.Rcv.ReadProgramProof
+
+@[expose] public section
 
 /-!
 The reader program's main theorem, `readContest_eq`: `readContest b` holds the words of

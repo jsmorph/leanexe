@@ -6,6 +6,8 @@
     "Library.Numerics.Interval.Contains b.x (g x y) for a dialect program that evaluates a long real formula on intervals",
     "the tables of sin, cos, and pow that fI takes, for a body without powers or without tables",
     "an application of a real function that enclosure_def does not know, such as arctan u",
+    "Library.Numerics.Interval.Encloses (gI p c) (g x y) for a hand-written interval function over the fields of a structure",
+    "enclose: no rule proves Encloses (Library.Numerics.Interval.sq p.x) (x * x)",
     "(deterministic) timeout at whnf from exact against a projection of a structure literal whose other side is an interval program",
     "Encloses (setup xs).nb x after rw with an equation that states setup as a structure literal"
   ],
@@ -37,6 +39,8 @@
     "Library.Numerics.Interval.encloses_twoThirds",
     "Library.Numerics.Interval.encloses_ofInt'",
     "Library.Numerics.Interval.encloses_ratio'",
+    "Library.Numerics.Interval.encloses_sq",
+    "Library.Numerics.Interval.sq",
     "Library.Numerics.Interval.Contains.pos_of_lo",
     "Library.Numerics.Interval.Contains.neg_of_hi",
     "Library.Numerics.Float64.Trig.invPi",

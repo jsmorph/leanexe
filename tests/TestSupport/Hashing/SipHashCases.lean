@@ -1,4 +1,8 @@
-import Library.Hashing.SipHash.Program
+module
+
+public import Library.Hashing.SipHash.Program
+
+@[expose] public section
 
 /-! The cases of the module `siphash`: SipHash-2-4 and SipHash-1-3 of messages of 0 to 17 bytes and
 of lengths around multiples of eight and of 256, where the byte `n mod 256` wraps, under several

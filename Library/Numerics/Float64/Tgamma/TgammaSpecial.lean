@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tgamma.TgammaBranches
-import Library.Numerics.Float64.Tgamma.TgammaFloor
-import LeanExe.ProofKit.F64Saturate
-import LeanExe.ProofKit.F64PositiveOrder
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaBranches
+public import Library.Numerics.Float64.Tgamma.TgammaFloor
+public import LeanExe.ProofKit.F64Saturate
+public import LeanExe.ProofKit.F64PositiveOrder
+
+@[expose] public section
 
 /-!
 The exceptional values of `Tgamma.tgammaWith`, for any tables: `+∞` at `+0` and at `2 ^ -1024`,

@@ -1,5 +1,10 @@
-import Library.Numerics.Float64.Sinh.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Float64.Sinh.Program
+public import Verified.Reflect.Command
+public meta import Library.Numerics.Float64.Exp.Program
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Sinh
 

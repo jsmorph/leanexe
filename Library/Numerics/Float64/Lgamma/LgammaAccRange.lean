@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaAsymSeries
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAsymSeries
+
+@[expose] public section
 
 /-!
 The ranges of the two polynomials of `Lgamma.accurate` below 3.75 on `[-1/4, 1/4]`, from interval

@@ -1,4 +1,8 @@
-import Library.Regex.Glushkov
+module
+
+public import Library.Regex.Glushkov
+
+@[expose] public section
 
 /-! The position automaton of `Library.Regex.Glushkov` run forward on sets of states, as the
 matcher runs it.  State 0 is the start, and state `p ≥ 1` is position `p` of the expression

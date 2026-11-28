@@ -1,5 +1,9 @@
-import Library.Trees.Search.Compiled
-import Verified.Master
+module
+
+public import Library.Trees.Search.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Trees.Search
 

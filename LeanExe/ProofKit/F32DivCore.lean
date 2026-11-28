@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F32RationalNormalize
+module
+
+public import LeanExe.ProofKit.F32RationalNormalize
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32DivCore
 open Float.Model Float.Model.UnpackedFloat F32Encoding F32RationalNormalize FloatCommon

@@ -1,4 +1,8 @@
-import TestSupport.Native.ClightGen
+module
+
+public import TestSupport.Native.ClightGen
+
+@[expose] public section
 
 /-!
 The executable `clight-diff SEED COUNT ARCHI DIR` writes `COUNT` random programs of

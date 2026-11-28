@@ -1,5 +1,9 @@
-import Demos.Sgp4.Verified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Sgp4.Verified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/sgp4.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Demos/Sgp4/File.lean`: the file holds

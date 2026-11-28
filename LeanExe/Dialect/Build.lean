@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 namespace LeanExe
 
 /-- The array of length `n` whose element `i` is `f i`. -/

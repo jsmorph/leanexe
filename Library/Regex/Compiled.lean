@@ -1,5 +1,9 @@
-import Library.Regex.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Regex.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Regex
 

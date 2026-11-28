@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! # Common: byte ↔ bit utilities
 
 Canonical `byteToBits` (one byte → eight MSB-first booleans) plus

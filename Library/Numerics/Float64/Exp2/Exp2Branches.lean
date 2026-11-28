@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp2.Exp2Paths
-import Library.Numerics.Float64.Exp.ExpTheorem
+module
+
+public import Library.Numerics.Float64.Exp2.Exp2Paths
+public import Library.Numerics.Float64.Exp.ExpTheorem
+
+@[expose] public section
 
 /-!
 The branches of `Exp2.exp2With`.  The exponent field `abstop` selects `1 + x` below `2 ^ -54`,

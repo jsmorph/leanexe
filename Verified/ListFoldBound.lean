@@ -1,5 +1,9 @@
-import Verified.ListFoldState
-import Verified.TailExpand
+module
+
+public import Verified.ListFoldState
+public import Verified.TailExpand
+
+@[expose] public section
 
 namespace Verified
 

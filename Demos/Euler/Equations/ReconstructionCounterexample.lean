@@ -1,7 +1,11 @@
-import Demos.Euler.Equations.Flux
-import Demos.Euler.Equations.Minmod
-import Mathlib.Tactic.NormNum
-import Mathlib.Tactic.FinCases
+module
+
+public import Demos.Euler.Equations.Flux
+public import Demos.Euler.Equations.Minmod
+public import Mathlib.Tactic.NormNum
+public import Mathlib.Tactic.FinCases
+
+@[expose] public section
 
 /-! Componentwise minmod reconstruction does not preserve positive pressure: three admissible
 states, each with internal energy 1/8, give a right face with internal energy -1/4 and pressure

@@ -1,6 +1,10 @@
-import Library.Arrays.Range.Compiled
-import LeanExe.Dialect.Lemmas
-import Verified.Master
+module
+
+public import Library.Arrays.Range.Compiled
+public import LeanExe.Dialect.Lemmas
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Arrays.Range
 

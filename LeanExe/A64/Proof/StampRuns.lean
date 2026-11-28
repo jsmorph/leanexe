@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.StampProgram
-import LeanExe.A64.Proof.LinuxRuns
+module
+
+public import LeanExe.A64.Proof.StampProgram
+public import LeanExe.A64.Proof.LinuxRuns
+
+@[expose] public section
 
 /-!
 The theorems of programs of `genStampProgram`.  `StampRunsAny` is the form of the theorem of a

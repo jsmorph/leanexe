@@ -1,5 +1,9 @@
-import Demos.Screening.Program
-import TestSupport.Host
+module
+
+public import Demos.Screening.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the screening module for `tests/verified/run.sh --cases screening`: two crossing
 circular orbits, pairs that each filter excludes, a pair at the cap, invalid inputs, and pairs of

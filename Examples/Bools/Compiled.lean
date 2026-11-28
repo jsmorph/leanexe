@@ -1,5 +1,9 @@
-import Examples.Bools.Flat
-import Verified.Reflect.Command
+module
+
+public import Examples.Bools.Flat
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of the functions of `Program.lean`.  `Flagged` has the
 representation of `Flat.lean`.  No function allocates, so each generated `implements`

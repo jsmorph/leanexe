@@ -1,5 +1,9 @@
-import LeanExe.PTX.Syntax
-import Interpreter.Wasm.IEEE32
+module
+
+public import LeanExe.PTX.Syntax
+public import Interpreter.Wasm.IEEE32
+
+@[expose] public section
 
 /-!
 The meaning of one thread of a kernel.  A load of a global word takes its value from an oracle and

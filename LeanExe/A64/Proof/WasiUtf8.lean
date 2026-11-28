@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.WasiStubs
-import LeanExe.A64.Proof.WasiClocks
-import LeanExe.A64.WasiFiles
+module
+
+public import LeanExe.A64.Proof.WasiStubs
+public import LeanExe.A64.Proof.WasiClocks
+public import LeanExe.A64.WasiFiles
+
+@[expose] public section
 
 /-!
 `run_utf8Check` follows `utf8Check` of `LeanExe/A64/WasiFiles.lean` in the program's model, from

@@ -1,6 +1,10 @@
-import TestSupport.M7.Crc
-import Library.Hashing.Crc.Proof
-import LeanExe.Requests.Records
+module
+
+public import TestSupport.M7.Crc
+public import Library.Hashing.Crc.Proof
+public import LeanExe.Requests.Records
+
+@[expose] public section
 
 /-!
 What the CRC-32 step writes, in terms of the bytes that it reads.  For a register map `u` whose

@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-! Topological sorting, Algorithm T of TAOCP §2.2.3.  The input `xs` holds the vertex count
 `n = xs[0]` and then the relations, relation `e` stating that vertex `xs[2e + 1]` comes before

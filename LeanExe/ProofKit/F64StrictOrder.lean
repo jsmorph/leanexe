@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Order
+module
+
+public import LeanExe.ProofKit.F64Order
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Order
 set_option exponentiation.threshold 4096

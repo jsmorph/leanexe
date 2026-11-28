@@ -1,6 +1,10 @@
-import Verified.Examples.Fold
-import LeanExe.A64.Proof.ProgramRuns
-import LeanExe.Native.Bare
+module
+
+public import Verified.Examples.Fold
+public import LeanExe.A64.Proof.ProgramRuns
+public import LeanExe.Native.Bare
+
+@[expose] public section
 
 /-!
 The theorem of the bare-metal program for AArch64 of Fold's recursion of depth 1000, in the form

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Trig.TrigSinCos
-import LeanExe.ProofKit.F64Approx
+module
+
+public import Library.Numerics.Float64.Trig.TrigSinCos
+public import LeanExe.ProofKit.F64Approx
+
+@[expose] public section
 
 /-!
 The errors of `Trig.sin` and `Trig.cos` as distances, for proofs that combine them with further

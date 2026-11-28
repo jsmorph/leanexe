@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.ParseFloat.ParseFloatValue
-import Library.Numerics.Decimal.ParseFloat.ParseFloatFast
+module
+
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatValue
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatFast
+
+@[expose] public section
 
 /-!
 The parsers' theorems.  `decode_eq` writes `Library.Numerics.Decimal.Shared.StrconvDecode.decode` as one chain of conditions on

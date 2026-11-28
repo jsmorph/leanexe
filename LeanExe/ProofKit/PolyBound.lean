@@ -1,5 +1,10 @@
-import CodeLib.IEEE64.Roundoff
-import Mathlib.Tactic
+module
+
+public import LeanExe.Base
+public import CodeLib.IEEE64.Roundoff
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-!
 A bound on a polynomial with rational coefficients over a rational interval, checked by the

@@ -1,5 +1,9 @@
-import TestSupport.A64.Flip
-import LeanExe.A64.File
+module
+
+public import TestSupport.A64.Flip
+public import LeanExe.A64.File
+
+@[expose] public section
 
 /-!
 The theorems of the arm64 Image that `a64-uart emit` writes for `flip`, a function over bytes

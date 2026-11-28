@@ -1,5 +1,9 @@
-import Verified.Examples.Lets
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Lets
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/lets.wasm`: the file holds
 `encode Lets.compiled.module`, and it decodes to the module of `Lets.compiled.bytes`. -/

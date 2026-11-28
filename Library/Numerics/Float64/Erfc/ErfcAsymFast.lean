@@ -1,10 +1,14 @@
-import Library.Numerics.Float64.Erfc.ErfcAsymZ
-import Library.Numerics.Float64.Erfc.ErfcAsymRowsT
-import Library.Numerics.Float64.Erfc.ErfcAsymIdx
-import Library.Numerics.Float64.Erfc.ErfcRecip
-import Library.Numerics.Float64.Erfc.ErfcRel
-import Library.Numerics.Float64.Erfc.ErfcExp1
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAsymZ
+public import Library.Numerics.Float64.Erfc.ErfcAsymRowsT
+public import Library.Numerics.Float64.Erfc.ErfcAsymIdx
+public import Library.Numerics.Float64.Erfc.ErfcRecip
+public import Library.Numerics.Float64.Erfc.ErfcRel
+public import Library.Numerics.Float64.Erfc.ErfcExp1
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 `erfc_asympt_fast` of `Erfc` for `0x1.713786d9c7c09p+1 < x < 0x1.9db1bb14e15cap+4`.  The code

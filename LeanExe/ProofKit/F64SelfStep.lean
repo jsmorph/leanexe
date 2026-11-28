@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64RelativeStep
-import LeanExe.ProofKit.F64SignedNearestSum
+module
+
+public import LeanExe.ProofKit.F64RelativeStep
+public import LeanExe.ProofKit.F64SignedNearestSum
+
+@[expose] public section
 
 /-!
 A finite word within `2 ^ -54` of a number, relative to the word, lies within one step of the

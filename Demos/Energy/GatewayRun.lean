@@ -1,5 +1,9 @@
-import Demos.Energy.GatewayTheorems
-import Demos.Energy.Operation
+module
+
+public import Demos.Energy.GatewayTheorems
+public import Demos.Energy.Operation
+
+@[expose] public section
 
 /-! `OperatesIn.states` from the gateway's theorems and the device assumption.  A run of the
 gateway reads the input records `ins`, from `gw0`.  Its recorded state changes at most twice a

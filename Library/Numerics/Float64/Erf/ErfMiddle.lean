@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erf.ErfMiddleBase
+module
+
+public import Library.Numerics.Float64.Erf.ErfMiddleBase
+
+@[expose] public section
 
 /-!
 One step for `erf` on the middle range `[0.84375, 1.25)` of `s_erf.c` for positive arguments.  The

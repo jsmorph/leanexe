@@ -1,6 +1,10 @@
-import TestSupport.M7.GwLoop
-import TestSupport.M7.Windows
-import LeanExe.M7.Proof.Parts
+module
+
+public import TestSupport.M7.GwLoop
+public import TestSupport.M7.Windows
+public import LeanExe.M7.Proof.Parts
+
+@[expose] public section
 
 /-!
 The kernel's check of the code of the gateway for USART3 that `m7-windows image gateway-usart3`

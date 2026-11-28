@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Sinpi.SinpiProduct
-import Library.Numerics.Float64.Trig.TrigQuadrant
-import Library.Numerics.Float64.Tan.TanWith
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiProduct
+public import Library.Numerics.Float64.Trig.TrigQuadrant
+public import Library.Numerics.Float64.Tan.TanWith
+
+@[expose] public section
 
 /-!
 The kernels of `Sinpi`: for `x` from `2 ^ -54` to `1/4`, `kernelSinpi x` and `kernelCospi x` lie

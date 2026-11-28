@@ -1,10 +1,14 @@
-import Library.Numerics.Float64.Lgamma.LgammaFastPiece
-import LeanExe.ProofKit.F64PositiveOrder
-import LeanExe.ProofKit.F64PositiveSpacing
-import LeanExe.ProofKit.F64ExponentBounds
-import Library.Numerics.Float64.Tgamma.TgammaMainRed
-import LeanExe.ProofKit.F64Grid
-import LeanExe.ProofKit.F64Exact
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaFastPiece
+public import LeanExe.ProofKit.F64PositiveOrder
+public import LeanExe.ProofKit.F64PositiveSpacing
+public import LeanExe.ProofKit.F64ExponentBounds
+public import Library.Numerics.Float64.Tgamma.TgammaMainRed
+public import LeanExe.ProofKit.F64Grid
+public import LeanExe.ProofKit.F64Exact
+
+@[expose] public section
 
 /-!
 The fast path of `Lgamma.lgammaWith` from `2 ^ -5` to `1/2` in magnitude: the piece of

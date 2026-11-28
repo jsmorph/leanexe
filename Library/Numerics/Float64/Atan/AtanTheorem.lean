@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Atan.AtanTheoremSmall
+module
+
+public import Library.Numerics.Float64.Atan.AtanTheoremSmall
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Atan.atan`.  For every finite binary64 input `x`, the result lies within

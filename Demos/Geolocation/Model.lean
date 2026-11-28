@@ -1,7 +1,11 @@
-import Mathlib.Analysis.SpecialFunctions.Sqrt
-import Mathlib.Analysis.Calculus.Deriv.Add
-import Mathlib.Analysis.Calculus.Deriv.Pow
-import Demos.Frames.Model
+module
+
+public import Mathlib.Analysis.SpecialFunctions.Sqrt
+public import Mathlib.Analysis.Calculus.Deriv.Add
+public import Mathlib.Analysis.Calculus.Deriv.Pow
+public import Demos.Frames.Model
+
+@[expose] public section
 
 /-!
 The measurement model of `requirements.md` over the real numbers: the distance from a receiver to

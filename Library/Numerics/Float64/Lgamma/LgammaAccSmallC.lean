@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccSmallBase
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccSmallBase
+
+@[expose] public section
 
 /-!
 The kernel check `neg_2` of `LgammaAccSmall`.  Each module holds checks of at most 62,000

@@ -1,5 +1,10 @@
-import Library.Hashing.Crc.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Hashing.Crc.Program
+public import Verified.Reflect.Command
+public meta import Library.Hashing.Crc.Program
+
+@[expose] public section
 
 namespace Library.Hashing.Crc
 

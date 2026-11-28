@@ -1,5 +1,9 @@
-import Verified.Examples.Patterns
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Patterns
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/patterns.wasm`: the file holds
 `encode Patterns.compiled.module`, and it decodes to the module of `Patterns.compiled.bytes`. -/

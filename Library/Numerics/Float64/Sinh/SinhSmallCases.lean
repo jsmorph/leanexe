@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Sinh.SinhSmall
-import Library.Numerics.Float64.Tanh.Expm1FormsOne
+module
+
+public import Library.Numerics.Float64.Sinh.SinhSmall
+public import Library.Numerics.Float64.Tanh.Expm1FormsOne
+
+@[expose] public section
 
 /-!
 The bounds `E` of `SinhSmall.small_steps` on the ten intervals of `abs(x)` below 1: `2 u τ` on

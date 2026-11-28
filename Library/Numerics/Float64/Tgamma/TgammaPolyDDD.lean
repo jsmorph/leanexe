@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaPoly
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaPoly
+
+@[expose] public section
 
 /-!
 **`polyDDD`**, the double-double Horner scheme of `Tgamma`, against the exact Horner values

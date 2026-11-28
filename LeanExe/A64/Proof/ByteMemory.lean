@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.Memory
+module
+
+public import LeanExe.A64.Proof.Memory
+
+@[expose] public section
 
 /-!
 The simulation of `i32.load8_u` and `i32.store8`.  Each compares the address with the memory's

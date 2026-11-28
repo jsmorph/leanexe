@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowLogMain
+module
+
+public import Library.Numerics.Float64.Pow.PowLogMain
+
+@[expose] public section
 
 /-!
 The relative error of `Pow.powLog` for one table entry.  The three cases of

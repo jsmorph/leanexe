@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccPath
-import Library.Numerics.Float64.Tgamma.TgammaAccDbCheck
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccPath
+public import Library.Numerics.Float64.Tgamma.TgammaAccDbCheck
+
+@[expose] public section
 
 /-!
 **The database of hard cases** of `Tgamma.accurate` within one step of `Γ` (`db_within`).  Each of

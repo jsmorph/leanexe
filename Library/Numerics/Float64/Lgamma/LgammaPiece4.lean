@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Lgamma.LgammaPiece4A
-import Library.Numerics.Float64.Lgamma.LgammaPiece4B
-import Library.Numerics.Float64.Lgamma.LgammaPiece4C
-import Library.Numerics.Float64.Lgamma.LgammaPiece4D
-import Library.Numerics.Float64.Lgamma.LgammaPiece4E
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPiece4A
+public import Library.Numerics.Float64.Lgamma.LgammaPiece4B
+public import Library.Numerics.Float64.Lgamma.LgammaPiece4C
+public import Library.Numerics.Float64.Lgamma.LgammaPiece4D
+public import Library.Numerics.Float64.Lgamma.LgammaPiece4E
+
+@[expose] public section
 
 /-!
 Piece 4 of `cr_lgamma`'s piecewise polynomial (`lgamma.c` lines 759-870, commit `ff2f71f6`), which

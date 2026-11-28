@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Trig.Compiled
-import Library.Numerics.Float64.Trig.TrigPi
-import LeanExe.ProofKit.F64ValueExact
-import LeanExe.ProofKit.F64Bits
-import Mathlib.Analysis.Real.Pi.Bounds
+module
+
+public import Library.Numerics.Float64.Trig.Compiled
+public import Library.Numerics.Float64.Trig.TrigPi
+public import LeanExe.ProofKit.F64ValueExact
+public import LeanExe.ProofKit.F64Bits
+public import Mathlib.Analysis.Real.Pi.Bounds
+
+@[expose] public section
 
 /-!
 The accuracy of `Trig.remSmall`, fdlibm's one-step reduction `x - k π/2` for `k` from 1 to 4.  The

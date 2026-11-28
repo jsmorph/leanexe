@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Exp.ExpEvaluationFloat
+module
+
+public import Library.Numerics.Float64.Exp.ExpEvaluationFloat
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpReconstructionBounds
 open CodeLib.IEEE64

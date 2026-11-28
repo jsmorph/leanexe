@@ -1,7 +1,11 @@
-import Interpreter.Wasm.Syntax
-import LeanExe.Area
-import LeanExe.A64.Encode
-import LeanExe.CallGraph
+module
+
+public import Interpreter.Wasm.Syntax
+public import LeanExe.Area
+public import LeanExe.A64.Encode
+public import LeanExe.CallGraph
+
+@[expose] public section
 
 /-!
 The code generator of the AArch64 back end: from a function of a module of the verified

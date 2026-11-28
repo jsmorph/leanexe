@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.TaylorRemainder
+module
+
+public import LeanExe.ProofKit.TaylorRemainder
+
+@[expose] public section
 
 /-!
 The approximation errors of fdlibm's sine and cosine kernel polynomials, as `Trig.kernelSin` and

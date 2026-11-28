@@ -1,8 +1,12 @@
-import Verified.Wasi.CommandCodeSpec
-import Verified.Wasi.CompilerFacts
-import Verified.Wasi.CallOwnership
-import Verified.Wasi.CallCommand
-import Verified.AlignedCorrect
+module
+
+public import Verified.Wasi.CommandCodeSpec
+public import Verified.Wasi.CompilerFacts
+public import Verified.Wasi.CallOwnership
+public import Verified.Wasi.CallCommand
+public import Verified.AlignedCorrect
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,7 +1,11 @@
-import LeanExe.A64.Gen
-import LeanExe.A64.Image
-import LeanExe.A64.Boot
-import LeanExe.A64.Clear
+module
+
+public import LeanExe.A64.Gen
+public import LeanExe.A64.Image
+public import LeanExe.A64.Boot
+public import LeanExe.A64.Clear
+
+@[expose] public section
 
 /-!
 The image of a program as an arm64 Linux Image: every byte that the loader places, written by Lean.

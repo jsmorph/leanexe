@@ -1,4 +1,9 @@
-import Mathlib.Data.Nat.Factors
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.Nat.Factors
+
+@[expose] public section
 
 /-! The specification, as the request in `request.txt` states it: the number of prime
 factors of a word, counted with multiplicity, which is 0 for 0 and 1. -/

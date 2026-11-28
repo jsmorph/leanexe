@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Trig.TrigMedium
-import LeanExe.ProofKit.F64SelfStep
-import Mathlib.Data.Int.Log
+module
+
+public import Library.Numerics.Float64.Trig.TrigMedium
+public import LeanExe.ProofKit.F64SelfStep
+public import Mathlib.Data.Int.Log
+
+@[expose] public section
 
 /-!
 The last step for results that are a rounded sum: a finite word that is a nearest word to `t`,

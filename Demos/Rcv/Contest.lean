@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-!
 The contest structure of [the requirements](requirements.md), section "The contest structure": the
 reader's result, which the count, the report, and the word forms read.  Identifiers and names are

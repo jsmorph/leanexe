@@ -1,5 +1,9 @@
-import LeanExe.M7.Boot
-import TestSupport.Bare.Req
+module
+
+public import LeanExe.M7.Boot
+public import TestSupport.Bare.Req
+
+@[expose] public section
 
 /-!
 The echo of `cmsdkTick` through the Cortex-M7 back end on QEMU's `mps2-an500`, an emulated

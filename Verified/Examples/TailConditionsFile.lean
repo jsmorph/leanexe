@@ -1,5 +1,9 @@
-import Verified.Examples.TailConditions
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.TailConditions
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/tailconditions.wasm`: the file
 holds `encode TailConditions.compiled.module`, and it decodes to the module of

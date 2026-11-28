@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 /-! A command that writes the fields of the records of the preopened directory and of a file it
 creates there, each as eight little-endian bytes.  `main` writes the fields of

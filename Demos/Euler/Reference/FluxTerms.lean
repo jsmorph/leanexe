@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64ArithmeticBounds
+module
+
+public import LeanExe.ProofKit.F64ArithmeticBounds
+
+@[expose] public section
 
 namespace Demos.Euler.Reference
 open CodeLib.IEEE64

@@ -1,9 +1,13 @@
-import Verified.Wasi.BindContext
-import Verified.Wasi.CompilerFacts
-import Verified.Wasi.CostCodeSpec
-import Verified.Wasi.LoopRelease
-import Verified.Wasi.Cleanup
-import Verified.Wasi.ResourceBudget
+module
+
+public import Verified.Wasi.BindContext
+public import Verified.Wasi.CompilerFacts
+public import Verified.Wasi.CostCodeSpec
+public import Verified.Wasi.LoopRelease
+public import Verified.Wasi.Cleanup
+public import Verified.Wasi.ResourceBudget
+
+@[expose] public section
 
 namespace Verified.Wasi
 

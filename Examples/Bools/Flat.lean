@@ -1,5 +1,9 @@
-import Examples.Bools.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Examples.Bools.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! How the theorems represent `Flagged`: its flag and its value, in declaration order.  The
 instance is part of what the theorems of `Compiled.lean` state. -/

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log2.Log2Main
-import Library.Numerics.Float64.Log.LogTheorem
+module
+
+public import Library.Numerics.Float64.Log2.Log2Main
+public import Library.Numerics.Float64.Log.LogTheorem
+
+@[expose] public section
 
 /-!
 One step for `Log2.log2Near1`, the path of `Log2.log2` for arguments from `1 - 0x1.5b51p-5` to

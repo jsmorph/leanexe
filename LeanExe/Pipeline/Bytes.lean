@@ -1,4 +1,8 @@
-import LeanExe.Pipeline.Implements
+module
+
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-!
 A `LeanExe.Bytes` value appears to a compiled function as two words, a root and a length.  An

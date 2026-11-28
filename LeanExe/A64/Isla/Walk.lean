@@ -1,5 +1,9 @@
-import LeanExe.A64.Isla.Check
-import LeanExe.A64.Isla.Profile
+module
+
+public import LeanExe.A64.Isla.Check
+public import LeanExe.A64.Isla.Profile
+
+@[expose] public section
 
 /-!
 The walk of the traces of the load and store forms, which the theorems of `LDR`, `LDR Wt`, `STR`,
@@ -44,7 +48,7 @@ theorem runSome_congr {P : Platform} {sp : SpReg} {A : Abstract} {ts : List Trac
 
 open Lean in
 /-- The value that the chain `ρ` of `Vars.set` on `fun _ => none` gives the variable `y`. -/
-partial def lookupVars (ρ : Expr) (y : Nat) : Option Expr :=
+meta partial def lookupVars (ρ : Expr) (y : Nat) : Option Expr :=
   if ρ.isAppOfArity ``Vars.set 3 then
     match ρ.appFn!.appArg!.nat? with
     | some x =>
@@ -82,8 +86,10 @@ dsimproc_decl reduceGpr (gpr _) := fun e => do
 
 open Lean in
 /-- Adds a definition of each node of the trace `t` under the footprint `F`, numbered from the
-counter, and returns the name of the definition of `t`. -/
-partial def addNodes (F : Name) (counter : IO.Ref Nat) (t : Expr) : CoreM Name := do
+counter, and returns the name of the definition of `t`.  Each definition is exposed, as every
+definition of an `@[expose] public section` is, so that an exported theorem such as
+`F.trace = F.n0` can unfold it. -/
+meta partial def addNodes (F : Name) (counter : IO.Ref Nat) (t : Expr) : CoreM Name := do
   let i ← counter.modifyGet fun n => (n, n + 1)
   let name := F ++ Name.mkSimple s!"n{i}"
   let trace := mkConst ``Trace
@@ -97,7 +103,7 @@ partial def addNodes (F : Name) (counter : IO.Ref Nat) (t : Expr) : CoreM Name :
         (cs.foldr (fun c l => mkApp3 (mkConst ``List.cons [Level.zero]) trace (mkConst c) l)
           (mkApp (mkConst ``List.nil [Level.zero]) trace)))
     else pure t
-  addDecl (.defnDecl {
+  addDecl (forceExpose := true) (.defnDecl {
     name := name, levelParams := [], type := trace, value := val,
     hints := ReducibilityHints.abbrev, safety := DefinitionSafety.safe })
   return name
@@ -119,7 +125,7 @@ theorem Opaque.out {p : Prop} (h : Opaque p) : p := h
 
 open Lean Meta in
 /-- The conjuncts of `t`, a right-nested conjunction, with their proofs from `h`. -/
-partial def conjuncts (t h : Expr) : MetaM (List (Expr × Expr)) := do
+meta partial def conjuncts (t h : Expr) : MetaM (List (Expr × Expr)) := do
   if t.isAppOfArity ``And 2 then
     let a := t.appFn!.appArg!
     let b := t.appArg!
@@ -129,7 +135,7 @@ partial def conjuncts (t h : Expr) : MetaM (List (Expr × Expr)) := do
 
 open Lean Meta in
 /-- The conjunction of the propositions `ps`, with its proof from the proofs of the parts. -/
-def mkConj : List (Expr × Expr) → Expr × Expr
+meta def mkConj : List (Expr × Expr) → Expr × Expr
   | [] => (mkConst ``True, mkConst ``True.intro)
   | [p] => p
   | (a, ha) :: ps =>
@@ -203,11 +209,11 @@ section Meta
 open Lean Meta Elab Tactic
 
 /-- Whether `b`, a `Base`, is the variable `x`. -/
-def isVarE (x : Nat) (b : Expr) : Bool :=
+meta def isVarE (x : Nat) (b : Expr) : Bool :=
   b.isAppOfArity ``Base.var 1 && b.appArg!.nat? == some x
 
 /-- The strings of a list literal of string literals. -/
-def strList? (e : Expr) : Option (List String) := do
+meta def strList? (e : Expr) : Option (List String) := do
   let (_, xs) ← e.listLit?
   xs.mapM fun x => match x with
     | .lit (.strVal s) => some s
@@ -215,7 +221,7 @@ def strList? (e : Expr) : Option (List String) := do
 
 /-- Where the variable `x` lies in the register value `v`: at a path of fields, or at an index of
 a vector. -/
-def rvalPath? (x : Nat) (v : Expr) : Option (List String ⊕ Nat) :=
+meta def rvalPath? (x : Nat) (v : Expr) : Option (List String ⊕ Nat) :=
   if v.isAppOfArity ``RVal.base 1 then
     if isVarE x v.appArg! then some (.inl []) else none
   else if v.isAppOfArity ``RVal.struct 1 then do
@@ -243,7 +249,7 @@ inductive Bind where
   | abs (f args : Expr)
 
 /-- The first event of the trace `t`, in the order of its paths, that reads the variable `x`. -/
-partial def findBind (x : Nat) (t : Expr) : MetaM (Option Bind) := do
+meta partial def findBind (x : Nat) (t : Expr) : MetaM (Option Bind) := do
   if let .const c _ := t then
     let some v := (← getConstInfo c).value? | return none
     return ← findBind x v
@@ -280,7 +286,7 @@ registers `σ`, with the stack pointer `sp`, the variables `ρ`, and the meaning
 abstract functions, or 0 or `true` when no event reads it.  A free Boolean of the traces selects
 among the results of `ConstrainUnpredictable`, and the path of an unaligned access that splits it
 into bytes asserts the first, `Constraint_NONE`. -/
-def witness (isBool : Bool) (b : Option Bind) (sp A ρ s σ : Expr) : MetaM Expr := do
+meta def witness (isBool : Bool) (b : Option Bind) (sp A ρ s σ : Expr) : MetaM Expr := do
   let some b := b | return if isBool then mkConst ``Bool.true else mkNatLit 0
   let opt ← match b with
     | .reg assume r al path =>
@@ -326,7 +332,7 @@ elab "mem_wit" : tactic => withMainContext do
   evalTactic (← `(tactic| refine ⟨$stx, ?_⟩))
 
 /-- The path that `e` states, with its node constant replaced by the node's definition. -/
-def unfoldRun (e : Expr) : MetaM Expr := do
+meta def unfoldRun (e : Expr) : MetaM Expr := do
   let e := e.consumeMData.headBeta
   unless e.isAppOfArity ``Trace.Run 8 do throwError "mem_unfold: not a path"
   let args := e.getAppArgs

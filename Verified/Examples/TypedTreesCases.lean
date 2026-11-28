@@ -1,6 +1,10 @@
-import Verified.Examples.TypedTrees
-import TestSupport.Host
-import TestSupport.Records
+module
+
+public import Verified.Examples.TypedTrees
+public import TestSupport.Host
+public import TestSupport.Records
+
+@[expose] public section
 
 /-! The cases of the trees whose records hold typed fields.  The host passes and prints a tree in
 the `records-u64` form, which native Lean computes from the `Encode` instance, so each case also

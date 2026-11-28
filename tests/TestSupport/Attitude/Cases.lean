@@ -1,5 +1,9 @@
-import Demos.Attitude.Program
-import TestSupport.Host
+module
+
+public import Demos.Attitude.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the attitude module.  `cases` prints the module cases of `triad` for
 `tests/verified/run.sh`, and `bits` prints, for each input, its class, the bits of the fourteen

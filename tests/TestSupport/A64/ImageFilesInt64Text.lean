@@ -1,7 +1,13 @@
-import TestSupport.A64.Programs
-import TestSupport.A64.Int64Text
-import LeanExe.A64.File
-import LeanExe.A64.Proof.ImageTheorem
+module
+
+public import TestSupport.A64.Programs
+public import TestSupport.A64.Int64Text
+public import LeanExe.A64.File
+public import LeanExe.A64.Proof.ImageTheorem
+import all Init.Data.Repr
+import all Init.Data.Int.Repr
+
+@[expose] public section
 
 /-!
 The theorems of the arm64 Image of `Library.Numerics.Decimal.Int64Text`, `int64min.img`, which

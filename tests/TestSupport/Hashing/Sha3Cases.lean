@@ -1,4 +1,8 @@
-import Library.Hashing.Sha3.Program
+module
+
+public import Library.Hashing.Sha3.Program
+
+@[expose] public section
 
 /-! The cases of the module `sha3`: the four digests of messages whose lengths reach the ends of
 the blocks of every rate, 72, 104, 136, 144, and 168 bytes, where the suffix and the last bit of

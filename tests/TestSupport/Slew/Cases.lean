@@ -1,6 +1,10 @@
-import Demos.Slew.Program
-import Library.Random.SplitMix64.Program
-import Library.Numerics.Float64.Trig.Program
+module
+
+public import Demos.Slew.Program
+public import Library.Random.SplitMix64.Program
+public import Library.Numerics.Float64.Trig.Program
+
+@[expose] public section
 
 /-! The cases of the module `slew`: `plan` on inputs that a deterministic generator builds, and
 `atan2` on special and random arguments, with native Lean's results.  The generator draws from

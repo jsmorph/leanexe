@@ -1,7 +1,11 @@
-import Library.Numerics.Decimal.ParseFloat.Compiled
-import Library.Numerics.Arithmetic.Uscale.UscaleArith
-import Library.Numerics.Decimal.Shared.StrconvGrid
-import Library.Numerics.Decimal.Shared.StrconvOfScientific
+module
+
+public import Library.Numerics.Decimal.ParseFloat.Compiled
+public import Library.Numerics.Arithmetic.Uscale.UscaleArith
+public import Library.Numerics.Decimal.Shared.StrconvGrid
+public import Library.Numerics.Decimal.Shared.StrconvOfScientific
+
+@[expose] public section
 
 /-!
 `ParseFloat.roundUnits` rounds an unrounded quotient to the nearest-even encoding.  Its arguments

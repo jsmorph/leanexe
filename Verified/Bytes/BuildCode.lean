@@ -1,4 +1,8 @@
-import LeanExe.Runtime.Defs
+module
+
+public import LeanExe.Runtime.Defs
+
+@[expose] public section
 
 namespace Verified.Bytes
 

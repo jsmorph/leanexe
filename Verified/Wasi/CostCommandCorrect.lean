@@ -1,13 +1,17 @@
-import Verified.Wasi.CostLeaves
-import Verified.Wasi.ReadAllCommand
-import Verified.Wasi.CostCallSpec
-import Verified.Wasi.CostBindUnit
-import Verified.Wasi.CostBindValue
-import Verified.Wasi.CostConditionalSpec
-import Verified.Wasi.CostLoopSpec
-import Verified.Wasi.SysCommand
-import Verified.Wasi.ReadCommand
-import Verified.Wasi.CommandLetPair
+module
+
+public import Verified.Wasi.CostLeaves
+public import Verified.Wasi.ReadAllCommand
+public import Verified.Wasi.CostCallSpec
+public import Verified.Wasi.CostBindUnit
+public import Verified.Wasi.CostBindValue
+public import Verified.Wasi.CostConditionalSpec
+public import Verified.Wasi.CostLoopSpec
+public import Verified.Wasi.SysCommand
+public import Verified.Wasi.ReadCommand
+public import Verified.Wasi.CommandLetPair
+
+@[expose] public section
 
 namespace Verified.Wasi
 

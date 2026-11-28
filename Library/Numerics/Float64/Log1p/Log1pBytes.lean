@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log1p.Log1pTheoremSpecial
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Log1p.Log1pTheoremSpecial
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorem for the module of `Log1p.lean`, whose export `log1p` reads no table.  A store is

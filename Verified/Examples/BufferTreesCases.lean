@@ -1,5 +1,9 @@
-import Verified.Examples.BufferTrees
-import TestSupport.Host
+module
+
+public import Verified.Examples.BufferTrees
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The cases of the trees whose records hold byte buffers.  Each case passes a buffer and returns
 a word, and the code builds, copies, reads, and consumes the trees in between.  The block count of

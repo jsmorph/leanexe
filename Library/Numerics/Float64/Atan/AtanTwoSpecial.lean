@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Atan.AtanTwoBits
+module
+
+public import Library.Numerics.Float64.Atan.AtanTwoBits
+
+@[expose] public section
 
 /-!
 The exceptional inputs of `Atan.atan2 y x` as words.  For `y = ±0` and `x` not NaN the result is

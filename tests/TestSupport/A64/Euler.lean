@@ -1,6 +1,10 @@
-import Demos.Euler.VerifiedCall
-import LeanExe.A64.Proof.ProgramRuns
-import LeanExe.Native.Bare
+module
+
+public import Demos.Euler.VerifiedCall
+public import LeanExe.A64.Proof.ProgramRuns
+public import LeanExe.Native.Bare
+
+@[expose] public section
 
 /-!
 The theorem of the Euler solver's bare-metal program for AArch64, in the form `ProgramRuns`, for

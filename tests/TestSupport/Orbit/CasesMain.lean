@@ -1,4 +1,8 @@
-import TestSupport.Orbit.Cases
+module
+
+public import TestSupport.Orbit.Cases
+
+@[expose] public section
 
 /-! The cases of the modules `gibbs` and `lambert`, for `tests/verified/run.sh --cases gibbs` and
 `--cases lambert`.  With the argument `--gibbs` or `--lambert`, it serves

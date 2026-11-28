@@ -1,5 +1,9 @@
-import Verified.Wasi.HostTotal
-import Verified.Wasi.OracleSys
+module
+
+public import Verified.Wasi.HostTotal
+public import Verified.Wasi.OracleSys
+
+@[expose] public section
 
 /-! When `hostSpecWith host calls` can be satisfied.  `Host.TotalFor` extends `Host.Total` with a
 permitted reply to every fitting, accepted request of each call in `calls`, and such a host has a

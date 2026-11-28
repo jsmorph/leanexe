@@ -1,6 +1,10 @@
-import Demos.Conjunction.Model
-import Mathlib.Probability.Distributions.Gaussian.Multivariate
-import Mathlib.MeasureTheory.Function.Jacobian
+module
+
+public import Demos.Conjunction.Model
+public import Mathlib.Probability.Distributions.Gaussian.Multivariate
+public import Mathlib.MeasureTheory.Function.Jacobian
+
+@[expose] public section
 
 /-!
 This file relates the probability of collision `Model.pc` to Mathlib's multivariate Gaussian

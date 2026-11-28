@@ -1,10 +1,14 @@
-import Library.Numerics.Float64.Tgamma.Compiled
-import Library.Numerics.Arithmetic.Fma.FmaSpec
-import LeanExe.ProofKit.F64TwoSum
-import LeanExe.ProofKit.F64NearReal
-import LeanExe.ProofKit.F64Approx
-import LeanExe.ProofKit.F64UpperWord
-import LeanExe.ProofKit.F64Sign
+module
+
+public import Library.Numerics.Float64.Tgamma.Compiled
+public import Library.Numerics.Arithmetic.Fma.FmaSpec
+public import LeanExe.ProofKit.F64TwoSum
+public import LeanExe.ProofKit.F64NearReal
+public import LeanExe.ProofKit.F64Approx
+public import LeanExe.ProofKit.F64UpperWord
+public import LeanExe.ProofKit.F64Sign
+
+@[expose] public section
 
 /-!
 The double-double operations of `Tgamma`, with error bounds.  The proof uses

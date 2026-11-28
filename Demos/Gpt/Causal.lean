@@ -1,6 +1,11 @@
-import Demos.Gpt.Program
-import Mathlib.Tactic
-import LeanExe.Dialect.Lemmas
+module
+
+public import Demos.Gpt.Program
+public import Mathlib.Tactic
+public import LeanExe.Dialect.Lemmas
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-! Row `i` of `forward`'s scores, and of each layer's input inside it, depends only on
 tokens `0` to `i`, whatever the number of tokens.  The lemmas compare a run on `t` tokens

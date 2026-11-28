@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpIntegerSelection
-import LeanExe.ProofKit.F64Packing
+module
+
+public import Library.Numerics.Float64.Exp.ExpIntegerSelection
+public import LeanExe.ProofKit.F64Packing
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpShiftedBits
 open CodeLib.IEEE64

@@ -1,5 +1,9 @@
-import Examples.Updates.Program
-import Verified.Reflect.Command
+module
+
+public import Examples.Updates.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of the functions of `Program.lean`.  `pushTwo`, `insertErase`,
 and `pushCopy` take their array as an owned argument, and `setTwice` borrows it and copies it at

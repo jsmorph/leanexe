@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Tgamma.TgammaAsym6
-import Library.Numerics.Float64.Tgamma.TgammaExpdSpec
-import Library.Numerics.Float64.Tgamma.TgammaBranches
-import LeanExe.ProofKit.F64PositiveOrder
-import LeanExe.ProofKit.GammaThresholds
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAsym6
+public import Library.Numerics.Float64.Tgamma.TgammaExpdSpec
+public import Library.Numerics.Float64.Tgamma.TgammaBranches
+public import LeanExe.ProofKit.F64PositiveOrder
+public import LeanExe.ProofKit.GammaThresholds
+
+@[expose] public section
 
 /-!
 The path of `tgammaWith` from `4` to the overflow threshold `t0 = 0x1.573fae561f648p+7`:

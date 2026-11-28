@@ -1,5 +1,9 @@
-import LeanExe.Wasi.CallTable
-import LeanExe.Wasi.Sys
+module
+
+public import LeanExe.Wasi.CallTable
+public import LeanExe.Wasi.Sys
+
+@[expose] public section
 
 /-!
 Typed functions of the flat Preview 1 functions, which `tools/wasi-calls.py` generates from the

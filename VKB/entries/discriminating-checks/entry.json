@@ -26,7 +26,8 @@
     "a run of a command whose output depends on random bytes from the operating system",
     "an expected output computed from a specification that is a relation over events",
     "wasmtime_linker_allow_shadowing and wasmtime_linker_define_func in place of one WASI call",
-    "a file of random bytes that runs out"
+    "a file of random bytes that runs out",
+    "a seeded fault that writes a fixed byte with dd conv=notrunc and leaves the file unchanged"
   ],
   "modules": [
     "Verified.Wasi.HandleCheck",

@@ -1,6 +1,10 @@
-import Library.Numerics.Bounds.Program
-import Verified.Reflect.Command
-import Library.Numerics.Bounds.Encoding
+module
+
+public import Library.Numerics.Bounds.Program
+public import Verified.Reflect.Command
+public import Library.Numerics.Bounds.Encoding
+
+@[expose] public section
 
 namespace Library.Numerics.Bounds
 

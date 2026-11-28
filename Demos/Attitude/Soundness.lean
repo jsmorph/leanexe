@@ -1,7 +1,11 @@
-import Demos.Attitude.Program
-import Demos.Attitude.Box
-import Library.Numerics.Interval.Proof
-import Library.Numerics.Float64.Asin.AsinTheorem
+module
+
+public import Demos.Attitude.Program
+public import Demos.Attitude.Box
+public import Library.Numerics.Interval.Proof
+public import Library.Numerics.Float64.Asin.AsinTheorem
+
+@[expose] public section
 
 /-!
 Soundness of the TRIAD program.  `triad_sound` states that a result of status 0 or 2 encloses

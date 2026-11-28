@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Exp.ExpCoreOneStep
-import LeanExe.ProofKit.ExpTinyError
-import LeanExe.ProofKit.F64ExponentBounds
-import LeanExe.ProofKit.F64PositiveRounding
+module
+
+public import Library.Numerics.Float64.Exp.ExpCoreOneStep
+public import LeanExe.ProofKit.ExpTinyError
+public import LeanExe.ProofKit.F64ExponentBounds
+public import LeanExe.ProofKit.F64PositiveRounding
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpBranches
 open CodeLib.IEEE64

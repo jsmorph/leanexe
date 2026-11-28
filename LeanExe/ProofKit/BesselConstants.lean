@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.EulerGamma
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
-import Mathlib.Analysis.SpecificLimits.Normed
+module
+
+public import LeanExe.ProofKit.EulerGamma
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
+public import Mathlib.Analysis.SpecificLimits.Normed
+
+@[expose] public section
 
 /-!
 Rational enclosures for the constants of the Bessel proofs, with the arithmetic on enclosures

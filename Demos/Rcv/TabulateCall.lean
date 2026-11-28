@@ -1,7 +1,11 @@
-import Demos.Rcv.Tabulate
-import Demos.Rcv.TabulateProof
-import Verified.Call
-import Verified.Congr
+module
+
+public import Demos.Rcv.Tabulate
+public import Demos.Rcv.TabulateProof
+public import Verified.Call
+public import Verified.Congr
+
+@[expose] public section
 
 /-!
 The call theorems of the Oakland tabulator's module.  `exports` gives the function indices of the

@@ -1,7 +1,11 @@
-import Library.Numerics.Arithmetic.CeilSqrt.Program
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.RepeatWhile
+module
+
+public import Library.Numerics.Arithmetic.CeilSqrt.Program
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.RepeatWhile
+
+@[expose] public section
 
 /-!
 An ideal point-mass autopilot with an exact shortest-path search over a finite graph of motion

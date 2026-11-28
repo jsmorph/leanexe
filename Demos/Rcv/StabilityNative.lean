@@ -1,5 +1,9 @@
-import Demos.Rcv.Variants
-import Std.Data.HashSet
+module
+
+public import Demos.Rcv.Variants
+public import Std.Data.HashSet
+
+@[expose] public section
 
 /-!
 Native tests of the statements of T3, T8, T10, and T11 of [the requirements](requirements.md), and

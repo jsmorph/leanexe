@@ -1,5 +1,9 @@
-import TestSupport.Native.Common
-import Demos.Gpt32.Verified
+module
+
+public import TestSupport.Native.Common
+public import Demos.Gpt32.Verified
+
+@[expose] public section
 
 /-!
 The theorems that `verified_compile` adds for the binary32 GPT-2 kernels, the exit criterion of

@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: a tuple parameter that holds an array and that the
 function consumes.  The functions are written in the source language with the owned mode for the

@@ -1,5 +1,11 @@
-import Batteries.Data.List.Basic
-import Mathlib.Data.List.Range
+module
+
+public import LeanExe.Base
+public import Batteries.Data.List.Basic
+public import Mathlib.Data.List.Range
+import all Batteries.Data.List.Basic
+
+@[expose] public section
 
 /-! # Common: `List.toChunks` lemmas
 
@@ -22,8 +28,9 @@ characterisation. -/
 
 namespace SHS.Equiv.Chunks
 
-/-- Spec for the inner `toChunks.go`: short-tail vs full-chunk dichotomy. -/
-theorem toChunks_go_spec {α} (n : Nat) (hn : 0 < n) :
+/-- Spec for the inner `toChunks.go`: short-tail vs full-chunk dichotomy.  Private, because
+Batteries makes `List.toChunks.go` private and a public statement cannot name it. -/
+private theorem toChunks_go_spec {α} (n : Nat) (hn : 0 < n) :
     ∀ (xs : List α) (acc₁ : Array α) (acc₂ : Array (List α)),
       acc₁.size ≤ n →
       List.toChunks.go n xs acc₁ acc₂ =

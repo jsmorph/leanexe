@@ -1,6 +1,10 @@
-import Library.Trees.WordTree.Program
-import Verified.Reflect.Command
-import Library.Trees.WordTree.Reflected
+module
+
+public import Library.Trees.WordTree.Program
+public import Verified.Reflect.Command
+public import Library.Trees.WordTree.Reflected
+
+@[expose] public section
 
 namespace Library.Trees.WordTree
 

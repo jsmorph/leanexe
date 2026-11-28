@@ -1,4 +1,8 @@
-import LeanExe.M7.Cost
+module
+
+public import LeanExe.M7.Cost
+
+@[expose] public section
 
 /-!
 A bound on the instructions of every run of a function whose reached functions have no loop,

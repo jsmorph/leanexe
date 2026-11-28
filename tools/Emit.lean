@@ -9,7 +9,7 @@ after checking that `decode` reads the bytes back as `c`. -/
 unsafe def emit (moduleName constName : Name) (path : System.FilePath) : IO Unit := do
   initSearchPath (← findSysroot)
   let env ← importModules
-    #[{ module := moduleName, importAll := false, isExported := true, isMeta := false }] {}
+    #[{ module := moduleName, importAll := false, isExported := true, isMeta := true }] {}
   let module_ ← IO.ofExcept <| env.evalConst Wasm.Module {} constName
   let bytes ← IO.ofExcept <| Wasm.Encoding.encode module_
   match Wasm.Encoding.decode bytes with

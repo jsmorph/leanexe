@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.BesselLarge1
-import LeanExe.ProofKit.BesselRatio
+module
+
+public import LeanExe.ProofKit.BesselLarge1
+public import LeanExe.ProofKit.BesselRatio
+
+@[expose] public section
 
 /-!
 Short polynomials for comparing `P1` and `Q1` with fdlibm's rational approximations.  Each piece of

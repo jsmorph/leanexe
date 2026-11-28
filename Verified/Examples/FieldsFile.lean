@@ -1,5 +1,9 @@
-import Verified.Examples.Fields
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Fields
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/fields.wasm`: the file holds
 `encode Fields.compiled.module`, and it decodes to the module of `Fields.compiled.bytes`. -/

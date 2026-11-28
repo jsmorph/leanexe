@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccNeg
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccNeg
+
+@[expose] public section
 
 /-!
 **Stirling's series at a negative argument** of `Lgamma.accurate`, which evaluates

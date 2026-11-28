@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.Input
-import LeanExe.A64.Proof.ByteMemory
+module
+
+public import LeanExe.A64.Proof.Input
+public import LeanExe.A64.Proof.ByteMemory
+
+@[expose] public section
 
 /-!
 The parts of the run of `genBytesMain`, the entry routine of a function over bytes.

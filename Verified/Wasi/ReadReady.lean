@@ -1,4 +1,8 @@
-import Verified.Wasi.ReadSteps
+module
+
+public import Verified.Wasi.ReadSteps
+
+@[expose] public section
 
 namespace Verified.Wasi
 

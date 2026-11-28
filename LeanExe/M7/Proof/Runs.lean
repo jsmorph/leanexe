@@ -1,4 +1,8 @@
-import LeanExe.M7.Proof.Machine
+module
+
+public import LeanExe.M7.Proof.Machine
+
+@[expose] public section
 
 /-!
 Runs that never stop.  A step appends at most one device access to the trace (`step_trace`), so a

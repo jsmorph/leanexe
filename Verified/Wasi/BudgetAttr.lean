@@ -1,4 +1,9 @@
-import Lean
+module
+
+public import LeanExe.Base
+public import Lean
+
+@[expose] public section
 
 /-! The simp attribute `charge_eqs`.  A budget proof of a WASI command gives it, as a local
 attribute, the equations of the charges of the command's pure functions, which the tactics of

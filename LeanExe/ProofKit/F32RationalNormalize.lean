@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F32RationalScale
+module
+
+public import LeanExe.ProofKit.F32RationalScale
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32RationalNormalize
 open Float.Model Float.Model.UnpackedFloat F32Encoding F32RationalScale F32RoundRational FloatCommon

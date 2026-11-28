@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-! Modular exponentiation and the strong probable-prime test.  The product of two residues modulo
 a word can need 128 bits, so `mulMod` multiplies by the binary method on the bits of the second

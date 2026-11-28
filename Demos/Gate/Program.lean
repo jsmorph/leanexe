@@ -1,6 +1,10 @@
-import Demos.Conjunction.Program
-import Library.Numerics.Interval.Functions
-import Library.Numerics.Float64.Erfc.Program
+module
+
+public import Demos.Conjunction.Program
+public import Library.Numerics.Interval.Functions
+public import Library.Numerics.Float64.Erfc.Program
+
+@[expose] public section
 
 /-!
 The chi-square distribution in interval arithmetic.  `tailWith` encloses the probability that a

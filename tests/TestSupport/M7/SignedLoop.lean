@@ -1,6 +1,10 @@
-import TestSupport.M7.SignedImages
-import TestSupport.M7.QemuLoop
-import LeanExe.M7.Proof.Board
+module
+
+public import TestSupport.M7.SignedImages
+public import TestSupport.M7.QemuLoop
+public import LeanExe.M7.Proof.Board
+
+@[expose] public section
 
 /-!
 The loop theorems of the signed step of `tests/TestSupport/M7/Signed.lean` through the Cortex-M7

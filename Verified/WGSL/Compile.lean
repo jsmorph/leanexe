@@ -1,4 +1,8 @@
-import Verified.WGSL.Dispatch
+module
+
+public import Verified.WGSL.Dispatch
+
+@[expose] public section
 
 namespace Verified.WGSL
 

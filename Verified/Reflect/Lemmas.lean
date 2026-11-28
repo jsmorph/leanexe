@@ -1,9 +1,15 @@
-import Verified.Source
-import Verified.InsertIdx
-import LeanExe.Dialect.RepeatWhile
-import LeanExe.Pipeline.Implements
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F32Bits
+module
+
+public import Verified.Source
+public import Verified.InsertIdx
+public import LeanExe.Dialect.RepeatWhile
+public import LeanExe.Pipeline.Implements
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F32Bits
+import all Init.Data.Nat.Fold
+import all Init.Data.Array.Basic
+
+@[expose] public section
 
 /-! The lemmas from which the reflector builds the equation `denote (reflect f) = f` of a Lean
 definition: one lemma per Lean form.  Each states the meaning of a source expression whose parts

@@ -1,4 +1,8 @@
-import Verified.Kernel.Binding
+module
+
+public import Verified.Kernel.Binding
+
+@[expose] public section
 
 namespace Verified.Kernel
 

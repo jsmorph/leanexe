@@ -1,6 +1,10 @@
-import Verified.Wasi.CommandSpec
-import Verified.Bytes.StaticInput
-import Verified.Wasi.CallWrappers
+module
+
+public import Verified.Wasi.CommandSpec
+public import Verified.Bytes.StaticInput
+public import Verified.Wasi.CallWrappers
+
+@[expose] public section
 
 namespace Verified.Wasi
 

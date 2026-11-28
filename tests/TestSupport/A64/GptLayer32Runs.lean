@@ -1,6 +1,10 @@
-import TestSupport.A64.GptLayer32
-import LeanExe.A64.Proof.ProgramRuns
-import LeanExe.Native.Bare
+module
+
+public import TestSupport.A64.GptLayer32
+public import LeanExe.A64.Proof.ProgramRuns
+public import LeanExe.Native.Bare
+
+@[expose] public section
 
 /-!
 The theorems of the binary32 GPT-2 layer's bare-metal program for AArch64.  `layerCheck_eq` states

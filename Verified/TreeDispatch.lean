@@ -1,5 +1,9 @@
-import Verified.Compile
-import Verified.TreeSelect
+module
+
+public import Verified.Compile
+public import Verified.TreeSelect
+
+@[expose] public section
 
 namespace Verified
 

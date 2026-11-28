@@ -1,6 +1,10 @@
-import Demos.RunningSum.Charges
-import Demos.RunningSum.StreamCorrect
-import Demos.RunningSum.TerminationTarget
+module
+
+public import Demos.RunningSum.Charges
+public import Demos.RunningSum.StreamCorrect
+public import Demos.RunningSum.TerminationTarget
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

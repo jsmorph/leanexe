@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Exp.ExpCoreRange
-import LeanExe.ProofKit.F64FullStep
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import Library.Numerics.Float64.Exp.ExpCoreRange
+public import LeanExe.ProofKit.F64FullStep
+public import LeanExe.ProofKit.F64Magnitude
+
+@[expose] public section
 
 /-!
 One representable step for a reconstruction of `exp`.  Let `E` lie in the range that table

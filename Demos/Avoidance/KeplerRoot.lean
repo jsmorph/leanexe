@@ -1,4 +1,8 @@
-import Demos.Sgp4.KeplerBox
+module
+
+public import Demos.Sgp4.KeplerBox
+
+@[expose] public section
 
 /-!
 An interval that contains the root of Kepler's equation in the form of SGP4,

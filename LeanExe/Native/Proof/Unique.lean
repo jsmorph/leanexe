@@ -1,5 +1,9 @@
-import LeanExe.Native.Proof.Native
-import LeanExe.Native.Clight.Determinism
+module
+
+public import LeanExe.Native.Proof.Native
+public import LeanExe.Native.Clight.Determinism
+
+@[expose] public section
 
 /-!
 The execution that `NativeA` asserts is the only one with its trace.  `NativeA.unique` takes a

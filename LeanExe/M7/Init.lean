@@ -1,4 +1,8 @@
-import LeanExe.M7.Encode
+module
+
+public import LeanExe.M7.Encode
+
+@[expose] public section
 
 /-!
 A board's initialization as a list of device accesses, the code that performs them, and the trace

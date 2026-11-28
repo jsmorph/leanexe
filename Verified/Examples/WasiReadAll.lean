@@ -1,5 +1,9 @@
-import Verified.Wasi
-import LeanExe.Wasi.WriteAll
+module
+
+public import Verified.Wasi
+public import LeanExe.Wasi.WriteAll
+
+@[expose] public section
 
 /-! A command that copies its standard input to its standard output through one buffer.  `main`
 reads the input with `readAll limit`, writes the bytes that it returned with `writeAll` of

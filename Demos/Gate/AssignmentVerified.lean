@@ -1,6 +1,10 @@
-import Demos.Gate.Assignment
-import Verified.Reflect.Command
-import Demos.Gate.AssignmentFlat
+module
+
+public import Demos.Gate.Assignment
+public import Verified.Reflect.Command
+public import Demos.Gate.AssignmentFlat
+
+@[expose] public section
 
 namespace Demos.Gate.Assignment
 

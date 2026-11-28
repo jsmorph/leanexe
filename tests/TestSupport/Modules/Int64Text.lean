@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.Int64Text.Spec
-import TestSupport.Host
+module
+
+public import Library.Numerics.Decimal.Int64Text.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of the `Int64` decimal printer and reader. -/
 

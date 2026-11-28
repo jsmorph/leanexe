@@ -1,4 +1,8 @@
-import Verified.Tree
+module
+
+public import Verified.Tree
+
+@[expose] public section
 
 namespace Verified
 

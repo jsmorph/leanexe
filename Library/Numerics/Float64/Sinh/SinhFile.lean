@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Sinh.SinhBytes
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Numerics.Float64.Sinh.SinhBytes
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/sinh.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Library/Numerics/Float64/Sinh/SinhFile.lean`: the file holds

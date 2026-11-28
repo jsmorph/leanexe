@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.BesselSeg0
+module
+
+public import LeanExe.ProofKit.BesselSeg0
+
+@[expose] public section
 
 /-!
 fdlibm's rational approximations `pzero` and `qzero` of `P0` and `Q0` from `e_j0.c` (FreeBSD msun

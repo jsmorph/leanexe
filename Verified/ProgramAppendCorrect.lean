@@ -1,5 +1,9 @@
-import Verified.ProgramAppend
-import Verified.ModuleComposition
+module
+
+public import Verified.ProgramAppend
+public import Verified.ModuleComposition
+
+@[expose] public section
 
 namespace Verified
 

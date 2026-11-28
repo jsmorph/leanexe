@@ -59,26 +59,40 @@
 # The script records each check that passes with the hash of its inputs in build/verified-checks/,
 # in a directory for each mode, and skips a check whose inputs still have the recorded hash.
 # --no-cache runs every check.  docs/verified-manual.md#recorded-checks lists the inputs.
-# Usage: tests/verified/run.sh [--fast] [--no-cache] [--cases MODULE | --check-bytes DIRECTORY]
+# --parts prints the name of each check of the run without --cases, one to a line, and runs
+# nothing; --part NAME, which may repeat, runs only the checks named, with no record read or
+# written.  A check is emit:NAME, the writing and validation of a module of
+# tests/verified/modules.txt; gpt; module-cases:euler and module-cases:shapes; slew-edges;
+# audit:FILE, an axiom audit; file:NAME, a file theorem module of tests/verified/numerics.txt;
+# cases:NAME, the cases of a module in the Wasmtime host; cases-complete, the check that every
+# module of the registry has cases; and accuracy:FILE, a native check of tests/TestSupport/Numerics
+# or Library.  A part that reads a written module needs it in build/verified.
+# Usage: tests/verified/run.sh [--fast] [--no-cache] [--cases MODULE | --check-bytes DIRECTORY |
+#   --part NAME... | --parts]
 set -euo pipefail
 shopt -s inherit_errexit
 usage() {
   echo "usage: tests/verified/run.sh [--fast] [--no-cache]" \
-    "[--cases MODULE | --check-bytes DIRECTORY]" >&2
+    "[--cases MODULE | --check-bytes DIRECTORY | --part NAME... | --parts]" >&2
   exit 2
 }
-if ! command -v wasm-tools > /dev/null 2>&1; then
-  echo "fail: wasm-tools is not on the search path" >&2
-  exit 1
-fi
 case_module=""
 reference=""
 fast=0
 cache=1
+parts=()
+list=0
 while [ "$#" -ne 0 ]; do
   case "$1" in
     --fast) fast=1; shift ;;
     --no-cache) cache=0; shift ;;
+    --parts) list=1; shift ;;
+    --part)
+      if [ "$#" -lt 2 ] || [ -z "$2" ]; then usage; fi
+      parts+=("$2")
+      cache=0
+      shift 2
+      ;;
     --cases | --check-bytes)
       if [ "$#" -lt 2 ] || [ -z "$2" ] || [ -n "$case_module$reference" ]; then usage; fi
       if [ "$1" = "--cases" ]; then case_module=$2; else reference=$(cd "$2" && pwd -P); fi
@@ -87,6 +101,50 @@ while [ "$#" -ne 0 ]; do
     *) usage ;;
   esac
 done
+if [ "$list" -eq 1 ] || [ "${#parts[@]}" -ne 0 ]; then
+  if [ -n "$case_module$reference" ] || { [ "$list" -eq 1 ] && [ "${#parts[@]}" -ne 0 ]; }; then
+    usage
+  fi
+fi
+# Whether a check runs whose name starts with one of the arguments: any check without --part.
+want_kind() {
+  local part kind
+  [ "${#parts[@]}" -ne 0 ] || return 0
+  for part in "${parts[@]}"; do
+    for kind in "$@"; do
+      [[ $part != "$kind"* ]] || return 0
+    done
+  done
+  return 1
+}
+if [ "$list" -eq 0 ] && want_kind emit: && ! command -v wasm-tools > /dev/null 2>&1; then
+  echo "fail: wasm-tools is not on the search path" >&2
+  exit 1
+fi
+# Whether the check named $1 runs: with --parts the script prints the name and the check does not
+# run, with --part only the checks named run, and otherwise every check runs.
+want() {
+  local part
+  if [ "$list" -eq 1 ]; then
+    echo "$1"
+    return 1
+  fi
+  [ "${#parts[@]}" -ne 0 ] || return 0
+  for part in "${parts[@]}"; do
+    [ "$part" != "$1" ] || return 0
+  done
+  return 1
+}
+# Whether a check of the cases runs.
+want_cases() {
+  local part
+  [ "$list" -eq 0 ] || return 0
+  [ "${#parts[@]}" -ne 0 ] || return 0
+  for part in "${parts[@]}"; do
+    case "$part" in cases:* | cases-complete) return 0 ;; esac
+  done
+  return 1
+}
 root=$(cd "$(dirname "$0")/../.." && pwd)
 host=$root/build/tools/leanexe-wasmtime-host
 out=$root/build/verified
@@ -116,7 +174,7 @@ unchecked=0
 finish() {
   local status=$?
   rm -rf "$tmp"
-  if [ -z "$reference" ]; then
+  if [ -z "$reference" ] && [ "$list" -eq 0 ]; then
     echo "checks: $ran ran, $unchanged unchanged since a recorded pass"
   fi
   if [ "$fast" -eq 1 ]; then
@@ -144,7 +202,7 @@ fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.
 imports() {
-  sed -n -E 's/^import ([A-Za-z0-9_.]+).*/\1/p' "$@" |
+  sed -n -E 's/^(public )?(meta )?import (all )?([A-Za-z0-9_.]+).*/\4/p' "$@" |
     { grep -v -E '^(Init|Std|Lean|Lake)(\.|$)' || true; }
 }
 # Whether the part of the check for module $1 runs: every part without --cases, and with it only
@@ -257,13 +315,19 @@ if [ -z "$reference" ]; then
   fi
   if runs arraytrees; then targets+=($(imports tests/verified/ArrayTreesOrder.lean)); fi
   if runs buffertrees; then targets+=($(imports tests/verified/BufferTreesOrder.lean)); fi
-  if [ "$case_module" != "gpt" ] && [ "$case_module" != "euler" ]; then targets+=("${case_exes[@]}"); fi
+  # The parts that run neither the host nor native Lean, the emissions, file theorems, audits, and
+  # accuracy checks, need no executable, so that they run on a machine of another processor.
+  if [ "$case_module" != "gpt" ] && [ "$case_module" != "euler" ] && want_cases; then
+    targets+=("${case_exes[@]}")
+  fi
   if [ -z "$case_module" ]; then
     targets+=($(imports tests/TestSupport/Numerics/*Accuracy.lean \
       Library/Numerics/Arithmetic/Uscale/UscaleCheck.lean))
   fi
 fi
-tools/leanrun --timeout 12h lake --log-level error build "${targets[@]}"
+if [ "$list" -eq 0 ]; then
+  tools/leanrun --timeout 12h lake --log-level error build "${targets[@]}"
+fi
 # The hash of the file $1.
 digest() {
   "${sum[@]}" <"$1" | cut -d' ' -f1
@@ -302,20 +366,30 @@ check() {
 package='^(LeanExe|Library|Demos|Verified|Examples|TestSupport)([.]|$)'
 if [ -z "$reference" ]; then
   records=$root/build/verified-checks/$mode
-  mkdir -p "$records"
   # The build hash of each module of this package, from its .olean file.
   oleans=$tmp/oleans
-  (cd "$build/lib/lean" && find . -name '*.olean' -print0 | xargs -0 "${sum[@]}") |
-    awk '{ m = substr($2, 3); sub(/\.olean$/, "", m); gsub("/", ".", m); print m, $1 }' >"$oleans"
   # The imports of this package's modules among themselves, a line `MODULE IMPORT` for each.
   graph=$tmp/graph
-  { find LeanExe Library Demos Verified Examples tests/TestSupport -name '*.lean'
-    printf '%s\n' LeanExe.lean Library.lean Demos.lean Verified.lean Examples.lean
-    echo tests/TestSupport.lean
-  } | xargs awk -v package="$package" '
-    FNR == 1 { m = FILENAME; sub(/^tests\//, "", m); sub(/\.lean$/, "", m); gsub("/", ".", m) }
-    /^import / && $2 ~ package { print m, $2 }
-  ' >"$graph"
+  : >"$oleans"
+  : >"$graph"
+  # With --part or --parts no record counts, so the hashes are not computed.
+  if [ "$list" -eq 1 ] || [ "${#parts[@]}" -ne 0 ]; then
+    records=$tmp/records
+  else
+    (cd "$build/lib/lean" && find . -name '*.olean' -print0 | xargs -0 "${sum[@]}") |
+      awk '{ m = substr($2, 3); sub(/\.olean$/, "", m); gsub("/", ".", m); print m, $1 }' >"$oleans"
+    { find LeanExe Library Demos Verified Examples tests/TestSupport -name '*.lean'
+      printf '%s\n' LeanExe.lean Library.lean Demos.lean Verified.lean Examples.lean
+      echo tests/TestSupport.lean
+    } | xargs awk -v package="$package" '
+      FNR == 1 { m = FILENAME; sub(/^tests\//, "", m); sub(/\.lean$/, "", m); gsub("/", ".", m) }
+      match($0, /^(public )?(meta )?import (all )?/) {
+        split(substr($0, RLENGTH + 1), name, " ")
+        if (name[1] ~ package) print m, name[1]
+      }
+    ' >"$graph"
+  fi
+  mkdir -p "$records"
   # The inputs that every check of Lean files shares: this script and the dependencies.
   common_inputs=$(
     "${sum[@]}" tests/verified/run.sh lean-toolchain lakefile.lean lake-manifest.json
@@ -324,7 +398,7 @@ if [ -z "$reference" ]; then
       git -C "$dependency" status --porcelain --untracked-files=no
     done
   )
-  wasm_tools=$(wasm-tools --version)
+  if [ "$list" -eq 0 ] && want_kind emit:; then wasm_tools=$(wasm-tools --version); fi
 fi
 # The inputs of a check that reads Lean files and modules: the shared inputs, the hash of each
 # file argument, and the build hash of every module of this package that is a module argument or
@@ -363,6 +437,7 @@ while IFS=: read -r module constant name; do
     [ "$name" = "$case_module" ] || continue
   fi
   emitted=$((emitted + 1))
+  want "emit:$name" || continue
   wasm=$out/$name.wasm
   if [ -n "$reference" ]; then
     emit "$module" "$constant" "$wasm"
@@ -391,19 +466,24 @@ if [ -n "$reference" ]; then
   echo "verified byte comparison passed: $emitted modules"
   exit 0
 fi
-if [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; then
+if [ "$list" -eq 0 ] && want_kind gpt module-cases: slew-edges cases: &&
+    { [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; }; then
   echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
   exit 1
 fi
-# The host and, where ldd resolves it, the Wasmtime library that it loads.
-host_inputs=$(
-  "${sum[@]}" "$host"
-  if command -v ldd > /dev/null 2>&1; then
-    for library in $(ldd "$host" | awk '$1 ~ /^libwasmtime\./ && $3 ~ /^\// { print $3 }'); do
-      "${sum[@]}" "$library"
-    done
-  fi
-)
+# The host and, where ldd resolves it, the Wasmtime library that it loads, for the parts that run the
+# host.
+host_inputs=""
+if want_kind gpt module-cases: slew-edges cases:; then
+  host_inputs=$(
+    "${sum[@]}" "$host"
+    if command -v ldd > /dev/null 2>&1; then
+      for library in $(ldd "$host" | awk '$1 ~ /^libwasmtime\./ && $3 ~ /^\// { print $3 }'); do
+        "${sum[@]}" "$library"
+      done
+    fi
+  )
+fi
 # The inputs of a check that runs the host on the written module $1, other than its Lean files.
 host_check_inputs() {
   echo "$host_inputs"
@@ -413,7 +493,7 @@ gpt() {
   tests/gpt/run.sh "$out/gpt.wasm"
   tests/gpt/sessions.sh "$out/gpt.wasm"
 }
-if [ -z "$case_module" ] || [ "$case_module" = "gpt" ]; then
+if { [ -z "$case_module" ] || [ "$case_module" = "gpt" ]; } && want gpt; then
   inputs=$({ host_check_inputs gpt; "${sum[@]}" tests/gpt/run.sh tests/gpt/sessions.sh
     lean_inputs tests/gpt/Cases.lean; } | key)
   check gpt "$inputs" gpt
@@ -424,6 +504,7 @@ fi
 # Checks the cases of tests/TestSupport/Native/ModuleCases.lean named $1 on the written module $2.
 module_cases() {
   local inputs
+  want "module-cases:$1" || return 0
   inputs=$({ host_check_inputs "$2"; "${sum[@]}" tests/modules/run.sh
     lean_inputs tests/TestSupport/Native/ModuleCases.lean; } | key)
   check "module cases $1" "$inputs" tests/modules/run.sh --module "$1" "$out/$2.wasm"
@@ -441,6 +522,7 @@ fi
 # pass.
 check_file() {
   local inputs
+  want "file:$1" || return 0
   if [ "$fast" -eq 1 ]; then
     echo "not checked in fast mode: file $1"
     unchecked=$((unchecked + 1))
@@ -480,6 +562,7 @@ file_theorems() {
 # Checks the axiom audit $1 with the function $2, axiom_reports unless given, and records the pass.
 check_axioms() {
   local inputs
+  want "audit:$1" || return 0
   inputs=$(lean_inputs "$1" | key)
   check "audit $1" "$inputs" "${2:-axiom_reports}" "$1"
 }
@@ -519,9 +602,11 @@ axiom_reports() {
   fi
 }
 if [ -z "$case_module" ] || [ "$case_module" = "slew" ]; then
-  inputs=$({ host_check_inputs slew; "${sum[@]}" tests/slew/edges.sh
-    lean_inputs tests/TestSupport/Slew/EdgesMain.lean; } | key)
-  check "slew edges" "$inputs" tests/slew/edges.sh "$out/slew.wasm"
+  if want slew-edges; then
+    inputs=$({ host_check_inputs slew; "${sum[@]}" tests/slew/edges.sh
+      lean_inputs tests/TestSupport/Slew/EdgesMain.lean; } | key)
+    check "slew edges" "$inputs" tests/slew/edges.sh "$out/slew.wasm"
+  fi
   check_axioms tests/slew/Axioms.lean elaborates
   if [ "$case_module" = "slew" ]; then
     check_file slew Demos.Slew.Verified Demos/Slew/File.lean
@@ -659,116 +744,133 @@ fi
 if [ -z "$case_module" ] || [ "$case_module" = "buffertrees" ]; then
   check_axioms tests/verified/BufferTreesOrder.lean elaborates
 fi
-cases=$tmp/cases
-errors=$tmp/errors
-# Native Lean panics on the reads and updates past the end of an array that the cases exercise: it
-# writes a message and a backtrace to standard error.  A read returns Lean's default element,
-# an update the array unchanged, and insertIdx! an empty array.  The run fails when Lean exits
-# with an error or writes any other message.
-: >"$cases"
-: >"$errors"
-for exe in "${case_exes[@]}"; do
-  if ! tools/leanrun --timeout 10m "$build/bin/$exe" >>"$cases" 2>>"$errors"; then
-    cat "$errors" >&2
-    echo "fail: native Lean exited with an error in $exe" >&2
+if [ "$list" -eq 1 ]; then
+  # A part for the cases of each module of the registry, and cases-complete, which requires that the
+  # case lines name only modules of the registry, so that the parts run every case line.
+  cut -d: -f3 "$root/tests/verified/modules.txt" | sort -u | sed 's/^/cases:/'
+  echo cases-complete
+fi
+if want_cases && [ "$list" -eq 0 ]; then
+  cases=$tmp/cases
+  errors=$tmp/errors
+  # Native Lean panics on the reads and updates past the end of an array that the cases exercise: it
+  # writes a message and a backtrace to standard error.  A read returns Lean's default element,
+  # an update the array unchanged, and insertIdx! an empty array.  The run fails when Lean exits
+  # with an error or writes any other message.
+  : >"$cases"
+  : >"$errors"
+  for exe in "${case_exes[@]}"; do
+    if ! tools/leanrun --timeout 10m "$build/bin/$exe" >>"$cases" 2>>"$errors"; then
+      cat "$errors" >&2
+      echo "fail: native Lean exited with an error in $exe" >&2
+      exit 1
+    fi
+  done
+  counts=$(awk '
+    $0 == "Error: index out of bounds" { reads++; next }
+    /^PANIC at Array\.insertIdx! Init\.Data\.Array\.Basic:[0-9]+:[0-9]+: invalid index$/ { inserts++; next }
+    $0 == "backtrace:" || /\[0x[0-9a-f]+\]$/ { next }
+    { others++; print > "/dev/stderr" }
+    END { print reads + 0, inserts + 0, others + 0 }' "$errors")
+  read -r reads inserts others <<<"$counts"
+  if [ "$others" -ne 0 ]; then
+    echo "fail: native Lean wrote $others unexpected lines to standard error, shown above" >&2
     exit 1
   fi
-done
-counts=$(awk '
-  $0 == "Error: index out of bounds" { reads++; next }
-  /^PANIC at Array\.insertIdx! Init\.Data\.Array\.Basic:[0-9]+:[0-9]+: invalid index$/ { inserts++; next }
-  $0 == "backtrace:" || /\[0x[0-9a-f]+\]$/ { next }
-  { others++; print > "/dev/stderr" }
-  END { print reads + 0, inserts + 0, others + 0 }' "$errors")
-read -r reads inserts others <<<"$counts"
-if [ "$others" -ne 0 ]; then
-  echo "fail: native Lean wrote $others unexpected lines to standard error, shown above" >&2
-  exit 1
-fi
-awk -F'|' '
-  BEGIN { OFS = FS }
-  NR == FNR { targets[$1 FS $2] = $3 FS $4; next }
-  { print; key = $1 FS $2 }
-  key in targets {
-    split(targets[key], target, FS)
-    $1 = target[1]; $2 = target[2]; print
-  }' "$root/tests/verified/library-cases.txt" "$cases" >"$cases.library"
-mv "$cases.library" "$cases"
-echo "native Lean: $reads accesses past the end and $inserts insertIdx! past the end, as the cases expect"
-passed=0
-failed=0
-skipped=0
-lines=$tmp/lines
-# The cases of each module run unless its record holds the hash of its case lines, its written
-# module, the host, and this script, which a pass of all of them records.
-for name in $(awk -F'|' '!seen[$1]++ { print $1 }' "$cases"); do
-  if [ -n "$case_module" ] && [ "$name" != "$case_module" ]; then
-    continue
-  fi
-  awk -F'|' -v name="$name" '$1 == name' "$cases" >"$lines"
-  inputs=$({ host_check_inputs "$name"; "${sum[@]}" tests/verified/run.sh
-    echo "cases $(digest "$lines")"; } | key)
-  if recorded "cases $name" "$inputs"; then
-    echo "unchanged: cases $name"
-    unchanged=$((unchanged + 1))
-    skipped=$((skipped + $(wc -l <"$lines")))
-    continue
-  fi
-  rm -f "$(record_file "cases $name")"
-  echo "run: cases $name"
-  before=$failed
-  while IFS='|' read -r _ export result args expected live allocsMax; do
-    read -ra argv <<<"$args"
-    if [ "$expected" = "trap" ]; then
-      if "$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" >/dev/null 2>"$errors"; then
+  awk -F'|' '
+    BEGIN { OFS = FS }
+    NR == FNR { targets[$1 FS $2] = $3 FS $4; next }
+    { print; key = $1 FS $2 }
+    key in targets {
+      split(targets[key], target, FS)
+      $1 = target[1]; $2 = target[2]; print
+    }' "$root/tests/verified/library-cases.txt" "$cases" >"$cases.library"
+  mv "$cases.library" "$cases"
+  echo "native Lean: $reads accesses past the end and $inserts insertIdx! past the end, as the cases expect"
+  passed=0
+  failed=0
+  skipped=0
+  lines=$tmp/lines
+  # The cases of each module run unless its record holds the hash of its case lines, its written
+  # module, the host, and this script, which a pass of all of them records.
+  for name in $(awk -F'|' '!seen[$1]++ { print $1 }' "$cases"); do
+    if [ -n "$case_module" ] && [ "$name" != "$case_module" ]; then
+      continue
+    fi
+    want "cases:$name" || continue
+    awk -F'|' -v name="$name" '$1 == name' "$cases" >"$lines"
+    inputs=$({ host_check_inputs "$name"; "${sum[@]}" tests/verified/run.sh
+      echo "cases $(digest "$lines")"; } | key)
+    if recorded "cases $name" "$inputs"; then
+      echo "unchanged: cases $name"
+      unchanged=$((unchanged + 1))
+      skipped=$((skipped + $(wc -l <"$lines")))
+      continue
+    fi
+    rm -f "$(record_file "cases $name")"
+    echo "run: cases $name"
+    before=$failed
+    while IFS='|' read -r _ export result args expected live allocsMax; do
+      read -ra argv <<<"$args"
+      if [ "$expected" = "trap" ]; then
+        if "$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" >/dev/null 2>"$errors"; then
+          failed=$((failed + 1))
+          echo "fail: $name $export $args: returned, expected a trap at unreachable"
+        elif grep -q 'wasm `unreachable` instruction executed' "$errors"; then
+          passed=$((passed + 1))
+        else
+          failed=$((failed + 1))
+          echo "fail: $name $export $args: $(cat "$errors"), expected a trap at unreachable"
+        fi
+        continue
+      fi
+      if [ -z "$live" ]; then
+        got=$("$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" | paste -sd' ')
+        held=""
+      else
+        output=$("$host" call-stats "$out/$name.wasm" "$export" "$result" "${argv[@]}")
+        got=$(sed '$d' <<<"$output" | paste -sd' ')
+        read -r _ allocs frees < <(tail -n 1 <<<"$output")
+        held=$((allocs - frees))
+      fi
+      if [ -n "$allocsMax" ] && [ "$allocs" -gt "$allocsMax" ]; then
         failed=$((failed + 1))
-        echo "fail: $name $export $args: returned, expected a trap at unreachable"
-      elif grep -q 'wasm `unreachable` instruction executed' "$errors"; then
+        echo "fail: $name $export $args: $allocs allocations, at most $allocsMax expected"
+      elif [ "$got" = "$expected" ] && [ "$held" = "$live" ]; then
         passed=$((passed + 1))
       else
         failed=$((failed + 1))
-        echo "fail: $name $export $args: $(cat "$errors"), expected a trap at unreachable"
+        echo "fail: $name $export $args: $got, expected $expected; live blocks $held, expected $live"
       fi
-      continue
+    done <"$lines"
+    if [ "$failed" -eq "$before" ]; then
+      echo "$inputs" >"$(record_file "cases $name")"
     fi
-    if [ -z "$live" ]; then
-      got=$("$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" | paste -sd' ')
-      held=""
-    else
-      output=$("$host" call-stats "$out/$name.wasm" "$export" "$result" "${argv[@]}")
-      got=$(sed '$d' <<<"$output" | paste -sd' ')
-      read -r _ allocs frees < <(tail -n 1 <<<"$output")
-      held=$((allocs - frees))
-    fi
-    if [ -n "$allocsMax" ] && [ "$allocs" -gt "$allocsMax" ]; then
-      failed=$((failed + 1))
-      echo "fail: $name $export $args: $allocs allocations, at most $allocsMax expected"
-    elif [ "$got" = "$expected" ] && [ "$held" = "$live" ]; then
-      passed=$((passed + 1))
-    else
-      failed=$((failed + 1))
-      echo "fail: $name $export $args: $got, expected $expected; live blocks $held, expected $live"
-    fi
-  done <"$lines"
-  if [ "$failed" -eq "$before" ]; then
-    echo "$inputs" >"$(record_file "cases $name")"
+    ran=$((ran + 1))
+  done
+  echo "verified: passed $passed failed $failed"
+  if [ "$skipped" -ne 0 ]; then
+    echo "verified: $skipped cases of unchanged modules not run"
   fi
-  ran=$((ran + 1))
-done
-echo "verified: passed $passed failed $failed"
-if [ "$skipped" -ne 0 ]; then
-  echo "verified: $skipped cases of unchanged modules not run"
-fi
-[ $((passed + skipped)) -gt 0 ] && [ "$failed" -eq 0 ] || exit 1
-# Without --cases, every module of the registry has a case, except the modules of
-# tests/verified/no-cases.txt, which other drivers test.
-if [ -z "$case_module" ]; then
-  missing=$(cut -d'|' -f1 "$cases" | sort -u |
-    comm -13 - <(cut -d: -f3 "$root/tests/verified/modules.txt" | sort -u) |
-    comm -23 - <(cut -d' ' -f1 "$root/tests/verified/no-cases.txt" | sort -u))
-  if [ -n "$missing" ]; then
-    echo "fail: modules without cases: $(paste -sd' ' <<<"$missing")" >&2
-    exit 1
+  if [ "${#parts[@]}" -eq 0 ] || [ $((passed + failed)) -ne 0 ]; then
+    [ $((passed + skipped)) -gt 0 ] && [ "$failed" -eq 0 ] || exit 1
+  fi
+  # Without --cases, every module of the registry has a case, except the modules of
+  # tests/verified/no-cases.txt, which other drivers test.
+  if [ -z "$case_module" ] && want cases-complete; then
+    missing=$(cut -d'|' -f1 "$cases" | sort -u |
+      comm -13 - <(cut -d: -f3 "$root/tests/verified/modules.txt" | sort -u) |
+      comm -23 - <(cut -d' ' -f1 "$root/tests/verified/no-cases.txt" | sort -u))
+    if [ -n "$missing" ]; then
+      echo "fail: modules without cases: $(paste -sd' ' <<<"$missing")" >&2
+      exit 1
+    fi
+    unknown=$(cut -d'|' -f1 "$cases" | sort -u | comm -23 - <(cut -d: -f3 "$root/tests/verified/modules.txt" | sort -u))
+    if [ -n "$unknown" ]; then
+      echo "fail: cases of modules outside the registry: $(paste -sd' ' <<<"$unknown")" >&2
+      exit 1
+    fi
+    echo "verified: every module of the registry has cases, and every case names one"
   fi
 fi
 if [ -n "$case_module" ]; then
@@ -778,6 +880,7 @@ fi
 # inputs, and records the pass.
 accuracy() {
   local limit=$1 file=$2 inputs
+  want "accuracy:$file" || return 0
   shift 2
   inputs=$({ lean_inputs "$file"; [ "$#" -eq 0 ] || "${sum[@]}" "$@"; } | key)
   check "accuracy $file" "$inputs" tools/leanrun --timeout "$limit" lake env lean --run "$file"

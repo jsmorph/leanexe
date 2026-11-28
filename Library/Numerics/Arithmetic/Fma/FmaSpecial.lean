@@ -1,4 +1,8 @@
-import Library.Numerics.Arithmetic.Fma.FmaGeneral
+module
+
+public import Library.Numerics.Arithmetic.Fma.FmaGeneral
+
+@[expose] public section
 
 /-!
 The special cases of `Fma.fmaBits` and facts about the nearest-even reference.  `fmaBits` returns

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Trig.TrigLarge
-import LeanExe.ProofKit.F64Sign
+module
+
+public import Library.Numerics.Float64.Trig.TrigLarge
+public import LeanExe.ProofKit.F64Sign
+
+@[expose] public section
 
 /-!
 The accuracy theorem of `Trig.remLarge`: for a positive finite double `x` with exponent field from

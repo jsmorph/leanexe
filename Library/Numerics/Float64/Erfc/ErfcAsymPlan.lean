@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcAsymCert
-import Library.Numerics.Float64.Erfc.Compiled
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAsymCert
+public import Library.Numerics.Float64.Erfc.Compiled
+
+@[expose] public section
 
 /-!
 The rows of `T` and `Tacc` of `Erfc` as rational polynomials in `u = 1/x²`, the intervals of `x`

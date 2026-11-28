@@ -1,7 +1,12 @@
-import TestSupport.A64.WasiElf
-import TestSupport.A64.ElfWitness
-import Demos.RandomHistogram.NativeCounts
-import LeanExe.A64.File
+module
+
+public import TestSupport.A64.WasiElf
+public import TestSupport.A64.ElfWitness
+public import Demos.RandomHistogram.NativeCounts
+public import LeanExe.A64.File
+import all Init.Data.List.SplitOn.Basic
+
+@[expose] public section
 
 /-!
 The theorems of the Linux executable that `a64-wasi wasm` writes for the random-residue histogram's

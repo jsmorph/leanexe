@@ -1,6 +1,10 @@
-import Demos.Energy.Authorize
-import Demos.Energy.Verified
-import Verified.Call
+module
+
+public import Demos.Energy.Authorize
+public import Demos.Energy.Verified
+public import Verified.Call
+
+@[expose] public section
 
 /-! The energy authorizer under the test site's profile table, and its module.  `site_valid`
 proves that the table satisfies the profile's validity condition.  `authorize_sound` states that

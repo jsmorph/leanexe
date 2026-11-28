@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Whole
+module
+
+public import LeanExe.Native.Proof.Whole
+
+@[expose] public section
 
 /-!
 Runs without events.  The trace of a program is its output, so the theorem about a bare-metal

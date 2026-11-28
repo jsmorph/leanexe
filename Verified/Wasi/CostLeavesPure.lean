@@ -1,7 +1,11 @@
-import Verified.Wasi.CostCodeSpec
-import Verified.Wasi.CompilerFacts
-import Verified.Wasi.ResourceCompilerCost
-import Verified.AlignedCorrect
+module
+
+public import Verified.Wasi.CostCodeSpec
+public import Verified.Wasi.CompilerFacts
+public import Verified.Wasi.ResourceCompilerCost
+public import Verified.AlignedCorrect
+
+@[expose] public section
 
 namespace Verified.Wasi
 

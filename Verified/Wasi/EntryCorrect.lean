@@ -1,7 +1,11 @@
-import Verified.Wasi.ProgramCorrect
-import Verified.Wasi.CostCallHelper
-import Verified.Wasi.CostFunctionPost
-import Verified.Wasi.WrapperStack
+module
+
+public import Verified.Wasi.ProgramCorrect
+public import Verified.Wasi.CostCallHelper
+public import Verified.Wasi.CostFunctionPost
+public import Verified.Wasi.WrapperStack
+
+@[expose] public section
 
 namespace Verified.Wasi
 

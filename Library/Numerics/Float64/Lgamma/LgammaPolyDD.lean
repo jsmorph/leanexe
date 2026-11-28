@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaPolyFst
-import Library.Numerics.Float64.Tgamma.TgammaMul
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPolyFst
+public import Library.Numerics.Float64.Tgamma.TgammaMul
+
+@[expose] public section
 
 /-!
 **`Lgamma.polyDD`**, the double-double Horner scheme at a double-double point `xh + xl`, against

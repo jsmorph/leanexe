@@ -1,5 +1,9 @@
-import Verified.Examples.TailModel
-import Verified.Correct
+module
+
+public import Verified.Examples.TailModel
+public import Verified.Correct
+
+@[expose] public section
 
 namespace Verified.Examples.TailCore
 

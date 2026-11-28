@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.Expm1FormsOne
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1FormsOne
+
+@[expose] public section
 
 /-!
 The forms of fdlibm's `expm1` that compute `y1 = 1 - (e - x)`, a rounding of `exp r`, and then

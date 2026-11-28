@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Sinpi.SinpiFloor
-import Library.Numerics.Float64.Sinpi.SinpiPieces
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiFloor
+public import Library.Numerics.Float64.Sinpi.SinpiPieces
+
+@[expose] public section
 
 /-!
 Facts shared by `sinpi`, `cospi`, and `tanpi`: the high word of `|x|` against its thresholds,

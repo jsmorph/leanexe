@@ -1,5 +1,9 @@
-import Verified.Wasi.CallWrappers
-import Verified.Wasi.SysWindow
+module
+
+public import Verified.Wasi.CallWrappers
+public import Verified.Wasi.SysWindow
+
+@[expose] public section
 
 namespace Verified.Wasi
 

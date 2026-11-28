@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaSinpidLow
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidLow
+
+@[expose] public section
 
 /-!
 The branch of `Lgamma.asSinpipid` within `3/256` of an integer, where `sin (π z)/π` for

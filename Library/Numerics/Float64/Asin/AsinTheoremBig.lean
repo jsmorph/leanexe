@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Asin.AsinTheoremHalf
+module
+
+public import Library.Numerics.Float64.Asin.AsinTheoremHalf
+
+@[expose] public section
 
 /-!
 `Asin.asin x` for `0.974998 ≤ |x| < 1`: `π/2 - 2 (s + s r)` with `t = (1 - |x|)/2 ≤ 1/79`,

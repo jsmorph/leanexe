@@ -1,6 +1,10 @@
-import LeanExe.Encoding.Containers
-import LeanExe.Encoding.Spec.Types
-import Init.Data.BitVec.Lemmas
+module
+
+public import LeanExe.Encoding.Containers
+public import LeanExe.Encoding.Spec.Types
+public import Init.Data.BitVec.Lemmas
+
+@[expose] public section
 
 namespace Wasm.Encoding
 

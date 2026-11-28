@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 namespace Examples.ScaledHypot
 
 /-- `sqrt (x * x + y * y) / s` in binary64. -/

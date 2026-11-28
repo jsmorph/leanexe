@@ -1,4 +1,8 @@
-import TestSupport.M7.CrcLoop
+module
+
+public import TestSupport.M7.CrcLoop
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of the CRC-32 step `crcCmsdkTick` for QEMU's `mps2-an500` that

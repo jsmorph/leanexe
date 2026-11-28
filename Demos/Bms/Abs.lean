@@ -1,7 +1,12 @@
-import Demos.Bms.Program
-import Demos.Bms.Stream
-import Library.Hashing.Crc.Bitwise.Proof
-import LeanExe.Requests.DelimitedSteps
+module
+
+public import Demos.Bms.Program
+public import Demos.Bms.Stream
+public import Library.Hashing.Crc.Bitwise.Proof
+public import LeanExe.Requests.DelimitedSteps
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-!
 The BMS step of `Demos/Bms/Program.lean` against the machine of `Demos/Bms/Spec.lean` and the
@@ -682,7 +687,6 @@ theorem commW_eq {s : BmsState} {kind olen : UInt64} {crcOk : Bool} {sc : ScanW}
   · rw [seqFault, view_good hv hg]
     simp only [absS, scanAbs, Bool.true_and]
     congr 1
-    flag_eq
 
 theorem bitW_ne (P Q r : UInt64) :
     (bitW P r != bitW Q r) = (P.toNat.testBit (r.toNat % 64) != Q.toNat.testBit (r.toNat % 64)) := by

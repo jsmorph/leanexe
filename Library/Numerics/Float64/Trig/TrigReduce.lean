@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Trig.TrigMedium
-import Library.Numerics.Float64.Trig.TrigLargeSpec
+module
+
+public import Library.Numerics.Float64.Trig.TrigMedium
+public import Library.Numerics.Float64.Trig.TrigLargeSpec
+
+@[expose] public section
 
 /-!
 The accuracy of `Trig.remPio2`, fdlibm's argument reduction, for a positive double `x` above

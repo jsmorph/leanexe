@@ -1,5 +1,9 @@
-import Library.Arrays.Search.Program
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Arrays.Search.Program
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 namespace Library.Arrays.Search
 

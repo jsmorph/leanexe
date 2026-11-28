@@ -1,8 +1,12 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
-import LeanExe.Dialect.InsertErase
-import LeanExe.Dialect.Float32
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+public import LeanExe.Dialect.InsertErase
+public import LeanExe.Dialect.Float32
+
+@[expose] public section
 
 /-! A program of the verified compiler: `sin` and `cos`, ported from fdlibm as
 FreeBSD's `lib/msun/src` has it (`k_sin.c`, `k_cos.c`, `s_sin.c`, `s_cos.c`, and `e_rem_pio2.c`,

@@ -1,6 +1,10 @@
-import LeanExe.Pipeline.Runtime
-import LeanExe.Pipeline.Implements
-import LeanExe.ProofKit.FixedArrayAllocate
+module
+
+public import LeanExe.Pipeline.Runtime
+public import LeanExe.Pipeline.Implements
+public import LeanExe.ProofKit.FixedArrayAllocate
+
+@[expose] public section
 
 namespace LeanExe.Pipeline
 

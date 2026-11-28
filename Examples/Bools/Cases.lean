@@ -1,5 +1,9 @@
-import Examples.Bools.Program
-import TestSupport.Host
+module
+
+public import Examples.Bools.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `bools`. -/
 

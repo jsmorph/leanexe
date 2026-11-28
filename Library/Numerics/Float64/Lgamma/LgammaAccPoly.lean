@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaPolyFst
-import Library.Numerics.Float64.Lgamma.LgammaPolyIv
-import Library.Numerics.Float64.Tgamma.TgammaAcc2
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPolyFst
+public import Library.Numerics.Float64.Lgamma.LgammaPolyIv
+public import Library.Numerics.Float64.Tgamma.TgammaAcc2
+
+@[expose] public section
 
 /-!
 The polynomials of `Lgamma.accurate` below 3.75 by `Lgamma.polyDDDFst` at a double point

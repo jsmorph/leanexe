@@ -1,6 +1,10 @@
-import Verified.TreeContextLayout
-import Verified.TreeMatchMemory
-import Verified.WordCode
+module
+
+public import Verified.TreeContextLayout
+public import Verified.TreeMatchMemory
+public import Verified.WordCode
+
+@[expose] public section
 
 namespace Verified
 

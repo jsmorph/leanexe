@@ -1,6 +1,10 @@
-import Verified.Wasi.CostTotal
-import LeanExe.Wasi.RelatedExec
-import LeanExe.Wasi.RelatedPrefix
+module
+
+public import Verified.Wasi.CostTotal
+public import LeanExe.Wasi.RelatedExec
+public import LeanExe.Wasi.RelatedPrefix
+
+@[expose] public section
 
 namespace Verified.Wasi
 

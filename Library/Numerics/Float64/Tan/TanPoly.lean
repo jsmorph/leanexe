@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tan.TanWords
-import Library.Numerics.Float64.Trig.TrigSinTail
-import Library.Numerics.Float64.Tan.TanKernelPoly
+module
+
+public import Library.Numerics.Float64.Tan.TanWords
+public import Library.Numerics.Float64.Trig.TrigSinTail
+public import Library.Numerics.Float64.Tan.TanKernelPoly
+
+@[expose] public section
 
 /-!
 The rounding error of the correction `r` of `Tan.kernelTan`, with `tan (x + y) ≈ x + r`.  For

@@ -1,5 +1,9 @@
-import Demos.Rcv.Tabulate
-import TestSupport.A64.Programs
+module
+
+public import Demos.Rcv.Tabulate
+public import TestSupport.A64.Programs
+
+@[expose] public section
 
 /-!
 The Oakland tabulator as a bare-metal program that reads its input from the UART: `tabulate`,

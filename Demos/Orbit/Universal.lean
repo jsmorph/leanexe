@@ -1,10 +1,14 @@
-import Demos.Orbit.Newton
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.DerivHyp
-import Mathlib.Analysis.Calculus.Deriv.MeanValue
-import Mathlib.Analysis.Calculus.Deriv.Inverse
-import Mathlib.Topology.Order.IntermediateValue
-import Mathlib.Topology.Order.MonotoneContinuity
+module
+
+public import Demos.Orbit.Newton
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.DerivHyp
+public import Mathlib.Analysis.Calculus.Deriv.MeanValue
+public import Mathlib.Analysis.Calculus.Deriv.Inverse
+public import Mathlib.Topology.Order.IntermediateValue
+public import Mathlib.Topology.Order.MonotoneContinuity
+
+@[expose] public section
 
 /-!
 The motion along a two-body orbit of every conic, in the universal variable.  For a state

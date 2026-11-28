@@ -1,5 +1,10 @@
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
-import Mathlib.Analysis.SpecialFunctions.Pow.Real
+module
+
+public import LeanExe.Base
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
+public import Mathlib.Analysis.SpecialFunctions.Pow.Real
+
+@[expose] public section
 
 /-!
 The model of `requirements.md` over the real numbers: the Greenwich mean sidereal time of 1982 in

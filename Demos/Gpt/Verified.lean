@@ -1,5 +1,9 @@
-import Verified.Reflect.Command
-import Demos.Gpt.Program
+module
+
+public import Verified.Reflect.Command
+public import Demos.Gpt.Program
+
+@[expose] public section
 
 namespace Demos.Gpt.Verified
 

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselSmallSigns
+module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallSigns
+
+@[expose] public section
 
 /-!
 The real analysis of the backward recurrence of `jn` (Miller's algorithm) for `0 < x < 2` and

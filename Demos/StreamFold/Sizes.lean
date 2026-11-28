@@ -1,4 +1,8 @@
-import Demos.StreamFold.Future
+module
+
+public import Demos.StreamFold.Future
+
+@[expose] public section
 
 /-! Bounds on the sizes of a stream process's state: its pending line, from the rooms that its
 future needs, and its input and output buffers, which every step keeps within the read capacity

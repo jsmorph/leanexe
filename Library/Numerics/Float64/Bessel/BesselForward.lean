@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.BesselOrderEnergy
-import LeanExe.ProofKit.F64Approx
+module
+
+public import Library.Numerics.Float64.Bessel.BesselOrderEnergy
+public import LeanExe.ProofKit.F64Approx
+
+@[expose] public section
 
 /-!
 The forward recurrence 10.6.1 in floating point for `2 n ≤ x` and `4 ≤ x ≤ 2^302`.  A sequence of

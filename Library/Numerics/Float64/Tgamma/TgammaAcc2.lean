@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaAcc1
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAcc1
+
+@[expose] public section
 
 /-!
 `Tgamma.sprod`, the step `x (x0 + x1 + x2)` of the powers of `d` in the accurate path of `Tgamma`.

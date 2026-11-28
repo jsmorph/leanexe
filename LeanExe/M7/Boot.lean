@@ -1,5 +1,9 @@
-import LeanExe.M7.Div
-import LeanExe.M7.Image
+module
+
+public import LeanExe.M7.Div
+public import LeanExe.M7.Image
+
+@[expose] public section
 
 /-!
 The image of a program with requests that a Cortex-M7 starts from reset: a vector table, a

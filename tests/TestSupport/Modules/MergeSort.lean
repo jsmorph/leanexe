@@ -1,5 +1,9 @@
-import Library.Sorting.MergeSort.Spec
-import TestSupport.Host
+module
+
+public import Library.Sorting.MergeSort.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of merge sort. -/
 

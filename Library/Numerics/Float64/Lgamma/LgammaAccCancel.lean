@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaRootPath
-import Mathlib.Analysis.Complex.ExponentialBounds
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaRootPath
+public import Mathlib.Analysis.Complex.ExponentialBounds
+
+@[expose] public section
 
 /-!
 **The cancellation of the reflection from -32 down.**  At a non-integer double `v ≤ -32`, the

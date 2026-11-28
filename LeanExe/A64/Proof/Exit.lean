@@ -1,9 +1,13 @@
-import LeanExe.A64.Proof.StartupCode
-import LeanExe.A64.Proof.Lift
-import LeanExe.A64.Proof.Table
-import LeanExe.A64.Proof.Boot
-import LeanExe.A64.Proof.Straight
-import LeanExe.A64.Proof.Traps
+module
+
+public import LeanExe.A64.Proof.StartupCode
+public import LeanExe.A64.Proof.Lift
+public import LeanExe.A64.Proof.Table
+public import LeanExe.A64.Proof.Boot
+public import LeanExe.A64.Proof.Straight
+public import LeanExe.A64.Proof.Traps
+
+@[expose] public section
 
 /-!
 The run of the startup's exit in the boot model, from its instruction 58 to the `HVC #0` at 68,

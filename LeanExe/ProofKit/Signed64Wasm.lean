@@ -1,4 +1,10 @@
-import LeanExe.ProofKit.Signed64Float
+module
+
+public import LeanExe.ProofKit.Signed64Float
+import all Init.Data.SInt.Float
+import all Init.Data.SInt.Float32
+
+@[expose] public section
 
 /-!
 Lean's conversions between `Int64` and the floats are WebAssembly's signed conversions as Talos

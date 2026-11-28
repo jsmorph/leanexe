@@ -1,5 +1,9 @@
-import Examples.Convert.Proof
-import Verified.Reflect.Command
+module
+
+public import Examples.Convert.Proof
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `toDouble`, `toSingle`, `ofDouble`, `ofSingle`, and `scale`.
 The reflector writes each conversion with the word forms of `LeanExe.ProofKit.Signed64Float` over

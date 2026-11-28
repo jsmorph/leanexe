@@ -1,7 +1,11 @@
-import Verified.TailSpec
-import Verified.LiteralCodeEq
-import Verified.StaticImplements
-import Verified.AlignedCorrect
+module
+
+public import Verified.TailSpec
+public import Verified.LiteralCodeEq
+public import Verified.StaticImplements
+public import Verified.AlignedCorrect
+
+@[expose] public section
 
 /-! The compiler's correctness theorem.  Every function of a compiled program returns the value
 that the program gives it, with the heap and store changed only as `ImplementsA` allows.  The code
@@ -39,6 +43,25 @@ theorem _root_.LeanExe.Pipeline.ImplementsA.mono {α β : Type} {_ : Represent �
     (h env store heap params x hAt (hPre x heap store hPre') hRep hSep hCap).mono
       fun final _ ⟨heap', hAt', hOwned, hCaps, hRegions, hPost0⟩ =>
         ⟨heap', hAt', hOwned, hCaps, hRegions, hPost x heap store heap' final hPre' hPost0⟩
+
+/-- `ImplementsA` under a stronger precondition and with a weaker postcondition, whose implication
+receives the new precondition and the arguments' representation, which bounds, for example, the
+size of an array argument. -/
+theorem _root_.LeanExe.Pipeline.ImplementsA.mono_borrowed {α β : Type} {_ : Represent α}
+    {_ : Represent β} {aborts : Bool} {m : Module} {entry : Nat} {f : α → β}
+    {Pre Pre' : α → Heap → Store Unit → Prop}
+    {Post Post' : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsA aborts m entry f Pre Post)
+    (hPre : ∀ x heap store, Pre' x heap store → Pre x heap store)
+    (hPost : ∀ x heap store params heap' store', Pre' x heap store →
+      Represent.borrowed heap store params x →
+      Post x heap store heap' store' → Post' x heap store heap' store') :
+    ImplementsA aborts m entry f Pre' Post' :=
+  fun env store heap params x hAt hPre' hRep hSep hCap =>
+    (h env store heap params x hAt (hPre x heap store hPre') hRep hSep hCap).mono
+      fun final _ ⟨heap', hAt', hOwned, hCaps, hRegions, hPost0⟩ =>
+        ⟨heap', hAt', hOwned, hCaps, hRegions,
+          hPost x heap store params heap' final hPre' hRep hPost0⟩
 
 /-- `ImplementsB` gives `ImplementsA` without the bound. -/
 theorem ImplementsB.implementsA {α β : Type} {_ : Represent α} {_ : Represent β} {aborts : Bool}
@@ -673,6 +696,24 @@ def ImplementsTables {α β : Type} [Represent α] [Represent β] (aborts : Bool
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
             heap'.Region r ∧ Represent.outside final values.reverse (f x) r) ∧
         Post x heap store heap' final
+
+/-- `ImplementsTables` under a stronger precondition and with a weaker postcondition, whose
+implication receives the new precondition and the arguments' representation, as
+`LeanExe.Pipeline.ImplementsA.mono_borrowed` states for `ImplementsA`. -/
+theorem ImplementsTables.mono {α β : Type} [Represent α] [Represent β] {aborts : Bool}
+    {m : Module} {entry : Nat} {f : α → β} {tables : List (UInt64 × Array UInt64)}
+    {Pre Pre' : α → Heap → Store Unit → Prop}
+    {Post Post' : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsTables aborts m entry f tables Pre Post)
+    (hPre : ∀ x heap store, Pre' x heap store → Pre x heap store)
+    (hPost : ∀ x heap store params heap' store', Pre' x heap store →
+      Represent.borrowed heap store params x →
+      Post x heap store heap' store' → Post' x heap store heap' store') :
+    ImplementsTables aborts m entry f tables Pre' Post' :=
+  fun env store heap params x hAt hPre' hT hA hS hC =>
+    (h env store heap params x hAt (hPre x heap store hPre') hT hA hS hC).mono
+      fun final _ ⟨heap', h1, h2, h3, h4, h5⟩ =>
+        ⟨heap', h1, h2, h3, h4, hPost x heap store params heap' final hPre' hA h5⟩
 
 /-- The context of a wrapper's callee: the tables `ks` of `tables`, then the wrapper's own
 arguments. -/

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log.LogMain
-import Library.Numerics.Float64.Log.LogKernelPoly
+module
+
+public import Library.Numerics.Float64.Log.LogMain
+public import Library.Numerics.Float64.Log.LogKernelPoly
+
+@[expose] public section
 
 /-!
 One step for `Log.logNear1`, the path of `Log.log` for arguments from `15/16` to below

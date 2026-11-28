@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Enclosure
+module
+
+public import LeanExe.ProofKit.F64Enclosure
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Adjacent
 open CodeLib.IEEE64

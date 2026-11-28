@@ -1,7 +1,11 @@
-import Library.Sorting.Quicksort.Program
-import Library.Sorting.Quicksort.Spec
-import Library.Sorting.Heapsort.Proof
-import Library.Sorting.StraightInsertion.Proof
+module
+
+public import Library.Sorting.Quicksort.Program
+public import Library.Sorting.Quicksort.Spec
+public import Library.Sorting.Heapsort.Proof
+public import Library.Sorting.StraightInsertion.Proof
+
+@[expose] public section
 
 /-! The proof that quicksort returns the array's elements in nondecreasing order.  Step Q9 sorts
 every array by straight insertion, so the proof needs only that steps Q1 to Q8 return a permutation

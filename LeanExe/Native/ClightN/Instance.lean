@@ -1,5 +1,10 @@
-import LeanExe.Native.ClightN.Reads
-import LeanExe.Native.Proof.Ctl
+module
+
+public import LeanExe.Native.ClightN.Reads
+public import LeanExe.Native.Proof.Ctl
+public meta import LeanExe.Native.ClightN.ToExpr
+
+@[expose] public section
 
 /-!
 What the instances of `clightn/check.sh` share: decidable equality of the copy's syntax, so that
@@ -38,27 +43,6 @@ deriving instance DecidableEq for LClight.function
 deriving instance DecidableEq for LClight.fundef
 deriving instance DecidableEq for LClight.globvar
 deriving instance DecidableEq for LClight.globdef
-
-deriving instance Lean.ToExpr for LClight.typ
-deriving instance Lean.ToExpr for LClight.xtype
-deriving instance Lean.ToExpr for LClight.calling_convention
-deriving instance Lean.ToExpr for LClight.signature
-deriving instance Lean.ToExpr for LClight.memory_chunk
-deriving instance Lean.ToExpr for LClight.external_function
-deriving instance Lean.ToExpr for LClight.signedness
-deriving instance Lean.ToExpr for LClight.intsize
-deriving instance Lean.ToExpr for LClight.floatsize
-deriving instance Lean.ToExpr for LClight.attr
-deriving instance Lean.ToExpr for LClight.type
-deriving instance Lean.ToExpr for LClight.unary_operation
-deriving instance Lean.ToExpr for LClight.binary_operation
-deriving instance Lean.ToExpr for LClight.expr
-deriving instance Lean.ToExpr for LClight.statement, LClight.labeled_statements
-deriving instance Lean.ToExpr for LClight.function
-deriving instance Lean.ToExpr for LClight.fundef
-deriving instance Lean.ToExpr for LClight.init_data
-deriving instance Lean.ToExpr for LClight.globvar
-deriving instance Lean.ToExpr for LClight.globdef
 
 /-- CompCert's declarations with the identifiers that the whole program gives them:
 `__builtin_fsqrt` takes `sqrtId`, and the `j`-th of the others `4 j + 5`. -/
@@ -618,23 +602,23 @@ section Tactic
 
 open Lean Meta Elab Tactic
 
-unsafe def evalTranslateUnsafe (e : Expr) : MetaM (Option Translation) :=
+meta unsafe def evalTranslateUnsafe (e : Expr) : MetaM (Option Translation) :=
   evalExpr (Option Translation) (mkApp (mkConst ``Option [Level.zero]) (mkConst ``Translation)) e
     (checkMeta := false)
 
 /-- The value of the term `e` of type `Option Translation`, by compiled code. -/
 @[implemented_by evalTranslateUnsafe]
-opaque evalTranslate (e : Expr) : MetaM (Option Translation)
+meta opaque evalTranslate (e : Expr) : MetaM (Option Translation)
 
 /-- Adds the definition `name : type := value`, which the kernel checks before `inst_ok` goes
 on. -/
-def addLiteralDef (name : Name) (type value : Expr) : MetaM Unit :=
+meta def addLiteralDef (name : Name) (type value : Expr) : MetaM Unit :=
   withOptions (Elab.async.set · false) do
     addDecl (.defnDecl (mkDefinitionValEx name [] type value .abbrev .safe [name]))
 
 /-- Adds the theorem `name : prop`, which the kernel proves by evaluating `decide prop` before
 `inst_ok` goes on, and returns it. -/
-def addByKernel (name : Name) (prop : Expr) : MetaM Expr := do
+meta def addByKernel (name : Name) (prop : Expr) : MetaM Expr := do
   let inst ← synthInstance (mkApp (mkConst ``Decidable) prop)
   let pf := mkApp3 (mkConst ``of_decide_eq_true) prop inst
     (mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Bool) (mkConst ``Bool.true))

@@ -1,11 +1,15 @@
-import Library.Numerics.Float64.Lgamma.LgammaPiece10A
-import Library.Numerics.Float64.Lgamma.LgammaPiece10B
-import Library.Numerics.Float64.Lgamma.LgammaPiece10C
-import Library.Numerics.Float64.Lgamma.LgammaPiece10D
-import Library.Numerics.Float64.Lgamma.LgammaPiece10E
-import Library.Numerics.Float64.Lgamma.LgammaPiece10F
-import Library.Numerics.Float64.Lgamma.LgammaPiece10G
-import Library.Numerics.Float64.Lgamma.LgammaPiece10H
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPiece10A
+public import Library.Numerics.Float64.Lgamma.LgammaPiece10B
+public import Library.Numerics.Float64.Lgamma.LgammaPiece10C
+public import Library.Numerics.Float64.Lgamma.LgammaPiece10D
+public import Library.Numerics.Float64.Lgamma.LgammaPiece10E
+public import Library.Numerics.Float64.Lgamma.LgammaPiece10F
+public import Library.Numerics.Float64.Lgamma.LgammaPiece10G
+public import Library.Numerics.Float64.Lgamma.LgammaPiece10H
+
+@[expose] public section
 
 /-!
 Piece 10 of `cr_lgamma`'s piecewise polynomial (`lgamma.c` lines 759-870, commit `ff2f71f6`), which

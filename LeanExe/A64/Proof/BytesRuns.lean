@@ -1,7 +1,11 @@
-import LeanExe.A64.Proof.BytesProgram
-import LeanExe.A64.Proof.InputRuns
-import LeanExe.Pipeline.Bytes
-import LeanExe.Pipeline.RuntimeSpec
+module
+
+public import LeanExe.A64.Proof.BytesProgram
+public import LeanExe.A64.Proof.InputRuns
+public import LeanExe.Pipeline.Bytes
+public import LeanExe.Pipeline.RuntimeSpec
+
+@[expose] public section
 
 /-!
 The theorems of the programs and images that read a message from the UART and run a function
@@ -12,10 +16,16 @@ length L of at most `inMax`, the lowest first, and then L bytes, all without an 
 program writes `Out` of the bytes and returns 0, or reaches the exit word with a status that `T`
 allows.  When it delivers the eight bytes of a length above `inMax`, the program reaches the exit
 word with status 64, and when a byte that the program reads carries an error flag after bytes
-without one, with status 65, in both cases with nothing written to the UART.  `bytes_runs` gives
-`BytesRuns` from the compiler's theorem of the function, the allocator's specification
-`alloc_spec_runs`, and `buffer_of_alloc`, which states that the block that the allocator returns,
-with the message's bytes written into it, holds a buffer of those bytes.  `image_bytes_run` joins
+without one, with status 65, in both cases with nothing written to the UART.  `bytes_runs_at`
+gives `BytesRuns` from two theorems of the function, one without the trap for the messages that
+satisfy a predicate `G` and one with the trap, whose preconditions hold at the store of the call,
+`callStore`, from the allocator's specification `alloc_spec_runs` and `buffer_of_alloc`, which
+states that the block that the allocator returns, with the message's bytes written into it, holds
+a buffer of those bytes.  `bytes_runs` gives `BytesRuns` from one compiler theorem with the flag
+`aborts`, and `bytes_runs_on` from two with the trap only for a message that fails `G`, both
+with the precondition at every store whose memory has `cap` pages.  `borrowed_callStore` keeps an
+array of the initial store, such as a wrapper's table, borrowed at the store of the call, which
+the wrapper forms of `Verified/BytesRuns.lean` use.  `image_bytes_run` joins
 `BytesRuns` to the startup, and `image_bytes_run_at` states it at every base.
 -/
 
@@ -301,29 +311,94 @@ theorem genBytesProgram_length {m : Module} {k : Nat} {inMax uart base room : UI
       · exact genBytesMain_length hmg
       · cases hmg) hfs
 
-/-- `BytesRuns` from the compiler's theorem `h` that function `k` of `m` computes `f` over
-bytes, for a module whose function 0 is the allocator.  The heap `heap` lies at the module's
-initial store, the allocator has room for the block of every length of at most `inMax`, and the
-heap after that block's allocation, at the store with the memory's cap, satisfies the theorem's
-precondition for every message of at most `inMax` bytes.  The program writes the bytes of
-`f` of the message and returns 0, or reaches the exit word with the status 1 of `unreachable`
-when `aborts` holds, or with the status 4 of an overflow of the stack when `room` lies below
-`stackBound m k`.  The allocator's stack must fit the room. -/
-theorem bytes_runs {aborts : Bool} {m : Module} {k : Nat} {f : LeanExe.Bytes → LeanExe.Bytes}
-    {Pre : LeanExe.Bytes → Heap → Store Unit → Prop}
-    {Post : LeanExe.Bytes → Heap → Store Unit → Heap → Store Unit → Prop}
-    (h : ImplementsA aborts m k f Pre Post) {typeIdx : Nat}
+/-- `BytesRuns` for a predicate `T'` of the statuses that `T` implies. -/
+theorem BytesRuns.mono {m : Module} {k : Nat} {inMax room : UInt64} {cap : Nat}
+    {Out : List UInt8 → List UInt8} {T T' : List UInt8 → UInt64 → Prop}
+    (h : BytesRuns m k inMax room cap Out T) (hT : ∀ msg c, T msg c → T' msg c) :
+    BytesRuns m k inMax room cap Out T' := by
+  intro P base area _ hg ms himage hpc hal hroom htop hstack h17 harea hamap habove hU hrx hpo
+  obtain ⟨h1, h2, h3⟩ := h P base area hg ms himage hpc hal hroom htop hstack h17 harea hamap
+    habove hU hrx hpo
+  exact ⟨fun msg hlen hd => (h1 msg hlen hd).imp id
+    fun ⟨ms', hr, hp, ht, ho⟩ => ⟨ms', hr, hp, hT msg _ ht, ho⟩, h2, h3⟩
+
+/-- The store of the entry's call in a program of `genBytesProgram` for the message `msg`: the
+module's initial store with a memory of `cap` pages, after the allocation of the message's block
+from `heap` and the writes of `msg` from the block's root. -/
+def callStore (m : Module) (cap : Nat) (heap : Heap) (msg : List UInt8) : Store Unit :=
+  storeBytes (heap.allocateStore (initStore m cap) (allocSize (UInt64.ofNat msg.length)) 1)
+    (FixedArrayAllocate.root heap.top (allocSize (UInt64.ofNat msg.length)) heap.free).toNat msg
+
+theorem callStore_memoryCap (m : Module) (cap : Nat) (heap : Heap) (msg : List UInt8) :
+    (callStore m cap heap msg).memoryCap m 0 = cap := by
+  unfold callStore Store.memoryCap
+  rw [(storeBytes_globals _ _ msg).2.2, Heap.allocateStore_memoryCaps]
+  rfl
+
+/-- The writes of the message stay inside the block that the allocator returns. -/
+theorem callStore_writesWithin {heap : Heap} {m : Module} {cap : Nat} {msg : List UInt8}
+    (hAt : heap.At (m.initialStore : Store Unit)) (hlen : msg.length ≤ 4294967296)
+    (hFits : heap.Fits (allocSize (UInt64.ofNat msg.length))) :
+    WritesWithin (heap.allocateStore (initStore m cap) (allocSize (UInt64.ofNat msg.length)) 1)
+      (callStore m cap heap msg)
+      (FixedArrayAllocate.root heap.top (allocSize (UInt64.ofNat msg.length)) heap.free).toNat
+      (allocatedCapacity (allocSize (UInt64.ofNat msg.length)) heap.free).toNat := by
+  have hBlock : (heap.allocate (allocSize (UInt64.ofNat msg.length))).Block
+      (heap.allocateStore (initStore m cap) (allocSize (UInt64.ofNat msg.length)) 1)
+      (FixedArrayAllocate.root heap.top (allocSize (UInt64.ofNat msg.length)) heap.free)
+      (allocatedCapacity (allocSize (UInt64.ofNat msg.length)) heap.free) 1 :=
+    (heapAt_initStore hAt cap).allocate_block 1 hFits
+  have hcap := allocated_capacity (allocSize (UInt64.ofNat msg.length)) heap.free
+  have hneed : msg.length ≤ (allocSize (UInt64.ofNat msg.length)).toNat := by
+    have := le_allocSize (bytes := UInt64.ofNat msg.length)
+      (by rw [UInt64.toNat_ofNat']; simp only [Nat.reducePow] at *; omega)
+    rwa [UInt64.toNat_ofNat', Nat.mod_eq_of_lt (by simp only [Nat.reducePow]; omega)] at this
+  have haddr := hBlock.address
+  have hmem := hBlock.memory
+  exact storeBytes_write _ _ msg (by omega) _ (by omega)
+
+/-- An array borrowed at the module's initial store, such as a table of a wrapper, stays borrowed
+at the store of the call, after the allocation of the message's block and the writes of the
+message. -/
+theorem borrowed_callStore {heap : Heap} {m : Module} {cap : Nat} {msg : List UInt8}
+    {p : UInt64} {ws : Array UInt64} (hAt : heap.At (m.initialStore : Store Unit))
+    (hlen : msg.length ≤ 4294967296) (hFits : heap.Fits (allocSize (UInt64.ofNat msg.length)))
+    (hB : heap.Borrowed (m.initialStore : Store Unit) p ws) :
+    (heap.allocate (allocSize (UInt64.ofNat msg.length))).Borrowed (callStore m cap heap msg) p
+      ws :=
+  Heap.Borrowed.allocate_within (borrowed_initStore hB cap) (heapAt_initStore hAt cap) hFits
+    (callStore_writesWithin hAt hlen hFits)
+
+/-- `BytesRuns` from two theorems of the entry, for a module whose function 0 is the allocator:
+`htf`, without the trap, for the messages that satisfy `G`, and `himpl`, which may trap, for the
+others.  The heap `heap` lies at the module's initial store, and the allocator has room for the
+block of every length of at most `inMax`.  The preconditions hold at the store of the call,
+`callStore m cap heap msg`, with the heap after the block's allocation, given that the block fits
+the heap.  The program writes the bytes of `f` of the message and returns 0, or reaches the exit
+word with the status 1 of `unreachable` for a message that fails `G`, or with the status 4 of an
+overflow of the stack when `room` lies below `stackBound m k`.  The allocator's stack must fit the
+room. -/
+theorem bytes_runs_at {m : Module} {k : Nat} {f : LeanExe.Bytes → LeanExe.Bytes}
+    {G : LeanExe.Bytes → Prop} {Pre Pre' : LeanExe.Bytes → Heap → Store Unit → Prop}
+    {Post Post' : LeanExe.Bytes → Heap → Store Unit → Heap → Store Unit → Prop}
+    (htf : ImplementsA false m k f Pre Post) (himpl : ImplementsA true m k f Pre' Post')
+    {typeIdx : Nat}
     (h0 : m.funcs[0]? = some (LeanExe.Runtime.allocFunction typeIdx))
     {inMax room : UInt64} {cap : Nat} {heap : Heap}
     (hheap : heap.At (m.initialStore : Store Unit)) (hinMax : inMax.toNat ≤ 4294967296)
     (hroomA : ∀ L ≤ inMax.toNat, heap.Room (initStore m cap) m (allocSize (UInt64.ofNat L)))
-    (hpre : ∀ (b : LeanExe.Bytes) (st : Store Unit), b.data.size ≤ inMax.toNat →
-      st.memoryCap m 0 = cap →
-      Pre b (heap.allocate (allocSize (UInt64.ofNat b.data.size))) st)
+    (hpre : ∀ msg : List UInt8, msg.length ≤ inMax.toNat →
+      heap.Fits (allocSize (UInt64.ofNat msg.length)) → G ⟨⟨msg.toArray⟩⟩ →
+      Pre ⟨⟨msg.toArray⟩⟩ (heap.allocate (allocSize (UInt64.ofNat msg.length)))
+        (callStore m cap heap msg))
+    (hpre' : ∀ msg : List UInt8, msg.length ≤ inMax.toNat →
+      heap.Fits (allocSize (UInt64.ofNat msg.length)) →
+      Pre' ⟨⟨msg.toArray⟩⟩ (heap.allocate (allocSize (UInt64.ofNat msg.length)))
+        (callStore m cap heap msg))
     (h0room : stackBound m 0 ≤ room.toNat)
     (hok : bytesEntryOk m k = true := by decide +kernel) :
     BytesRuns m k inMax room cap (fun msg => (f ⟨⟨msg.toArray⟩⟩).data.data.toList)
-      fun _ c => (aborts = true ∧ c = 1) ∨ (room.toNat < stackBound m k ∧ c = 4) := by
+      fun msg c => (¬ G ⟨⟨msg.toArray⟩⟩ ∧ c = 1) ∨ (room.toNat < stackBound m k ∧ c = 4) := by
   intro P base area is hg ms himage hpc hal hroom htop hstack h17 harea hamap habove hU hrx hpo
   obtain ⟨-, fs, -, -, -, -, -, -, -, -, -, -, -, -, -, -, hao, -, -, hfs, -⟩ :=
     gen_bytesProgram hg
@@ -391,10 +466,22 @@ theorem bytes_runs {aborts : Bool} {m : Module} {k : Nat} {f : LeanExe.Bytes →
   have hle : rxSum P.rx 0 8 ≤ inMax.toNat := by rw [hsum]; exact hlen
   obtain ⟨N0, hN0⟩ := halloc msg.length hlen
   have hFits := (hN0 N0 (Nat.le_refl _)).2
+  have hP : G ⟨⟨msg.toArray⟩⟩ →
+      Pre ⟨⟨msg.toArray⟩⟩ (heap.allocate (allocSize (UInt64.ofNat msg.length)))
+      (storeBytes (heap.allocateStore (initStore m cap) (allocSize (UInt64.ofNat msg.length)) 1)
+        (FixedArrayAllocate.root heap.top (allocSize (UInt64.ofNat msg.length)) heap.free).toNat
+        msg) :=
+    hpre msg hlen hFits
+  have hP' : Pre' ⟨⟨msg.toArray⟩⟩ (heap.allocate (allocSize (UInt64.ofNat msg.length)))
+      (storeBytes (heap.allocateStore (initStore m cap) (allocSize (UInt64.ofNat msg.length)) 1)
+        (FixedArrayAllocate.root heap.top (allocSize (UInt64.ofNat msg.length)) heap.free).toNat
+        msg) :=
+    hpre' msg hlen hFits
   obtain ⟨hAt2, hbuf, hfit⟩ := buffer_of_alloc hAt0 (bs := msg) (by omega) hFits
-  generalize hneed : allocSize (UInt64.ofNat msg.length) = need at hFits hAt2 hbuf hfit hN0
-  generalize hroot : FixedArrayAllocate.root heap.top need heap.free = root at hAt2 hbuf hfit hN0
-  generalize hst1 : heap.allocateStore (initStore m cap) need 1 = st1 at hAt2 hbuf hfit hN0
+  generalize hneed : allocSize (UInt64.ofNat msg.length) = need at hFits hAt2 hbuf hfit hN0 hP hP'
+  generalize hroot : FixedArrayAllocate.root heap.top need heap.free = root
+    at hAt2 hbuf hfit hN0 hP hP'
+  generalize hst1 : heap.allocateStore (initStore m cap) need 1 = st1 at hAt2 hbuf hfit hN0 hP hP'
   have hcap2 : (storeBytes st1 root.toNat msg).memoryCap m 0 = cap := by
     unfold Store.memoryCap
     rw [(storeBytes_globals st1 root.toNat msg).2.2, ← hst1, Heap.allocateStore_memoryCaps]
@@ -402,10 +489,29 @@ theorem bytes_runs {aborts : Bool} {m : Module} {k : Nat} {f : LeanExe.Bytes →
   have hrep : Represent.borrowed (heap.allocate need) (storeBytes st1 root.toNat msg)
       [.i64 root, .i64 (UInt64.ofNat msg.length)] (⟨⟨msg.toArray⟩⟩ : LeanExe.Bytes) :=
     ⟨root, UInt64.ofNat msg.length, rfl, ⟨by rw [hL]; simp [ByteArray.size], .inr hbuf⟩⟩
-  obtain ⟨N1, hN1⟩ := h {} (storeBytes st1 root.toNat msg) (heap.allocate need)
-    [.i64 root, .i64 (UInt64.ofNat msg.length)] ⟨⟨msg.toArray⟩⟩ hAt2
-    (by rw [← hneed]; exact hpre _ _ (by simp [ByteArray.size]; omega) hcap2) hrep Separate.nil
-    (by rw [hcap2]; omega)
+  -- the entry's run, from `htf` when `G` holds of the message and from `himpl` otherwise
+  obtain ⟨N1, hN1⟩ : ∃ N1, ∀ fuel ≥ N1,
+      (∃ vs st3, Wasm.run fuel m k (storeBytes st1 root.toNat msg)
+          [Value.i64 root, .i64 (UInt64.ofNat msg.length)].reverse {} = .Success vs st3 ∧
+        ∃ heap' : Heap, heap'.At st3 ∧
+          Represent.owned heap' st3 vs.reverse (f ⟨⟨msg.toArray⟩⟩)) ∨
+      (¬ G ⟨⟨msg.toArray⟩⟩ ∧ Wasm.Trapped true (Wasm.run fuel m k (storeBytes st1 root.toNat msg)
+          [Value.i64 root, .i64 (UInt64.ofNat msg.length)].reverse {})) := by
+    by_cases hG : G ⟨⟨msg.toArray⟩⟩
+    · obtain ⟨N1, hN1⟩ := htf {} (storeBytes st1 root.toNat msg) (heap.allocate need)
+        [.i64 root, .i64 (UInt64.ofNat msg.length)] ⟨⟨msg.toArray⟩⟩ hAt2
+        (hP hG) hrep
+        Separate.nil (by rw [hcap2]; omega)
+      exact ⟨N1, fun fuel hf => (hN1 fuel hf).elim
+        (fun ⟨vs, st3, hr, heap', hAt', hown, _⟩ => .inl ⟨vs, st3, hr, heap', hAt', hown⟩)
+        fun hab => hab.elim⟩
+    · obtain ⟨N1, hN1⟩ := himpl {} (storeBytes st1 root.toNat msg) (heap.allocate need)
+        [.i64 root, .i64 (UInt64.ofNat msg.length)] ⟨⟨msg.toArray⟩⟩ hAt2
+        hP' hrep
+        Separate.nil (by rw [hcap2]; omega)
+      exact ⟨N1, fun fuel hf => (hN1 fuel hf).elim
+        (fun ⟨vs, st3, hr, heap', hAt', hown, _⟩ => .inl ⟨vs, st3, hr, heap', hAt', hown⟩)
+        fun hab => .inr ⟨hG, hab⟩⟩
   have hA := (hN0 (max N0 N1) (Nat.le_max_left _ _)).1
   rcases (((hrun (max N0 N1)).2 hclean).2 hle root st1 (by rw [hsum]; exact hA)
       (by rw [hsum]; exact hfit)).2 (by rw [hsum]; exact hcleanm) with
@@ -413,7 +519,7 @@ theorem bytes_runs {aborts : Bool} {m : Module} {k : Nat} {f : LeanExe.Bytes →
   · exact .inr ⟨ms', r', p', .inr ⟨hlt', x'⟩, o'⟩
   rw [hsum, hbytes] at hres
   rcases hN1 (max N0 N1) (Nat.le_max_right _ _) with
-    ⟨vs, st3, hr3, heap', hAt', hown, -, -, -⟩ | hab
+    ⟨vs, st3, hr3, heap', hAt', hown⟩ | ⟨hG, hab⟩
   · rw [show ([Value.i64 root, .i64 (UInt64.ofNat msg.length)]).reverse =
       [.i64 (UInt64.ofNat msg.length), .i64 root] from rfl] at hr3
     rw [hr3] at hres
@@ -442,18 +548,87 @@ theorem bytes_runs {aborts : Bool} {m : Module} {k : Nat} {f : LeanExe.Bytes →
         · rw [Array.getElem_toList]
           exact hb'.contents i hi)
     exact .inl ⟨ms', r', p', x', o'⟩
-  · cases aborts with
-    | false => exact hab.elim
-    | true =>
-        obtain ⟨st', hr'⟩ := hab
-        rw [show ([Value.i64 root, .i64 (UInt64.ofNat msg.length)]).reverse =
-          [.i64 (UInt64.ofNat msg.length), .i64 root] from rfl] at hr'
-        rw [hr'] at hres
-        obtain ⟨ms', r', p', o', hm⟩ := hres
-        rcases hm with ⟨-, hx⟩ | ⟨he, -⟩ | ⟨he, -⟩
-        · exact .inr ⟨ms', r', p', .inl ⟨rfl, hx⟩, o'⟩
-        · exact absurd he (by decide)
-        · exact absurd he (by decide)
+  · obtain ⟨st', hr'⟩ := hab
+    rw [show ([Value.i64 root, .i64 (UInt64.ofNat msg.length)]).reverse =
+      [.i64 (UInt64.ofNat msg.length), .i64 root] from rfl] at hr'
+    rw [hr'] at hres
+    obtain ⟨ms', r', p', o', hm⟩ := hres
+    rcases hm with ⟨-, hx⟩ | ⟨he, -⟩ | ⟨he, -⟩
+    · exact .inr ⟨ms', r', p', .inl ⟨hG, hx⟩, o'⟩
+    · exact absurd he (by decide)
+    · exact absurd he (by decide)
+
+/-- `BytesRuns` from the compiler's theorem `h` that function `k` of `m` computes `f` over
+bytes, for a module whose function 0 is the allocator.  The heap `heap` lies at the module's
+initial store, the allocator has room for the block of every length of at most `inMax`, and the
+heap after that block's allocation, at the store with the memory's cap, satisfies the theorem's
+precondition for every message of at most `inMax` bytes.  The program writes the bytes of
+`f` of the message and returns 0, or reaches the exit word with the status 1 of `unreachable`
+when `aborts` holds, or with the status 4 of an overflow of the stack when `room` lies below
+`stackBound m k`.  The allocator's stack must fit the room. -/
+theorem bytes_runs {aborts : Bool} {m : Module} {k : Nat} {f : LeanExe.Bytes → LeanExe.Bytes}
+    {Pre : LeanExe.Bytes → Heap → Store Unit → Prop}
+    {Post : LeanExe.Bytes → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsA aborts m k f Pre Post) {typeIdx : Nat}
+    (h0 : m.funcs[0]? = some (LeanExe.Runtime.allocFunction typeIdx))
+    {inMax room : UInt64} {cap : Nat} {heap : Heap}
+    (hheap : heap.At (m.initialStore : Store Unit)) (hinMax : inMax.toNat ≤ 4294967296)
+    (hroomA : ∀ L ≤ inMax.toNat, heap.Room (initStore m cap) m (allocSize (UInt64.ofNat L)))
+    (hpre : ∀ (b : LeanExe.Bytes) (st : Store Unit), b.data.size ≤ inMax.toNat →
+      st.memoryCap m 0 = cap →
+      Pre b (heap.allocate (allocSize (UInt64.ofNat b.data.size))) st)
+    (h0room : stackBound m 0 ≤ room.toNat)
+    (hok : bytesEntryOk m k = true := by decide +kernel) :
+    BytesRuns m k inMax room cap (fun msg => (f ⟨⟨msg.toArray⟩⟩).data.data.toList)
+      fun _ c => (aborts = true ∧ c = 1) ∨ (room.toNat < stackBound m k ∧ c = 4) := by
+  have hP : ∀ msg : List UInt8, msg.length ≤ inMax.toNat →
+      Pre ⟨⟨msg.toArray⟩⟩ (heap.allocate (allocSize (UInt64.ofNat msg.length)))
+        (callStore m cap heap msg) :=
+    fun msg hlen => hpre ⟨⟨msg.toArray⟩⟩ _ hlen (callStore_memoryCap m cap heap msg)
+  cases aborts with
+  | false =>
+    refine (bytes_runs_at (G := fun _ => True) (Pre' := Pre) (Post' := Post) h
+      (fun env store heap params x hAt hPre hArgs hSep hCap =>
+        (h env store heap params x hAt hPre hArgs hSep hCap).weaken) h0 hheap hinMax hroomA
+      (fun msg hlen _ _ => hP msg hlen) (fun msg hlen _ => hP msg hlen) h0room hok).mono ?_
+    intro _ _ hc
+    rcases hc with ⟨hn, -⟩ | h4
+    · exact absurd trivial hn
+    · exact .inr h4
+  | true =>
+    refine (bytes_runs_at (G := fun _ => False) (Pre := fun _ _ _ => False) (Post := Post)
+      (fun _ _ _ _ _ _ hF => hF.elim) h h0 hheap hinMax hroomA
+      (fun _ _ _ hG => hG.elim) (fun msg hlen _ => hP msg hlen) h0room hok).mono ?_
+    intro _ _ hc
+    rcases hc with ⟨-, h1⟩ | h4
+    · exact .inl ⟨rfl, h1⟩
+    · exact .inr h4
+
+/-- `bytes_runs` from two theorems of the entry: `htf`, without the trap, whose precondition
+holds after the allocation of every message that satisfies `G`, and `himpl`, which may trap, for
+every message.  The status 1 of the trap occurs only for a message that fails `G`. -/
+theorem bytes_runs_on {m : Module} {k : Nat} {f : LeanExe.Bytes → LeanExe.Bytes}
+    {G : LeanExe.Bytes → Prop} {Pre Pre' : LeanExe.Bytes → Heap → Store Unit → Prop}
+    {Post Post' : LeanExe.Bytes → Heap → Store Unit → Heap → Store Unit → Prop}
+    (htf : ImplementsA false m k f Pre Post) (himpl : ImplementsA true m k f Pre' Post')
+    {typeIdx : Nat}
+    (h0 : m.funcs[0]? = some (LeanExe.Runtime.allocFunction typeIdx))
+    {inMax room : UInt64} {cap : Nat} {heap : Heap}
+    (hheap : heap.At (m.initialStore : Store Unit)) (hinMax : inMax.toNat ≤ 4294967296)
+    (hroomA : ∀ L ≤ inMax.toNat, heap.Room (initStore m cap) m (allocSize (UInt64.ofNat L)))
+    (hpre : ∀ (b : LeanExe.Bytes) (st : Store Unit), b.data.size ≤ inMax.toNat →
+      st.memoryCap m 0 = cap → G b →
+      Pre b (heap.allocate (allocSize (UInt64.ofNat b.data.size))) st)
+    (hpre' : ∀ (b : LeanExe.Bytes) (st : Store Unit), b.data.size ≤ inMax.toNat →
+      st.memoryCap m 0 = cap →
+      Pre' b (heap.allocate (allocSize (UInt64.ofNat b.data.size))) st)
+    (h0room : stackBound m 0 ≤ room.toNat)
+    (hok : bytesEntryOk m k = true := by decide +kernel) :
+    BytesRuns m k inMax room cap (fun msg => (f ⟨⟨msg.toArray⟩⟩).data.data.toList)
+      fun msg c => (¬ G ⟨⟨msg.toArray⟩⟩ ∧ c = 1) ∨ (room.toNat < stackBound m k ∧ c = 4) :=
+  bytes_runs_at htf himpl h0 hheap hinMax hroomA
+    (fun msg hlen _ hG => hpre ⟨⟨msg.toArray⟩⟩ _ hlen (callStore_memoryCap m cap heap msg) hG)
+    (fun msg hlen _ => hpre' ⟨⟨msg.toArray⟩⟩ _ hlen (callStore_memoryCap m cap heap msg)) h0room hok
 
 /-- `bytes_runs` for a theorem without the trap at `unreachable` and a stack whose bound is at
 most `room`: no status. -/

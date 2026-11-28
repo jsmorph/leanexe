@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Bessel.BesselJ0Theorem
-import Library.Numerics.Float64.Bessel.BesselJ1Theorem
-import Library.Numerics.Float64.Bessel.BesselY0Theorem
-import Library.Numerics.Float64.Bessel.BesselY1Theorem
-import Library.Numerics.Float64.Bessel.BesselYnTheorem
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Bessel.BesselJ0Theorem
+public import Library.Numerics.Float64.Bessel.BesselJ1Theorem
+public import Library.Numerics.Float64.Bessel.BesselY0Theorem
+public import Library.Numerics.Float64.Bessel.BesselY1Theorem
+public import Library.Numerics.Float64.Bessel.BesselYnTheorem
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorems for `j0`, `j1`, `y0`, `y1`, `jn`, and `yn` in the module of `Bessel.lean`, whose

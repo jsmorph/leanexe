@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.Shared.StrconvWords
+module
+
+public import Library.Numerics.Decimal.Shared.StrconvWords
+
+@[expose] public section
 
 /-!
 Keeping the first 768 significant digits of a decimal (113 for binary32) and replacing a nonzero

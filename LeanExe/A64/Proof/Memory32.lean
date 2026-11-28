@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.ByteMemory
-import LeanExe.A64.Proof.Linux
+module
+
+public import LeanExe.A64.Proof.ByteMemory
+public import LeanExe.A64.Proof.Linux
+
+@[expose] public section
 
 /-!
 The simulation of `i32.load` and `i32.store`.  Each compares the address with the memory's size

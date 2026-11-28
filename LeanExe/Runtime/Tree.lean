@@ -1,5 +1,9 @@
-import LeanExe.TalosPrelude
-import LeanExe.Common
+module
+
+public import LeanExe.TalosPrelude
+public import LeanExe.Common
+
+@[expose] public section
 
 /-!
 # Release trees

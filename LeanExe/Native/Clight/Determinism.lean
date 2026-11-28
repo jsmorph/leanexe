@@ -1,4 +1,8 @@
-import LeanExe.Native.Clight.Bigstep
+module
+
+public import LeanExe.Native.Clight.Bigstep
+
+@[expose] public section
 
 /-!
 The big-step semantics of `Bigstep.lean` is deterministic relative to the trace.  Expression

@@ -1,4 +1,8 @@
-import LeanExe.Encoding.Values
+module
+
+public import LeanExe.Encoding.Values
+
+@[expose] public section
 
 namespace Wasm.Encoding
 

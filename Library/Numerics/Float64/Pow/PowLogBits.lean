@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Pow.Compiled
-import Library.Numerics.Float64.Log.LogCoreBits
+module
+
+public import Library.Numerics.Float64.Pow.Compiled
+public import Library.Numerics.Float64.Log.LogCoreBits
+
+@[expose] public section
 
 /-!
 The word arithmetic of `Pow.powLog`.  As in `LogCoreBits`, the argument word `ix` stands for

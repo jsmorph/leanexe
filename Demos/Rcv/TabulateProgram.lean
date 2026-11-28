@@ -1,5 +1,9 @@
-import Demos.Rcv.PrintProgram
-import Demos.Rcv.Program
+module
+
+public import Demos.Rcv.PrintProgram
+public import Demos.Rcv.Program
+
+@[expose] public section
 
 /-!
 The export `tabulate` of the Oakland tabulator in the verified compiler's dialect: the reader

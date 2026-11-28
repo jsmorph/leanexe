@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcBytes
-import Library.Numerics.Float64.Erfc.ErfcNonfinite
-import Verified.Master
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcBytes
+public import Library.Numerics.Float64.Erfc.ErfcNonfinite
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Erfc
 

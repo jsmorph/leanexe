@@ -1,6 +1,10 @@
-import Library.Hashing.Sha2.Equiv.Common.Loop
-import Library.Hashing.Sha2.Impl.SHA512
-import Mathlib.Tactic.IntervalCases
+module
+
+public import Library.Hashing.Sha2.Equiv.Common.Loop
+public import Library.Hashing.Sha2.Impl.SHA512
+public import Mathlib.Tactic.IntervalCases
+
+@[expose] public section
 
 /-! # SHA-512 compression equivalence — implementation-side factoring
 

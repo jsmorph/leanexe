@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64PositiveArithmetic
-import LeanExe.ProofKit.RealSqrtError
+module
+
+public import LeanExe.ProofKit.F64PositiveArithmetic
+public import LeanExe.ProofKit.RealSqrtError
+
+@[expose] public section
 
 /-! The error of a rounded square root whose input has an error. -/
 

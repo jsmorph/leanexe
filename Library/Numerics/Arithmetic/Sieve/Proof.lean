@@ -1,8 +1,12 @@
-import Library.Numerics.Arithmetic.Sieve.Program
-import Library.Numerics.Arithmetic.Sieve.Spec
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
-import Mathlib.Data.Nat.Prime.Basic
+module
+
+public import Library.Numerics.Arithmetic.Sieve.Program
+public import Library.Numerics.Arithmetic.Sieve.Spec
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+public import Mathlib.Data.Nat.Prime.Basic
+
+@[expose] public section
 
 /-! The proof that `primes N` is `expected N`.  When the sieve reaches `p`, the flag of `m` is set
 exactly when `m` has a factor `q` with `2 ≤ q < p` and `q·q ≤ m`, which `Struck p m` states.

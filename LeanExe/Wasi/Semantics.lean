@@ -1,4 +1,8 @@
-import LeanExe.Wasi.Action
+module
+
+public import LeanExe.Wasi.Action
+
+@[expose] public section
 
 namespace LeanExe.Wasi
 

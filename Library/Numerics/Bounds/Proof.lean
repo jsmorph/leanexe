@@ -1,7 +1,11 @@
-import Library.Numerics.Bounds.Program
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64OutwardAccepted
-import LeanExe.ProofKit.F64AdjacentSigned
+module
+
+public import Library.Numerics.Bounds.Program
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64OutwardAccepted
+public import LeanExe.ProofKit.F64AdjacentSigned
+
+@[expose] public section
 
 namespace Library.Numerics.Bounds
 

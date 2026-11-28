@@ -1,4 +1,9 @@
-import Mathlib.Data.List.Basic
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.List.Basic
+
+@[expose] public section
 
 /-!
 The grammar of number strings that `ParseFloat` reads, as an inductive relation with one

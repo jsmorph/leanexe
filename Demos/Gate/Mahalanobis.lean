@@ -1,6 +1,11 @@
-import Mathlib.Analysis.Matrix.PosDef
-import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
-import Mathlib.Algebra.Order.BigOperators.Group.LocallyFinite
+module
+
+public import LeanExe.Base
+public import Mathlib.Analysis.Matrix.PosDef
+public import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
+public import Mathlib.Algebra.Order.BigOperators.Group.LocallyFinite
+
+@[expose] public section
 
 /-!
 The squared Mahalanobis distance and its computation by symmetric Gaussian elimination.

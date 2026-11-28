@@ -1,6 +1,10 @@
-import LeanExe.A64.Linux
-import LeanExe.A64.Startup
-import LeanExe.A64.Proof.ByteMemory
+module
+
+public import LeanExe.A64.Linux
+public import LeanExe.A64.Startup
+public import LeanExe.A64.Proof.ByteMemory
+
+@[expose] public section
 
 /-!
 Facts about the process model of `LeanExe/A64/Linux.lean`.  `istep` stops at `SVC #0`, and

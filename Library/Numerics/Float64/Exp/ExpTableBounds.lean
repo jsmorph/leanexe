@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Exp.Compiled
-import CodeLib.IEEE64.Roundoff
-import Mathlib.Analysis.SpecialFunctions.Log.Basic
+module
+
+public import Library.Numerics.Float64.Exp.Compiled
+public import CodeLib.IEEE64.Roundoff
+public import Mathlib.Analysis.SpecialFunctions.Log.Basic
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpTableBounds
 open CodeLib.IEEE64

@@ -1,4 +1,8 @@
-import Verified.FunRenameBound
+module
+
+public import Verified.FunRenameBound
+
+@[expose] public section
 
 namespace Verified
 

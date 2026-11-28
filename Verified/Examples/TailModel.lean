@@ -1,5 +1,10 @@
-import Verified.TailPaid
-import Verified.Reflect.TailModes
+module
+
+public import Verified.TailPaid
+public import Verified.Reflect.TailModes
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 namespace Verified.Examples.TailModel
 
@@ -12,10 +17,10 @@ def growBody : TailBody [] growParams (.array .word) growParams :=
         (.next (Args.cons (.bin .sub (.v 2) (.word 1))
           (.cons (.v 0) (.cons (.v 4) .nil))).get)))
 
-theorem grow_modes : growBody.inferModes = [.borrowed, .owned, .borrowed] := rfl
+theorem grow_modes : growBody.inferModes = [.borrowed, .owned, .borrowed] := by rfl
 
 theorem grow_places : growBody.placeArgs growBody.inferModes
-    (paramModes growParams growBody.inferModes) = true := rfl
+    (paramModes growParams growBody.inferModes) = true := by rfl
 
 def grow : TailFunc [] where
   name := "grow"
@@ -29,7 +34,7 @@ def grow : TailFunc [] where
 theorem grow_step (n : UInt64) (xs weights : Array UInt64) :
     growBody.denote .nil (.cons n (.cons xs (.cons weights .nil))) =
       if n == 0 then .inr xs else
-        .inl (.cons (n - 1) (.cons (xs.push weights[(n - 1).toNat]!) (.cons weights .nil))) := rfl
+        .inl (.cons (n - 1) (.cons (xs.push weights[(n - 1).toNat]!) (.cons weights .nil))) := by rfl
 
 theorem grow_decreases : grow.Decreases .nil := by
   intro state next hs
@@ -50,7 +55,7 @@ theorem grow_decreases : grow.Decreases .nil := by
           simp only [← UInt64.toNat_inj, UInt64.toNat_sub, UInt64.reduceToNat] at hn ⊢
           omega
 
-theorem grow_paid : grow.paidResult .nil = true := rfl
+theorem grow_paid : grow.paidResult .nil = true := by rfl
 
 def rotateParams : List Ty := [.array .word, .array .word, .word]
 
@@ -58,10 +63,10 @@ def rotateBody : TailBody [] rotateParams (.array .word) rotateParams :=
   .ite (.cmp .eq (.v 2) (.word 0)) (.ret (.v 0))
     (.next (Args.cons (.v 1) (.cons (.v 0) (.cons (.bin .sub (.v 2) (.word 1)) .nil))).get)
 
-theorem rotate_modes : rotateBody.inferModes = [.owned, .owned, .borrowed] := rfl
+theorem rotate_modes : rotateBody.inferModes = [.owned, .owned, .borrowed] := by rfl
 
 theorem rotate_places : rotateBody.placeArgs rotateBody.inferModes
-    (paramModes rotateParams rotateBody.inferModes) = true := rfl
+    (paramModes rotateParams rotateBody.inferModes) = true := by rfl
 
 def replaceParams : List Ty := [.array .word, .word]
 
@@ -70,10 +75,10 @@ def replaceBody : TailBody [] replaceParams .word replaceParams :=
     (.letE (.build (.word 0) (.word 0))
       (.next (Args.cons (.v 0) (.cons (.bin .sub (.v 2) (.word 1)) .nil)).get))
 
-theorem replace_modes : replaceBody.inferModes = [.owned, .borrowed] := rfl
+theorem replace_modes : replaceBody.inferModes = [.owned, .borrowed] := by rfl
 
 theorem replace_places : replaceBody.placeArgs replaceBody.inferModes
-    (paramModes replaceParams replaceBody.inferModes) = true := rfl
+    (paramModes replaceParams replaceBody.inferModes) = true := by rfl
 
 #print axioms grow_modes
 #print axioms grow_places

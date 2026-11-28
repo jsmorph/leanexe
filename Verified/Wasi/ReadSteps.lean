@@ -1,5 +1,9 @@
-import Verified.Wasi.ReadBuffer
-import Verified.Bytes.Release
+module
+
+public import Verified.Wasi.ReadBuffer
+public import Verified.Bytes.Release
+
+@[expose] public section
 
 namespace Verified.Wasi
 

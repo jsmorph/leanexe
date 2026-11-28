@@ -1,6 +1,10 @@
-import Demos.RunningSumFp.Charges
-import Demos.RunningSumFp.StreamCorrect
-import Demos.RunningSumFp.TerminationTarget
+module
+
+public import Demos.RunningSumFp.Charges
+public import Demos.RunningSumFp.StreamCorrect
+public import Demos.RunningSumFp.TerminationTarget
+
+@[expose] public section
 
 namespace Demos.RunningSumFp
 

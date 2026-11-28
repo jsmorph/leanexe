@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Loop
-import Library.Sorting.StraightInsertion.Program
+module
+
+public import LeanExe.Dialect.Loop
+public import Library.Sorting.StraightInsertion.Program
+
+@[expose] public section
 
 /-! Shellsort, Algorithm D of TAOCP §5.2.1, on an array of words, in place, with indices from 0.
 The increments are Knuth's: `h_1 = 1` and `h_{s+1} = 3h_s + 1`, from `h_t`, the first increment with

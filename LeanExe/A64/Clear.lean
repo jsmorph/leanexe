@@ -1,4 +1,8 @@
-import LeanExe.A64.Machine
+module
+
+public import LeanExe.A64.Machine
+
+@[expose] public section
 
 /-!
 `clearLoop` stores zero words from the address in X0 up to the address in X1.  Each pass compares

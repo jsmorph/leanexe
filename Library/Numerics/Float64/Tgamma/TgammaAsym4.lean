@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaAsym2
-import Library.Numerics.Float64.Tgamma.TgammaAsym3
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAsym2
+public import Library.Numerics.Float64.Tgamma.TgammaAsym3
+
+@[expose] public section
 
 /-!
 The branch of `Tgamma.asLgammaAsym` above `11.5`.  It adds the constant `c0 + c1` to the first

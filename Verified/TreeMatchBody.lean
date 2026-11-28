@@ -1,4 +1,8 @@
-import Verified.TreeMatchFacts
+module
+
+public import Verified.TreeMatchFacts
+
+@[expose] public section
 
 namespace Verified
 

@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 namespace Library.Numerics.Arithmetic.Gcd
 
 /-- Euclid's algorithm on 64-bit words: `gcd a 0 = a`, and otherwise

@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Tgamma.TgammaTop
-import Library.Numerics.Float64.Tgamma.TgammaSpecial
-import Library.Numerics.Float64.Tgamma.TgammaRecip
-import Library.Numerics.Float64.Tgamma.TgammaWords
-import LeanExe.ProofKit.F64RelativeStep
-import LeanExe.ProofKit.GammaBasic
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaTop
+public import Library.Numerics.Float64.Tgamma.TgammaSpecial
+public import Library.Numerics.Float64.Tgamma.TgammaRecip
+public import Library.Numerics.Float64.Tgamma.TgammaWords
+public import LeanExe.ProofKit.F64RelativeStep
+public import LeanExe.ProofKit.GammaBasic
+
+@[expose] public section
 
 /-!
 **The path of `tgammaWith` below `2 ^ -112`** within one step of `Γ`.  `GammaBasic.gamma_sub_inv_bounds`

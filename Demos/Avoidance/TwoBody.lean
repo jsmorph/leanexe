@@ -1,8 +1,12 @@
-import Demos.Avoidance.Spec
-import Demos.Orbit.Newton
-import Mathlib.Analysis.Calculus.Deriv.Inverse
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
-import Mathlib.Topology.Order.MonotoneContinuity
+module
+
+public import Demos.Avoidance.Spec
+public import Demos.Orbit.Newton
+public import Mathlib.Analysis.Calculus.Deriv.Inverse
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+public import Mathlib.Topology.Order.MonotoneContinuity
+
+@[expose] public section
 
 /-!
 The two-body propagation of the model.  `propagate_newton` (M2) states that the position and

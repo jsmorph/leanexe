@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log1p.Log1pTheoremCorr
-import LeanExe.ProofKit.F64Near
+module
+
+public import Library.Numerics.Float64.Log1p.Log1pTheoremCorr
+public import LeanExe.ProofKit.F64Near
+
+@[expose] public section
 
 /-!
 `Log1p.log1p x` within one step of `log (1 + x)` for every finite `x > -1`.  The proof follows the

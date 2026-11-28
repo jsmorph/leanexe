@@ -1,4 +1,8 @@
-import Demos.Rcv.Spec
+module
+
+public import Demos.Rcv.Spec
+
+@[expose] public section
 
 /-!
 The reader of the canonical ballot file that [the requirements](requirements.md) state in the

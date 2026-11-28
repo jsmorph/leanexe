@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.GammaModels
-import LeanExe.ProofKit.GammaThresholds
-import Mathlib.Analysis.Real.Pi.Bounds
+module
+
+public import LeanExe.ProofKit.GammaModels
+public import LeanExe.ProofKit.GammaThresholds
+public import Mathlib.Analysis.Real.Pi.Bounds
+
+@[expose] public section
 
 /-!
 Bounds on `lgamma` against expressions, for CORE-MATH's Stirling fits and polynomial pieces.

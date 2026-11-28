@@ -1,5 +1,9 @@
-import TestSupport.A64.Flip
-import LeanExe.A64.Proof.LinuxImage
+module
+
+public import TestSupport.A64.Flip
+public import LeanExe.A64.Proof.LinuxImage
+
+@[expose] public section
 
 /-!
 `flipBit5` of `TestSupport.A64.Flip` as a Linux executable: `elf` is the file that `genSysElf`

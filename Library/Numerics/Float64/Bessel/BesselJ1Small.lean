@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselSmallJ1
+module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallJ1
+
+@[expose] public section
 
 /-!
 `Bessel.j1 x` for `|x| < 2`.  Below `2^-27` the code returns `0.5 x`, which lies within

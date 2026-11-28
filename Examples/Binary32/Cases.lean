@@ -1,5 +1,9 @@
-import Examples.Binary32.Program
-import TestSupport.Host
+module
+
+public import Examples.Binary32.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `binary32` and of its WGSL kernels. -/
 

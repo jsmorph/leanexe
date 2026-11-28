@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Sinh.SinhMidCases
-import Library.Numerics.Float64.Sinh.SinhSmallCases
-import Library.Numerics.Float64.Sinh.SinhLdexp
-import Library.Numerics.Float64.Sinh.SinhOverflow
-import Library.Numerics.Float64.Tanh.TanhTheorem
+module
+
+public import Library.Numerics.Float64.Sinh.SinhMidCases
+public import Library.Numerics.Float64.Sinh.SinhSmallCases
+public import Library.Numerics.Float64.Sinh.SinhLdexp
+public import Library.Numerics.Float64.Sinh.SinhOverflow
+public import Library.Numerics.Float64.Tanh.TanhTheorem
+
+@[expose] public section
 
 /-!
 The ranges of `Sinh.sinh` outside `[2 ^ -28, 22)`.  Below `2 ^ -28` the code returns `x`, within

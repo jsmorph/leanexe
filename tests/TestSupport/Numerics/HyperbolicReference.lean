@@ -1,4 +1,8 @@
-import TestSupport.Numerics.ArcReference
+module
+
+public import TestSupport.Numerics.ArcReference
+
+@[expose] public section
 
 /-! Exact references for the hyperbolic functions and their inverses, computed with Lean's
 integers in the fixed point of `Reference`.  `sinh` and `cosh` come from `Reference.expm1`, which

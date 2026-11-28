@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.Array
-import LeanExe.ProofKit.FixedArrayResult
+module
+
+public import LeanExe.ProofKit.Array
+public import LeanExe.ProofKit.FixedArrayResult
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArrayFold
 

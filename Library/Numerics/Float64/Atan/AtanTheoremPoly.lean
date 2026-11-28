@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Atan.Compiled
-import Library.Numerics.Float64.Atan.AtanKernelPoly
-import LeanExe.ProofKit.F64Approx
+module
+
+public import Library.Numerics.Float64.Atan.Compiled
+public import Library.Numerics.Float64.Atan.AtanKernelPoly
+public import LeanExe.ProofKit.F64Approx
+
+@[expose] public section
 
 /-!
 The polynomial part of `Atan.atan`: `t * (s1 + s2)` with `z = t * t`, `w = z * z`, and `s1`, `s2`

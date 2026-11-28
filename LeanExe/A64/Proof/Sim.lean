@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.Relation
-import LeanExe.A64.Proof.Bits
-import LeanExe.ProofKit.Locals
+module
+
+public import LeanExe.A64.Proof.Relation
+public import LeanExe.A64.Proof.Bits
+public import LeanExe.ProofKit.Locals
+
+@[expose] public section
 
 /-!
 The simulation of Talos's `execOne` and `exec` by the generated code.  `Outcome` relates Talos's

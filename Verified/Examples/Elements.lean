@@ -1,6 +1,10 @@
-import Library.Numerics.Reductions.Float64.Program
-import Library.Numerics.LinearAlgebra.Float64.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Reductions.Float64.Program
+public import Library.Numerics.LinearAlgebra.Float64.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: arrays of floats and of `Bool`s.  The
 programs read, build, update, and extend such arrays, take them as borrowed and as owned

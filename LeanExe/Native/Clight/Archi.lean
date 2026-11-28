@@ -11,6 +11,12 @@ Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Le
 changes that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
 
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-!
 The parameters of CompCert 3.18's `Archi.v` that the copy depends on: the width of pointers and
 the NaN choices of the floating-point operations.

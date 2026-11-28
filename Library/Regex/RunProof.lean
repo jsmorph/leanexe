@@ -1,8 +1,12 @@
-import Library.Regex.Program
-import Library.Regex.Bits
-import LeanExe.Dialect.Lemmas
-import Library.Regex.Automaton
-import Library.Bytes.Packed
+module
+
+public import Library.Regex.Program
+public import Library.Regex.Bits
+public import LeanExe.Dialect.Lemmas
+public import Library.Regex.Automaton
+public import Library.Bytes.Packed
+
+@[expose] public section
 
 /-! The sets that the matcher's tables hold.  `bit_loop` gives the bits of a loop whose step adds
 bits to its state, `steps_bit` the union of follow sets that each entry of `steps` holds, and

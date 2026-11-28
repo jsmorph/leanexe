@@ -1,5 +1,9 @@
-import Verified.Examples.TreeCore
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.TreeCore
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/treecore.wasm`: the file holds
 `encode TreeCore.module`, and it decodes to `TreeCore.module`, which has no bytes theorem. -/

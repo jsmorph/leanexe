@@ -1,5 +1,9 @@
-import Demos.Orbit.LambertBox
-import Demos.Orbit.Universal
+module
+
+public import Demos.Orbit.LambertBox
+public import Demos.Orbit.Universal
+
+@[expose] public section
 
 /-!
 Izzo's velocities and the two-body model.  For positions `r1` and `r2` that do not lie on one

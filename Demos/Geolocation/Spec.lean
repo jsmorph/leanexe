@@ -1,5 +1,9 @@
-import Library.Numerics.Interval.Enclose
-import Demos.Geolocation.Rotation
+module
+
+public import Library.Numerics.Interval.Enclose
+public import Demos.Geolocation.Rotation
+
+@[expose] public section
 
 /-!
 The measurement model in interval arithmetic.  Each `enclosure_def` declares a real function, its

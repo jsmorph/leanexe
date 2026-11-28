@@ -1,5 +1,9 @@
-import TestSupport.Native.Gcd
-import TestSupport.Native.Common
+module
+
+public import TestSupport.Native.Gcd
+public import TestSupport.Native.Common
+
+@[expose] public section
 
 /-!
 The theorems of the translated GCD functions, with `lx_mem` of `cap` pages.  `verified_compile`

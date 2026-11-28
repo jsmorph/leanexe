@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatTheorem
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatTheorem
+
+@[expose] public section
 
 /-!
 The byte theorems for the module of `PrintFloat.lean`, whose exports `print64` (function 35),

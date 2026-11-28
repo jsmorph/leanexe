@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! The specification, as the request in `request.txt` states it: for an input of at
 most eight words, the input without its first zero, in order, or the input when it has no zero; for
 a longer input, the empty array. -/

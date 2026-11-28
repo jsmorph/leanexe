@@ -1,5 +1,9 @@
-import Examples.Piecewise.Program
-import TestSupport.Host
+module
+
+public import Examples.Piecewise.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `piecewise`. -/
 

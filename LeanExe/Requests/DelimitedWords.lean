@@ -1,5 +1,9 @@
-import LeanExe.Requests.Delimited
-import LeanExe.Pipeline.Implements
+module
+
+public import LeanExe.Requests.Delimited
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-!
 The delimited framing of `LeanExe/Requests/Delimited.lean` in the verified compiler's dialect,

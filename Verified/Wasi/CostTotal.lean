@@ -1,5 +1,9 @@
-import Verified.Wasi.CostEffectSpec
-import LeanExe.Wasi.NoTrapPrefix
+module
+
+public import Verified.Wasi.CostEffectSpec
+public import LeanExe.Wasi.NoTrapPrefix
+
+@[expose] public section
 
 namespace Verified.Wasi
 

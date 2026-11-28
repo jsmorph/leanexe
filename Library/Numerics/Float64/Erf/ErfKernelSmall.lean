@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.RealErf
-import LeanExe.ProofKit.PolyChecks
+module
+
+public import LeanExe.ProofKit.RealErf
+public import LeanExe.ProofKit.PolyChecks
+
+@[expose] public section
 
 /-!
 The approximation error of `s_erf.c`'s rational function on `|x| < 0.84375`, where `erf x` is

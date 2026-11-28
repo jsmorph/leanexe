@@ -29,16 +29,28 @@
 # loads any module, it builds every module it loads and the executables it runs in one `lake build`
 # under tools/leanrun, with the caller's LEANRUN_THREADS and LEANRUN_MEMORY_HIGH, since
 # native-verified reads a module's compiled file without checking it against the source.
-# Usage: tests/baremetal/verified.sh [--module NAME]
+# With --module, which may repeat, the script runs only the modules named.  Its products lie in OUT,
+# build/baremetal/verified unless --out names another directory.
+# Usage: tests/baremetal/verified.sh [--out OUT] [--module NAME]...
 set -euo pipefail
 only=""
-if [ "$#" -ne 0 ]; then
-  if [ "$#" -ne 2 ] || [ "$1" != "--module" ] || [ -z "$2" ]; then
-    echo "usage: tests/baremetal/verified.sh [--module NAME]" >&2
+out=""
+while [ "$#" -ne 0 ]; do
+  if [ "$#" -lt 2 ] || [ -z "$2" ] || { [ "$1" != "--module" ] && [ "$1" != "--out" ]; }; then
+    echo "usage: tests/baremetal/verified.sh [--out OUT] [--module NAME]..." >&2
     exit 2
   fi
-  only=$2
-fi
+  if [ "$1" = "--module" ]; then
+    only+=" $2 "
+  else
+    out=$2
+  fi
+  shift 2
+done
+# Whether the module $1 runs: every module without --module, and otherwise the modules named.
+selected() {
+  [ -z "$only" ] || [[ $only == *" $1 "* ]]
+}
 ccomp=${CCOMP:-ccomp}
 stdlib=()
 if [ -n "${CCOMP_STDLIB:-}" ]; then
@@ -48,11 +60,11 @@ qemu=${QEMU:-qemu-system-aarch64}
 jobs=${JOBS:-4}
 export STACK_SIZE=${STACK_SIZE:-0x400000}
 root=$(cd "$(dirname "$0")/../.." && pwd)
-out=$root/build/baremetal/verified
 cd "$root"
+out=$(mkdir -p "${out:-build/baremetal/verified}" && cd "${out:-build/baremetal/verified}" && pwd)
 targets=(native-verified verified-cases native-module-cases)
 while IFS=: read -r module constant name; do
-  if [ -z "$only" ] || [ "$name" = "$only" ]; then
+  if selected "$name"; then
     targets+=("$module")
   fi
 done <"$root/tests/verified/modules.txt"
@@ -69,9 +81,7 @@ modules=0
 untranslated=""
 unbuilt=()
 while IFS=: read -r module constant name; do
-  if [ -n "$only" ] && [ "$name" != "$only" ]; then
-    continue
-  fi
+  selected "$name" || continue
   modules=$((modules + 1))
   status=0
   tools/leanrun --timeout 10m lake env .lake/build/bin/native-verified emit "$module" "$constant" \
@@ -96,7 +106,7 @@ while IFS=: read -r module constant name; do
   fi
 done <"$root/tests/verified/modules.txt"
 if [ "$modules" -eq 0 ]; then
-  echo "fail: unknown module $only" >&2
+  echo "fail: unknown module:$only" >&2
   exit 2
 fi
 
@@ -130,9 +140,7 @@ fi
 declare -A omitted
 : >"$out/work.txt"
 while IFS='|' read -r name export rest; do
-  if [ -n "$only" ] && [ "$name" != "$only" ]; then
-    continue
-  fi
+  selected "$name" || continue
   [ -f "$out/$name.exports" ] || continue
   if grep -qxF "$export" "$out/$name.exports"; then
     printf 'V|%s|%s|%s\n' "$name" "$export" "$rest" >>"$out/work.txt"
@@ -146,9 +154,7 @@ while IFS='|' read -r module name rest; do
     shapes) prog=sums ;;
     *) continue ;;
   esac
-  if [ -n "$only" ] && [ "$prog" != "$only" ]; then
-    continue
-  fi
+  selected "$prog" || continue
   [ -f "$out/$prog.exports" ] || continue
   if grep -qxF "$name" "$out/$prog.exports"; then
     printf 'M|%s|%s|%s\n' "$prog" "$name" "$rest" >>"$out/work.txt"

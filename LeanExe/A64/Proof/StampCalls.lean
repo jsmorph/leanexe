@@ -1,7 +1,11 @@
-import LeanExe.A64.Proof.LinuxMain
-import LeanExe.A64.Proof.LinuxCalls
-import LeanExe.A64.Proof.StampCode
-import LeanExe.A64.Proof.StampTrace
+module
+
+public import LeanExe.A64.Proof.LinuxMain
+public import LeanExe.A64.Proof.LinuxCalls
+public import LeanExe.A64.Proof.StampCode
+public import LeanExe.A64.Proof.StampTrace
+
+@[expose] public section
 
 /-!
 The call sites of the stamp program under `ProcReachWith`.  `run_callSvc` follows a `BL` to the

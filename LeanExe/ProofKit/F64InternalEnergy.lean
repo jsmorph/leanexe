@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64StrictOrder
-import CodeLib.IEEE64.Operations
+module
+
+public import LeanExe.ProofKit.F64StrictOrder
+public import CodeLib.IEEE64.Operations
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64InternalEnergy
 open CodeLib.IEEE64

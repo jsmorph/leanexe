@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erf.ErfKernelMiddle
-import Library.Numerics.Float64.Erf.ErfSmallBase
+module
+
+public import Library.Numerics.Float64.Erf.ErfKernelMiddle
+public import Library.Numerics.Float64.Erf.ErfSmallBase
+
+@[expose] public section
 
 /-!
 The rounding error on the middle range `[0.84375, 1.25)` of `s_erf.c`.  There `s = |x| - 1` is

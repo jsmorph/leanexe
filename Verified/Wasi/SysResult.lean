@@ -1,5 +1,9 @@
-import Verified.Wasi.ReadAllCommand
-import Verified.Wasi.SysForm
+module
+
+public import Verified.Wasi.ReadAllCommand
+public import Verified.Wasi.SysForm
+
+@[expose] public section
 
 /-! The result of a `sys` command: the words that represent a result of each form, the blocks that
 the result owns, and the state after the command from the heap step of its code. -/

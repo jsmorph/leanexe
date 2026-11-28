@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-! Straight insertion, Algorithm S of TAOCP §5.2.1, on an array of words, in place, with indices
 from 0.  For `j` from 1 to `n - 1` the words `xs[0, j)` are in order, and the program inserts the

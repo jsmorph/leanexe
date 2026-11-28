@@ -1,4 +1,8 @@
-import TestSupport.Hashing.HmacCases
+module
+
+public import TestSupport.Hashing.HmacCases
+
+@[expose] public section
 
 /-! The cases of the modules `hmac_sha256` and `hmac_sha512` alone, for
 `tests/verified/run.sh --cases hmac_sha256` or `--cases hmac_sha512`. -/

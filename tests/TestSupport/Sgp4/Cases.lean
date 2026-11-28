@@ -1,5 +1,9 @@
-import Demos.Sgp4.Program
-import TestSupport.Host
+module
+
+public import Demos.Sgp4.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the SGP4 module.  `cases` prints the module cases of `init`, `propagate`, and `sgp4`
 for `tests/verified/run.sh`.  `states` reads lines of the bit patterns
@@ -60,7 +64,7 @@ partial def states : IO Unit := do
   let rec go : IO Unit := do
     let text ← stdin.getLine
     if text.isEmpty then return
-    let words := (text.trim.splitOn " ").filterMap String.toNat?
+    let words := (text.trimAscii.copy.splitOn " ").filterMap String.toNat?
     match words.map fun w => Float.ofBits (UInt64.ofNat w) with
     | [n, e, incl, node, argp, m, bstar, t] =>
       IO.println (stateText (sgp4 n e incl node argp m bstar t))

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselSmallApprox
+module
+
+public import Library.Numerics.Float64.Bessel.BesselSmallApprox
+
+@[expose] public section
 
 /-!
 Lower bounds on the modulus of order 0 below 2, sharper than those of `BesselModulus`, for the

@@ -1,7 +1,12 @@
-import Verified.Wasi.SysIovecCall
-import Verified.AlignedTailLoop
-import Verified.Wasi.ReadAllBuffer
-import LeanExe.Wasi.Window
+module
+
+public import Verified.Wasi.SysIovecCall
+public import Verified.AlignedTailLoop
+public import Verified.Wasi.ReadAllBuffer
+public import LeanExe.Wasi.Window
+public import Batteries.Data.UInt
+
+@[expose] public section
 
 /-! The window of a buffer that a `sys` command fills or writes.  The code computes the window's
 first position and length in words, which agree with `Bytes.window` for a buffer whose size lies

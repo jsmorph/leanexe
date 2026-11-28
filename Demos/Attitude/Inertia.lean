@@ -1,4 +1,8 @@
-import Demos.Attitude.Davenport
+module
+
+public import Demos.Attitude.Davenport
+
+@[expose] public section
 
 /-! The inertia certificate of a symmetric 4×4 matrix.  `Sym4.schur`, `Sym3.schur`, and
 `Sym2.schur` eliminate the first index: the form of the matrix is its first entry times a square

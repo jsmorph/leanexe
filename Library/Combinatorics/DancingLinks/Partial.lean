@@ -1,4 +1,8 @@
-import Library.Combinatorics.DancingLinks.Build
+module
+
+public import Library.Combinatorics.DancingLinks.Build
+
+@[expose] public section
 
 /-! The array while step X1 reads the options.  `Partial t L Mc j` states the array after the
 options before `Mc` and the first `j` nodes of option `Mc`: its size, the list of all items, the

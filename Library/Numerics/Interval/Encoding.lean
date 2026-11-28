@@ -1,5 +1,9 @@
-import Library.Numerics.Interval.Program
-import Library.Numerics.Bounds.Encoding
+module
+
+public import Library.Numerics.Interval.Program
+public import Library.Numerics.Bounds.Encoding
+
+@[expose] public section
 
 namespace Library.Numerics.Interval
 

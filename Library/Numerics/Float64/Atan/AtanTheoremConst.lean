@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Atan.AtanTheoremPoly
-import LeanExe.ProofKit.TaylorRemainder
-import Mathlib.Analysis.Real.Pi.Bounds
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.ArctanDeriv
-import Mathlib.Analysis.Calculus.MeanValue
+module
+
+public import Library.Numerics.Float64.Atan.AtanTheoremPoly
+public import LeanExe.ProofKit.TaylorRemainder
+public import Mathlib.Analysis.Real.Pi.Bounds
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.ArctanDeriv
+public import Mathlib.Analysis.Calculus.MeanValue
+
+@[expose] public section
 
 /-!
 The constants of `Atan.atan` against the arctangents they stand for, and two facts about

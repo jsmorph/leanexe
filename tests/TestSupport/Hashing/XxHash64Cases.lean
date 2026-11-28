@@ -1,4 +1,8 @@
-import Library.Hashing.XxHash64.Program
+module
+
+public import Library.Hashing.XxHash64.Program
+
+@[expose] public section
 
 /-! The cases of the module `xxhash64`: XXH64 of messages of 0 to 40 bytes, which reach each case of
 step 5 and the first stripes, and of lengths around multiples of 32 and of 4,096, under several

@@ -1,5 +1,9 @@
-import LeanExe.M7.Proof.Bounds
-import LeanExe.ProofKit.Exec
+module
+
+public import LeanExe.M7.Proof.Bounds
+public import LeanExe.ProofKit.Exec
+
+@[expose] public section
 
 /-!
 The simulation of the branches `br`, `br_if`, and `return`, as `LeanExe/A64/Proof/Control.lean`

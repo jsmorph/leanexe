@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Trig.TrigSmall
-import LeanExe.ProofKit.F64SignedNearestSum
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64GridExact
+module
+
+public import Library.Numerics.Float64.Trig.TrigSmall
+public import LeanExe.ProofKit.F64SignedNearestSum
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64GridExact
+
+@[expose] public section
 
 /-!
 The constants of fdlibm's medium reduction and one compensated step.  `pio2_1`, `pio2_2`, and

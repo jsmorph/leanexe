@@ -1,7 +1,11 @@
-import Verified.Wasi.CommandValue
-import Verified.Wasi.LoopAfter
-import Verified.Wasi.OwnedScratch
-import Verified.Wasi.CostResults
+module
+
+public import Verified.Wasi.CommandValue
+public import Verified.Wasi.LoopAfter
+public import Verified.Wasi.OwnedScratch
+public import Verified.Wasi.CostResults
+
+@[expose] public section
 
 namespace Verified.Wasi
 

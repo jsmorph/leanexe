@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.PolyCalculus
-import LeanExe.ProofKit.RatExpLog
+module
+
+public import LeanExe.ProofKit.PolyCalculus
+public import LeanExe.ProofKit.RatExpLog
+
+@[expose] public section
 
 /-!
 Taylor models over `ℚ`, evaluated by the kernel.  A Taylor model `⟨p, e⟩` approximates a real

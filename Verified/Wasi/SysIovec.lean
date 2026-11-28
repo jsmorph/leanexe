@@ -1,4 +1,8 @@
-import Verified.Wasi.SysFill
+module
+
+public import Verified.Wasi.SysFill
+
+@[expose] public section
 
 /-! The code of an iovec call, from the argument test to the result on the stack.  A read computes
 the window of its buffer, tests the handle and the window's length, writes the element of the

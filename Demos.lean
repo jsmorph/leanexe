@@ -1,224 +1,228 @@
-import Demos.Attitude.Eigen
-import Demos.Attitude.Flat
-import Demos.Attitude.Knowledge
-import Demos.Attitude.Program
-import Demos.Attitude.QFlat
-import Demos.Bms.Abs
-import Demos.Bms.Cases
-import Demos.Bms.Compiled
-import Demos.Bms.Program
-import Demos.Bms.Stream
-import Demos.Bms.Theorems
-import Demos.Conjunction.Accuracy
-import Demos.Conjunction.AccuracyFlat
-import Demos.Conjunction.AccuracyModel
-import Demos.Conjunction.AccuracySoundness
-import Demos.Conjunction.Flat
-import Demos.Conjunction.Gaussian
-import Demos.Conjunction.Message
-import Demos.Conjunction.MessageSoundness
-import Demos.Conjunction.Model
-import Demos.Conjunction.Projection
-import Demos.Conjunction.Program
-import Demos.Conjunction.Soundness
-import Demos.Drone.Acceleration
-import Demos.Drone.Correct
-import Demos.Drone.Corridor
-import Demos.Drone.Flat
-import Demos.Drone.Forward
-import Demos.Drone.Gluing
-import Demos.Drone.Kinematics
-import Demos.Drone.Motion
-import Demos.Drone.Planner
-import Demos.Drone.Program
-import Demos.Drone.Safety
-import Demos.Drone.Timing
-import Demos.Drone.Trajectory
-import Demos.Drone.WholeFlight
-import Demos.Euler.Balance
-import Demos.Euler.Cases
-import Demos.Euler.Cfl
-import Demos.Euler.Enclosure
-import Demos.Euler.Equations.CharacteristicSpeed
-import Demos.Euler.Equations.Eigenbasis
-import Demos.Euler.Equations.Eigenvectors
-import Demos.Euler.Equations.Flux
-import Demos.Euler.Equations.Hyperbolicity
-import Demos.Euler.Equations.Jacobian
-import Demos.Euler.Equations.LaxFriedrichs
-import Demos.Euler.Equations.LeftEigenvectors
-import Demos.Euler.Equations.Minmod
-import Demos.Euler.Equations.ReconstructionCounterexample
-import Demos.Euler.Equations.Rotation
-import Demos.Euler.Equations.Rusanov
-import Demos.Euler.FirstOrderBalance
-import Demos.Euler.Hyperbolic
-import Demos.Euler.RealState
-import Demos.Euler.ReconstructedBalance
-import Demos.Euler.ReconstructionAccuracy
-import Demos.Euler.Reference.Accepted
-import Demos.Euler.Reference.Boundary
-import Demos.Euler.Reference.Component
-import Demos.Euler.Reference.Constants
-import Demos.Euler.Reference.FluxTerms
-import Demos.Euler.Reference.Interface
-import Demos.Euler.Reference.Internal
-import Demos.Euler.Reference.InternalGuard
-import Demos.Euler.Reference.Pressure
-import Demos.Euler.Reference.PressureReference
-import Demos.Euler.Reference.Radicand
-import Demos.Euler.Reference.Side
-import Demos.Euler.Reference.Sound
-import Demos.Euler.Reference.SoundRatio
-import Demos.Euler.Reference.Speed
-import Demos.Euler.Reference.Transport
-import Demos.Euler.Reference.Update
-import Demos.Euler.SpeedCounterexample
-import Demos.Euler.Words
-import Demos.Frames.Enclose
-import Demos.Frames.Flat
-import Demos.Frames.Geodetic
-import Demos.Frames.Model
-import Demos.Frames.Program
-import Demos.Frames.Soundness
-import Demos.Frames.Time
-import Demos.Frames.TimeSound
-import Demos.Gate.Assignment
-import Demos.Gate.AssignmentFlat
-import Demos.Gate.AssignmentSoundness
-import Demos.Gate.Flat
-import Demos.Gate.GateFlat
-import Demos.Gate.GateProgram
-import Demos.Gate.GateSoundness
-import Demos.Gate.Gaussian
-import Demos.Gate.Mahalanobis
-import Demos.Gate.Miss
-import Demos.Gate.Model
-import Demos.Gate.Program
-import Demos.Gate.Soundness
-import Demos.Geolocation.Derivatives
-import Demos.Geolocation.Flat
-import Demos.Geolocation.Model
-import Demos.Geolocation.Program
-import Demos.Geolocation.Rotation
-import Demos.Geolocation.Search
-import Demos.Geolocation.Soundness
-import Demos.Geolocation.Spec
-import Demos.Gpt.Causal
-import Demos.Gpt.Exact
-import Demos.Gpt32.Compose
-import Demos.Gpt32.Driver
-import Demos.Gpt32.Exec
-import Demos.Gpt32.HostProgram
-import Demos.ManifestCheck.Budget
-import Demos.ManifestCheck.CommandStart
-import Demos.ManifestCheck.Compiled
-import Demos.ManifestCheck.Native
-import Demos.ManifestCheck.NativeMeets
-import Demos.ManifestCheck.NativeSpec
-import Demos.Orbit.Flat
-import Demos.Orbit.Gibbs
-import Demos.Orbit.GibbsBox
-import Demos.Orbit.GibbsSound
-import Demos.Orbit.Lambert
-import Demos.Orbit.LambertBox
-import Demos.Orbit.LambertFlat
-import Demos.Orbit.LambertOrbit
-import Demos.Orbit.LambertRoot
-import Demos.Orbit.LambertSound
-import Demos.Orbit.LambertTime
-import Demos.Orbit.LambertTransfer
-import Demos.Orbit.Newton
-import Demos.Orbit.NewtonUnique
-import Demos.Orbit.TwoBody
-import Demos.Orbit.Universal
-import Demos.Orbit.Vector
-import Demos.OrderBook.Abstract
-import Demos.OrderBook.Flat
-import Demos.OrderBook.ProcessAxioms
-import Demos.OrderBook.ProcessCompiledCorrect
-import Demos.OrderBook.Program
-import Demos.OrderBook.Refinement
-import Demos.OrderBook.Samples
-import Demos.OrderBook.Theorems
-import Demos.PassiveSafety.Closed
-import Demos.PassiveSafety.Flat
-import Demos.PassiveSafety.Model
-import Demos.PassiveSafety.Program
-import Demos.PassiveSafety.Soundness
-import Demos.Rcv.Batch
-import Demos.Rcv.Cases
-import Demos.Rcv.Contest
-import Demos.Rcv.Holder
-import Demos.Rcv.Maine.Cases
-import Demos.Rcv.Maine.Holder
-import Demos.Rcv.Maine.PrintProgram
-import Demos.Rcv.Maine.PrintProof
-import Demos.Rcv.Maine.Program
-import Demos.Rcv.Maine.Properties
-import Demos.Rcv.Maine.RefineRule
-import Demos.Rcv.Maine.RefineTally
-import Demos.Rcv.Maine.Refinement
-import Demos.Rcv.Maine.Rounds
-import Demos.Rcv.Maine.Spec
-import Demos.Rcv.Maine.Stability
-import Demos.Rcv.Maine.TabulateProgram
-import Demos.Rcv.Maine.TabulateProof
-import Demos.Rcv.Maine.Variants
-import Demos.Rcv.Maine.Winner
-import Demos.Rcv.PrintProgram
-import Demos.Rcv.PrintProof
-import Demos.Rcv.Program
-import Demos.Rcv.Properties
-import Demos.Rcv.Read
-import Demos.Rcv.ReadError
-import Demos.Rcv.ReadLemmas
-import Demos.Rcv.ReadProgram
-import Demos.Rcv.ReadProgramMain
-import Demos.Rcv.ReadProgramProof
-import Demos.Rcv.ReadProof
-import Demos.Rcv.ReadWords
-import Demos.Rcv.Refinement
-import Demos.Rcv.Rounds
-import Demos.Rcv.Spec
-import Demos.Rcv.Stability
-import Demos.Rcv.TabulateProgram
-import Demos.Rcv.TabulateProof
-import Demos.Rcv.Variants
-import Demos.Rcv.Winner
-import Demos.RandomChoice.Budget
-import Demos.RandomChoice.CommandStart
-import Demos.RandomChoice.Compiled
-import Demos.RandomChoice.Native
-import Demos.RandomChoice.NativeChoices
-import Demos.RandomChoice.Output
-import Demos.RandomChoice.Unbiased
-import Demos.RandomHistogram.Budget
-import Demos.RandomHistogram.CommandStart
-import Demos.RandomHistogram.Compiled
-import Demos.RandomHistogram.Native
-import Demos.RandomHistogram.NativeCounts
-import Demos.Sgp4.Box
-import Demos.Sgp4.BoxFlat
-import Demos.Sgp4.BoxSound
-import Demos.Sgp4.Flat
-import Demos.Sgp4.Kepler
-import Demos.Sgp4.KeplerBox
-import Demos.Sgp4.Latitude
-import Demos.Sgp4.Model
-import Demos.Sgp4.Omm
-import Demos.Sgp4.OmmSound
-import Demos.Sgp4.Program
-import Demos.Sgp4.Spec
-import Demos.Sgp4.Tle
-import Demos.Sgp4.TleSound
-import Demos.Sgp4.TwoBody
-import Demos.Slew.Cost
-import Demos.Slew.Flat
-import Demos.Slew.NanFree
-import Demos.Slew.Optimal
-import Demos.Slew.Premise
-import Demos.Slew.Program
-import Demos.Slew.Safety
-import Demos.Gpt32.NativeCases
-import Demos.Gpt32.VerifiedPtx
+module
+
+public import Demos.Attitude.Eigen
+public import Demos.Attitude.Flat
+public import Demos.Attitude.Knowledge
+public import Demos.Attitude.Program
+public import Demos.Attitude.QFlat
+public import Demos.Bms.Abs
+public import Demos.Bms.Cases
+public import Demos.Bms.Compiled
+public import Demos.Bms.Program
+public import Demos.Bms.Stream
+public import Demos.Bms.Theorems
+public import Demos.Conjunction.Accuracy
+public import Demos.Conjunction.AccuracyFlat
+public import Demos.Conjunction.AccuracyModel
+public import Demos.Conjunction.AccuracySoundness
+public import Demos.Conjunction.Flat
+public import Demos.Conjunction.Gaussian
+public import Demos.Conjunction.Message
+public import Demos.Conjunction.MessageSoundness
+public import Demos.Conjunction.Model
+public import Demos.Conjunction.Projection
+public import Demos.Conjunction.Program
+public import Demos.Conjunction.Soundness
+public import Demos.Drone.Acceleration
+public import Demos.Drone.Correct
+public import Demos.Drone.Corridor
+public import Demos.Drone.Flat
+public import Demos.Drone.Forward
+public import Demos.Drone.Gluing
+public import Demos.Drone.Kinematics
+public import Demos.Drone.Motion
+public import Demos.Drone.Planner
+public import Demos.Drone.Program
+public import Demos.Drone.Safety
+public import Demos.Drone.Timing
+public import Demos.Drone.Trajectory
+public import Demos.Drone.WholeFlight
+public import Demos.Euler.Balance
+public import Demos.Euler.Cases
+public import Demos.Euler.Cfl
+public import Demos.Euler.Enclosure
+public import Demos.Euler.Equations.CharacteristicSpeed
+public import Demos.Euler.Equations.Eigenbasis
+public import Demos.Euler.Equations.Eigenvectors
+public import Demos.Euler.Equations.Flux
+public import Demos.Euler.Equations.Hyperbolicity
+public import Demos.Euler.Equations.Jacobian
+public import Demos.Euler.Equations.LaxFriedrichs
+public import Demos.Euler.Equations.LeftEigenvectors
+public import Demos.Euler.Equations.Minmod
+public import Demos.Euler.Equations.ReconstructionCounterexample
+public import Demos.Euler.Equations.Rotation
+public import Demos.Euler.Equations.Rusanov
+public import Demos.Euler.FirstOrderBalance
+public import Demos.Euler.Hyperbolic
+public import Demos.Euler.RealState
+public import Demos.Euler.ReconstructedBalance
+public import Demos.Euler.ReconstructionAccuracy
+public import Demos.Euler.Reference.Accepted
+public import Demos.Euler.Reference.Boundary
+public import Demos.Euler.Reference.Component
+public import Demos.Euler.Reference.Constants
+public import Demos.Euler.Reference.FluxTerms
+public import Demos.Euler.Reference.Interface
+public import Demos.Euler.Reference.Internal
+public import Demos.Euler.Reference.InternalGuard
+public import Demos.Euler.Reference.Pressure
+public import Demos.Euler.Reference.PressureReference
+public import Demos.Euler.Reference.Radicand
+public import Demos.Euler.Reference.Side
+public import Demos.Euler.Reference.Sound
+public import Demos.Euler.Reference.SoundRatio
+public import Demos.Euler.Reference.Speed
+public import Demos.Euler.Reference.Transport
+public import Demos.Euler.Reference.Update
+public import Demos.Euler.SpeedCounterexample
+public import Demos.Euler.Words
+public import Demos.Frames.Enclose
+public import Demos.Frames.Flat
+public import Demos.Frames.Geodetic
+public import Demos.Frames.Model
+public import Demos.Frames.Program
+public import Demos.Frames.Soundness
+public import Demos.Frames.Time
+public import Demos.Frames.TimeSound
+public import Demos.Gate.Assignment
+public import Demos.Gate.AssignmentFlat
+public import Demos.Gate.AssignmentSoundness
+public import Demos.Gate.Flat
+public import Demos.Gate.GateFlat
+public import Demos.Gate.GateProgram
+public import Demos.Gate.GateSoundness
+public import Demos.Gate.Gaussian
+public import Demos.Gate.Mahalanobis
+public import Demos.Gate.Miss
+public import Demos.Gate.Model
+public import Demos.Gate.Program
+public import Demos.Gate.Soundness
+public import Demos.Geolocation.Derivatives
+public import Demos.Geolocation.Flat
+public import Demos.Geolocation.Model
+public import Demos.Geolocation.Program
+public import Demos.Geolocation.Rotation
+public import Demos.Geolocation.Search
+public import Demos.Geolocation.Soundness
+public import Demos.Geolocation.Spec
+public import Demos.Gpt.Causal
+public import Demos.Gpt.Exact
+public import Demos.Gpt32.Compose
+public import Demos.Gpt32.Driver
+public import Demos.Gpt32.Exec
+public import Demos.Gpt32.HostProgram
+public import Demos.ManifestCheck.Budget
+public import Demos.ManifestCheck.CommandStart
+public import Demos.ManifestCheck.Compiled
+public import Demos.ManifestCheck.Native
+public import Demos.ManifestCheck.NativeMeets
+public import Demos.ManifestCheck.NativeSpec
+public import Demos.Orbit.Flat
+public import Demos.Orbit.Gibbs
+public import Demos.Orbit.GibbsBox
+public import Demos.Orbit.GibbsSound
+public import Demos.Orbit.Lambert
+public import Demos.Orbit.LambertBox
+public import Demos.Orbit.LambertFlat
+public import Demos.Orbit.LambertOrbit
+public import Demos.Orbit.LambertRoot
+public import Demos.Orbit.LambertSound
+public import Demos.Orbit.LambertTime
+public import Demos.Orbit.LambertTransfer
+public import Demos.Orbit.Newton
+public import Demos.Orbit.NewtonUnique
+public import Demos.Orbit.TwoBody
+public import Demos.Orbit.Universal
+public import Demos.Orbit.Vector
+public import Demos.OrderBook.Abstract
+public import Demos.OrderBook.Flat
+public import Demos.OrderBook.ProcessAxioms
+public import Demos.OrderBook.ProcessCompiledCorrect
+public import Demos.OrderBook.Program
+public import Demos.OrderBook.Refinement
+public import Demos.OrderBook.Samples
+public import Demos.OrderBook.Theorems
+public import Demos.PassiveSafety.Closed
+public import Demos.PassiveSafety.Flat
+public import Demos.PassiveSafety.Model
+public import Demos.PassiveSafety.Program
+public import Demos.PassiveSafety.Soundness
+public import Demos.Rcv.Batch
+public import Demos.Rcv.Cases
+public import Demos.Rcv.Contest
+public import Demos.Rcv.Holder
+public import Demos.Rcv.Maine.Cases
+public import Demos.Rcv.Maine.Holder
+public import Demos.Rcv.Maine.PrintProgram
+public import Demos.Rcv.Maine.PrintProof
+public import Demos.Rcv.Maine.Program
+public import Demos.Rcv.Maine.Properties
+public import Demos.Rcv.Maine.RefineRule
+public import Demos.Rcv.Maine.RefineTally
+public import Demos.Rcv.Maine.Refinement
+public import Demos.Rcv.Maine.Rounds
+public import Demos.Rcv.Maine.Spec
+public import Demos.Rcv.Maine.Stability
+public import Demos.Rcv.Maine.TabulateProgram
+public import Demos.Rcv.Maine.TabulateProof
+public import Demos.Rcv.Maine.Variants
+public import Demos.Rcv.Maine.Winner
+public import Demos.Rcv.PrintProgram
+public import Demos.Rcv.PrintProof
+public import Demos.Rcv.Program
+public import Demos.Rcv.Properties
+public import Demos.Rcv.Read
+public import Demos.Rcv.ReadError
+public import Demos.Rcv.ReadLemmas
+public import Demos.Rcv.ReadProgram
+public import Demos.Rcv.ReadProgramMain
+public import Demos.Rcv.ReadProgramProof
+public import Demos.Rcv.ReadProof
+public import Demos.Rcv.ReadWords
+public import Demos.Rcv.Refinement
+public import Demos.Rcv.Rounds
+public import Demos.Rcv.Spec
+public import Demos.Rcv.Stability
+public import Demos.Rcv.TabulateProgram
+public import Demos.Rcv.TabulateProof
+public import Demos.Rcv.Variants
+public import Demos.Rcv.Winner
+public import Demos.RandomChoice.Budget
+public import Demos.RandomChoice.CommandStart
+public import Demos.RandomChoice.Compiled
+public import Demos.RandomChoice.Native
+public import Demos.RandomChoice.NativeChoices
+public import Demos.RandomChoice.Output
+public import Demos.RandomChoice.Unbiased
+public import Demos.RandomHistogram.Budget
+public import Demos.RandomHistogram.CommandStart
+public import Demos.RandomHistogram.Compiled
+public import Demos.RandomHistogram.Native
+public import Demos.RandomHistogram.NativeCounts
+public import Demos.Sgp4.Box
+public import Demos.Sgp4.BoxFlat
+public import Demos.Sgp4.BoxSound
+public import Demos.Sgp4.Flat
+public import Demos.Sgp4.Kepler
+public import Demos.Sgp4.KeplerBox
+public import Demos.Sgp4.Latitude
+public import Demos.Sgp4.Model
+public import Demos.Sgp4.Omm
+public import Demos.Sgp4.OmmSound
+public import Demos.Sgp4.Program
+public import Demos.Sgp4.Spec
+public import Demos.Sgp4.Tle
+public import Demos.Sgp4.TleSound
+public import Demos.Sgp4.TwoBody
+public import Demos.Slew.Cost
+public import Demos.Slew.Flat
+public import Demos.Slew.NanFree
+public import Demos.Slew.Optimal
+public import Demos.Slew.Premise
+public import Demos.Slew.Program
+public import Demos.Slew.Safety
+public import Demos.Gpt32.NativeCases
+public import Demos.Gpt32.VerifiedPtx
+
+@[expose] public section

@@ -1,7 +1,11 @@
-import LeanExe.Pipeline.RuntimeSpec
-import LeanExe.Pipeline.AlignedHeap
-import LeanExe.Pipeline.AlignedRuns
-import LeanExe.ProofKit.AlignedAllocate
+module
+
+public import LeanExe.Pipeline.RuntimeSpec
+public import LeanExe.Pipeline.AlignedHeap
+public import LeanExe.Pipeline.AlignedRuns
+public import LeanExe.ProofKit.AlignedAllocate
+
+@[expose] public section
 
 /-!
 `alloc` under `wpA`.  `alloc_spec_runsA` is `alloc_spec_runs` with `RunsA` for `Runs`: from an

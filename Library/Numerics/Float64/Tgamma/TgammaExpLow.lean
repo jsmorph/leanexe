@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaExpdSpec
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaExpdSpec
+
+@[expose] public section
 
 /-!
 The low part of `Tgamma.asExpd` below `2 ^ -50` of its high part (`asExpd_low`), which the path of

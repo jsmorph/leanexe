@@ -1,4 +1,8 @@
-import Verified.Wasi.ReadCode
+module
+
+public import Verified.Wasi.ReadCode
+
+@[expose] public section
 
 /-! The code of `readAll limit`, which the compiler places in the calling function after the code
 of `limit`.  It uses six i64 locals from `base`: the limit at `base`, the errno at `base + 1`, the

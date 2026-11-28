@@ -1,5 +1,9 @@
-import LeanExe.Wasi.NoTrap
-import LeanExe.Wasi.Prefix
+module
+
+public import LeanExe.Wasi.NoTrap
+public import LeanExe.Wasi.Prefix
+
+@[expose] public section
 
 namespace LeanExe.Wasi
 

@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Lgamma.LgammaWalk
-import Library.Numerics.Float64.Lgamma.LgammaLogd
-import Library.Numerics.Float64.Sinpi.SinpiTiny
-import Library.Numerics.Float64.Sinh.SinhWords
-import Library.Numerics.Float64.Tgamma.TgammaWords
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaWalk
+public import Library.Numerics.Float64.Lgamma.LgammaLogd
+public import Library.Numerics.Float64.Sinpi.SinpiTiny
+public import Library.Numerics.Float64.Sinh.SinhWords
+public import Library.Numerics.Float64.Tgamma.TgammaWords
+
+@[expose] public section
 
 /-!
 The fast path of `Lgamma.lgammaWith` below `2 ^ -75` in magnitude, where the code returns

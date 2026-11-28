@@ -1,5 +1,10 @@
-import Mathlib.Analysis.SpecialFunctions.Sqrt
-import Mathlib.Tactic
+module
+
+public import LeanExe.Base
+public import Mathlib.Analysis.SpecialFunctions.Sqrt
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-!
 Vectors of three real coordinates with the dot and cross products, for the two-body model of the

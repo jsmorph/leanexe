@@ -1,5 +1,9 @@
-import Verified.Examples.Updates
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Updates
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/updates.wasm`: the file holds
 `encode Updates.compiled.module`, and it decodes to the module of `Updates.compiled.bytes`. -/

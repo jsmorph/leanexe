@@ -1,5 +1,9 @@
-import Verified.Wasi.ProcessTotalBegin
-import Verified.Wasi.WrapperDispatch
+module
+
+public import Verified.Wasi.ProcessTotalBegin
+public import Verified.Wasi.WrapperDispatch
+
+@[expose] public section
 
 namespace Verified.Wasi
 

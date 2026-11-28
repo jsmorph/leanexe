@@ -1,6 +1,11 @@
-import Library.Numerics.Interval.Program
-import Library.Numerics.Float64.Trig.Program
-import Library.Numerics.Float64.Pow.Program
+module
+
+public import Library.Numerics.Interval.Program
+public import Library.Numerics.Float64.Trig.Program
+public import Library.Numerics.Float64.Pow.Program
+public import Library.Numerics.Float64.Log.Program
+
+@[expose] public section
 
 /-!
 Further interval operations: integer constants and their ratios, the maximum, a selection by the
@@ -66,6 +71,12 @@ def sinI (inv half : Array UInt64) (a : Interval) : Interval :=
 def cosI (inv half : Array UInt64) (a : Interval) : Interval :=
   let m := mid a
   clamp (lipschitz a m (Trig.cosWith inv half m)) (-1.0) 1.0
+
+/-- An interval that contains `log z` for every `z` of an interval above zero, from the values of
+`Log.logWith` at the two ends moved two steps outward. -/
+def logI (tab tab2 : Array UInt64) (a : Interval) : Interval :=
+  if 0 < a.lo then increasing a (Log.logWith tab tab2 a.lo) (Log.logWith tab tab2 a.hi)
+  else rejected
 
 /-- The float four steps above `g` for `up`, and four steps below otherwise. -/
 def outward4 (up : Bool) (g : Float) : Checked :=

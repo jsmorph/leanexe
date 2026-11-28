@@ -1,4 +1,8 @@
-import LeanExe.A64.Machine
+module
+
+public import LeanExe.A64.Machine
+
+@[expose] public section
 
 /-!
 The model of the machine from the entry of an arm64 Linux Image, through the startup that turns on

@@ -1,6 +1,10 @@
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
-import Mathlib.Analysis.Calculus.Deriv.Mul
-import Demos.Geolocation.Rotation
+module
+
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+public import Mathlib.Analysis.Calculus.Deriv.Mul
+public import Demos.Geolocation.Rotation
+
+@[expose] public section
 
 /-!
 The derivatives behind the TEME frame's model.  `gmst_hasDerivAt` (M3) states that `spin` is the

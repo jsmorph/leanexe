@@ -1,5 +1,9 @@
-import Examples.Calc.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Examples.Calc.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! How the calculator's theorems represent its types: an operation as the word of its
 constructor index, and a state as its value, its step count, and its last operation, in

@@ -1,7 +1,11 @@
-import Library.Numerics.Fourier.Compiled
-import Library.Numerics.Float64.Trig.TrigSinCos
-import Library.Numerics.Reductions.Binary64
-import LeanExe.ProofKit.F64Compose
+module
+
+public import Library.Numerics.Fourier.Compiled
+public import Library.Numerics.Float64.Trig.TrigSinCos
+public import Library.Numerics.Reductions.Binary64
+public import LeanExe.ProofKit.F64Compose
+
+@[expose] public section
 
 /-!
 The accuracy of `twiddle n m`, the pair `(cos θ, sin θ)` of `Trig` at the rounded angle

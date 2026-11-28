@@ -1,7 +1,11 @@
-import LeanExe.A64.Boot
-import LeanExe.A64.Proof.Boot
-import LeanExe.A64.Proof.Bits
-import LeanExe.A64.Proof.Relation
+module
+
+public import LeanExe.A64.Boot
+public import LeanExe.A64.Proof.Boot
+public import LeanExe.A64.Proof.Bits
+public import LeanExe.A64.Proof.Relation
+
+@[expose] public section
 
 /-!
 A run of the program model lifts to a run of the boot model.  A step of the program model changes

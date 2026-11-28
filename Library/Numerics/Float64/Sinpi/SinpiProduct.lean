@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Sinpi.SinpiSingle
-import Library.Numerics.Float64.Tan.TanBigWords
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiSingle
+public import Library.Numerics.Float64.Tan.TanBigWords
+
+@[expose] public section
 
 /-!
 `Sinpi.piProduct` on words: `π x` as `w + t` from the 24-bit head `hi` of `x`, the exact tail

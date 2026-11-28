@@ -1,4 +1,9 @@
-import Init.Data.List.Lemmas
+module
+
+public import LeanExe.Base
+public import Init.Data.List.Lemmas
+
+@[expose] public section
 
 namespace Wasm.Encoding.Spec
 

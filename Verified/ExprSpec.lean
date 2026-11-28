@@ -1,8 +1,12 @@
-import Verified.ArgPot
-import Verified.ArrayFold
-import Verified.InsertIdx
-import LeanExe.ProofKit.F32Bits
-import Verified.Bytes.StaticInput
+module
+
+public import Verified.ArgPot
+public import Verified.ArrayFold
+public import Verified.InsertIdx
+public import LeanExe.ProofKit.F32Bits
+public import Verified.Bytes.StaticInput
+
+@[expose] public section
 
 /-! The expression specification and shared rules for calls, budgets, and operand sequencing. -/
 

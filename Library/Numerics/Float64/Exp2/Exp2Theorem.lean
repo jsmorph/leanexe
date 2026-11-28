@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp2.Exp2Branches
-import LeanExe.ProofKit.F64RelativeStep
+module
+
+public import Library.Numerics.Float64.Exp2.Exp2Branches
+public import LeanExe.ProofKit.F64RelativeStep
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Exp2.exp2`.  For every finite binary64 input `a`, the result lies

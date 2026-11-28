@@ -1,12 +1,16 @@
-import Library.Numerics.Float64.Erfc.ErfcAccRows0
-import Library.Numerics.Float64.Erfc.ErfcAccRows1
-import Library.Numerics.Float64.Erfc.ErfcAccRows2
-import Library.Numerics.Float64.Erfc.ErfcAccRows3
-import Library.Numerics.Float64.Erfc.ErfcAccRows4
-import Library.Numerics.Float64.Erfc.ErfcAccRows5
-import Library.Numerics.Float64.Erfc.ErfcAccTiny
-import Library.Numerics.Float64.Erfc.ErfcFastAll
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAccRows0
+public import Library.Numerics.Float64.Erfc.ErfcAccRows1
+public import Library.Numerics.Float64.Erfc.ErfcAccRows2
+public import Library.Numerics.Float64.Erfc.ErfcAccRows3
+public import Library.Numerics.Float64.Erfc.ErfcAccRows4
+public import Library.Numerics.Float64.Erfc.ErfcAccRows5
+public import Library.Numerics.Float64.Erfc.ErfcAccTiny
+public import Library.Numerics.Float64.Erfc.ErfcFastAll
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 `cr_erf_accurate` for `0 ≤ z < 47/8`.  `accRows_ok` collects the 47 row checks of `C2`, `tacc_err`

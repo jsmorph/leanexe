@@ -1,4 +1,8 @@
-import Library.Combinatorics.DancingLinks.Partial
+module
+
+public import Library.Combinatorics.DancingLinks.Partial
+
+@[expose] public section
 
 /-! Step X1 as the program performs it.  `partial_init` shows that the array that `LeanExe.build`
 makes holds `Partial` before any option: every header's list is empty, the item links run in

@@ -1,4 +1,8 @@
-import Demos.Euler.Equations.Hyperbolicity
+module
+
+public import Demos.Euler.Equations.Hyperbolicity
+
+@[expose] public section
 
 /-! The characteristic speed `|un| + c` in a unit direction bounds the absolute value of every
 eigenvalue of the directional flux derivative, and it is the least such bound. -/

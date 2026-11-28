@@ -1,6 +1,10 @@
-import Demos.Rcv.Maine.Process
-import Demos.Rcv.ProcessFlat
-import Verified.Wasi.ReflectCommand
+module
+
+public import Demos.Rcv.Maine.Process
+public import Demos.Rcv.ProcessFlat
+public import Verified.Wasi.ReflectCommand
+
+@[expose] public section
 
 /-! The Maine process compiled by the verified WASI compiler.  The list holds the functions of
 `Demos/Rcv/Maine/Tabulate.lean` in the same order, from the count's `bitIndex` to `tabulate`, and

@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaPiecePoly
-import Library.Numerics.Float64.Lgamma.LgammaPieceIdx
-import Library.Numerics.Float64.Lgamma.LgammaSpecial
-import LeanExe.ProofKit.F64Sterbenz
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPiecePoly
+public import Library.Numerics.Float64.Lgamma.LgammaPieceIdx
+public import Library.Numerics.Float64.Lgamma.LgammaSpecial
+public import LeanExe.ProofKit.F64Sterbenz
+
+@[expose] public section
 
 /-!
 The fast path's pieces from 0.5 to 8.29541 at a double `a` of piece `k`: `z = a - offs k`, exact by

@@ -1,6 +1,10 @@
-import Demos.PassiveSafety.Verified
-import Demos.PassiveSafety.Soundness
-import Verified.Call
+module
+
+public import Demos.PassiveSafety.Verified
+public import Demos.PassiveSafety.Soundness
+public import Verified.Call
+
+@[expose] public section
 
 /-! The call of the module's export `check` and its composition with `check_passive`.
 `check_call` states that function 86, the export `check`, returns `check xs fuel acc` without a

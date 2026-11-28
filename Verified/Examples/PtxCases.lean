@@ -1,4 +1,8 @@
-import Verified.Examples.Ptx
+module
+
+public import Verified.Examples.Ptx
+
+@[expose] public section
 
 /-!
 Test cases of the PTX kernels of the WGSL examples, computed by native Lean, in the format of
@@ -9,24 +13,24 @@ threads more than the count needs.
 
 namespace Verified.Examples.PtxCases
 
-private def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
+def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
 
-private def halves (xs : List UInt64) : String :=
+def halves (xs : List UInt64) : String :=
   words (xs.flatMap fun (w : UInt64) => [w &&& 0xffffffff, w >>> 32])
 
-private def buffer (arg : LeanExe.Source.Arg) : String := s!"u64:{words arg.ptxBuffer.toList}"
+def buffer (arg : LeanExe.Source.Arg) : String := s!"u64:{words arg.ptxBuffer.toList}"
 
-private def caseLine (kernel : String) (n : Nat) (inputs : List LeanExe.Source.Arg)
+def caseLine (kernel : String) (n : Nat) (inputs : List LeanExe.Source.Arg)
     (result : Array UInt64) : String :=
   let initial := n.toUInt64 :: List.replicate n 0x7fc000017fc00001
   s!"{kernel}|{(n + 63) / 64 + 1}|u64:{words initial}|{" ".intercalate (inputs.map buffer)}|" ++
     halves (n.toUInt64 :: result.toList)
 
-private def fwords (xs : Array Float32) : Array UInt64 := xs.map fun x => x.toBits.toUInt64
+def fwords (xs : Array Float32) : Array UInt64 := xs.map fun x => x.toBits.toUInt64
 
 /-- Signed zeros, ones, subnormals, infinities, the canonical NaN, and halves, as in the WGSL
 cases. -/
-private def floatSpecials : Array Float32 :=
+def floatSpecials : Array Float32 :=
   #[0, 0x80000000, 0x3f800000, 0xc0000000, 1, 0x007fffff, 0x7f800000, 0xff800000, 0x7fc00000,
     0x3f000000, 0xbf000000, 0x3fc00000, 0xbfc00000, 0x40200000, 0xc0200000].map Float32.ofBits
 

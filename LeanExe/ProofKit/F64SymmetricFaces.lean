@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RoundingResidual
+module
+
+public import LeanExe.ProofKit.F64RoundingResidual
+
+@[expose] public section
 
 /-! Rounded faces `center ∓ factor · delta`: their errors against the exact faces, and the error
 of their average against the center, in terms of rounding radii. -/

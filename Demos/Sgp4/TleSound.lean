@@ -1,7 +1,11 @@
-import Demos.Sgp4.Tle
-import Demos.Sgp4.BoxSound
-import LeanExe.Dialect.Lemmas
-import LeanExe.ProofKit.Signed64Value
+module
+
+public import Demos.Sgp4.Tle
+public import Demos.Sgp4.BoxSound
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.ProofKit.Signed64Value
+
+@[expose] public section
 
 /-!
 The layout of a two-line element set and the soundness of its reader.  `WellFormed s1 s2` states

@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Atan.AtanTwoQuot
-import Library.Numerics.Float64.Atan.AtanTheoremSmall
-import LeanExe.ProofKit.F64TwoSteps
-import LeanExe.ProofKit.F64HalfUlp
+module
+
+public import Library.Numerics.Float64.Atan.AtanTwoQuot
+public import Library.Numerics.Float64.Atan.AtanTheoremSmall
+public import LeanExe.ProofKit.F64TwoSteps
+public import LeanExe.ProofKit.F64HalfUlp
+
+@[expose] public section
 
 /-!
 Error bounds for the general branch of `Atan.atan2`.  `q` is the rounded quotient `|y/x|` and `Q`

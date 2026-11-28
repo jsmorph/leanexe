@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Approx
+module
+
+public import LeanExe.ProofKit.F64Approx
+
+@[expose] public section
 
 /-!
 Relative error tracking for positive values over wide ranges.  `RApprox w v ρ` states that `w` is

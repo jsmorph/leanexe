@@ -1,6 +1,10 @@
-import LeanExe.A64.Boot
-import LeanExe.A64.Image
-import LeanExe.Linux.CallTable
+module
+
+public import LeanExe.A64.Boot
+public import LeanExe.A64.Image
+public import LeanExe.Linux.CallTable
+
+@[expose] public section
 
 /-!
 A model of a Linux process at EL0 that runs the code of the AArch64 back end and makes system

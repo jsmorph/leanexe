@@ -1,5 +1,9 @@
-import Library.Random.Xorshift.Verified
-import Verified.Master
+module
+
+public import Library.Random.Xorshift.Verified
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Random.Xorshift
 

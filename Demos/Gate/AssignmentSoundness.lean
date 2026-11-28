@@ -1,7 +1,11 @@
-import Demos.Gate.Assignment
-import LeanExe.Dialect.Lemmas
-import Mathlib.Algebra.BigOperators.Group.Finset.Basic
-import Mathlib.Data.Finset.Card
+module
+
+public import Demos.Gate.Assignment
+public import LeanExe.Dialect.Lemmas
+public import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+public import Mathlib.Data.Finset.Card
+
+@[expose] public section
 
 /-!
 Soundness of the assignment check.  `weak_duality` states, for integer costs, that an assignment

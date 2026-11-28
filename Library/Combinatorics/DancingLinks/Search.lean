@@ -1,4 +1,8 @@
-import Library.Combinatorics.DancingLinks.Others
+module
+
+public import Library.Combinatorics.DancingLinks.Others
+
+@[expose] public section
 
 /-! The recursive search.  `search_eq` states that on an array with `Inv` of the active items `B`
 and a depth bound `d` of at least `|B|`, `search d b` returns the number of exact covers of `B` by

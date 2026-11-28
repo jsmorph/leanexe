@@ -1,4 +1,8 @@
-import Library.Numerics.Interval.Enclose
+module
+
+public import Library.Numerics.Interval.Enclose
+
+@[expose] public section
 
 /-!
 TRIAD's formulas over the real numbers, each with its interval program.  Each `enclosure_def`

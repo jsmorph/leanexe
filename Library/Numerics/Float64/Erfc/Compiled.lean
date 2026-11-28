@@ -1,5 +1,10 @@
-import Library.Numerics.Float64.Erfc.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Float64.Erfc.Program
+public import Verified.Reflect.Command
+public meta import Library.Numerics.Float64.Erfc.Program
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Erfc
 

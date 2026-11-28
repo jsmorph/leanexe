@@ -1,75 +1,79 @@
-import Library.Numerics.Bounds.Program
-import Library.Numerics.Interval.Program
-import Library.Numerics.Limiters.Minmod.Program
-import Library.Numerics.Reductions.Word.Program
-import Library.Numerics.Filters.Cic.Program
-import Library.Numerics.Statistics.Mean.Program
-import Library.Numerics.Statistics.SumSquares.Program
-import Library.Random.SplitMix64.Program
-import Library.Arrays.Search.Program
-import Library.Arrays.MaxSegmentSum.Program
-import TestSupport.Host
-import Library.Combinatorics.DancingLinks.Count
-import TestSupport.Modules.BinaryGcd
-import TestSupport.Modules.BinaryHeap
-import TestSupport.Modules.BinarySearch
-import TestSupport.Modules.DancingLinks
-import TestSupport.Modules.Gcd
-import TestSupport.Modules.Heapsort
-import TestSupport.Modules.LinearProbing
-import TestSupport.Modules.MergeSort
-import TestSupport.Modules.MillerRabin
-import TestSupport.Modules.ModInverse
-import TestSupport.Modules.MultiPrecision
-import TestSupport.Modules.StraightInsertion
-import TestSupport.Modules.Quicksort
-import TestSupport.Modules.Shellsort
-import TestSupport.Modules.RadixSort
-import TestSupport.Modules.Find
-import TestSupport.Modules.PrimeFactors
-import TestSupport.Modules.Sieve
-import TestSupport.Modules.Sampling
-import TestSupport.Modules.TopologicalSort
-import TestSupport.Modules.UnionFind
-import TestSupport.Modules.WeightedUnionFind
-import TestSupport.Modules.Kmp
-import TestSupport.Modules.Dijkstra
-import TestSupport.Modules.TreeSearch
-import TestSupport.Modules.Avl
-import TestSupport.Modules.AvlDelete
-import TestSupport.Modules.NextPermutation
-import TestSupport.Modules.Int64Text
+module
+
+public import Library.Numerics.Bounds.Program
+public import Library.Numerics.Interval.Program
+public import Library.Numerics.Limiters.Minmod.Program
+public import Library.Numerics.Reductions.Word.Program
+public import Library.Numerics.Filters.Cic.Program
+public import Library.Numerics.Statistics.Mean.Program
+public import Library.Numerics.Statistics.SumSquares.Program
+public import Library.Random.SplitMix64.Program
+public import Library.Arrays.Search.Program
+public import Library.Arrays.MaxSegmentSum.Program
+public import TestSupport.Host
+public import Library.Combinatorics.DancingLinks.Count
+public import TestSupport.Modules.BinaryGcd
+public import TestSupport.Modules.BinaryHeap
+public import TestSupport.Modules.BinarySearch
+public import TestSupport.Modules.DancingLinks
+public import TestSupport.Modules.Gcd
+public import TestSupport.Modules.Heapsort
+public import TestSupport.Modules.LinearProbing
+public import TestSupport.Modules.MergeSort
+public import TestSupport.Modules.MillerRabin
+public import TestSupport.Modules.ModInverse
+public import TestSupport.Modules.MultiPrecision
+public import TestSupport.Modules.StraightInsertion
+public import TestSupport.Modules.Quicksort
+public import TestSupport.Modules.Shellsort
+public import TestSupport.Modules.RadixSort
+public import TestSupport.Modules.Find
+public import TestSupport.Modules.PrimeFactors
+public import TestSupport.Modules.Sieve
+public import TestSupport.Modules.Sampling
+public import TestSupport.Modules.TopologicalSort
+public import TestSupport.Modules.UnionFind
+public import TestSupport.Modules.WeightedUnionFind
+public import TestSupport.Modules.Kmp
+public import TestSupport.Modules.Dijkstra
+public import TestSupport.Modules.TreeSearch
+public import TestSupport.Modules.Avl
+public import TestSupport.Modules.AvlDelete
+public import TestSupport.Modules.NextPermutation
+public import TestSupport.Modules.Int64Text
+
+@[expose] public section
 
 namespace TestSupport.LibraryCases
 
 open TestSupport.Host Library.Numerics.Bounds
 
-private def checked (name : String) (args : List String) (result : Checked) : IO Unit :=
+def checked (name : String) (args : List String) (result : Checked) : IO Unit :=
   line "libbounds" name "list:i64,f64" args s!"{result.status} {result.value.toBits}"
 
-private abbrev Interval := Library.Numerics.Interval.Interval
+abbrev Interval := Library.Numerics.Interval.Interval
 
-private def interval (name : String) (args : List String) (result : Interval) : IO Unit :=
+def interval (name : String) (args : List String) (result : Interval) : IO Unit :=
   line "libinterval" name "list:i64,f64,f64" args
     s!"{result.status} {result.lo.toBits} {result.hi.toBits}"
 
-private def intervalChecked (name : String) (args : List String) (result : Checked) : IO Unit :=
+def intervalChecked (name : String) (args : List String) (result : Checked) : IO Unit :=
   line "libinterval" name "list:i64,f64" args s!"{result.status} {result.value.toBits}"
 
-private def intervalArgs (a : Interval) : List String := [u a.status, fl a.lo, fl a.hi]
+def intervalArgs (a : Interval) : List String := [u a.status, fl a.lo, fl a.hi]
 
-private def checkedArgs (c : Checked) : List String := [u c.status, fl c.value]
+def checkedArgs (c : Checked) : List String := [u c.status, fl c.value]
 
 /-- Accepted intervals of both signs, points, intervals at the ends of the finite range, a
 rejected interval, and records with a nonfinite endpoint or with `lo > hi`, which only a caller
 that skips `make` can build. -/
-private def intervals : List Interval :=
+def intervals : List Interval :=
   [⟨0, 1.0, 2.0⟩, ⟨0, -2.0, -1.0⟩, ⟨0, -1.0, 3.0⟩, ⟨0, 0.0, 0.0⟩, ⟨0, -0.0, 0.5⟩,
     ⟨0, 1e308, 1e308⟩, ⟨0, -1e308, 1e308⟩, ⟨0, 5e-324, 5e-324⟩, ⟨0, -5e-324, 5e-324⟩,
     ⟨0, 0.1, 0.1⟩, ⟨0, 1e-200, 1e200⟩, ⟨0, 7.25, 7.25⟩, ⟨1, 0.0, 0.0⟩, ⟨0, 1.0, inf⟩,
     ⟨0, nan, 1.0⟩, ⟨0, 2.0, 1.0⟩]
 
-private def intervalCases : IO Unit := do
+def intervalCases : IO Unit := do
   for a in specialFloats do
     interval "point" [fl a] (Library.Numerics.Interval.point a)
     for up in [false, true] do
@@ -115,7 +119,7 @@ private def intervalCases : IO Unit := do
 
 /-- The seeds of the SplitMix64 cases: 0, 1, and four words whose advance wraps or reaches zero, 40
 arbitrary words, and 50 successive states from 0. -/
-private def splitMixSeeds : List UInt64 :=
+def splitMixSeeds : List UInt64 :=
   let gamma : UInt64 := 0x9e3779b97f4a7c15
   let chain := (List.range 50).foldl (fun (s, acc) _ =>
     let next := (Library.Random.SplitMix64.splitMix s).1
@@ -125,7 +129,7 @@ private def splitMixSeeds : List UInt64 :=
 /-- The inputs of `mss`: the word arrays read as `Int64` values, the list
 `[-2, 1, -3, 4, -1, 2, 1, -5, 4]`, negative values, the values `2^62`, `-1`, and `2^62 - 2`, whose
 absolute values sum to `2^63 - 1`, the extreme values, and values in `[-1000, 1000]`. -/
-private def mssInputs : List (List Int64) :=
+def mssInputs : List (List Int64) :=
   wordArrays.map (·.map UInt64.toInt64) ++
     [[-2, 1, -3, 4, -1, 2, 1, -5, 4], [-3, -1, -2], [31, -41, 59, 26, -53, 58, 97, -93, -23, 84],
       [4611686018427387904, -1, 4611686018427387902], [Int64.maxValue], [Int64.minValue],

@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 namespace Library.Trees.WordTree
 
 /-- A binary tree with a word at each node. -/

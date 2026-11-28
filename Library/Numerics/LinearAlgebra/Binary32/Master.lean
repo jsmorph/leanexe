@@ -1,9 +1,13 @@
-import Library.Numerics.LinearAlgebra.Binary32.Compiled
-import Library.Numerics.Reductions.Binary32
-import Library.Numerics.Reductions.Binary64
-import LeanExe.Dialect.ArrayLemmas
-import LeanExe.Dialect.Lemmas
-import Verified.Master
+module
+
+public import Library.Numerics.LinearAlgebra.Binary32.Compiled
+public import Library.Numerics.Reductions.Binary32
+public import Library.Numerics.Reductions.Binary64
+public import LeanExe.Dialect.ArrayLemmas
+public import LeanExe.Dialect.Lemmas
+public import Verified.Master
+
+@[expose] public section
 
 /-!
 The master theorems of the binary32 linear algebra.  Each element of `scale32` is one rounded

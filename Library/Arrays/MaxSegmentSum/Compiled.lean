@@ -1,5 +1,9 @@
-import Library.Arrays.MaxSegmentSum.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Arrays.MaxSegmentSum.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `mss`, `libmss`.  The function borrows its array and
 allocates nothing. -/

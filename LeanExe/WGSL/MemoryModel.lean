@@ -1,4 +1,8 @@
-import LeanExe.WGSL.Events
+module
+
+public import LeanExe.WGSL.Events
+
+@[expose] public section
 
 /-!
 Executions of a dispatch under the memory model that WGSL adopts.  WGSL 14.5 states that WGSL

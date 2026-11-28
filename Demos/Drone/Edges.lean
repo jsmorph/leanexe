@@ -1,5 +1,9 @@
-import Demos.Drone.Arithmetic
-import Demos.Drone.Motion
+module
+
+public import Demos.Drone.Arithmetic
+public import Demos.Drone.Motion
+
+@[expose] public section
 
 /-! An admitted edge passes every guard of `edgeTicks`, and its segment clears the interpolated
 floor at every point. -/

@@ -1,6 +1,10 @@
-import Demos.Rcv.Maine.Program
-import Demos.Rcv.Maine.Spec
-import Demos.Rcv.Refinement
+module
+
+public import Demos.Rcv.Maine.Program
+public import Demos.Rcv.Maine.Spec
+public import Demos.Rcv.Refinement
+
+@[expose] public section
 
 /-!
 The tally of a round of the Maine program: `Demos.Rcv.Maine.Program.examineAt` gives the slot of

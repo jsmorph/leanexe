@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Trig.TrigPi
+module
+
+public import Library.Numerics.Float64.Trig.TrigPi
+
+@[expose] public section
 
 /-!
 The distance of a double from the nearest multiple of `π/2`.  For each exponent field `E` from

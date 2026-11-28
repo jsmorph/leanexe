@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Trig.TrigSinDirect
+module
+
+public import Library.Numerics.Float64.Trig.TrigSinDirect
+
+@[expose] public section
 
 /-!
 The accuracy of the sine kernel in both forms: the result rounds a real `t` within

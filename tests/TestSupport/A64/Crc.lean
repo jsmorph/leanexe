@@ -1,7 +1,11 @@
-import TestSupport.Bare.Programs
-import LeanExe.A64.Proof.ProgramRuns
-import LeanExe.Native.Bare
-import Verified.Bare
+module
+
+public import TestSupport.Bare.Programs
+public import LeanExe.A64.Proof.ProgramRuns
+public import LeanExe.Native.Bare
+public import Verified.Bare
+
+@[expose] public section
 
 /-!
 The theorem of CRC-32's bare-metal program for AArch64, in the form `ProgramRuns`, for every room

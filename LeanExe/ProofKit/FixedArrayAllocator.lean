@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.FixedArrayAllocatorBase
+module
+
+public import LeanExe.ProofKit.FixedArrayAllocatorBase
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArrayAllocator
 open Wasm

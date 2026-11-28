@@ -1,6 +1,10 @@
-import Verified.Kernel.Scalar
-import Verified.Float32Facts
-import LeanExe.ProofKit.F32Nearest
+module
+
+public import Verified.Kernel.Scalar
+public import Verified.Float32Facts
+public import LeanExe.ProofKit.F32Nearest
+
+@[expose] public section
 
 namespace Verified.Kernel
 

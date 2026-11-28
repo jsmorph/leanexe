@@ -1,6 +1,10 @@
-import Library.Combinatorics.DancingLinks.Read
-import Library.Combinatorics.DancingLinks.Hide
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Combinatorics.DancingLinks.Read
+public import Library.Combinatorics.DancingLinks.Hide
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! The layout of an input.  `layout x` holds the number of items and the options of `x`.  Node
 `first k` begins option `k`, so `first_eq` writes it as `N + 2` plus one node for each item and

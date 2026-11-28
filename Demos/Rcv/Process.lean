@@ -1,6 +1,10 @@
-import Demos.Rcv.TabulateProgram
-import LeanExe.Wasi.Process
-import LeanExe.Wasi.ReadAll
+module
+
+public import Demos.Rcv.TabulateProgram
+public import LeanExe.Wasi.Process
+public import LeanExe.Wasi.ReadAll
+
+@[expose] public section
 
 /-! The tabulator as a WASI process over stdin and stdout.  `begin` reads the whole standard input
 with `readAll limit` into one buffer and replaces it with the report of the input, which

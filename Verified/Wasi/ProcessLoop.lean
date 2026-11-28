@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.PartialLoop
-import LeanExe.Wasi.ProcessRelations
-import Verified.Wasi.CommandSpec
+module
+
+public import LeanExe.ProofKit.PartialLoop
+public import LeanExe.Wasi.ProcessRelations
+public import Verified.Wasi.CommandSpec
+
+@[expose] public section
 
 namespace Verified.Wasi
 

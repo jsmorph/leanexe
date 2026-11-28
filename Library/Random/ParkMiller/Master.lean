@@ -1,5 +1,9 @@
-import Library.Random.ParkMiller.Verified
-import Verified.Master
+module
+
+public import Library.Random.ParkMiller.Verified
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Random.ParkMiller
 

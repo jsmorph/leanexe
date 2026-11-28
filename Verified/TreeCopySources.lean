@@ -1,4 +1,8 @@
-import Verified.TreeCopyFrames
+module
+
+public import Verified.TreeCopyFrames
+
+@[expose] public section
 
 namespace Verified
 

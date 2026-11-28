@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erf.ErfNegative
+module
+
+public import Library.Numerics.Float64.Erf.ErfNegative
+
+@[expose] public section
 
 /-!
 One step for `Erf.erfWith Exp.expTable x` for every finite `x`.  For a clear sign bit it is

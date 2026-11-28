@@ -1,5 +1,9 @@
-import Examples.Shape.Program
-import TestSupport.Host
+module
+
+public import Examples.Shape.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The module cases of `shapes`, one line per case in the format of
 `tests/modules/run.sh`. -/

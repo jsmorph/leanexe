@@ -1,5 +1,9 @@
-import Verified.Reflect.Command
-import Library.Random.ParkMiller.Period
+module
+
+public import Verified.Reflect.Command
+public import Library.Random.ParkMiller.Period
+
+@[expose] public section
 
 /-! A program of the verified compiler: Park and Miller's generator of
 `Library/Random/ParkMiller/Program.lean`, compiled unchanged.  None of `step`, `advance`, and `seed`

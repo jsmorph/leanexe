@@ -1,8 +1,13 @@
-import Demos.ManifestCheck.Program
-import Library.Hashing.Sha256.Stream
-import Library.Hashing.Words.Encoding
-import Verified.Wasi
-import LeanExe.Wasi.WriteAll
+module
+
+public import Demos.ManifestCheck.Program
+public import Library.Hashing.Sha256.Stream
+public import Library.Hashing.Words.Encoding
+public import Verified.Wasi
+public import LeanExe.Wasi.WriteAll
+public meta import Library.Hashing.Sha256.Program
+
+@[expose] public section
 
 /-! The WASI command of the manifest checker.  `main` reads its one argument with `args` and
 `argScan`, builds the read buffer of 65,536 bytes, and opens the manifest of that name under the

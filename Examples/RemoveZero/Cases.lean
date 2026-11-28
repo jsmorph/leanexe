@@ -1,5 +1,9 @@
-import Examples.RemoveZero.Spec
-import TestSupport.Host
+module
+
+public import Examples.RemoveZero.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `removeZero`. -/
 

@@ -1,9 +1,13 @@
-import Verified.Reflect.Command
-import TestSupport.Native.Common
-import LeanExe.Native.Proof.Req
-import LeanExe.Requests.Records
-import Verified.Bare
-import Verified.Call
+module
+
+public import Verified.Reflect.Command
+public import TestSupport.Native.Common
+public import LeanExe.Native.Proof.Req
+public import LeanExe.Requests.Records
+public import Verified.Bare
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 A program that exchanges records over UART0 of QEMU's `mps2-an500` through the framing of

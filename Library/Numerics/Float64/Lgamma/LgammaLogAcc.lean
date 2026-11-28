@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaKernelBase
-import Library.Numerics.Float64.Lgamma.Compiled
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaKernelBase
+public import Library.Numerics.Float64.Lgamma.Compiled
+
+@[expose] public section
 
 /-!
 Bounds on the tables and kernel of `as_logd_accurate` (`lgamma.c` lines 1116-1247, commit

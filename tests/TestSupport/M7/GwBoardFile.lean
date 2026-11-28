@@ -1,5 +1,9 @@
-import TestSupport.M7.GwLoop
-import LeanExe.M7.Proof.Parts
+module
+
+public import TestSupport.M7.GwLoop
+public import LeanExe.M7.Proof.Parts
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of the gateway of `gwTickUsart3` for the NUCLEO-F767ZI that

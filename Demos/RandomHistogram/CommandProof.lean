@@ -1,8 +1,12 @@
-import Demos.RandomHistogram.Command
-import Demos.RandomHistogram.CommandSpec
-import Demos.RandomHistogram.Proof
-import Verified.Wasi.SysWords
-import LeanExe.Wasi.Bind
+module
+
+public import Demos.RandomHistogram.Command
+public import Demos.RandomHistogram.CommandSpec
+public import Demos.RandomHistogram.Proof
+public import Verified.Wasi.SysWords
+public import LeanExe.Wasi.Bind
+
+@[expose] public section
 
 /-! Every run of the command's `main` followed by its exit, under every host, that ends with an
 exit status meets the request (`exec_main`): its events are those of `Meets` followed by the exit.

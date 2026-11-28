@@ -1,5 +1,9 @@
-import Demos.Euler.Balance
-import Demos.Euler.Spec
+module
+
+public import Demos.Euler.Balance
+public import Demos.Euler.Spec
+
+@[expose] public section
 
 /-! Conservation balance of the first-order solver: of a sweep, of an accepted step, and of a run
 that returns status 0. -/

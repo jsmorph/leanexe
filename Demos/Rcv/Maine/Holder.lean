@@ -1,4 +1,8 @@
-import Demos.Rcv.Maine.Winner
+module
+
+public import Demos.Rcv.Maine.Winner
+
+@[expose] public section
 
 /-!
 T11 of [the requirements](requirements.md), section "Theorems", for the Maine count, which relates

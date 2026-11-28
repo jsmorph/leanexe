@@ -1,8 +1,12 @@
-import Verified.Reflect.Command
-import TestSupport.Native.Common
-import LeanExe.Native.Proof.Ctl
-import Verified.Bare
-import Verified.Call
+module
+
+public import Verified.Reflect.Command
+public import TestSupport.Native.Common
+public import LeanExe.Native.Proof.Ctl
+public import Verified.Bare
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The step function of the controller loop's test (`docs/native-bare-metal.md`): a first-order

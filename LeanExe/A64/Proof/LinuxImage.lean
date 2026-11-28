@@ -1,7 +1,11 @@
-import LeanExe.A64.Proof.LinuxRuns
-import LeanExe.A64.Proof.Addr
-import LeanExe.A64.Proof.StartupCode
-import LeanExe.A64.File
+module
+
+public import LeanExe.A64.Proof.LinuxRuns
+public import LeanExe.A64.Proof.Addr
+public import LeanExe.A64.Proof.StartupCode
+public import LeanExe.A64.File
+
+@[expose] public section
 
 /-!
 The theorem of a Linux executable of `genSysElf`, from the process's first instruction to its

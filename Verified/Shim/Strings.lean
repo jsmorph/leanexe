@@ -1,4 +1,8 @@
-import Verified.Shim.SysEnv
+module
+
+public import Verified.Shim.SysEnv
+
+@[expose] public section
 
 /-!
 The shim's `args_sizes_get`, `args_get`, `environ_sizes_get`, and `environ_get`, which make no

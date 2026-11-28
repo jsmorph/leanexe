@@ -1,10 +1,14 @@
-import LeanExe.ProofKit.F64Saturate
-import LeanExe.ProofKit.F64Source
-import LeanExe.ProofKit.F64AddNearest
-import LeanExe.ProofKit.F64NearestDiv
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64RoundNearest
-import LeanExe.ProofKit.F64Bits
+module
+
+public import LeanExe.ProofKit.F64Saturate
+public import LeanExe.ProofKit.F64Source
+public import LeanExe.ProofKit.F64AddNearest
+public import LeanExe.ProofKit.F64NearestDiv
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64RoundNearest
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-!
 Rounded addition and division up to the overflow threshold.  The ProofKit lemmas for nearest

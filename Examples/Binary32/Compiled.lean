@@ -1,6 +1,10 @@
-import Examples.Binary32.Program
-import Verified.Reflect.Command
-import Verified.WGSL.Compile
+module
+
+public import Examples.Binary32.Program
+public import Verified.Reflect.Command
+public import Verified.WGSL.Compile
+
+@[expose] public section
 
 /-! The verified compiler's module of the example's functions, and the WGSL kernels that
 `Verified.WGSL.compile` translates from the reflected bodies of `scale32`, `axpyArray32`,
@@ -30,7 +34,7 @@ def verifiedAxpyArray32Kernel : LeanExe.WGSL.Module := axpyArray32Gpu.module
 def verifiedMatVec32Kernel : LeanExe.WGSL.Module := matVec32Gpu.module
 def verifiedCondMix32Kernel : LeanExe.WGSL.Module := condMix32Gpu.module
 
-private abbrev floatWords (x : Array Float32) : Array UInt64 :=
+abbrev floatWords (x : Array Float32) : Array UInt64 :=
   x.map fun v : Float32 => v.toBits.toUInt64
 
 /-- The kernel computes `scale32 a x`: with buffers holding `a` and `x`, an output of the result's

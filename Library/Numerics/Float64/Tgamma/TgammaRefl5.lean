@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaRefl4
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRefl4
+
+@[expose] public section
 
 /-!
 The quotient `rh + rl` of the path of `tgammaWith` below `-3` against `T = π P/(s Γ1)`, where

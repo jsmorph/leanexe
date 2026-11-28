@@ -1,7 +1,11 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
-import Library.Numerics.Float64.Atan.Program
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+public import Library.Numerics.Float64.Atan.Program
+
+@[expose] public section
 
 /-! A slew planner for a spacecraft under pointing constraints, in the verified compiler's dialect.
 

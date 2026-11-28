@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaMulDD3
-import Library.Numerics.Float64.Tgamma.TgammaAcc1
-import Library.Numerics.Float64.Tgamma.TgammaMainLoop
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaMulDD3
+public import Library.Numerics.Float64.Tgamma.TgammaAcc1
+public import Library.Numerics.Float64.Tgamma.TgammaMainLoop
+
+@[expose] public section
 
 /-!
 The factors of the shift loops in the accurate path of `Tgamma`.  The loop for `x < j` keeps

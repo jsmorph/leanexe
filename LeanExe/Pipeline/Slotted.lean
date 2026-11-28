@@ -1,4 +1,8 @@
-import LeanExe.Pipeline.Implements
+module
+
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! Every record of an encoded value has at least one slot, so every slot region has positive
 length, which `Heap.Keeps.nodeBorrowed` requires.  The compiler builds records only for the

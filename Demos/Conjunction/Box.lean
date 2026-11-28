@@ -1,4 +1,8 @@
-import Demos.Conjunction.Program
+module
+
+public import Demos.Conjunction.Program
+
+@[expose] public section
 
 /-!
 The probability of collision for a mean and a covariance known only within intervals.

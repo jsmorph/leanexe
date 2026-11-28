@@ -1,5 +1,9 @@
-import LeanExe.M7.Proof.Forms
-import LeanExe.ProofKit.Signed64
+module
+
+public import LeanExe.M7.Proof.Forms
+public import LeanExe.ProofKit.Signed64
+
+@[expose] public section
 
 /-!
 The simulation of the multiplication, the comparisons, the shifts, `eqzI64`, and `extendUI32`.

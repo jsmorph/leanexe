@@ -1,6 +1,10 @@
-import Library.Combinatorics.NextPermutation.Spec
-import Library.Random.SplitMix64.Program
-import TestSupport.Host
+module
+
+public import Library.Combinatorics.NextPermutation.Spec
+public import Library.Random.SplitMix64.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of the next arrangement, and their results by a
 recursion on lists that does not follow Algorithm L. -/

@@ -1,5 +1,9 @@
-import Library.Trees.WordTree.Encoding
-import Verified.Reflect.RecursiveTypes
+module
+
+public import Library.Trees.WordTree.Encoding
+public import Verified.Reflect.RecursiveTypes
+
+@[expose] public section
 
 /-! The declarations through which the verified compiler compiles programs over `KeyTree`, derived
 once, so that any number of modules that compile such programs can be imported together. -/

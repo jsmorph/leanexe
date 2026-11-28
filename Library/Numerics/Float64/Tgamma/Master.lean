@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaBytes
-import Library.Numerics.Float64.Tgamma.TgammaSpecial
-import Verified.Master
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaBytes
+public import Library.Numerics.Float64.Tgamma.TgammaSpecial
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Tgamma
 

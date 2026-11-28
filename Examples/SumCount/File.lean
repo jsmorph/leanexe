@@ -1,5 +1,9 @@
-import Examples.SumCount.Compiled
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Examples.SumCount.Compiled
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/sumCount.wasm`: the file holds
 `encode compiled.module`, and it decodes to the module of `compiled.bytes`. -/

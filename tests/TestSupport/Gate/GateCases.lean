@@ -1,5 +1,9 @@
-import Demos.Gate.GateProgram
-import TestSupport.Host
+module
+
+public import Demos.Gate.GateProgram
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the export `gate`.  `covariance d c seed` builds a symmetric `d × d` matrix
 `H diag(λ) H` from a Householder reflection `H = I - 2vv'/(v'v)` of a vector `v` drawn from a

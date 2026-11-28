@@ -1,5 +1,9 @@
-import Verified.Examples.Wgsl
-import Verified.PTX.Compile
+module
+
+public import Verified.Examples.Wgsl
+public import Verified.PTX.Compile
+
+@[expose] public section
 
 /-!
 The PTX kernels of the WGSL examples `scale`, `branchSum`, `flags`, `wordScan`, and `roundRoot`, and

@@ -1,6 +1,10 @@
-import Demos.Slew.Verified
-import Demos.Slew.Search
-import Demos.Slew.Valid
+module
+
+public import Demos.Slew.Verified
+public import Demos.Slew.Search
+public import Demos.Slew.Valid
+
+@[expose] public section
 
 /-! The allocation bound of the slew planner.  `compiled.plan.bound` is the number of bytes by
 which the module's `plan` can raise the allocator's `top`, which `compiled.plan.bound_eq` states

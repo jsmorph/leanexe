@@ -1,6 +1,10 @@
-import LeanExe.Wasi.Interpreter
-import LeanExe.Wasi.CallTable
-import Std.Time
+module
+
+public import LeanExe.Wasi.Interpreter
+public import LeanExe.Wasi.CallTable
+public import Std.Time
+
+@[expose] public section
 
 /-!
 Native service of the flat calls of `LeanExe.Wasi.Sys` for `Action.run`.  `clock_time_get` reads

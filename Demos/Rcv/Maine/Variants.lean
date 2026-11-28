@@ -1,5 +1,9 @@
-import Demos.Rcv.Maine.Spec
-import Demos.Rcv.Variants
+module
+
+public import Demos.Rcv.Maine.Spec
+public import Demos.Rcv.Variants
+
+@[expose] public section
 
 /-!
 The counts with which T11 and T12 of [the requirements](requirements.md), section "Theorems",

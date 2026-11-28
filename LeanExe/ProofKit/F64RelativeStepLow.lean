@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RelativeStepWide
+module
+
+public import LeanExe.ProofKit.F64RelativeStepWide
+
+@[expose] public section
 
 /-!
 `F64RelativeStepWide.within_one_wide` extended below `2 ^ -1000`: a finite word within `47/32`

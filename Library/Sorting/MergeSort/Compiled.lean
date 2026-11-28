@@ -1,6 +1,10 @@
-import Library.Sorting.MergeSort.Proof
-import Verified.Reflect.Command
-import Verified.Congr
+module
+
+public import Library.Sorting.MergeSort.Proof
+public import Verified.Reflect.Command
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of merge sort.  The compiler translates the tail recursions of
 `merge`, `pass`, and `sortLoop` into loops.  `mergeSort` consumes its array, which the caller moves

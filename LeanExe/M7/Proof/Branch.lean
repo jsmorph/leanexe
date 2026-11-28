@@ -1,5 +1,9 @@
-import LeanExe.M7.Proof.Ops
-import LeanExe.M7.Proof.Div
+module
+
+public import LeanExe.M7.Proof.Ops
+public import LeanExe.M7.Proof.Div
+
+@[expose] public section
 
 /-!
 Branches with offsets that the generator computes, and the simulation of `divUI64` and

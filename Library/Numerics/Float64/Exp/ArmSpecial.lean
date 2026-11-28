@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ArmReconstruction
-import Library.Numerics.Float64.Exp.ExpNegativeFinal
+module
+
+public import Library.Numerics.Float64.Exp.ArmReconstruction
+public import Library.Numerics.Float64.Exp.ExpNegativeFinal
+
+@[expose] public section
 
 /-!
 The special paths of `Exp2.exp2SpecialCase`, shared by Arm's `exp2` and `exp10`, for any

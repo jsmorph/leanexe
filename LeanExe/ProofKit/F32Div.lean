@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F32DivCore
-import LeanExe.ProofKit.F32Add
+module
+
+public import LeanExe.ProofKit.F32DivCore
+public import LeanExe.ProofKit.F32Add
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32Div
 open Float.Model Float.Model.UnpackedFloat F32Encoding F32Packing F32Decoded F32DivCore FloatCommon

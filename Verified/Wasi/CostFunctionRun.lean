@@ -1,5 +1,9 @@
-import Verified.Wasi.CostFunctionPost
-import Verified.Wasi.FunctionEntryBudget
+module
+
+public import Verified.Wasi.CostFunctionPost
+public import Verified.Wasi.FunctionEntryBudget
+
+@[expose] public section
 
 namespace Verified.Wasi
 

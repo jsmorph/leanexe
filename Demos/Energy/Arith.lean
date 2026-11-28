@@ -1,5 +1,9 @@
-import Demos.Energy.Program
-import Demos.Energy.Words
+module
+
+public import Demos.Energy.Program
+public import Demos.Energy.Words
+
+@[expose] public section
 
 /-! The `UInt64` operations of the authorizer as natural-number operations: `toNat` of a minimum,
 maximum, sum, difference, or product, under bounds that keep the result in range, and the meaning

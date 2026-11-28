@@ -1,5 +1,9 @@
-import LeanExe.PTX.Semantics
-import LeanExe.ProofKit.Writes
+module
+
+public import LeanExe.PTX.Semantics
+public import LeanExe.ProofKit.Writes
+
+@[expose] public section
 
 /-!
 Properties of a thread's run under every oracle.  A result's events extend the events before it,

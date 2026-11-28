@@ -1,8 +1,12 @@
-import Library.Hashing.Sha2.Equiv.SHA512.Padding.Layout
-import Library.Hashing.Sha2.Equiv.SHA512.Padding.ByteDecoding
-import Library.Hashing.Sha2.Equiv.SHA512.Padding.Parsing
-import Library.Hashing.Sha2.Equiv.SHA512.ToU64s
-import Library.Hashing.Sha2.Equiv.Common.ArrayFold
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA512.Padding.Layout
+public import Library.Hashing.Sha2.Equiv.SHA512.Padding.ByteDecoding
+public import Library.Hashing.Sha2.Equiv.SHA512.Padding.Parsing
+public import Library.Hashing.Sha2.Equiv.SHA512.ToU64s
+public import Library.Hashing.Sha2.Equiv.Common.ArrayFold
+
+@[expose] public section
 
 /-! # SHA-512 padding: streaming refactor of `Impl.sha512`
 

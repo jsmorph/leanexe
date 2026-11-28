@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaAsym1
-import Library.Numerics.Float64.Tgamma.TgammaDDTop
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAsym1
+public import Library.Numerics.Float64.Tgamma.TgammaDDTop
+
+@[expose] public section
 
 /-!
 The product `(l - 1)(x - 1/2)` of `Lgamma.asLgammaAsymAccurate`, for the logarithm

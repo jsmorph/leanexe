@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaLogdTab
-import Library.Numerics.Float64.Tgamma.TgammaLogdKernel
-import LeanExe.ProofKit.F64NegateOps
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaLogdTab
+public import Library.Numerics.Float64.Tgamma.TgammaLogdKernel
+public import LeanExe.ProofKit.F64NegateOps
+
+@[expose] public section
 
 /-!
 The exact steps of `Tgamma.asLogd` before the final sums.  `ed_spec` gives the exponent `E` of a

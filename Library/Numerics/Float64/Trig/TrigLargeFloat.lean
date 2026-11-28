@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Trig.TrigLargeInt
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64Bits
+module
+
+public import Library.Numerics.Float64.Trig.TrigLargeInt
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-!
 The floating-point stage of `Trig.remLarge`.  The 53-bit words `hi` and `lo` convert exactly,

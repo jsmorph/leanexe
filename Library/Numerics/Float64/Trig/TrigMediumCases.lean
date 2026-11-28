@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Trig.TrigMediumConst
-import Library.Numerics.Float64.Trig.TrigMediumFn
-import Library.Numerics.Float64.Trig.TrigDistance
+module
+
+public import Library.Numerics.Float64.Trig.TrigMediumConst
+public import Library.Numerics.Float64.Trig.TrigMediumFn
+public import Library.Numerics.Float64.Trig.TrigDistance
+
+@[expose] public section
 
 /-!
 The three outcomes of fdlibm's medium reduction on words.  With `N` the count and

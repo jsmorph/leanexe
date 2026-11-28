@@ -1,4 +1,8 @@
-import LeanExe.Native.Clight.Bigstep
+module
+
+public import LeanExe.Native.Clight.Bigstep
+
+@[expose] public section
 
 /-!
 `run`, an evaluator for the big-step semantics of `Bigstep.lean`.  Expressions evaluate by

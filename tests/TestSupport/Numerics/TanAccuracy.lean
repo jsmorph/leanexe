@@ -1,6 +1,13 @@
-import Library.Numerics.Float64.Tan.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.Reference
+module
+
+public import Library.Numerics.Float64.Tan.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.Reference
+public meta import Library.Numerics.Float64.Tan.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Tan.tan` against a reference computed with Lean's integers, rounded to the
 nearest double.  fdlibm states that the result is nearly rounded, and the check requires one unit in

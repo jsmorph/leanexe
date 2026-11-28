@@ -1,4 +1,8 @@
-import Verified.TreeStorage
+module
+
+public import Verified.TreeStorage
+
+@[expose] public section
 
 namespace Verified
 

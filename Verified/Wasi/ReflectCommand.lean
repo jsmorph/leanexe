@@ -1,25 +1,33 @@
-import Verified.Wasi.ReflectProgram
-import Verified.Wasi.ReflectEncoding
-import Verified.Wasi.ReflectValidity
-import Verified.Wasi.SyntaxCheck
-import Verified.Wasi.Correct
-import Verified.Wasi.ProgramInitial
-import Verified.Wasi.StaticPool
-import Verified.Wasi.NativeTotal
-import Verified.Wasi.CommandTotal
-import Verified.Wasi.Stack
-import Verified.Wasi.Handles
+module
+
+public import Verified.Wasi.ReflectProgram
+public import Verified.Wasi.ReflectEncoding
+public import Verified.Wasi.ReflectValidity
+public import Verified.Wasi.SyntaxCheck
+public import Verified.Wasi.Correct
+public import Verified.Wasi.ProgramInitial
+public import Verified.Wasi.StaticPool
+public import Verified.Wasi.NativeTotal
+public import Verified.Wasi.CommandTotal
+public import Verified.Wasi.Stack
+public import Verified.Wasi.Handles
+public meta import Verified.Wasi.ReflectProgram
+public meta import Verified.Wasi.ReflectEncoding
+public meta import Verified.Wasi.ReflectValidity
+public meta import Verified.Wasi.SyntaxCheck
+
+@[expose] public section
 
 namespace Verified.Wasi.Reflect
 
 open Lean Meta Elab Command Term
 open Verified.Reflect
 
-private def isEffectful (name : Name) : MetaM Bool := do
+private meta def isEffectful (name : Name) : MetaM Bool := do
   forallTelescopeReducing (← getConstInfo name).type fun _ result => do
     return (← whnfR result).isAppOf ``LeanExe.Wasi.Action
 
-private def checkShortNames (names : Array Name) : CommandElabM Unit := do
+private meta def checkShortNames (names : Array Name) : CommandElabM Unit := do
   let mut seen : List String := []
   for name in names do
     let short := name.getString!
@@ -27,7 +35,7 @@ private def checkShortNames (names : Array Name) : CommandElabM Unit := do
       throwError "verified_compile_wasi: definitions share the generated name {short}"
     seen := short :: seen
 
-private partial def specializeTheoremAux (lemmaTerm : Lean.Expr)
+private meta partial def specializeTheoremAux (lemmaTerm : Lean.Expr)
     (assigned : List (Name × Lean.Expr)) (type : Lean.Expr)
     (arguments retained : Array Lean.Expr) : MetaM Lean.Expr := do
     match ← whnf type with
@@ -42,11 +50,11 @@ private partial def specializeTheoremAux (lemmaTerm : Lean.Expr)
           specializeTheoremAux lemmaTerm assigned (body.instantiate1 value)
             (arguments.push value) (retained.push value)
     | _ => mkLambdaFVars retained (mkAppN lemmaTerm arguments)
-private def specializeTheorem (name : Name) (assigned : List (Name × Lean.Expr)) : MetaM Lean.Expr := do
+private meta def specializeTheorem (name : Name) (assigned : List (Name × Lean.Expr)) : MetaM Lean.Expr := do
   let lemmaTerm ← mkConstWithFreshMVarLevels name
   specializeTheoremAux lemmaTerm assigned (← inferType lemmaTerm) #[] #[]
 
-private def emitCompilerProofs (target : Name) (base : Name) (calls : Bool) :
+private meta def emitCompilerProofs (target : Name) (base : Name) (calls : Bool) :
     CommandElabM Unit := do
   let pureProgram := mkIdent (base ++ `pure ++ `program)
   let pureFuns := mkIdent (base ++ `pure ++ `funs)
@@ -105,7 +113,7 @@ private def emitCompilerProofs (target : Name) (base : Name) (calls : Bool) :
   elabCommand (← `(theorem $(mkIdent (target ++ `initial)) {World : Type} (world : World) :
       type_of% $initial := $initial))
 
-private def nativeEnvironment (reflected : Reflected) (params : Array Lean.Expr) : MetaM Lean.Expr := do
+private meta def nativeEnvironment (reflected : Reflected) (params : Array Lean.Expr) : MetaM Lean.Expr := do
   let types ← params.toList.mapM fun param => do tyOf (← inferType param)
   let mut env := (← ctxEnvExpr (params.toList.zip types)).2
   for table in reflected.tables.reverse do
@@ -114,7 +122,7 @@ private def nativeEnvironment (reflected : Reflected) (params : Array Lean.Expr)
       #[some context, some (tyExpr (.array .word)), some (mkConst table.name), some env]
   return env
 
-private def totalExecutionProof (resourceSafe : Lean.Expr) (command? : Option Lean.Expr := none) :
+private meta def totalExecutionProof (resourceSafe : Lean.Expr) (command? : Option Lean.Expr := none) :
     MetaM Lean.Expr := do
   forallTelescope (← inferType resourceSafe) fun binders _ => do
     let execution := mkAppN resourceSafe binders
@@ -136,11 +144,11 @@ private def totalExecutionProof (resourceSafe : Lean.Expr) (command? : Option Le
 
 /-- The assignments of the call list and of the program's correctness theorem: the general
 forms take `calls` and `effectCalls`, and the forms without calls take `calls`. -/
-private def callAssignments (base : Name) (calls : Bool) : List (Name × Lean.Expr) :=
+private meta def callAssignments (base : Name) (calls : Bool) : List (Name × Lean.Expr) :=
   if calls then [(`calls, mkConst (base ++ `sysCalls)), (`effectCalls, mkConst (base ++ `calls))]
   else [(`calls, mkConst (base ++ `calls))]
 
-private def emitEntryProofs (base : Name) (state : ProgramReflection) (calls : Bool) :
+private meta def emitEntryProofs (base : Name) (state : ProgramReflection) (calls : Bool) :
     TermElabM Unit := do
   let runName := if calls then ``compiled_native_entry_run_with else ``compiled_native_entry_run
   let exportName := if calls then ``compile_entry_export_with else ``compile_entry_export
@@ -187,7 +195,7 @@ private def emitEntryProofs (base : Name) (state : ProgramReflection) (calls : B
     addTheorem (functionBase ++ `exported) (← inferType exportProof) exportProof
     addTheorem (functionBase ++ `total) (← inferType total) total
 
-private def emitCommandProofs (base : Name) (state : ProgramReflection) (name : Name)
+private meta def emitCommandProofs (base : Name) (state : ProgramReflection) (name : Name)
     (calls : Bool) : TermElabM Unit := do
   let runName := if calls then ``compiled_native_start_run_with else ``compiled_native_start_run
   let exportName := if calls then ``compile_start_export_with else ``compile_start_export
@@ -217,7 +225,7 @@ private def emitCommandProofs (base : Name) (state : ProgramReflection) (name : 
       ← mkEqRefl (mkConst ``Bool.true), native, mkConst reflected.meaning]
   addTheorem (base ++ `handles) (← inferType handles) handles
 
-private def compileProgram (target : Ident) (sources : Array Ident) (main? : Option Ident) :
+private meta def compileProgram (target : Ident) (sources : Array Ident) (main? : Option Ident) :
     CommandElabM Unit := do
   let names ← sources.mapM fun source => liftCoreM <| realizeGlobalConstNoOverloadWithInfo source
   if names.isEmpty then throwError "verified_compile_wasi: the definition list is empty"
@@ -281,13 +289,13 @@ syntax (name := verifiedCompileWasiMain)
   "verified_compile_wasi " ident " (" &"main" " := " ident ")" " := " "[" ident,* "]" : command
 
 @[command_elab verifiedCompileWasi]
-def elabVerifiedCompileWasi : CommandElab
+meta def elabVerifiedCompileWasi : CommandElab
   | `(verified_compile_wasi $target := [$sources,*]) =>
       compileProgram target sources.getElems none
   | _ => throwUnsupportedSyntax
 
 @[command_elab verifiedCompileWasiMain]
-def elabVerifiedCompileWasiMain : CommandElab
+meta def elabVerifiedCompileWasiMain : CommandElab
   | `(verified_compile_wasi $target (main := $main) := [$sources,*]) =>
       compileProgram target sources.getElems (some main)
   | _ => throwUnsupportedSyntax

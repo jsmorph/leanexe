@@ -1,5 +1,9 @@
-import Library.Queues.BinaryHeap.Spec
-import TestSupport.Host
+module
+
+public import Library.Queues.BinaryHeap.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of the binary heap. -/
 

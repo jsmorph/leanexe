@@ -1,5 +1,9 @@
 --#--
-import Library.Hashing.Sha2.Spec.Notation
+module
+
+public import Library.Hashing.Sha2.Spec.Notation
+
+@[expose] public section
 set_option autoImplicit true
 --#--
 

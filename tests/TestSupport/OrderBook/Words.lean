@@ -1,3 +1,7 @@
+module
+
+@[expose] public section
+
 /-! Files of little-endian words and the Wasmtime host's format for arrays, which the order book's
 native comparison and its module cases share. -/
 

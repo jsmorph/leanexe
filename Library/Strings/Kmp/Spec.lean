@@ -1,4 +1,8 @@
-import Library.Bytes.Packed
+module
+
+public import Library.Bytes.Packed
+
+@[expose] public section
 
 /-! The specification of the occurrences of a pattern in a text, both byte strings held eight bytes
 to a word as `Library.Bytes` states.  `OccursAt pat m txt n i` states that the `m` bytes of the

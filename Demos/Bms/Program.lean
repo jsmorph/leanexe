@@ -1,6 +1,10 @@
-import LeanExe.Requests.DelimitedWords
-import LeanExe.Native.Requests
-import Library.Hashing.Crc.Bitwise.Program
+module
+
+public import LeanExe.Requests.DelimitedWords
+public import LeanExe.Native.Requests
+public import Library.Hashing.Crc.Bitwise.Program
+
+@[expose] public section
 
 /-!
 The BMS protection machine of `Demos/Bms/Spec.lean` in the verified compiler's dialect, framed by

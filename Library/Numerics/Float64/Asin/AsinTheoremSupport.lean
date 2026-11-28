@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Asin.Compiled
-import Library.Numerics.Float64.Asin.AsinKernelPoly
-import Library.Numerics.Float64.Log1p.Log1pTheoremReduce
-import LeanExe.ProofKit.F64ExactProduct
+module
+
+public import Library.Numerics.Float64.Asin.Compiled
+public import Library.Numerics.Float64.Asin.AsinKernelPoly
+public import Library.Numerics.Float64.Log1p.Log1pTheoremReduce
+public import LeanExe.ProofKit.F64ExactProduct
+
+@[expose] public section
 
 /-!
 Word facts for `Asin.asin` and `Asin.acos`.  Clearing the low 32 bits of a positive normal word

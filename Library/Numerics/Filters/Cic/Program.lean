@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! This module writes the CIC decimation filter of order 3, decimation 8, and differential delay 1
 in the verified compiler's dialect, in the block form of `Cascade.lean`: three integrator passes
 over the whole input, a decimation pass, and three comb passes over the decimated list.  Each pass

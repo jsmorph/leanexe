@@ -10,6 +10,13 @@ request in Python, compared it with every output, and ran no Lean code of the re
 `spec.sha256` holds the hashes of the reviewed specification and samples, which the demo's driver
 checks.
 
+The conversion of leanexe to Lean's module system (`ad4562d27`) is the only commit that changed
+`Spec.lean` and `Samples.lean` after the reviewed version, that of `5d4b57adf`, and it changed only
+their header lines, so `spec.sha256` records the hashes of the files with the new lines.  In each
+file, it added `module` and a blank line before the import, made the import `public import
+LeanExe.Dialect.Bytes`, and added a blank line and `@[expose] public section` after it.  Every other
+line of the two files is the line that the reviews below covered.
+
 ### First review
 
 The first review found no disagreement.  Its model agreed with the 64 outputs of the first sample

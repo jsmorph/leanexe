@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.TaylorRemainder
+module
+
+public import LeanExe.ProofKit.TaylorRemainder
+
+@[expose] public section
 
 /-!
 The approximation errors of the two polynomials of Arm's `log`, as `Log.logCore` and

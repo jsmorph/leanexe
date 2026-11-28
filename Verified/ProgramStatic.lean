@@ -1,4 +1,8 @@
-import Verified.Correct
+module
+
+public import Verified.Correct
+
+@[expose] public section
 
 namespace Verified
 

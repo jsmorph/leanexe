@@ -1,7 +1,11 @@
-import Library.Combinatorics.NextPermutation.Program
-import Library.Combinatorics.NextPermutation.Spec
-import Library.Sorting.Heapsort.Proof
-import Library.Sorting.Sorted
+module
+
+public import Library.Combinatorics.NextPermutation.Program
+public import Library.Combinatorics.NextPermutation.Spec
+public import Library.Sorting.Heapsort.Proof
+public import Library.Sorting.Sorted
+
+@[expose] public section
 
 /-! The proof that `nextPerm` computes the next arrangement.  A list in nonincreasing order is
 greater than or equal to each of its arrangements, and a list in nondecreasing order is less than or

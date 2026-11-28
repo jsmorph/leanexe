@@ -1,5 +1,9 @@
-import LeanExe.WGSL.Semantics
-import LeanExe.ProofKit.F32Canonical
+module
+
+public import LeanExe.WGSL.Semantics
+public import LeanExe.ProofKit.F32Canonical
+
+@[expose] public section
 
 namespace LeanExe.WGSL
 

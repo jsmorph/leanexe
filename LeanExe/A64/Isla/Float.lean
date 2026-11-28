@@ -1,4 +1,8 @@
-import LeanExe.A64.Isla.Walk
+module
+
+public import LeanExe.A64.Isla.Walk
+
+@[expose] public section
 
 /-!
 The equations of the floating-point functions that the traces of the floating-point forms leave

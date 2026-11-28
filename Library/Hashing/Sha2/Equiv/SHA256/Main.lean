@@ -1,4 +1,8 @@
-import Library.Hashing.Sha2.Equiv.SHA256.Pipeline
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA256.Pipeline
+
+@[expose] public section
 
 /-! # SHA-256 spec ↔ implementation — main user-facing theorems
 

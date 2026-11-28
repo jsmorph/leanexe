@@ -1,5 +1,9 @@
-import Demos.RunningSumFp.Kernel
-import Demos.StreamFold.Model
+module
+
+public import Demos.RunningSumFp.Kernel
+public import Demos.StreamFold.Model
+
+@[expose] public section
 
 namespace Demos.RunningSumFp
 

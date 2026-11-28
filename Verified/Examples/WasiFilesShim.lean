@@ -1,5 +1,9 @@
-import Verified.Examples.WasiFiles
-import Verified.Shim
+module
+
+public import Verified.Examples.WasiFiles
+public import Verified.Shim
+
+@[expose] public section
 
 /-!
 The footprint theorem and the descriptor corollary at the specification level for the files

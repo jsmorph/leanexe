@@ -1,5 +1,9 @@
-import Demos.Rcv.ProcessModule
-import Demos.Rcv.ProcessRun
+module
+
+public import Demos.Rcv.ProcessModule
+public import Demos.Rcv.ProcessRun
+
+@[expose] public section
 
 /-! The refinement of [the process](Process.lean) by its compiled module.  `step_related` and
 `begin_related` relate the reflected `step` and `begin` to the native ones on the state's tuple,

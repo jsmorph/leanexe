@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaLeaf
-import Library.Numerics.Float64.Lgamma.LgammaBranches
-import Library.Numerics.Float64.Lgamma.LgammaSign
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaLeaf
+public import Library.Numerics.Float64.Lgamma.LgammaBranches
+public import Library.Numerics.Float64.Lgamma.LgammaSign
+
+@[expose] public section
 
 /-!
 The walk of the fast path's block of `Lgamma.lgammaR` to `FastSpec`, and with it one step for the

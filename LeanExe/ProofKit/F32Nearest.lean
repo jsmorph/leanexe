@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F32Convert
-import LeanExe.ProofKit.F32Bits
+module
+
+public import LeanExe.ProofKit.F32Convert
+public import LeanExe.ProofKit.F32Bits
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32Nearest
 

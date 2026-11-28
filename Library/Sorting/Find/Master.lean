@@ -1,5 +1,9 @@
-import Library.Sorting.Find.Compiled
-import Verified.Master
+module
+
+public import Library.Sorting.Find.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Sorting.Find
 

@@ -1,5 +1,9 @@
-import Verified.Examples.ListLoops
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.ListLoops
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/listloops.wasm`: the file holds
 `encode ListLoops.compiled.module`, and it decodes to the module of `ListLoops.compiled.bytes`. -/

@@ -1,11 +1,15 @@
-import Demos.RandomChoice.Spec
-import Mathlib.Algebra.BigOperators.Ring.Finset
-import Mathlib.Data.Fintype.BigOperators
-import Mathlib.Data.FinEnum
-import Mathlib.Data.Nat.Count
-import Mathlib.Data.Int.CardIntervalMod
-import Mathlib.Data.UInt
-import Mathlib.Tactic
+module
+
+public import Demos.RandomChoice.Spec
+public import Mathlib.Algebra.BigOperators.Ring.Finset
+public import Mathlib.Data.Fintype.BigOperators
+public import Mathlib.Data.FinEnum
+public import Mathlib.Data.Nat.Count
+public import Mathlib.Data.Int.CardIntervalMod
+public import Mathlib.Data.UInt
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-! Counting theorems of `pickSpec`, which state that the choice is unbiased.  They count words
 and sequences of words and assume no probability.
@@ -179,8 +183,6 @@ theorem moment_eq (n : UInt64) (M : Nat) :
   refine sum_congr rfl fun ws _ => ?_
   rw [prod_ite, prod_const_one, prod_const, one_mul]
   congr 2
-  ext i
-  simp
 
 /-- The sum over one word is at most `2^65`, since at most `2^63` words are rejected. -/
 theorem moment_word (n : UInt64) (hn : n ≠ 0) :

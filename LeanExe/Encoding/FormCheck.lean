@@ -1,5 +1,9 @@
-import LeanExe.Encoding.Completeness.Instructions
-import LeanExe.Encoding.DecodeCorrect.Basic
+module
+
+public import LeanExe.Encoding.Completeness.Instructions
+public import LeanExe.Encoding.DecodeCorrect.Basic
+
+@[expose] public section
 
 namespace Wasm.Encoding
 

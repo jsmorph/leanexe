@@ -1,11 +1,16 @@
-import TestSupport.Regex.Generate
+module
+
+public import TestSupport.Regex.Generate
+public meta import TestSupport.Regex.Generate
+
+@[expose] public section
 
 /-! Writes cases for `tests/regex/python_check.py`: one line per pattern and input, with the
 pattern's postfix words, the input's bytes in hexadecimal, and the answer of
 `Library.Regex.matchWith`, separated by `|`.  The patterns are those of
 `TestSupport.Regex.Generate` and random word sequences, and the inputs are every string of at
-most three of its input bytes.  Run with `lake env lean --run` after building
-`TestSupport.Regex.Generate`. -/
+most three of its input bytes.  Run the executable
+`regex-python-cases`. -/
 
 namespace TestSupport.Regex.PythonCases
 

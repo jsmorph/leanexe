@@ -1,5 +1,9 @@
-import LeanExe.A64.Isla.Trace
-import LeanExe.A64.Encode
+module
+
+public import LeanExe.A64.Isla.Trace
+public import LeanExe.A64.Encode
+
+@[expose] public section
 
 /-!
 Checks of the model's `exec` against Isla's traces of the Armv9.4-A Sail model.  `Agrees` states

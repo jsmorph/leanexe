@@ -1,5 +1,9 @@
-import Verified.Reflect.Command
-import Library.Random.Lcg.Jump
+module
+
+public import Verified.Reflect.Command
+public import Library.Random.Lcg.Jump
+
+@[expose] public section
 
 /-! A program of the verified compiler: the linear congruential generator of
 `Library/Random/Lcg/Program.lean`, compiled unchanged.  None of its functions allocates, so the compiler's

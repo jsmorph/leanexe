@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+
+@[expose] public section
 
 /-!
 A bound on CORE-MATH's polynomial for `Γ` about 3.5 (`tgamma.c` lines 812-855, commit `ff2f71f6`).

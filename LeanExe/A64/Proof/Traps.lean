@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.Straight
+module
+
+public import LeanExe.A64.Proof.Straight
+
+@[expose] public section
 
 /-!
 The simulation of the instructions that can trap: `unreachable`, `remUI64`, and `divUI64`.  A

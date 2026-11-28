@@ -1,6 +1,10 @@
-import Verified.Reflect.Command
-import LeanExe.A64.Proof.BytesRuns
-import TestSupport.A64.Programs
+module
+
+public import Verified.Reflect.Command
+public import LeanExe.A64.Proof.BytesRuns
+public import TestSupport.A64.Programs
+
+@[expose] public section
 
 /-!
 A function over bytes as a bare-metal program that reads its input from the UART: `flipBit5`

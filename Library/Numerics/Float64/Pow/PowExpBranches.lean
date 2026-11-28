@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpBranches
-import Library.Numerics.Float64.Pow.Compiled
+module
+
+public import Library.Numerics.Float64.Exp.ExpBranches
+public import Library.Numerics.Float64.Pow.Compiled
+
+@[expose] public section
 
 /-!
 The branches of `Pow.powExp` with `signBias = 0`.  The exponent field `abstop` of `x` selects

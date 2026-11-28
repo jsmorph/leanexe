@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaSinpiAbs
-import Library.Numerics.Float64.Lgamma.LgammaFastPos
-import Library.Numerics.Float64.Tgamma.TgammaAsym3
-import Library.Numerics.Float64.Tgamma.TgammaFloor
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaSinpiAbs
+public import Library.Numerics.Float64.Lgamma.LgammaFastPos
+public import Library.Numerics.Float64.Tgamma.TgammaAsym3
+public import Library.Numerics.Float64.Tgamma.TgammaFloor
+
+@[expose] public section
 
 /-!
 The core of the fast path's reflection in `Lgamma.lgammaWith` for `x ≤ -1/2`.  With `a = -x`, the

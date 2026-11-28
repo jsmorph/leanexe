@@ -1,188 +1,194 @@
-import Verified.Source
-import Verified.Tree
-import Verified.TreeHeader
-import Verified.TreeDetach
-import Verified.TreeAttach
-import Verified.TreeStorage
-import Verified.TreeRestore
-import Verified.TreeInitialize
-import Verified.TreeFieldsStore
-import Verified.TreeFieldsLoad
-import Verified.TreeFieldsState
-import Verified.TreeFieldValues
-import Verified.TreeFieldLocs
-import Verified.FieldsExpr
-import Verified.FieldsAdvance
-import Verified.BindPrefix
-import Verified.ContextHEq
-import Verified.TreeMatchBlocks
-import Verified.TreeFieldPositions
-import Verified.FieldsArgs
-import Verified.TreeAssembleCode
-import Verified.TreePackedBlocks
-import Verified.TreeRelease
-import Verified.TreeLayout
-import Verified.TreeCopyWork
-import Verified.TreeNodeLayout
-import Verified.Compile
-import Verified.CodeMask
-import Verified.State
-import Verified.Correct
-import Verified.Call
-import Verified.Congr
-import Verified.BoundFacts
-import Verified.LoopCostLast
-import Verified.ChargeFacts
-import Verified.Reflect.Lemmas
-import Verified.Reflect.BoundLemmas
-import Verified.Reflect.FitsLemmas
-import Verified.Reflect.Command
-import Verified.Examples.Poly
-import Verified.Examples.Mix
-import Verified.Examples.Lets
-import Verified.Examples.Select
-import Verified.Examples.Calls
-import Verified.Examples.Frontend
-import Verified.Examples.Fold
-import Verified.Examples.TreeCopy
-import Verified.Examples.TreeCore
-import Verified.Examples.Lists
-import Verified.Examples.Composition
-import Verified.Examples.CompositionPure
-import Verified.Examples.ScalarComposition
-import Verified.Examples.Relocation
-import Verified.WGSL.Compile
-import Verified.Examples.WgslProof
-import Verified.PTX.Compile
-import Verified.WgslPtx
-import Verified.Examples.Ptx
-import Verified.Examples.ListRecursion
-import Verified.Examples.ListLoops
-import Verified.Examples.ListTail
-import Verified.Examples.RecursiveTypes
-import Verified.Examples.TaggedTypes
-import Verified.Examples.TailCore
-import Verified.Examples.Tail
-import Verified.Examples.TailConditions
-import Verified.Examples.TailReflection
-import Verified.ArrayFold
-import Verified.TailRun
-import Verified.TailArgs
-import Verified.TailCorrect
-import Verified.TailBind
-import Verified.TailEntryFacts
-import Verified.FunRenameBound
-import Verified.TailExpand
-import Verified.TailAllocExpand
-import Verified.TailTransport
-import Verified.Reflect.TailModes
-import Verified.Reflect.TailLemmas
-import Verified.Reflect.TailBoundLemmas
-import Verified.Examples.Pairs
-import Verified.Examples.Loops
-import Verified.Examples.Arrays
-import Verified.Examples.Owned
-import Verified.Examples.Bytes
-import Verified.Examples.BytesSet
-import Verified.Examples.Updates
-import Verified.Examples.Grow
-import Verified.Examples.Modes
-import Verified.Examples.Floats
-import Verified.Examples.Floats32
-import Verified.Examples.Signed
-import Verified.Examples.WasiSigned
-import Verified.Examples.Sums
-import Verified.Examples.HeapSums
-import Verified.Examples.TypedTrees
-import Verified.Examples.ArrayTrees
-import Verified.Examples.BufferTrees
-import Verified.Examples.Elements
-import Verified.Examples.Tuples
-import Verified.Examples.OwnedTuples
-import Verified.Examples.Records
-import Verified.Examples.Grids
-import Verified.Examples.Repeat
-import Verified.Examples.Enums
-import Verified.Examples.Recursion
-import Verified.Examples.Fields
-import Verified.Examples.Insert
-import Verified.Examples.Tables
-import Demos.Verified
-import Examples.Verified
-import Verified.Examples.Forms
-import Verified.Examples.Patterns
-import Verified.Wasi
-import Verified.Wasi.BudgetTactics
-import Verified.Examples.Literals
-import Verified.ProgramLiterals
-import Verified.Examples.WasiDepth
-import Verified.Examples.WasiRetainTotal
-import Verified.Examples.WasiRecordLoop
-import Verified.Examples.WasiStdio
-import Verified.Examples.WasiReadAll
-import Verified.Shim
-import Verified.Examples.WasiReadAllShim
-import Verified.Examples.WasiReadAllMessage
-import Verified.Examples.WasiReadAllSteady
-import Verified.Examples.WasiSysShim
-import Verified.Examples.WasiFilesShim
-import Verified.ShimA64
-import Verified.Examples.WasiReadAllNative
-import Verified.Examples.WasiPrestatNative
-import Verified.Examples.WasiSysEnvironNative
-import Verified.Examples.WasiSysNative
-import Verified.Examples.WasiClockRandomNative
-import Verified.Examples.WasiFilesNative
-import Verified.AlignedAccess
-import Verified.AlignedArrayCopy
-import Verified.AlignedSpec
-import Verified.AlignedRelease
-import Verified.AlignedReleaseChain
-import Verified.AlignedTreeFields
-import Verified.AlignedSpecIn
-import Verified.AlignedScalar
-import Verified.AlignedFloat32
-import Verified.AlignedReaders
-import Verified.AlignedControl
-import Verified.AlignedLoops
-import Verified.AlignedWriters
-import Verified.AlignedBytes
-import Verified.AlignedArgs
-import Verified.AlignedCall
-import Verified.AlignedTreeMemory
-import Verified.AlignedTreeNode
-import Verified.AlignedTreeAssemble
-import Verified.AlignedTreeBuild
-import Verified.AlignedTreeMatch
-import Verified.AlignedTreeCase
-import Verified.AlignedExprCorrect
-import Verified.AlignedEnv
-import Verified.AlignedFunction
-import Verified.AlignedRuntime
-import Verified.AlignedTreeCopyInv
-import Verified.AlignedTreeCopyCode
-import Verified.AlignedTreeCopyNew
-import Verified.AlignedTreeCopySteps
-import Verified.AlignedTreeCopyArray
-import Verified.AlignedTreeCopyBuffer
-import Verified.AlignedTreeCopySlot
-import Verified.AlignedTreeCopy
-import Verified.AlignedTreeHeaderCopy
-import Verified.AlignedCopy
-import Verified.AlignedCorollaries
-import Verified.AlignedTail
-import Verified.AlignedTailBody
-import Verified.AlignedTailLoop
-import Verified.AlignedTailTree
-import Verified.AlignedListFold
-import Verified.AlignedTailEntry
-import Verified.AlignedCorrect
-import Verified.AlignedEntries
-import Verified.AlignedNative
-import Verified.AlignedProgram
-import LeanExe.Native.Proof.Unique
-import Verified.Examples.ArrayTreesCases
-import Verified.Examples.BufferTreesCases
-import Verified.Examples.WasiCodegen
-import Verified.Examples.WasiProcess
-import Verified.Wasi.ReflectBinderCases
+module
+
+public import Verified.Source
+public import Verified.Tree
+public import Verified.TreeHeader
+public import Verified.TreeDetach
+public import Verified.TreeAttach
+public import Verified.TreeStorage
+public import Verified.TreeRestore
+public import Verified.TreeInitialize
+public import Verified.TreeFieldsStore
+public import Verified.TreeFieldsLoad
+public import Verified.TreeFieldsState
+public import Verified.TreeFieldValues
+public import Verified.TreeFieldLocs
+public import Verified.FieldsExpr
+public import Verified.FieldsAdvance
+public import Verified.BindPrefix
+public import Verified.ContextHEq
+public import Verified.TreeMatchBlocks
+public import Verified.TreeFieldPositions
+public import Verified.FieldsArgs
+public import Verified.TreeAssembleCode
+public import Verified.TreePackedBlocks
+public import Verified.TreeRelease
+public import Verified.TreeLayout
+public import Verified.TreeCopyWork
+public import Verified.TreeNodeLayout
+public import Verified.Compile
+public import Verified.CodeMask
+public import Verified.State
+public import Verified.Correct
+public import Verified.Call
+public import Verified.Congr
+public import Verified.BoundFacts
+public import Verified.LoopCostLast
+public import Verified.ChargeFacts
+public import Verified.Reflect.Lemmas
+public import Verified.Reflect.BoundLemmas
+public import Verified.Reflect.FitsLemmas
+public import Verified.Reflect.Command
+public import Verified.Exports
+public import Verified.Examples.Poly
+public import Verified.Examples.Mix
+public import Verified.Examples.Lets
+public import Verified.Examples.Select
+public import Verified.Examples.Calls
+public import Verified.Examples.Frontend
+public import Verified.Examples.Fold
+public import Verified.Examples.Exports
+public import Verified.Examples.TreeCopy
+public import Verified.Examples.TreeCore
+public import Verified.Examples.Lists
+public import Verified.Examples.Composition
+public import Verified.Examples.CompositionPure
+public import Verified.Examples.ScalarComposition
+public import Verified.Examples.Relocation
+public import Verified.WGSL.Compile
+public import Verified.Examples.WgslProof
+public import Verified.PTX.Compile
+public import Verified.WgslPtx
+public import Verified.Examples.Ptx
+public import Verified.Examples.ListRecursion
+public import Verified.Examples.ListLoops
+public import Verified.Examples.ListTail
+public import Verified.Examples.RecursiveTypes
+public import Verified.Examples.TaggedTypes
+public import Verified.Examples.TailCore
+public import Verified.Examples.Tail
+public import Verified.Examples.TailConditions
+public import Verified.Examples.TailReflection
+public import Verified.ArrayFold
+public import Verified.TailRun
+public import Verified.TailArgs
+public import Verified.TailCorrect
+public import Verified.TailBind
+public import Verified.TailEntryFacts
+public import Verified.FunRenameBound
+public import Verified.TailExpand
+public import Verified.TailAllocExpand
+public import Verified.TailTransport
+public import Verified.Reflect.TailModes
+public import Verified.Reflect.TailLemmas
+public import Verified.Reflect.TailBoundLemmas
+public import Verified.Examples.Pairs
+public import Verified.Examples.Loops
+public import Verified.Examples.Arrays
+public import Verified.Examples.Owned
+public import Verified.Examples.Bytes
+public import Verified.Examples.BytesSet
+public import Verified.Examples.Updates
+public import Verified.Examples.Grow
+public import Verified.Examples.Modes
+public import Verified.Examples.Floats
+public import Verified.Examples.Floats32
+public import Verified.Examples.Signed
+public import Verified.Examples.WasiSigned
+public import Verified.Examples.Sums
+public import Verified.Examples.HeapSums
+public import Verified.Examples.TypedTrees
+public import Verified.Examples.ArrayTrees
+public import Verified.Examples.BufferTrees
+public import Verified.Examples.Elements
+public import Verified.Examples.Tuples
+public import Verified.Examples.OwnedTuples
+public import Verified.Examples.Records
+public import Verified.Examples.Grids
+public import Verified.Examples.Repeat
+public import Verified.Examples.Enums
+public import Verified.Examples.Recursion
+public import Verified.Examples.Fields
+public import Verified.Examples.Insert
+public import Verified.Examples.Tables
+public import Demos.Verified
+public import Examples.Verified
+public import Verified.Examples.Forms
+public import Verified.Examples.Patterns
+public import Verified.Wasi
+public import Verified.Wasi.BudgetTactics
+public import Verified.Examples.Literals
+public import Verified.ProgramLiterals
+public import Verified.Examples.WasiDepth
+public import Verified.Examples.WasiRetainTotal
+public import Verified.Examples.WasiRecordLoop
+public import Verified.Examples.WasiStdio
+public import Verified.Examples.WasiReadAll
+public import Verified.Shim
+public import Verified.Examples.WasiReadAllShim
+public import Verified.Examples.WasiReadAllMessage
+public import Verified.Examples.WasiReadAllSteady
+public import Verified.Examples.WasiSysShim
+public import Verified.Examples.WasiFilesShim
+public import Verified.ShimA64
+public import Verified.Examples.WasiReadAllNative
+public import Verified.Examples.WasiPrestatNative
+public import Verified.Examples.WasiSysEnvironNative
+public import Verified.Examples.WasiSysNative
+public import Verified.Examples.WasiClockRandomNative
+public import Verified.Examples.WasiFilesNative
+public import Verified.AlignedAccess
+public import Verified.AlignedArrayCopy
+public import Verified.AlignedSpec
+public import Verified.AlignedRelease
+public import Verified.AlignedReleaseChain
+public import Verified.AlignedTreeFields
+public import Verified.AlignedSpecIn
+public import Verified.AlignedScalar
+public import Verified.AlignedFloat32
+public import Verified.AlignedReaders
+public import Verified.AlignedControl
+public import Verified.AlignedLoops
+public import Verified.AlignedWriters
+public import Verified.AlignedBytes
+public import Verified.AlignedArgs
+public import Verified.AlignedCall
+public import Verified.AlignedTreeMemory
+public import Verified.AlignedTreeNode
+public import Verified.AlignedTreeAssemble
+public import Verified.AlignedTreeBuild
+public import Verified.AlignedTreeMatch
+public import Verified.AlignedTreeCase
+public import Verified.AlignedExprCorrect
+public import Verified.AlignedEnv
+public import Verified.AlignedFunction
+public import Verified.AlignedRuntime
+public import Verified.AlignedTreeCopyInv
+public import Verified.AlignedTreeCopyCode
+public import Verified.AlignedTreeCopyNew
+public import Verified.AlignedTreeCopySteps
+public import Verified.AlignedTreeCopyArray
+public import Verified.AlignedTreeCopyBuffer
+public import Verified.AlignedTreeCopySlot
+public import Verified.AlignedTreeCopy
+public import Verified.AlignedTreeHeaderCopy
+public import Verified.AlignedCopy
+public import Verified.AlignedCorollaries
+public import Verified.AlignedTail
+public import Verified.AlignedTailBody
+public import Verified.AlignedTailLoop
+public import Verified.AlignedTailTree
+public import Verified.AlignedListFold
+public import Verified.AlignedTailEntry
+public import Verified.AlignedCorrect
+public import Verified.AlignedEntries
+public import Verified.AlignedNative
+public import Verified.AlignedProgram
+public import LeanExe.Native.Proof.Unique
+public import Verified.Examples.ArrayTreesCases
+public import Verified.Examples.BufferTreesCases
+public import Verified.Examples.WasiCodegen
+public import Verified.Examples.WasiProcess
+public import Verified.Wasi.ReflectBinderCases
+
+@[expose] public section

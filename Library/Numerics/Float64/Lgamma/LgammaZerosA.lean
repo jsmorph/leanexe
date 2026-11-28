@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaZeroBase
-import LeanExe.ProofKit.GammaReflect
-import LeanExe.ProofKit.GammaThresholds
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaZeroBase
+public import LeanExe.ProofKit.GammaReflect
+public import LeanExe.ProofKit.GammaThresholds
+
+@[expose] public section
 
 /-!
 Bounds on `|lgamma|` at the doubles of `(-n - 1, -n)` for `n` from 2 to 9, the intervals of the

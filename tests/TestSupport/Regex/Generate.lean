@@ -1,4 +1,8 @@
-import Library.Regex.Program
+module
+
+public import Library.Regex.Program
+
+@[expose] public section
 
 /-! Random patterns and inputs for the regex tests: pattern trees from a fixed seed over sets of the
 bytes 0, 1, 2, 63, 64, 128, 200, and 255, which reach every word of a set, their postfix words,

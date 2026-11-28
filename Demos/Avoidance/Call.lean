@@ -1,7 +1,11 @@
-import Demos.Avoidance.Verified
-import Demos.Avoidance.Soundness
-import Demos.Conjunction.BoxSoundness
-import Verified.Call
+module
+
+public import Demos.Avoidance.Verified
+public import Demos.Avoidance.Soundness
+public import Demos.Conjunction.BoxSoundness
+public import Verified.Call
+
+@[expose] public section
 
 /-! The calls of the compiled authorizer (C1).  `authorize_callSpec` states that the export
 `authorize`, function 111, returns `authorize xs n s` without a trap from every ready store in

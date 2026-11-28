@@ -1,20 +1,24 @@
-import Verified.Examples.Wgsl
+module
+
+public import Verified.Examples.Wgsl
+
+@[expose] public section
 
 namespace Verified.Examples.WgslCases
 
-private def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
+def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
 
-private def fwords (xs : Array Float32) : Array UInt64 := xs.map fun x => x.toBits.toUInt64
+def fwords (xs : Array Float32) : Array UInt64 := xs.map fun x => x.toBits.toUInt64
 
-private def gpuArg (arg : LeanExe.Source.Arg) : String :=
+def gpuArg (arg : LeanExe.Source.Arg) : String :=
   s!"u32:{",".intercalate (arg.wgslBuffer.toList.map toString)}"
 
-private def wasmArg : LeanExe.Source.Arg → String
+def wasmArg : LeanExe.Source.Arg → String
   | .word value => s!"i64:{value}"
   | .float bits => s!"f32:{bits}"
   | .array xs => s!"array-u64:{words xs.toList}"
 
-private def caseLine (name : String) (n extra : Nat) (inputs : List LeanExe.Source.Arg)
+def caseLine (name : String) (n extra : Nat) (inputs : List LeanExe.Source.Arg)
     (result : Array UInt64) : String :=
   let groups := max ((n + 63) / 64 + extra) 1
   let initial := n.toUInt64 :: List.replicate n 0x7fc000017fc00001
@@ -22,12 +26,12 @@ private def caseLine (name : String) (n extra : Nat) (inputs : List LeanExe.Sour
     [x &&& 0xffffffff, x >>> 32]
   s!"{name}|{groups}|u64:{words initial}|{" ".intercalate (inputs.map gpuArg)}|{words output}"
 
-private def emit (gpu : Bool) (entry kernel : String) (n extra : Nat)
+def emit (gpu : Bool) (entry kernel : String) (n extra : Nat)
     (inputs : List LeanExe.Source.Arg) (result : Array UInt64) : IO Unit :=
   if gpu then IO.println (caseLine kernel n extra inputs result)
   else IO.println s!"wgsl|{entry}|array-u64|{" ".intercalate (inputs.map wasmArg)}|{result.toList}|2|2"
 
-private def floatSpecials : Array Float32 :=
+def floatSpecials : Array Float32 :=
   #[0, 0x80000000, 0x3f800000, 0xc0000000, 1, 0x007fffff, 0x7f800000, 0xff800000, 0x7fc00000,
     0x3f000000, 0xbf000000, 0x3fc00000, 0xbfc00000, 0x40200000, 0xc0200000].map
     Float32.ofBits

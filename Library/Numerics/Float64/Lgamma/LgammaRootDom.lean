@@ -1,15 +1,19 @@
-import Library.Numerics.Float64.Lgamma.LgammaRootA0
-import Library.Numerics.Float64.Lgamma.LgammaRootA1
-import Library.Numerics.Float64.Lgamma.LgammaRootA2
-import Library.Numerics.Float64.Lgamma.LgammaRootB0
-import Library.Numerics.Float64.Lgamma.LgammaRootB1
-import Library.Numerics.Float64.Lgamma.LgammaRootB2
-import Library.Numerics.Float64.Lgamma.LgammaRootC
-import Library.Numerics.Float64.Lgamma.LgammaRootD0
-import Library.Numerics.Float64.Lgamma.LgammaRootD1
-import Library.Numerics.Float64.Lgamma.LgammaRootD2
-import Library.Numerics.Float64.Lgamma.LgammaRootE
-import Library.Numerics.Float64.Lgamma.LgammaRootF
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaRootA0
+public import Library.Numerics.Float64.Lgamma.LgammaRootA1
+public import Library.Numerics.Float64.Lgamma.LgammaRootA2
+public import Library.Numerics.Float64.Lgamma.LgammaRootB0
+public import Library.Numerics.Float64.Lgamma.LgammaRootB1
+public import Library.Numerics.Float64.Lgamma.LgammaRootB2
+public import Library.Numerics.Float64.Lgamma.LgammaRootC
+public import Library.Numerics.Float64.Lgamma.LgammaRootD0
+public import Library.Numerics.Float64.Lgamma.LgammaRootD1
+public import Library.Numerics.Float64.Lgamma.LgammaRootD2
+public import Library.Numerics.Float64.Lgamma.LgammaRootE
+public import Library.Numerics.Float64.Lgamma.LgammaRootF
+
+@[expose] public section
 
 /-!
 The domains of the 17 polynomials of `Lgamma.accurate` about the negative zeros: an argument of a

@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 namespace Library.Numerics.Reductions.Word
 
 /-- The sum of the elements modulo 2^64. -/

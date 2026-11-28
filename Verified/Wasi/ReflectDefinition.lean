@@ -1,6 +1,10 @@
-import Verified.Wasi.Reflect
-import Verified.Wasi.ReflectModes
-import Verified.Wasi.Program
+module
+
+public import Verified.Wasi.Reflect
+public import Verified.Wasi.ReflectModes
+public import Verified.Wasi.Program
+
+@[expose] public section
 
 namespace Verified.Wasi.Reflect
 

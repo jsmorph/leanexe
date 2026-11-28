@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Lgamma.LgammaBytes
-import Library.Numerics.Float64.Lgamma.LgammaSign
-import Library.Numerics.Float64.Lgamma.LgammaSpecial
-import LeanExe.ProofKit.F64RoundNearest
-import Verified.Master
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaBytes
+public import Library.Numerics.Float64.Lgamma.LgammaSign
+public import Library.Numerics.Float64.Lgamma.LgammaSpecial
+public import LeanExe.ProofKit.F64RoundNearest
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Lgamma
 

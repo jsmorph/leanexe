@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erfc.ErfcSeries
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcSeries
+
+@[expose] public section
 
 /-!
 `ErfcSeries.row_sound` with the shift in integer arithmetic.  The series of `n` terms has the

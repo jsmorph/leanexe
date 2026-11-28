@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaRootRanges
-import Library.Numerics.Float64.Lgamma.LgammaRootSel
-import Library.Numerics.Float64.Lgamma.LgammaAccFinal
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaRootRanges
+public import Library.Numerics.Float64.Lgamma.LgammaRootSel
+public import Library.Numerics.Float64.Lgamma.LgammaAccFinal
+
+@[expose] public section
 
 /-!
 **The step about the negative zeros** of `Lgamma.accurate`: when `rootRange` selects a range, the

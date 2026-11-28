@@ -1,5 +1,9 @@
-import Library.Numerics.MultiPrecision.Proof
-import Library.Numerics.Arithmetic.Uscale.UscaleDiv
+module
+
+public import Library.Numerics.MultiPrecision.Proof
+public import Library.Numerics.Arithmetic.Uscale.UscaleDiv
+
+@[expose] public section
 
 /-! The proof that Algorithm D computes the digits of the quotient and the remainder.  Algorithm D
 calls the Uscale module's `mulSmall` and `wordBits`, whose theorems state values with `val`, so

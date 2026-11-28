@@ -1,4 +1,8 @@
-import LeanExe.M7.Proof.Branch
+module
+
+public import LeanExe.M7.Proof.Branch
+
+@[expose] public section
 
 /-!
 The simulation of a call.  The caller copies the arguments from the operand slots of their

@@ -1,4 +1,8 @@
-import Demos.PassiveSafety.Model
+module
+
+public import Demos.PassiveSafety.Model
+
+@[expose] public section
 
 /-!
 The trajectory of a scenario between its burns, and Taylor's theorem of order two.  `smooth` is

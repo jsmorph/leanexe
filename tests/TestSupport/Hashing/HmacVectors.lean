@@ -1,6 +1,13 @@
-import Library.Hashing.Hmac.Program
-import Library.Hashing.Hmac.Spec
-import TestSupport.Hashing.Packing
+module
+
+public import Library.Hashing.Hmac.Program
+public import Library.Hashing.Hmac.Spec
+public import TestSupport.Hashing.Packing
+public meta import Library.Hashing.Hmac.Program
+public meta import Library.Hashing.Hmac.Spec
+public meta import TestSupport.Hashing.Packing
+
+@[expose] public section
 
 /-! A native check of HMAC-SHA-256 and HMAC-SHA-512 in `Library.Hashing.Hmac` on the seven test
 cases of RFC 4231 §4, whose case 5 gives the first 16 bytes of each MAC, and of the transcription

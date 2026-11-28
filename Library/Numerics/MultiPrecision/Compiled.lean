@@ -1,8 +1,12 @@
-import Library.Numerics.MultiPrecision.Proof
-import Library.Numerics.MultiPrecision.DivideProof
-import Verified.Reflect.Command
-import Verified.Call
-import Verified.Congr
+module
+
+public import Library.Numerics.MultiPrecision.Proof
+public import Library.Numerics.MultiPrecision.DivideProof
+public import Verified.Reflect.Command
+public import Verified.Call
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of multiple-precision arithmetic.  The call theorems compose the
 generated `trapFree` theorems with `add_eq`, `sub_eq`, `mul_eq`, and `divide_eq`, with the

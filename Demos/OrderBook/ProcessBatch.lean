@@ -1,5 +1,9 @@
-import Demos.OrderBook.Process
-import Demos.OrderBook.Refinement
+module
+
+public import Demos.OrderBook.Process
+public import Demos.OrderBook.Refinement
+
+@[expose] public section
 
 /-! The batch lemma of [the process](Process.lean).  `batch_refines` states that one call of
 `Program.run` on a batch of words, from a book that represents the specification's book after a

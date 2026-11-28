@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaSinAccTail
-import Library.Numerics.Float64.Lgamma.LgammaSinAccKern
-import Library.Numerics.Float64.Lgamma.LgammaSinAccRed
-import Library.Numerics.Float64.Lgamma.LgammaSinpi
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaSinAccTail
+public import Library.Numerics.Float64.Lgamma.LgammaSinAccKern
+public import Library.Numerics.Float64.Lgamma.LgammaSinAccRed
+public import Library.Numerics.Float64.Lgamma.LgammaSinpi
+
+@[expose] public section
 
 /-!
 **`Lgamma.asSinpipidAccurate` within `2^-85` of `sin (π x)/π`, relative,** for every double

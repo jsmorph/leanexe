@@ -1,7 +1,11 @@
-import Library.Hashing.Hmac.Compiled
-import Library.Hashing.Hmac.Proof256
-import Library.Hashing.Hmac.Proof512
-import Verified.Call
+module
+
+public import Library.Hashing.Hmac.Compiled
+public import Library.Hashing.Hmac.Proof256
+public import Library.Hashing.Hmac.Proof512
+public import Verified.Call
+
+@[expose] public section
 
 /-! The bytes of the modules `hmac_sha256` and `hmac_sha512` compute HMAC-SHA-256 and
 HMAC-SHA-512 of FIPS 198-1.  Each entry, called from a ready store with a borrowed key array `key`

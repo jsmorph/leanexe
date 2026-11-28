@@ -1,4 +1,9 @@
-import Demos.Euler.Buffered
+module
+
+public import Demos.Euler.Buffered
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-! The buffered Euler solvers equal those of the first-order and reconstructed programs.  A sweep
 into a grid of the right size equals the sweep that builds a new grid, by `loop_set`.  The loops

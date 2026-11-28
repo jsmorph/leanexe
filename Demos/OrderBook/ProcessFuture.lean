@@ -1,4 +1,8 @@
-import Demos.OrderBook.ProcessControl
+module
+
+public import Demos.OrderBook.ProcessControl
+
+@[expose] public section
 
 /-! The invariant of [the process](Process.lean) and its preservation by each step.  `Future`
 relates a reached state to the input bytes of the whole run, which are the bytes whose words the

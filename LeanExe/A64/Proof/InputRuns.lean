@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.Input
+module
+
+public import LeanExe.A64.Proof.Input
+
+@[expose] public section
 
 /-!
 The theorems of the programs and images that read their arguments from the UART.
@@ -46,6 +50,17 @@ def InputRuns (m : Module) (k n : Nat) (room : UInt64) (cap : Nat) (o : Output)
     (∀ j < 8 * n, (∀ i < j, ¬ P.rx.Flagged i) → P.rx.Flagged j →
       ∃ ms', Reach P (fetchFrom ms.mem (after base 1) is.length) ms ms' ∧ ms'.pc = base ∧
         ms'.x 0 = 65 ∧ ms'.out = ms.out)
+
+/-- `InputRuns` for a predicate `T'` of the statuses that `T` implies. -/
+theorem InputRuns.mono {m : Module} {k n : Nat} {room : UInt64} {cap : Nat} {o : Output}
+    {Out : List UInt64 → List UInt8} {T T' : List UInt64 → UInt64 → Prop}
+    (h : InputRuns m k n room cap o Out T) (hT : ∀ ws c, T ws c → T' ws c) :
+    InputRuns m k n room cap o Out T' := by
+  intro P base area _ hg ms himage hpc hal hroom htop hstack h17 harea hamap habove hrx hpo
+  obtain ⟨h1, h2⟩ := h P base area hg ms himage hpc hal hroom htop hstack h17 harea hamap
+    habove hrx hpo
+  exact ⟨fun ws hl hd => (h1 ws hl hd).imp id
+    fun ⟨ms', hr, hp, ht, ho⟩ => ⟨ms', hr, hp, hT ws _ ht, ho⟩, h2⟩
 
 theorem genInProgram_length {m : Module} {k n : Nat} {uart base room : UInt64} {cap : Nat}
     {o : Output} {is : List Instr} (hg : genInProgram m k n uart base room cap o = .ok is)

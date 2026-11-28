@@ -1,4 +1,8 @@
-import TestSupport.M7.Asm
+module
+
+public import TestSupport.M7.Asm
+
+@[expose] public section
 
 /-!
 The command `m7-encode` of the comparison of the Cortex-M7 encoder with the GNU assembler.

@@ -1,4 +1,8 @@
-import Demos.Rcv.Maine.Tabulate
+module
+
+public import Demos.Rcv.Maine.Tabulate
+
+@[expose] public section
 
 /-! The executable `rcv-maine-bound`: for each file, one line with its path, its size in bytes, and
 `compiled.tabulate.bound` of its bytes, the bound of the Maine module's call theorem

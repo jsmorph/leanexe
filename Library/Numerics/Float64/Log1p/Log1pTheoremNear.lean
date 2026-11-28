@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log1p.Log1pTheorem
-import Library.Numerics.Float64.Log1p.Log1pTheoremNearTail
+module
+
+public import Library.Numerics.Float64.Log1p.Log1pTheorem
+public import Library.Numerics.Float64.Log1p.Log1pTheoremNearTail
+
+@[expose] public section
 
 /-!
 `Log1p.log1p x` for `x ≥ 2 ^ -29` as the nearest word of a value within `errBound x` of

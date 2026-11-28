@@ -1,7 +1,12 @@
-import Library.Sorting.Insertion.Program
-import Library.Sorting.Insertion.Spec
-import Library.Sorting.Sorted
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Sorting.Insertion.Program
+public import Library.Sorting.Insertion.Spec
+public import Library.Sorting.Sorted
+public import LeanExe.Dialect.Lemmas
+import all Init.Data.Array.Basic
+
+@[expose] public section
 
 /-! The proof that `sortInsert` returns the array's elements in nondecreasing order.  The inner loop
 counts the words of the accumulated array that are below the next word `v` (`count_eq`).  In a list

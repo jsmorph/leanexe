@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erf.ErfTailErfBase
+module
+
+public import Library.Numerics.Float64.Erf.ErfTailErfBase
+
+@[expose] public section
 
 /-!
 One step for `erf` on the tail `[1.25, 6]` of `s_erf.c` for positive arguments.  `R_a/S_a` is used

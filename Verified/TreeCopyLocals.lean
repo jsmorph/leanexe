@@ -1,4 +1,8 @@
-import Verified.LocalFrame
+module
+
+public import Verified.LocalFrame
+
+@[expose] public section
 
 namespace Verified
 

@@ -1,7 +1,11 @@
-import TestSupport.A64.Programs
-import TestSupport.A64.Gpt
-import LeanExe.A64.File
-import LeanExe.A64.Proof.ImageTheorem
+module
+
+public import TestSupport.A64.Programs
+public import TestSupport.A64.Gpt
+public import LeanExe.A64.File
+public import LeanExe.A64.Proof.ImageTheorem
+
+@[expose] public section
 
 /-!
 The theorem of the GPT-2 kernel's arm64 Image, `gptscores.img`, which `a64-programs emit` writes.

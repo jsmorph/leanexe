@@ -1,4 +1,9 @@
-import Interpreter.Wasm.Syntax
+module
+
+public import LeanExe.Base
+public import Interpreter.Wasm.Syntax
+
+@[expose] public section
 
 /-!
 The calls of a module's functions, which the code generators of the AArch64 and Cortex-M7 back

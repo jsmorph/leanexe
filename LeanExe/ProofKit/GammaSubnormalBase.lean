@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.GammaReflect
-import LeanExe.ProofKit.GammaConvex
-import LeanExe.ProofKit.GammaFits
+module
+
+public import LeanExe.ProofKit.GammaReflect
+public import LeanExe.ProofKit.GammaConvex
+public import LeanExe.ProofKit.GammaFits
+
+@[expose] public section
 
 /-!
 The lemmas of `GammaSubnormal`: the levels `tAbove` and `tBelow` of `lgamma` that give

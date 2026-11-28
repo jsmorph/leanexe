@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.TaylorRemainder
-import LeanExe.ProofKit.PolyChecks
+module
+
+public import LeanExe.ProofKit.TaylorRemainder
+public import LeanExe.ProofKit.PolyChecks
+
+@[expose] public section
 
 /-!
 The approximation error of fdlibm's arctangent polynomial, as FreeBSD msun's `s_atan.c` at commit

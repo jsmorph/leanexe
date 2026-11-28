@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Trig.TrigTheorem
-import Verified.Master
+module
+
+public import Library.Numerics.Float64.Trig.TrigTheorem
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Trig
 

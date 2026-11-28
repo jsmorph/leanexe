@@ -1,4 +1,8 @@
-import LeanExe.Encoding.Completeness.Basic
+module
+
+public import LeanExe.Encoding.Completeness.Basic
+
+@[expose] public section
 
 namespace Wasm.Encoding
 

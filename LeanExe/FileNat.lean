@@ -1,4 +1,11 @@
-import Lean
+module
+
+public import LeanExe.Base
+public import Lean
+public import LeanExe.FileNat.Bytes
+public meta import LeanExe.FileNat.Bytes
+
+@[expose] public section
 
 /-!
 The bytes of a file as a number, so that a theorem can name the bytes that a build wrote.
@@ -12,11 +19,6 @@ share these definitions.
 -/
 
 namespace LeanExe.FileNat
-
-/-- The number whose base-256 digits, the lowest first, are the bytes `l`. -/
-def natOfBytes : List UInt8 → Nat
-  | [] => 0
-  | b :: l => b.toNat + 256 * natOfBytes l
 
 /-- Byte `j` of the number `n`, in the order of `natOfBytes`. -/
 def byteAt (n j : Nat) : UInt8 := UInt8.ofNat (n / 256 ^ j % 256)

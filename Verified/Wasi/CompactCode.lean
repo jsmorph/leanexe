@@ -1,4 +1,8 @@
-import Verified.Bound
+module
+
+public import Verified.Bound
+
+@[expose] public section
 
 /-! The compaction of a process state.  After `begin`, and after each step when the heap above the
 base exceeds four times the state's copy cost (`processCompactWhen`), the process entry copies the

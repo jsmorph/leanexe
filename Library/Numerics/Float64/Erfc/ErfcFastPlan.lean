@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erfc.ErfcFastRow
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcFastRow
+
+@[expose] public section
 
 /-!
 The certificate parameters of the 94 rows of `C`, the table of `cr_erf_fast` from `1/16` on, and the

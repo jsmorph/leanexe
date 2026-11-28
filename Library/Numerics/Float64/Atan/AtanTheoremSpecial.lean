@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Atan.AtanTheorem
-import LeanExe.ProofKit.F64WithinZero
+module
+
+public import Library.Numerics.Float64.Atan.AtanTheorem
+public import LeanExe.ProofKit.F64WithinZero
+
+@[expose] public section
 
 /-!
 The exceptional inputs of `Atan.atan` as words: `±0` give `±0`, `±∞` give `±(atanhi3 + atanlo3)`,

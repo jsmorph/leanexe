@@ -1,5 +1,10 @@
-import Library.Numerics.Fourier.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Fourier.Program
+public import Verified.Reflect.Command
+public meta import Library.Numerics.Float64.Trig.Program
+
+@[expose] public section
 
 namespace Library.Numerics.Fourier
 

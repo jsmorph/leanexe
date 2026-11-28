@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaKernelBase
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaKernelBase
+
+@[expose] public section
 
 /-!
 Bounds on `as_expd`'s tables and kernel (`tgamma.c`, commit `ff2f71f6`): the split

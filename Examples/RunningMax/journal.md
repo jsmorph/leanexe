@@ -34,6 +34,15 @@ change, while step 7 ended the stage at a review that found no disagreement.  Th
 the second review, as the tree-lookup run of the other skill did, and recorded the classes in the
 review.
 
+`fdcef5ce3` and the conversion of leanexe to Lean's module system (`ad4562d27`) are the only commits
+that changed `Spec.lean` and `Samples.lean` after the reviewed version, that of `e03979562`, and
+they changed only the header lines, so `spec.sha256` records the hashes of the files with the new
+lines.  `fdcef5ce3` added `import LeanExe.Base` and a blank line at the top of `Spec.lean`.  In
+`Spec.lean`, `ad4562d27` made that import `public import LeanExe.Base`, added `module` and a blank
+line before it, and added a blank line and `@[expose] public section` after it.  At the top of
+`Samples.lean`, which imports nothing, it added `module`, a blank line, `@[expose] public section`,
+and a blank line.  Every other line of the two files is the line that the review covered.
+
 ## Program and proofs
 
 The program folds over the input with a pair state, the largest entry so far and the result so

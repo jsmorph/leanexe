@@ -1,8 +1,13 @@
-import Mathlib.Data.FinEnum
-import Mathlib.Data.Fintype.Pi
-import Mathlib.Algebra.BigOperators.Group.Finset.Basic
-import Mathlib.Order.Interval.Finset.Nat
-import Mathlib.Data.Nat.Factorial.Basic
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.FinEnum
+public import Mathlib.Data.Fintype.Pi
+public import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+public import Mathlib.Order.Interval.Finset.Nat
+public import Mathlib.Data.Nat.Factorial.Basic
+
+@[expose] public section
 
 /-! The specification of a shuffle of words that draws its randomness from an array of words.  A
 function `f` shuffles when four properties hold.  First, `f us xs` is Knuth's Algorithm P on `xs`

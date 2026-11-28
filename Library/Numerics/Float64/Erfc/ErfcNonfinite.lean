@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcTheorem
-import LeanExe.ProofKit.F64Saturate
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTheorem
+public import LeanExe.ProofKit.F64Saturate
+
+@[expose] public section
 
 /-!
 `Erfc.erfc` at the non-finite inputs: `erfc (+∞) = +0` (`erfc_pos_inf`), `erfc (-∞) = 2`

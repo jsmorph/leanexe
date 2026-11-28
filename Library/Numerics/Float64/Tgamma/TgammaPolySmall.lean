@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+
+@[expose] public section
 
 /-!
 A bound on CORE-MATH's fast polynomial for `Γ x - 1/x` on `|x| < 1/4` (`tgamma.c` lines 682-706,

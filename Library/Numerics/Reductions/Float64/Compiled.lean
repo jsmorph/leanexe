@@ -1,5 +1,9 @@
-import Library.Numerics.Reductions.Float64.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Reductions.Float64.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Numerics.Reductions.Float64
 

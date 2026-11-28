@@ -1,4 +1,8 @@
-import Demos.Attitude.Bound
+module
+
+public import Demos.Attitude.Bound
+
+@[expose] public section
 
 /-! Matrices near TRIAD's attitude.  `Mat` is a 3×3 matrix of reals in rows, `triadMat` is TRIAD's
 attitude as a matrix, and `Near M T w` states that each entry of `M` lies within the matching

@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.Machine
+module
+
+public import LeanExe.A64.Proof.Machine
+
+@[expose] public section
 
 /-!
 The bytes of generated code in an image.  `imageBytes` lays out each instruction's word with its

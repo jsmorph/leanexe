@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Sinpi.SinpiBits
-import LeanExe.ProofKit.F64GridExact
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiBits
+public import LeanExe.ProofKit.F64GridExact
+
+@[expose] public section
 
 /-!
 The integer part of `Sinpi`: for a positive word `b` from 1 below `2 ^ 52`, the word with the bits

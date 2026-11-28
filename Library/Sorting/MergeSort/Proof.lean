@@ -1,7 +1,11 @@
-import Library.Sorting.MergeSort.Program
-import Library.Sorting.MergeSort.Spec
-import Library.Sorting.Sorted
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Sorting.MergeSort.Program
+public import Library.Sorting.MergeSort.Spec
+public import Library.Sorting.Sorted
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! The proof that merge sort returns the array's elements in nondecreasing order.  `passList w l`
 states one pass of width `w` on a list: it merges each pair of adjacent runs of width `w` with

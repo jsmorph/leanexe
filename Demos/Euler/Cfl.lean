@@ -1,6 +1,11 @@
-import Demos.Euler.Enclosure
-import LeanExe.ProofKit.F64DyadicBounds
-import LeanExe.ProofKit.F64Convert
+module
+
+public import Demos.Euler.Enclosure
+public import LeanExe.ProofKit.F64DyadicBounds
+public import LeanExe.ProofKit.F64Convert
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-! Accepted timesteps of the reconstructed solver.  Every cell of the grid that a step starts
 from is admissible in exact arithmetic, and the step satisfies the CFL bound: the ratio of the

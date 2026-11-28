@@ -1,5 +1,9 @@
-import LeanExe.M7.Proof.Step
-import TestSupport.M7.Sha
+module
+
+public import LeanExe.M7.Proof.Step
+public import TestSupport.M7.Sha
+
+@[expose] public section
 
 /-!
 The step theorems of the SHA-256 step on the Cortex-M7: the calls of `shaUsart3Tick`, function 13

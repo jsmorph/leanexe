@@ -1,4 +1,9 @@
-import Interpreter.Wasm.Float
+module
+
+public import LeanExe.Base
+public import Interpreter.Wasm.Float
+
+@[expose] public section
 
 /-!
 A model of the AArch64 instructions that the native back end emits, for a bare-metal program at

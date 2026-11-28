@@ -1,5 +1,9 @@
-import Demos.Rcv.RefineTally
-import Demos.Rcv.Rounds
+module
+
+public import Demos.Rcv.RefineTally
+public import Demos.Rcv.Rounds
+
+@[expose] public section
 
 /-!
 The end of a round: the loops of `Demos.Rcv.Program.decideRound` over the counters of a round

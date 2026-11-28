@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Log1p.Log1pTheoremNear
-import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+module
+
+public import Library.Numerics.Float64.Log1p.Log1pTheoremNear
+public import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+
+@[expose] public section
 
 /-!
 Composition of `Library.Numerics.Float64.Log1p.Log1pTheoremNear.log1p_near` with the error of a computed argument, for the

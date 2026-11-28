@@ -1,7 +1,11 @@
-import TestSupport.Bare.Programs
-import Verified.Examples.Fold
-import Demos.Euler.Verified
-import Verified.Bare
+module
+
+public import TestSupport.Bare.Programs
+public import Verified.Examples.Fold
+public import Demos.Euler.Verified
+public import Verified.Bare
+
+@[expose] public section
 
 /-!
 The theorems of the bare-metal programs of test 2 beside GCD: CRC-32 of `123456789`, SHA-256 of

@@ -1,28 +1,33 @@
-import Verified.Reflect.Definitions
-import LeanExe.Encoding.Correctness
+module
+
+public import Verified.Reflect.Definitions
+public import LeanExe.Encoding.Correctness
+public meta import Verified.Reflect.Definitions
+public meta import LeanExe.Encoding.Correctness
+
+@[expose] public section
 
 namespace Verified.Wasi.Reflect
 
 open Lean Meta Elab Command Term
 open Verified.Reflect
 
-def emitEncoding (target : Name) (moduleName : Name) (refinements : Array Name := #[])
+meta def emitEncoding (target : Name) (moduleName : Name) (refinements : Array Name := #[])
     (validity? : Option Name := none) : CommandElabM Unit := do
   let base := (← getCurrNamespace) ++ target
   let moduleId := mkIdent moduleName
-  let parts ← match evalModule (← getEnv) (← getOptions) moduleName with
-    | .ok wasmModule => match Wasm.Encoding.encodeParts wasmModule with
-      | .ok parts => pure parts
-      | .error message =>
-        throwError "verified_compile_wasi: module {moduleName} does not encode: {message}"
+  let wasmModule ← try liftTermElabM (evalModule moduleName) catch e =>
+    throwError "verified_compile_wasi: cannot evaluate module {moduleName}: {e.toMessageData}"
+  let parts ← match Wasm.Encoding.encodeParts wasmModule with
+    | .ok parts => pure parts
     | .error message =>
-      throwError "verified_compile_wasi: cannot evaluate module {moduleName}: {message}"
+      throwError "verified_compile_wasi: module {moduleName} does not encode: {message}"
   let (sections, bodies, data) := parts
   let bytesTy := mkApp (mkConst ``List [.zero]) (mkConst ``UInt8)
   let bytesListTy := mkApp (mkConst ``List [.zero]) bytesTy
   let literalOptions := maxRecDepth.set (← getOptions) 100000
   liftCoreM <| withReader (fun context =>
-      { context with maxRecDepth := 100000, options := literalOptions }) do
+      { context.setOptions literalOptions with maxRecDepth := 100000 }) do
     addLiteral (base ++ `sections) bytesListTy (toExpr sections)
     addLiteral (base ++ `bodies) bytesListTy (toExpr bodies)
     addLiteral (base ++ `data) bytesTy (toExpr data)

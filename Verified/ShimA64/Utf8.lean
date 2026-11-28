@@ -1,5 +1,9 @@
-import Verified.Shim.Utf8
-import LeanExe.A64.WasiFiles
+module
+
+public import Verified.Shim.Utf8
+public import LeanExe.A64.WasiFiles
+
+@[expose] public section
 
 /-!
 The stub of `path_open` in `LeanExe/A64/WasiFiles.lean` checks that the path is UTF-8 with

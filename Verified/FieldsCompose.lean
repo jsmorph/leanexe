@@ -1,4 +1,8 @@
-import Verified.FieldsAfter
+module
+
+public import Verified.FieldsAfter
+
+@[expose] public section
 
 namespace Verified
 

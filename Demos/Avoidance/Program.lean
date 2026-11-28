@@ -1,9 +1,13 @@
-import Demos.Avoidance.Spec
-import Demos.Conjunction.Box
-import Demos.Screening.Program
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
+module
+
+public import Demos.Avoidance.Spec
+public import Demos.Conjunction.Box
+public import Demos.Screening.Program
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+
+@[expose] public section
 
 /-!
 The authorizer.  `authorizeWith` reads an array of binary64 values: the gravitational parameter,

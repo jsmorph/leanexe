@@ -1,6 +1,10 @@
-import Examples.Convert.Compiled
-import LeanExe.A64.Proof.ProgramRuns
-import LeanExe.Native.Bare
+module
+
+public import Examples.Convert.Compiled
+public import LeanExe.A64.Proof.ProgramRuns
+public import LeanExe.Native.Bare
+
+@[expose] public section
 
 /-!
 The theorems of the bare-metal programs of `Examples.Convert` for AArch64, in the form

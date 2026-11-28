@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: `LeanExe.loop` over a word, over a pair, and
 over a pair with a `Bool`, a loop inside a loop, a loop whose body branches, and a loop whose

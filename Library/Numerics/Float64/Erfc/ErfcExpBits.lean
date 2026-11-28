@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcRound
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcRound
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 The integer steps of `exp_1` and `exp_accurate` in `Erfc`.  For a negative integer `K = -n`,

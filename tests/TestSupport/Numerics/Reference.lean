@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! Exact references for the accuracy checks of the transcendental functions, computed with Lean's
 integers.  A fixed-point value at precision `q` is an integer `v` that stands for `v · 2 ^ -q`.
 `ln 2` comes from `ln 2 = 2 atanh (1/3)` and `π` from Machin's formula, `exp`, `sin`, and `cos`

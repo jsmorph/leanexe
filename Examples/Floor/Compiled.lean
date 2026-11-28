@@ -1,5 +1,9 @@
-import Examples.Floor.Proof
-import Verified.Reflect.Command
+module
+
+public import Examples.Floor.Proof
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `floorDiv`, `average`, and `clamp`.  The generated
 `compiled.floorDiv.pure`, `compiled.average.pure`, and `compiled.clamp.pure` state that functions 2,

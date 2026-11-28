@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaMul
-import Library.Numerics.Float64.Tgamma.TgammaMainRed
-import Library.Numerics.Float64.Tgamma.TgammaPoly
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaMul
+public import Library.Numerics.Float64.Tgamma.TgammaMainRed
+public import Library.Numerics.Float64.Tgamma.TgammaPoly
+
+@[expose] public section
 
 /-!
 The shift loop of `tgammaWith` on `(-3, 4)`.  From `(wh, wl, xph, xpl) = (x, 0, x, 0)`, each step

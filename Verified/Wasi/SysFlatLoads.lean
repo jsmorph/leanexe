@@ -1,4 +1,8 @@
-import Verified.Wasi.SysFlatCall
+module
+
+public import Verified.Wasi.SysFlatCall
+
+@[expose] public section
 
 /-! The result code of a flat call: the loads of the result words that the host left at the
 scratch addresses, and the code that pushes words from consecutive locals. -/

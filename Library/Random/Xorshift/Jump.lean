@@ -1,5 +1,9 @@
-import Library.Random.Xorshift.Period
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Random.Xorshift.Period
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! `jump` of `Library/Random/Xorshift/Program.lean` computes `advance`.  A map on words that distributes
 over xor is the xor of its columns, the images of `2^i`, at the set bits of its argument, which the

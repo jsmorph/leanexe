@@ -10,7 +10,11 @@ text of version 2.1 is in `LICENSE-LGPL-2.1` in this directory.
 Changed from CompCert on 2026-10-26 and 2026-11-04: transcribed from Coq into Lean, with the changes
 that `LeanExe/Native/NOTICE` and the documentation comment below describe.
 -/
-import LeanExe.Native.Clight.Ctypes
+module
+
+public import LeanExe.Native.Clight.Ctypes
+
+@[expose] public section
 
 /-!
 The operators of Clight, from CompCert 3.18's `cfrontend/Cop.v`, with an empty composite

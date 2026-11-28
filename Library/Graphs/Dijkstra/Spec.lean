@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! The specification of the least walk lengths from one vertex.  The graph is in forward-star form:
 the arcs out of a vertex `u` below `n` are the positions `k` with `first[u] ≤ k < first[u + 1]` that
 lie below the sizes of `heads` and `lens`, each from `u` to `heads[k]` with the length `lens[k]`,

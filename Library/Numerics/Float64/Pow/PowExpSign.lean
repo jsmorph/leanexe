@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Pow.PowSignRel
-import Library.Numerics.Float64.Pow.PowExpTheorem
-import Library.Numerics.Float64.Pow.PowCheckint
+module
+
+public import Library.Numerics.Float64.Pow.PowSignRel
+public import Library.Numerics.Float64.Pow.PowExpTheorem
+public import Library.Numerics.Float64.Pow.PowCheckint
+
+@[expose] public section
 
 /-!
 `Pow.powExp` with `signBias = 0x800 << 7` against `signBias = 0`.  The bias adds `2 ^ 63` to the

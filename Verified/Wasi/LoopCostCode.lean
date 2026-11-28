@@ -1,5 +1,9 @@
-import Verified.Wasi.ResourceCompilerCost
-import Verified.Wasi.ConditionalCost
+module
+
+public import Verified.Wasi.ResourceCompilerCost
+public import Verified.Wasi.ConditionalCost
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

@@ -1,4 +1,8 @@
-import Verified.Wasi.EffectSpec
+module
+
+public import Verified.Wasi.EffectSpec
+
+@[expose] public section
 
 namespace Verified.Wasi
 

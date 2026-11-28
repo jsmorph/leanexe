@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.Expm1FormsTwo
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1FormsTwo
+
+@[expose] public section
 
 /-!
 The forms of fdlibm's `expm1` for `2 ≤ k ≤ 56`, which subtract `2 ^ -k` before the last rounding

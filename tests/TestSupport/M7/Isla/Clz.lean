@@ -1,6 +1,11 @@
-import LeanExe.M7.Isla.Check
-import LeanExe.M7.Isla.Profile
-import LeanExe.A64.Isla.Walk
+module
+
+public import LeanExe.M7.Isla.Check
+public import LeanExe.M7.Isla.Profile
+public import LeanExe.A64.Isla.Walk
+public import LeanExe.A64.Isla.TraceElab
+
+@[expose] public section
 
 /-!
 The theorem of `Agrees` for `CLZ Rd, Rm` of `LeanExe/M7/Machine.lean`, from the trace of
@@ -63,7 +68,7 @@ attribute [local congr] run_congr runSome_congr
 
 open Lean Meta in
 /-- The path that `e` states, with its node constant replaced by the node's definition. -/
-def unfoldRun (e : Expr) : MetaM Expr := do
+meta def unfoldRun (e : Expr) : MetaM Expr := do
   let e := e.consumeMData.headBeta
   unless e.isAppOfArity ``LeanExe.M7.Isla.run 8 do throwError "t32_unfold: not a path"
   let args := e.getAppArgs

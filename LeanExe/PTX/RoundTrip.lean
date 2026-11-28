@@ -1,4 +1,8 @@
-import LeanExe.PTX.Parse
+module
+
+public import LeanExe.PTX.Parse
+
+@[expose] public section
 
 /-!
 The parser reads every printed kernel back as itself: `Module.parse_print` states

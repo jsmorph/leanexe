@@ -1,6 +1,10 @@
-import Library.Trees.Avl.Program
-import Library.Trees.Avl.Spec
-import Library.Trees.Search.Proof
+module
+
+public import Library.Trees.Avl.Program
+public import Library.Trees.Avl.Spec
+public import Library.Trees.Search.Proof
+
+@[expose] public section
 
 /-! The proofs that `search` and `insert` compute `searchA` and `algorithmA`, and that `algorithmA`
 satisfies `SearchTree` on every balanced binary search tree.  `descend_eq` states the link reversal:

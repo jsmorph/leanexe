@@ -1,5 +1,9 @@
-import Verified.Wasi.CompactCode
-import Verified.Heap
+module
+
+public import Verified.Wasi.CompactCode
+public import Verified.Heap
+
+@[expose] public section
 
 /-! The move loop of the compaction: a downward, word-at-a-time copy of a byte range. -/
 

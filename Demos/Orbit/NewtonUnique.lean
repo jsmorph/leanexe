@@ -1,8 +1,13 @@
-import Demos.Orbit.Newton
-import Mathlib.Analysis.ODE.ExistUnique
-import Mathlib.Analysis.InnerProductSpace.PiL2
-import Mathlib.Analysis.InnerProductSpace.Calculus
-import Mathlib.Analysis.Calculus.ContDiff.RCLike
+module
+
+public import Demos.Orbit.Newton
+public import Mathlib.Analysis.ODE.ExistUnique
+public import Mathlib.Analysis.InnerProductSpace.PiL2
+public import Mathlib.Analysis.InnerProductSpace.Calculus
+public import Mathlib.Analysis.Calculus.ContDiff.RCLike
+public import Mathlib.Analysis.Calculus.Deriv.Prod
+
+@[expose] public section
 
 /-!
 A solution of Newton's equation on an open interval of times is determined by its state at one

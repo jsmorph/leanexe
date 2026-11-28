@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Bessel.BesselPQRange
-import Library.Numerics.Float64.Bessel.BesselSmallApprox
-import LeanExe.ProofKit.F64NearestDiv
-import LeanExe.ProofKit.F64Exact
-import LeanExe.ProofKit.PolyCalculus
+module
+
+public import Library.Numerics.Float64.Bessel.BesselPQRange
+public import Library.Numerics.Float64.Bessel.BesselSmallApprox
+public import LeanExe.ProofKit.F64NearestDiv
+public import LeanExe.ProofKit.F64Exact
+public import LeanExe.ProofKit.PolyCalculus
+
+@[expose] public section
 
 /-!
 Tools for the paths below 2, where the code evaluates fdlibm's polynomials at the computed

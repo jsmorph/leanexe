@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaWithin
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaWithin
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorem for `tgamma` in the module of `Tgamma.lean`, whose export `tgamma` is function 41.

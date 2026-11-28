@@ -1,4 +1,8 @@
-import LeanExe.A64.Gen
+module
+
+public import LeanExe.A64.Gen
+
+@[expose] public section
 
 /-!
 Facts about runs of the AArch64 model that the simulation proof uses: `Reach`, the states that

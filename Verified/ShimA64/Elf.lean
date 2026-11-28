@@ -1,5 +1,9 @@
-import Verified.ShimA64.Flat
-import LeanExe.A64.Proof.WasiProgram
+module
+
+public import Verified.ShimA64.Flat
+public import LeanExe.A64.Proof.WasiProgram
+
+@[expose] public section
 
 /-!
 The executable of `genWasiElf` from its entry to `exit_group`.  Linux enters the executable at the

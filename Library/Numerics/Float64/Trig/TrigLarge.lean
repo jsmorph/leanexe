@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Trig.TrigLargeFloat
-import Library.Numerics.Float64.Trig.TrigDistance
-import LeanExe.ProofKit.F64Magnitude
-import Mathlib.Analysis.Real.Pi.Bounds
+module
+
+public import Library.Numerics.Float64.Trig.TrigLargeFloat
+public import Library.Numerics.Float64.Trig.TrigDistance
+public import LeanExe.ProofKit.F64Magnitude
+public import Mathlib.Analysis.Real.Pi.Bounds
+
+@[expose] public section
 
 /-!
 The accuracy of `Trig.remLarge`.  For a positive finite double `x` with exponent field from 1043

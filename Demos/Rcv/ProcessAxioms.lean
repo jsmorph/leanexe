@@ -1,4 +1,8 @@
-import Demos.Rcv.ProcessCompiledCorrect
+module
+
+public import Demos.Rcv.ProcessCompiledCorrect
+
+@[expose] public section
 
 /-! The axiom audit of the tabulator's process, native and compiled, and of the closed form of
 `tabulate`'s bound: every theorem in the namespace `Demos.Rcv.Process`, which holds the native

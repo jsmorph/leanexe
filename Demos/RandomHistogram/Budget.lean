@@ -1,6 +1,10 @@
-import Demos.RandomHistogram.CommandStart
-import Demos.RandomHistogram.Compiled
-import Verified.Wasi.BudgetTactics
+module
+
+public import Demos.RandomHistogram.CommandStart
+public import Demos.RandomHistogram.Compiled
+public import Verified.Wasi.BudgetTactics
+
+@[expose] public section
 
 /-! The resource model's charge of the random-residue histogram's `main`, the budget that the
 generated `command.start` without guest traps and `command.total` take as a bound on every prefix

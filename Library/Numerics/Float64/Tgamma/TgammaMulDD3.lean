@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaDD
-import Library.Numerics.Float64.Tgamma.TgammaFloor
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaDD
+public import Library.Numerics.Float64.Tgamma.TgammaFloor
+
+@[expose] public section
 
 /-!
 `Tgamma.mulDD3`, the product of two double-doubles in the accurate path of `Tgamma`: the rounded

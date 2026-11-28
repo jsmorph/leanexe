@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.GammaFits
-import Library.Numerics.Float64.Tgamma.Compiled
+module
+
+public import LeanExe.ProofKit.GammaFits
+public import Library.Numerics.Float64.Tgamma.Compiled
+
+@[expose] public section
 
 /-!
 The coefficient lists of CORE-MATH's `tgamma` approximations, read from the port's tables in the

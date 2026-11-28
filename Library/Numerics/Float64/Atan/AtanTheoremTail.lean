@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Atan.AtanTheoremBranches
+module
+
+public import Library.Numerics.Float64.Atan.AtanTheoremBranches
+
+@[expose] public section
 
 /-!
 The errors of the two ends of `Atan.atan` as explicit functions of the bounds of each case.

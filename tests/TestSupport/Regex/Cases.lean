@@ -1,5 +1,9 @@
-import Library.Regex.Program
-import TestSupport.Regex.Generate
+module
+
+public import Library.Regex.Program
+public import TestSupport.Regex.Generate
+
+@[expose] public section
 
 /-! The cases of the module `regex`: random pattern trees against short inputs, word sequences
 that do not decode, patterns of 62 to 65 sets, counts that exceed their arrays, whose missing

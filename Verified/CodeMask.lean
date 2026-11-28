@@ -1,4 +1,8 @@
-import Verified.Compile
+module
+
+public import Verified.Compile
+
+@[expose] public section
 
 /-!
 `Expr.codeMask`, `TailBody.codeWithMask`, `loopCodeMask`, and `ListFold.loopCodeMask` take the

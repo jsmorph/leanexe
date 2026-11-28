@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 /-! The occurrences of a pattern in a text by the algorithm of Knuth, Morris, and Pratt, on byte
 strings held eight bytes to a word.  `failure` computes, for each prefix `pat[0, q + 1)` of the

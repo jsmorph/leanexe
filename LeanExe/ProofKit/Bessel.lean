@@ -1,8 +1,12 @@
-import LeanExe.ProofKit.EntireSeries
-import LeanExe.ProofKit.TaylorRemainder
-import Mathlib.NumberTheory.Harmonic.EulerMascheroni
-import Mathlib.Analysis.SpecialFunctions.Log.Deriv
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+module
+
+public import LeanExe.ProofKit.EntireSeries
+public import LeanExe.ProofKit.TaylorRemainder
+public import Mathlib.NumberTheory.Harmonic.EulerMascheroni
+public import Mathlib.Analysis.SpecialFunctions.Log.Deriv
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Basic
+
+@[expose] public section
 
 /-!
 The Bessel functions `J₀`, `J₁`, `Y₀`, and `Y₁` of real argument, which Mathlib lacks, defined by

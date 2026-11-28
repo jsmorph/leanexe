@@ -1,5 +1,9 @@
-import Examples.Binary32.Compiled
-import Verified.PTX.Compile
+module
+
+public import Examples.Binary32.Compiled
+public import Verified.PTX.Compile
+
+@[expose] public section
 
 /-! The PTX kernels that `Verified.PTX.compile` translates from the reflected bodies of `scale32`,
 `axpyArray32`, `matVec32`, and `condMix32`, and their launch theorems under the PTX memory model.

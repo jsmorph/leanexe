@@ -1,6 +1,10 @@
-import Demos.Rcv.Maine.PrintProgram
-import Demos.Rcv.Maine.Program
-import Demos.Rcv.ReadProgram
+module
+
+public import Demos.Rcv.Maine.PrintProgram
+public import Demos.Rcv.Maine.Program
+public import Demos.Rcv.ReadProgram
+
+@[expose] public section
 
 /-!
 The export `tabulate` of the Maine module in the verified compiler's dialect: the shared reader

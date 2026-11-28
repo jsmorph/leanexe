@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaSinpid
-import Library.Numerics.Float64.Lgamma.LgammaSinpiNear
-import Library.Numerics.Float64.Lgamma.LgammaApprox
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaSinpid
+public import Library.Numerics.Float64.Lgamma.LgammaSinpiNear
+public import Library.Numerics.Float64.Lgamma.LgammaApprox
+
+@[expose] public section
 
 /-!
 **`Lgamma.asSinpipid` within `2^-63` of `sin (π x)/π`, relative,** for every double `x = n/2^53`

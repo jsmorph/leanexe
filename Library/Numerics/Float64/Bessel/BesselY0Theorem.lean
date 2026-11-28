@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.BesselY0Large
-import Library.Numerics.Float64.Bessel.BesselY0Small
+module
+
+public import Library.Numerics.Float64.Bessel.BesselY0Large
+public import Library.Numerics.Float64.Bessel.BesselY0Small
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Bessel.y0`: for every finite `x > 0`, the result lies within

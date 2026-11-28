@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Bessel.BesselMillerDepth
-import Library.Numerics.Float64.Log.LogNearAll
-import Library.Numerics.Float64.Trig.TrigSinCos
-import Library.Numerics.Float64.Bessel.BesselSmallJ0
+module
+
+public import Library.Numerics.Float64.Bessel.BesselMillerDepth
+public import Library.Numerics.Float64.Log.LogNearAll
+public import Library.Numerics.Float64.Trig.TrigSinCos
+public import Library.Numerics.Float64.Bessel.BesselSmallJ0
+
+@[expose] public section
 
 /-!
 The scaling flag of `jn`'s backward recurrence.  The code computes `tmp = n · log |(2/x) · n|` and

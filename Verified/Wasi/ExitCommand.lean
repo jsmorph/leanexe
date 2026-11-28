@@ -1,6 +1,10 @@
-import Verified.Wasi.Exit
-import Verified.Wasi.CommandSpec
-import Verified.Wasi.Return
+module
+
+public import Verified.Wasi.Exit
+public import Verified.Wasi.CommandSpec
+public import Verified.Wasi.Return
+
+@[expose] public section
 
 namespace Verified.Wasi
 

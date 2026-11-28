@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tan.TanBigWords
-import Library.Numerics.Float64.Tan.TanBigClose
+module
+
+public import Library.Numerics.Float64.Tan.TanBigWords
+public import Library.Numerics.Float64.Tan.TanBigClose
+
+@[expose] public section
 
 /-!
 The path of `Tan.kernelTan` from `0x3FE59428` on: the result lies within one step of `tan ρ`

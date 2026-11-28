@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaRefl9
-import Mathlib.Analysis.SpecialFunctions.Gamma.Beta
-import Mathlib.Analysis.SpecialFunctions.Gamma.BohrMollerup
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRefl9
+public import Mathlib.Analysis.SpecialFunctions.Gamma.Beta
+public import Mathlib.Analysis.SpecialFunctions.Gamma.BohrMollerup
+
+@[expose] public section
 
 /-!
 Bounds for the assembly of the accurate path of `Tgamma`.  `|Γ v| ≥ 2 ^ -1018` between -170 and 0

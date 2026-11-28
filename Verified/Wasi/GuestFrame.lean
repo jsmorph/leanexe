@@ -1,8 +1,12 @@
-import Verified.Wasi.HostSpec
-import Verified.Wasi.PureTransport
-import Verified.HeapStep
-import Verified.Bytes.Step
-import LeanExe.Pipeline.Records
+module
+
+public import Verified.Wasi.HostSpec
+public import Verified.Wasi.PureTransport
+public import Verified.HeapStep
+public import Verified.Bytes.Step
+public import LeanExe.Pipeline.Records
+
+@[expose] public section
 
 namespace Verified.Wasi
 

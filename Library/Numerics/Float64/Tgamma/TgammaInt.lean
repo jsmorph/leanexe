@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaEdge
-import Library.Numerics.Float64.Tgamma.TgammaPoly
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaEdge
+public import Library.Numerics.Float64.Tgamma.TgammaPoly
+
+@[expose] public section
 
 /-!
 **The positive integers** of `tgammaWith`: `(n - 1)!` within one step of `Γ n` for `1 ≤ n ≤ 171`.

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tanh.Expm1FormsMid
-import LeanExe.ProofKit.F64RelativeStep
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1FormsMid
+public import LeanExe.ProofKit.F64RelativeStep
+
+@[expose] public section
 
 /-!
 The scaling forms of fdlibm's `expm1` with the error of the exact value before the last rounding

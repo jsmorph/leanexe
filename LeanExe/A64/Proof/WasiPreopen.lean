@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.WasiStrings
-import LeanExe.A64.Proof.StampCalls
-import LeanExe.A64.WasiPreopen
+module
+
+public import LeanExe.A64.Proof.WasiStrings
+public import LeanExe.A64.Proof.StampCalls
+public import LeanExe.A64.WasiPreopen
+
+@[expose] public section
 
 /-!
 The runs of the parts of `LeanExe/A64/WasiPreopen.lean`.  In the program's model, `run_scratchAddr`

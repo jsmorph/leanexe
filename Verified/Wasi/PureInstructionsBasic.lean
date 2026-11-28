@@ -1,4 +1,8 @@
-import Verified.Wasi.Relocation
+module
+
+public import Verified.Wasi.Relocation
+
+@[expose] public section
 
 namespace Verified.Wasi.PureTransport
 

@@ -1,4 +1,8 @@
-import Demos.Gpt32.Program
+module
+
+public import Demos.Gpt32.Program
+
+@[expose] public section
 
 /-!
 The programs that run GPT-2's binary32 step on `leanexe-webgpu-host session`.  A program is a

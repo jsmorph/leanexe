@@ -1,5 +1,9 @@
-import Demos.Drone.Program
-import LeanExe.Dialect.Lemmas
+module
+
+public import Demos.Drone.Program
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! The table that `extend` builds and its size: below `count`, `extend` builds the table
 extended by the next row, entry by entry, and otherwise it returns the table that it consumed. -/

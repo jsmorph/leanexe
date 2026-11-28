@@ -1,5 +1,9 @@
-import Library.Hashing.XxHash64.Spec
-import LeanExe.Pipeline.Implements
+module
+
+public import Library.Hashing.XxHash64.Spec
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! The accumulators are represented as the tuple of their fields, in declaration order. -/
 

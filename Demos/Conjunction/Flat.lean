@@ -1,5 +1,9 @@
-import Demos.Conjunction.Program
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Conjunction.Program
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Conjunction
 

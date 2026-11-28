@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: enumerations.  An enumeration with a `Flat`
 instance is the word that the instance gives each constructor.  A `match` on one becomes a chain of

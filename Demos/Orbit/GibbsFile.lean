@@ -1,5 +1,9 @@
-import Demos.Orbit.GibbsVerified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Orbit.GibbsVerified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/gibbs.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Demos/Orbit/GibbsFile.lean`: the file holds

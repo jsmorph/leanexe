@@ -1,5 +1,9 @@
-import Demos.Orbit.LambertVerified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Orbit.LambertVerified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/lambert.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Demos/Orbit/LambertFile.lean`: the file holds

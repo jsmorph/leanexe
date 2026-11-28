@@ -1,4 +1,8 @@
-import Verified.Wasi.PureInstructionsMemoryStep
+module
+
+public import Verified.Wasi.PureInstructionsMemoryStep
+
+@[expose] public section
 
 namespace Verified.Wasi.PureTransport
 

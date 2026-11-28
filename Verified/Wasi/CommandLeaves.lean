@@ -1,9 +1,13 @@
-import Verified.AlignedCorrect
-import Verified.Wasi.CommandCodeSpec
-import Verified.Wasi.CompilerFacts
-import Verified.Wasi.ReturnCommand
-import Verified.Wasi.WriteCommand
-import Verified.Wasi.ExitCommand
+module
+
+public import Verified.AlignedCorrect
+public import Verified.Wasi.CommandCodeSpec
+public import Verified.Wasi.CompilerFacts
+public import Verified.Wasi.ReturnCommand
+public import Verified.Wasi.WriteCommand
+public import Verified.Wasi.ExitCommand
+
+@[expose] public section
 
 namespace Verified.Wasi
 

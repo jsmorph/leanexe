@@ -1,7 +1,11 @@
-import Demos.OrderBook.ProcessCodec
-import Demos.OrderBook.ProcessBatch
-import Demos.StreamFold.StreamHost
-import Verified.Wasi.ProcessTotalSource
+module
+
+public import Demos.OrderBook.ProcessCodec
+public import Demos.OrderBook.ProcessBatch
+public import Demos.StreamFold.StreamHost
+public import Verified.Wasi.ProcessTotalSource
+
+@[expose] public section
 
 /-! The control of [the process](Process.lean): the bounds on the output that each step keeps, the
 accounting of partial writes, the fields of a batch, and the termination of the process under

@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Asinh.AsinhTheoremCompose
-import Library.Numerics.Float64.Asinh.AcoshTheoremMid
-import LeanExe.ProofKit.F64SqrtHalf
-import LeanExe.ProofKit.F64GridExact
+module
+
+public import Library.Numerics.Float64.Asinh.AsinhTheoremCompose
+public import Library.Numerics.Float64.Asinh.AcoshTheoremMid
+public import LeanExe.ProofKit.F64SqrtHalf
+public import LeanExe.ProofKit.F64GridExact
+
+@[expose] public section
 
 /-!
 `Asinh.acosh` from 1 to `2 (1 + 2 ^ -20)`: the code returns `log1p (t + √(2t + t²))` with

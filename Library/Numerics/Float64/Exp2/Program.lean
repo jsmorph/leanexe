@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Exp.Program
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
-import LeanExe.Dialect.InsertErase
-import LeanExe.Dialect.Float32
+module
+
+public import Library.Numerics.Float64.Exp.Program
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+public import LeanExe.Dialect.InsertErase
+public import LeanExe.Dialect.Float32
+
+@[expose] public section
 
 /-! A program of the verified compiler: `exp2` and `exp10`, ported from Arm's
 optimized-routines, `math/exp2.c`, `math/exp10.c`, and `math/exp_data.c` at commit

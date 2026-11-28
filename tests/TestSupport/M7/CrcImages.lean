@@ -1,7 +1,11 @@
-import LeanExe.M7.Board
-import LeanExe.M7.Setup
-import TestSupport.M7.Crc
-import TestSupport.M7.Qemu
+module
+
+public import LeanExe.M7.Board
+public import LeanExe.M7.Setup
+public import TestSupport.M7.Crc
+public import TestSupport.M7.Qemu
+
+@[expose] public section
 
 /-!
 The images of the CRC-32 step through the Cortex-M7 back end, both from the state `crcInit`: the

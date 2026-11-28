@@ -1,5 +1,9 @@
-import Library.Numerics.Filters.Cic.Cascade
-import Mathlib.Algebra.Order.BigOperators.Group.Finset
+module
+
+public import Library.Numerics.Filters.Cic.Cascade
+public import Mathlib.Algebra.Order.BigOperators.Group.Finset
+
+@[expose] public section
 
 /-! This module proves that the block cascade of `Cascade.lean` in 64-bit words computes each output
 of the CIC decimation filter modulo `2^64`, and that each output word's two's-complement reading is

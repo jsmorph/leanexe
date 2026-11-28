@@ -1,4 +1,8 @@
-import Demos.Drone.Trajectory
+module
+
+public import Demos.Drone.Trajectory
+
+@[expose] public section
 
 namespace Demos.Drone.Corridor
 open Demos.Drone Arithmetic Output Dynamics Safety Trajectory Planner Forward

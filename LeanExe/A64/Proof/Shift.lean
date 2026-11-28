@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.ImageLayout
-import LeanExe.A64.Proof.Program
+module
+
+public import LeanExe.A64.Proof.ImageLayout
+public import LeanExe.A64.Proof.Program
+
+@[expose] public section
 
 /-!
 The bytes of an image that `genImage` writes are the same at two addresses of the RAM GiB that

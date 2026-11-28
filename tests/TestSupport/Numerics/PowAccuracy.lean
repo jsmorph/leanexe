@@ -1,6 +1,13 @@
-import Library.Numerics.Float64.Pow.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.PowerReference
+module
+
+public import Library.Numerics.Float64.Pow.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.PowerReference
+public meta import Library.Numerics.Float64.Pow.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.PowerReference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Pow.pow` against a reference computed with Lean's integers through
 `PowerReference.powExponent` and `Reference.exp`, rounded to the nearest double, with the special

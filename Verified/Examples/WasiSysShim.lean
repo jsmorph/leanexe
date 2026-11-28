@@ -1,6 +1,10 @@
-import Verified.Examples.WasiSys
-import Verified.Examples.WasiSysEnviron
-import Verified.Shim
+module
+
+public import Verified.Examples.WasiSys
+public import Verified.Examples.WasiSysEnviron
+public import Verified.Shim
+
+@[expose] public section
 
 /-!
 The footprint theorem at the specification level for the commands of increment 2 of the shim: the

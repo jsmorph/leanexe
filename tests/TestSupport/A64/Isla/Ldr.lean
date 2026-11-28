@@ -1,4 +1,9 @@
-import LeanExe.A64.Isla.Walk
+module
+
+public import LeanExe.A64.Isla.Walk
+public import LeanExe.A64.Isla.TraceElab
+
+@[expose] public section
 
 /-!
 Theorems of `Agrees` for `LDR Xt, [Xn|SP, #(8 * imm)]` of `LeanExe/A64/Machine.lean` with every

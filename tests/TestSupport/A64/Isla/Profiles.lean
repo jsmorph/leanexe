@@ -1,4 +1,8 @@
-import LeanExe.A64.Isla.Profile
+module
+
+public import LeanExe.A64.Isla.Profile
+
+@[expose] public section
 
 /-!
 The profiles `tcg`, `kvm`, and `sme` hold the settings of the `features` files as the files stand

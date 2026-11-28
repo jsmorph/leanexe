@@ -1,9 +1,13 @@
-import LeanExe.A64.Elf
-import LeanExe.Wasi.CallTable
-import LeanExe.A64.WasiPreopen
-import LeanExe.A64.WasiStrings
-import LeanExe.A64.WasiClocks
-import LeanExe.A64.WasiFiles
+module
+
+public import LeanExe.A64.Elf
+public import LeanExe.Wasi.CallTable
+public import LeanExe.A64.WasiPreopen
+public import LeanExe.A64.WasiStrings
+public import LeanExe.A64.WasiClocks
+public import LeanExe.A64.WasiFiles
+
+@[expose] public section
 
 /-!
 A WASI command as a static Linux executable for AArch64: a module of the verified compiler whose

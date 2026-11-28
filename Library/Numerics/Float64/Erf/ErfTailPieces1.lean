@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erf.ErfTailPieces0
+module
+
+public import Library.Numerics.Float64.Erf.ErfTailPieces0
+
+@[expose] public section
 
 /-!
 Pieces 4 to 7 of the tail kernels' proof, from `x = 19.3184` down to

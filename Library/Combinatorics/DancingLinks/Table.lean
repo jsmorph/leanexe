@@ -1,5 +1,9 @@
-import Library.Combinatorics.DancingLinks.Delete
-import Library.Combinatorics.DancingLinks.Count
+module
+
+public import Library.Combinatorics.DancingLinks.Delete
+public import Library.Combinatorics.DancingLinks.Count
+
+@[expose] public section
 
 /-! The layout of the nodes and the columns of all items.  A `Layout` holds the number of items and
 the options.  Node `first k` is the first node of option `k`, the option's nodes follow, and a

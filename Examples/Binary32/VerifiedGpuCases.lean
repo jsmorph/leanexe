@@ -1,5 +1,9 @@
-import Examples.Binary32.Cases
-import LeanExe.WGSL.Build
+module
+
+public import Examples.Binary32.Cases
+public import LeanExe.WGSL.Build
+
+@[expose] public section
 
 /-! The GPU cases of the verified compiler's kernels of `scale32`, `axpyArray32`, `matVec32`, and
 `condMix32`, in the format of `tests/wgsl/run.sh`: `kernel|workgroups|initial output|inputs|expected
@@ -10,15 +14,15 @@ namespace Examples.Binary32.VerifiedGpuCases
 
 open LeanExe.WGSL
 
-private def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
+def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
 
-private def floatWords (x : List Float32) : Array UInt64 := (x.map fun v => v.toBits.toUInt64).toArray
+def floatWords (x : List Float32) : Array UInt64 := (x.map fun v => v.toBits.toUInt64).toArray
 
-private def gpuArg (arg : LeanExe.Source.Arg) : String := s!"u32:{",".intercalate (arg.wgslBuffer.toList.map toString)}"
+def gpuArg (arg : LeanExe.Source.Arg) : String := s!"u32:{",".intercalate (arg.wgslBuffer.toList.map toString)}"
 
 /-- A case line for kernel `name` with `n` output elements, `extra` workgroups beyond those that
 cover them, and the buffers of `inputs`. -/
-private def caseLine (name : String) (n extra : Nat) (inputs : List LeanExe.Source.Arg) (result : Array Float32) :
+def caseLine (name : String) (n extra : Nat) (inputs : List LeanExe.Source.Arg) (result : Array Float32) :
     String :=
   let groups := max ((n + 63) / 64 + extra) 1
   let initial := n.toUInt64 :: List.replicate n 0x7fc000017fc00001

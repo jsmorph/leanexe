@@ -1,4 +1,8 @@
-import Demos.Drone.Sqrt
+module
+
+public import Demos.Drone.Sqrt
+
+@[expose] public section
 
 /-! The word arithmetic of the planner's states and rest durations, as natural numbers, within
 the bounds of the planner's inputs. -/

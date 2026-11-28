@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.BesselSeg1
+module
+
+public import LeanExe.ProofKit.BesselSeg1
+
+@[expose] public section
 
 /-!
 fdlibm's rational approximations `pone` and `qone` of `P1` and `Q1` from `e_j1.c` (FreeBSD msun

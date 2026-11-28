@@ -1,4 +1,8 @@
-import LeanExe.Dialect.RepeatWhile
+module
+
+public import LeanExe.Dialect.RepeatWhile
+
+@[expose] public section
 
 /-!
 The elements of an array of at most eight words that

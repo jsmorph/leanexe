@@ -1,5 +1,9 @@
-import Library.Hashing.Sha3.Bytes
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Hashing.Sha3.Bytes
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/sha3.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Library/Hashing/Sha3/File.lean`: the file holds

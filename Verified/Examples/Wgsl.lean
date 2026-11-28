@@ -1,5 +1,9 @@
-import Verified.Reflect.Command
-import Verified.WGSL.Compile
+module
+
+public import Verified.Reflect.Command
+public import Verified.WGSL.Compile
+
+@[expose] public section
 
 namespace Verified.Examples.Wgsl
 

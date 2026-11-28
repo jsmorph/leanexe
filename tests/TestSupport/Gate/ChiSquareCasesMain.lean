@@ -1,4 +1,8 @@
-import TestSupport.Gate.ChiSquareCases
+module
+
+public import TestSupport.Gate.ChiSquareCases
+
+@[expose] public section
 
 /-! The cases of the module `chisquare` alone, for `tests/verified/run.sh --cases chisquare`.
 With the argument `--bits`, it prints the lines that `tests/gate/distribution.py` reads. -/

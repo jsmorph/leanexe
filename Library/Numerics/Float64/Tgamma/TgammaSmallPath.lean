@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tgamma.TgammaSmall
-import Library.Numerics.Float64.Tgamma.TgammaRecip
-import Library.Numerics.Float64.Tgamma.TgammaBranches
-import LeanExe.ProofKit.GammaBasic
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaSmall
+public import Library.Numerics.Float64.Tgamma.TgammaRecip
+public import Library.Numerics.Float64.Tgamma.TgammaBranches
+public import LeanExe.ProofKit.GammaBasic
+
+@[expose] public section
 
 /-!
 **The fast path of `tgammaWith` from `2 ^ -112` to `1/4`** within one step of `Γ`.  With

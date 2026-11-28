@@ -1,4 +1,8 @@
-import LeanExe.Wasi.PrefixProgress
+module
+
+public import LeanExe.Wasi.PrefixProgress
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

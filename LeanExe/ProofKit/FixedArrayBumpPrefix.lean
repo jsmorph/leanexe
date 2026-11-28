@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.Allocation
-import LeanExe.ProofKit.FixedArrayFold
-import LeanExe.ProofKit.Frame
+module
+
+public import LeanExe.ProofKit.Allocation
+public import LeanExe.ProofKit.FixedArrayFold
+public import LeanExe.ProofKit.Frame
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArrayBump
 open Wasm FixedArrayFold

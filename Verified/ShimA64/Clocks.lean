@@ -1,5 +1,9 @@
-import Verified.ShimA64.Stubs
-import LeanExe.A64.Proof.WasiClocks
+module
+
+public import Verified.ShimA64.Stubs
+public import LeanExe.A64.Proof.WasiClocks
+
+@[expose] public section
 
 /-!
 The stubs of `clock_time_get` and `random_get` against the shim's `clockInvoke` and

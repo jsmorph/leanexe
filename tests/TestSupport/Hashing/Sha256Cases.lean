@@ -1,4 +1,8 @@
-import Library.Hashing.Sha256.Program
+module
+
+public import Library.Hashing.Sha256.Program
+
+@[expose] public section
 
 /-! The cases of the module `sha256`: the two digests of messages whose lengths reach every position
 of a 64-byte block around the boundaries at 56 and 64 bytes, and of longer messages.

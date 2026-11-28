@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccRefl
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccRefl
+
+@[expose] public section
 
 /-!
 The renormalization at the end of the main branch of `Lgamma.accurate`: four `fastTwoSum` that

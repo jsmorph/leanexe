@@ -1,6 +1,10 @@
-import Library.Numerics.Fourier.Twiddle
-import LeanExe.Dialect.ArrayLemmas
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Numerics.Fourier.Twiddle
+public import LeanExe.Dialect.ArrayLemmas
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-!
 The accuracy of `transformWith Trig.invPi Trig.halfPi dir xs` for `dir = ∓1`.  For a signal of

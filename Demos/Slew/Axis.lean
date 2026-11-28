@@ -1,4 +1,8 @@
-import Demos.Slew.Error
+module
+
+public import Demos.Slew.Error
+
+@[expose] public section
 
 /-! The axis and angle of the relative quaternion `rel` in the edge check.  With `X`, `Y`, `Z`
 the real values of `rel`'s vector part, `S² = X² + Y² + Z²`.  The program's radicand

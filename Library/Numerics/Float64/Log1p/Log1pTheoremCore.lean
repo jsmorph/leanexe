@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Log1p.Log1pTheoremBranches
-import Library.Numerics.Float64.Log1p.Log1pKernelPoly
-import LeanExe.ProofKit.F64Approx
-import LeanExe.ProofKit.F64Exact
+module
+
+public import Library.Numerics.Float64.Log1p.Log1pTheoremBranches
+public import Library.Numerics.Float64.Log1p.Log1pKernelPoly
+public import LeanExe.ProofKit.F64Approx
+public import LeanExe.ProofKit.F64Exact
+
+@[expose] public section
 
 /-!
 The polynomial part of `Log1p.log1pTail`: `f²/2` as `0.5 * f * f`, `s = f/(2 + f)`, and

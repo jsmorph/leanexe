@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Bytes
+module
+
+public import LeanExe.Dialect.Bytes
+
+@[expose] public section
 
 /-!
 Windows of a byte buffer.  A start and a count name a window of a buffer: its first position is

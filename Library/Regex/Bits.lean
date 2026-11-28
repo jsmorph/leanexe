@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! Words as sets of states.  Bit `q` of a word, counted from the least significant, is 1 exactly
 when state `q` is in the set, so a word holds a set of states below 64.  The lemmas give the bits of
 the operations that the matcher applies to its sets. -/

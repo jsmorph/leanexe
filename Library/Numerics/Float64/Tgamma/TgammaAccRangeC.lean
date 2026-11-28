@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.GammaScaled
-import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+module
+
+public import LeanExe.ProofKit.GammaScaled
+public import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+
+@[expose] public section
 
 /-!
 Relative bounds on the polynomials of `Tgamma.accurate` above `1/4` (`tgamma.c` lines 347-612,

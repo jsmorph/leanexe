@@ -1,8 +1,12 @@
-import Demos.ManifestCheck.NativeSpec
-import Demos.ManifestCheck.CommandProof
-import Demos.ManifestCheck.Budget
-import Verified.Shim.Images
-import Verified.Shim.Args
+module
+
+public import Demos.ManifestCheck.NativeSpec
+public import Demos.ManifestCheck.CommandProof
+public import Demos.ManifestCheck.Budget
+public import Verified.Shim.Images
+public import Verified.Shim.Args
+
+@[expose] public section
 
 /-! The manifest checker's specification at the Linux call layer from its specification at WASI.
 Each WASI event of the command has, under `linuxHost` with the results of `InRange`, images of these

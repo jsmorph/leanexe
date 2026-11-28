@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaStir
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaStir
+
+@[expose] public section
 
 /-!
 `FastSpec` for the fast path at positive `x` from 0.5 on: the pieces up to 8.29541

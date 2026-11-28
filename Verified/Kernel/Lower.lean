@@ -1,7 +1,11 @@
-import Verified.Kernel.Loop
-import Verified.Kernel.Float32
-import Verified.Kernel.Read
-import Verified.Kernel.Size
+module
+
+public import Verified.Kernel.Loop
+public import Verified.Kernel.Float32
+public import Verified.Kernel.Read
+public import Verified.Kernel.Size
+
+@[expose] public section
 
 namespace Verified.Kernel
 

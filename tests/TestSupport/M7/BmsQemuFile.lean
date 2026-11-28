@@ -1,4 +1,8 @@
-import TestSupport.M7.BmsLoop
+module
+
+public import TestSupport.M7.BmsLoop
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of the BMS step `bmsTick` for QEMU's `mps2-an500` that

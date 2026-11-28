@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Sinh.SinhWords
-import Library.Numerics.Float64.Tanh.TanhMain
+module
+
+public import Library.Numerics.Float64.Sinh.SinhWords
+public import Library.Numerics.Float64.Tanh.TanhMain
+
+@[expose] public section
 
 /-!
 The sign of `Sinh.sinh`.  The code multiplies by `h = -0.5` for negative inputs, and the product of

@@ -1,8 +1,13 @@
-import Library.Numerics.Reductions.SumError
-import LeanExe.ProofKit.F64ErrorTrack
-import LeanExe.ProofKit.F64Sterbenz
-import LeanExe.ProofKit.F64Convert
-import LeanExe.Dialect.Loop
+module
+
+public import Library.Numerics.Reductions.SumError
+public import LeanExe.ProofKit.F64ErrorTrack
+public import LeanExe.ProofKit.F64Sterbenz
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.Dialect.Loop
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-!
 Binary64 sums.  `f64` is the `SumError.Adder` of Lean's `Float`, with the unit roundoff `2 ^ -53`

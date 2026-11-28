@@ -1,7 +1,11 @@
-import LeanExe.A64.Proof.LinuxImage
-import LeanExe.A64.Proof.LinuxCalls
-import LeanExe.A64.Stamp
-import LeanExe.A64.Proof.StampRuns
+module
+
+public import LeanExe.A64.Proof.LinuxImage
+public import LeanExe.A64.Proof.LinuxCalls
+public import LeanExe.A64.Stamp
+public import LeanExe.A64.Proof.StampRuns
+
+@[expose] public section
 
 /-!
 The runtime of the stamp executable around its program, for the Linux call layer's rule.

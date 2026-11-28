@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64ErrorTrack
-import LeanExe.ProofKit.PolyBound
-import LeanExe.ProofKit.F64Bits
+module
+
+public import LeanExe.ProofKit.F64ErrorTrack
+public import LeanExe.ProofKit.PolyBound
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-!
 A verified error bound for Horner evaluation in binary64.  `hornerF [a₀, ..., aₙ] s` is

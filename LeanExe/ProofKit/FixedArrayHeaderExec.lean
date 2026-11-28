@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.FixedArrayHeader
-import LeanExe.ProofKit.Frame
-import Interpreter.Wasm.Wp.Tactic
+module
+
+public import LeanExe.ProofKit.FixedArrayHeader
+public import LeanExe.ProofKit.Frame
+public import Interpreter.Wasm.Wp.Tactic
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArrayHeader
 open Wasm LeanExe.ProofKit.Memory LeanExe.ProofKit.Allocation

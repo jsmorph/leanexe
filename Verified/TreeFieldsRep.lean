@@ -1,5 +1,9 @@
-import Verified.OwnedValues
-import Verified.WordCode
+module
+
+public import Verified.OwnedValues
+public import Verified.WordCode
+
+@[expose] public section
 
 namespace Verified
 

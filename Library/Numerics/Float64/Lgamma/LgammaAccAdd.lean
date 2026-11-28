@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccLow
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccLow
+
+@[expose] public section
 
 /-!
 The addition of a logarithm `lh + ll + lll` to a triple `fh + fl + fll` in the windows of

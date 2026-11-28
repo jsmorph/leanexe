@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Build
+module
+
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 /-! Straight two-way merge sort, TAOCP §5.2.4, bottom-up.  A pass of width `w` merges each pair of
 adjacent runs `[lo, lo + w)` and `[lo + w, lo + 2w)` of the array, cut at its length `n`, into a

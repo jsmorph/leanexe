@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaSinpidRed
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidRed
+
+@[expose] public section
 
 /-!
 The argument reduction of `Lgamma.asSinpipidAccurate` for `x = n/2^54` with `0 < n < 2^54`

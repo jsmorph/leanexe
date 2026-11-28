@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 /-! A hash table with linear probing, Algorithms L and R of TAOCP §6.4.  The input holds the slot
 count `m = xs[0]` and then the operations as pairs `xs[2e + 1], xs[2e + 2]` of a code and a key:

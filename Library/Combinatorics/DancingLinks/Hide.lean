@@ -1,5 +1,9 @@
-import Library.Combinatorics.DancingLinks.Table
-import Library.Combinatorics.DancingLinks.Program
+module
+
+public import Library.Combinatorics.DancingLinks.Table
+public import Library.Combinatorics.DancingLinks.Program
+
+@[expose] public section
 
 /-! Knuth's `hide(p)` and `unhide(p)` in the program's array.  `Layout.Good` states that the options
 are nonempty, repeat no item, and hold items in `1..N`, as those of a valid input do, and that the

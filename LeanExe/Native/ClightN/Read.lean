@@ -1,4 +1,9 @@
-import Lean
+module
+
+public import LeanExe.Base
+public import Lean
+
+@[expose] public section
 
 /-!
 The Lean half of the read-back that `clightn/check.sh` compares with the neutral specification

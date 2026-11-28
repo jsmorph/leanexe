@@ -1,5 +1,9 @@
-import Verified.TreeFieldBlocks
-import Verified.TreeFieldsState
+module
+
+public import Verified.TreeFieldBlocks
+public import Verified.TreeFieldsState
+
+@[expose] public section
 
 namespace Verified
 

@@ -1,4 +1,8 @@
-import TestSupport.M7.BmsLoop
+module
+
+public import TestSupport.M7.BmsLoop
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of the BMS step `bmsTickUsart3` for the NUCLEO-F767ZI that

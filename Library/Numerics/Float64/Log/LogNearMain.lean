@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Log.LogMain
+module
+
+public import Library.Numerics.Float64.Log.LogMain
+
+@[expose] public section
 
 /-!
 The error of `Log.log` on its main path as a distance, for proofs that combine the result with

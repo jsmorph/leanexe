@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.AlignedReuse
-import LeanExe.ProofKit.FixedArrayAllocate
+module
+
+public import LeanExe.ProofKit.AlignedReuse
+public import LeanExe.ProofKit.FixedArrayAllocate
+
+@[expose] public section
 
 /-!
 `FixedArrayAllocate.program`, the allocation of `alloc`, under `wpA`.  The bump allocation

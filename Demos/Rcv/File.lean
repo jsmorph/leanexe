@@ -1,5 +1,9 @@
-import Demos.Rcv.Compiled
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Rcv.Compiled
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! The file theorems of `build/verified/rcvCount.wasm`, which `tests/verified/run.sh` checks after
 it writes the file: the file holds `encode compiled.module`, and it decodes to the module of

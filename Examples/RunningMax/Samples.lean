@@ -1,3 +1,7 @@
+module
+
+@[expose] public section
+
 namespace Examples.RunningMax
 
 def samples : List (Array UInt64) :=

@@ -1,5 +1,9 @@
-import Demos.ManifestCheck.CommandSpec
-import Verified.Shim
+module
+
+public import Demos.ManifestCheck.CommandSpec
+public import Verified.Shim
+
+@[expose] public section
 
 /-! The specification of the native runs of the manifest checker in terms of the events of the
 Linux call layer, `LeanExe.Linux.Event`, which record each call's arguments, the bytes of its input

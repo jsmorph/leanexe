@@ -1,7 +1,11 @@
-import Demos.RunningSum.Addition
-import Demos.RunningSum.Parsing
-import Demos.RunningSum.Rendering
-import Demos.RunningSum.StreamView
+module
+
+public import Demos.RunningSum.Addition
+public import Demos.RunningSum.Parsing
+public import Demos.RunningSum.Rendering
+public import Demos.RunningSum.StreamView
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

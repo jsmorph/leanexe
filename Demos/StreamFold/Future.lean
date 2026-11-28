@@ -1,5 +1,9 @@
-import Demos.StreamFold.FutureBase
-import Demos.StreamFold.Host
+module
+
+public import Demos.StreamFold.FutureBase
+public import Demos.StreamFold.Host
+
+@[expose] public section
 
 namespace Demos.StreamFold
 

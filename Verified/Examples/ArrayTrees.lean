@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A recursive type whose records hold an array of words beside a word and two children.  A
 record holds its word and child slots in the order of the fields and then its array slot, as the

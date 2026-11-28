@@ -1,5 +1,9 @@
-import Library.Trees.WordTree.Program
-import LeanExe.Pipeline.Slotted
+module
+
+public import Library.Trees.WordTree.Program
+public import LeanExe.Pipeline.Slotted
+
+@[expose] public section
 
 namespace Library.Trees.WordTree
 

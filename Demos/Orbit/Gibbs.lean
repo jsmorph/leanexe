@@ -1,4 +1,8 @@
-import Demos.Orbit.TwoBody
+module
+
+public import Demos.Orbit.TwoBody
+
+@[expose] public section
 
 /-!
 Gibbs' method over the real numbers.  For three positions `r1`, `r2`, `r3` with lengths `n1`,

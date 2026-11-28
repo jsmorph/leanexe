@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64Source
-import LeanExe.ProofKit.FloatCommon
+module
+
+public import LeanExe.ProofKit.F64Source
+public import LeanExe.ProofKit.FloatCommon
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Encoding
 open Float.Model Float.Model.UnpackedFloat FloatCommon

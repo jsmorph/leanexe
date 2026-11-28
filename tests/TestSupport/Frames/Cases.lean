@@ -1,6 +1,10 @@
-import Demos.Frames.Program
-import Demos.Frames.Time
-import TestSupport.Host
+module
+
+public import Demos.Frames.Program
+public import Demos.Frames.Time
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the frames module.  `cases` prints the module cases for `tests/verified/run.sh`, and
 `serve` reads the input lines of `tests/frames/oracle.py` and prints each line followed by the
@@ -58,7 +62,7 @@ partial def serve : IO Unit := do
   let rec go : IO Unit := do
     let text ← stdin.getLine
     if text.isEmpty then return
-    let line := text.trimRight
+    let line := text.trimAsciiEnd.copy
     match respond (line.splitOn " ") with
     | some r => IO.println s!"{line} {r}"
     | none => throw (IO.userError s!"cannot read the line: {line}")

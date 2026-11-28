@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselMillerLast
-import Library.Numerics.Float64.Bessel.BesselJ0Small
-import Library.Numerics.Float64.Bessel.BesselJ1Small
+module
+
+public import Library.Numerics.Float64.Bessel.BesselMillerLast
+public import Library.Numerics.Float64.Bessel.BesselJ0Small
+public import Library.Numerics.Float64.Bessel.BesselJ1Small
+
+@[expose] public section
 
 /-!
 Miller's method of `jn` for `2^-30 ≤ x < 2` and `2 ≤ n ≤ 2^31`: the result is finite and lies

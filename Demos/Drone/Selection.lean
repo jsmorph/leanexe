@@ -1,5 +1,9 @@
-import Demos.Drone.Sqrt
-import Demos.Drone.Optimality
+module
+
+public import Demos.Drone.Sqrt
+public import Demos.Drone.Optimality
+
+@[expose] public section
 
 /-! The loop over the sources in `best` keeps the best candidate, the lowest source among
 equals, and a row built by `LeanExe.build` holds `best` of each target. -/

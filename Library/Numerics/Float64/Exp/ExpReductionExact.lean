@@ -1,8 +1,12 @@
-import LeanExe.ProofKit.F64DyadicBounds
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64GridExact
-import CodeLib.IEEE64.Operations
-import LeanExe.ProofKit.F64AddBounds
+module
+
+public import LeanExe.ProofKit.F64DyadicBounds
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64GridExact
+public import CodeLib.IEEE64.Operations
+public import LeanExe.ProofKit.F64AddBounds
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpReductionExact
 open CodeLib.IEEE64

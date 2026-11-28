@@ -1,5 +1,9 @@
-import Examples.Convert.Program
-import Examples.Floor.Cases
+module
+
+public import Examples.Convert.Program
+public import Examples.Floor.Cases
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of `convert`.  The integers are the operands of the
 floor cases and the integers that round at a tie or just past one: `2^53 + 1` and `2^53 + 3`, which

@@ -1,5 +1,9 @@
-import Demos.Conjunction.Verified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Conjunction.Verified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/conjunction.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Demos/Conjunction/File.lean`: the file holds

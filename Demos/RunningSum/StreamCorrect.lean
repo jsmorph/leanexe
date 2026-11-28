@@ -1,8 +1,12 @@
-import Demos.RunningSum.Model
-import Demos.RunningSum.Termination
-import Demos.StreamFold.Correct
-import Demos.StreamFold.Observed
-import Verified.Wasi.ProcessEntryProofs
+module
+
+public import Demos.RunningSum.Model
+public import Demos.RunningSum.Termination
+public import Demos.StreamFold.Correct
+public import Demos.StreamFold.Observed
+public import Verified.Wasi.ProcessEntryProofs
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

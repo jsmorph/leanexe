@@ -1,6 +1,10 @@
-import LeanExe.Wasi.Action
-import LeanExe.Wasi.Sys
-import Verified.Correct
+module
+
+public import LeanExe.Wasi.Action
+public import LeanExe.Wasi.Sys
+public import Verified.Correct
+
+@[expose] public section
 
 namespace LeanExe.Wasi
 

@@ -1,4 +1,8 @@
-import LeanExe.Linux.CallTable
+module
+
+public import LeanExe.Linux.CallTable
+
+@[expose] public section
 
 /-!
 Properties of a kernel's replies that the frame rule of `LeanExe/Linux/Call.lean` does not state,

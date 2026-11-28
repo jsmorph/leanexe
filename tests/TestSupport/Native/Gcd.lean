@@ -1,5 +1,9 @@
-import Verified.Reflect.Command
-import LeanExe.Native.CText
+module
+
+public import Verified.Reflect.Command
+public import LeanExe.Native.CText
+
+@[expose] public section
 
 /-!
 Euclid's algorithm, compiled twice for the native translator's milestone M2: `loopCompiled` as

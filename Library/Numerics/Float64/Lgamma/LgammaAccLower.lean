@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.GammaBasic
-import LeanExe.ProofKit.PolyBound
+module
+
+public import LeanExe.ProofKit.GammaBasic
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 Lower bounds on `|log |Γ x||` where `Lgamma.accurate` keeps a pair with an absolute error and

@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64NearestSteps
+module
+
+public import LeanExe.ProofKit.F64NearestSteps
+
+@[expose] public section
 
 /-!
 Step counts from relative distances.  `steps_rel` is the one-step criterion of

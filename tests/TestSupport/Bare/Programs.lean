@@ -1,7 +1,14 @@
-import Library.Hashing.Crc.Program
-import Library.Hashing.Sha256.Program
-import Library.Hashing.Words.Encoding
-import Verified.Reflect.Command
+module
+
+public import Library.Hashing.Crc.Program
+public import Library.Hashing.Sha256.Program
+public import Library.Hashing.Words.Encoding
+public import Verified.Reflect.Command
+public meta import Library.Hashing.Crc.Program
+public meta import Library.Hashing.Sha256.Program
+public meta import Library.Hashing.Words.Encoding
+
+@[expose] public section
 
 /-!
 Programs of the bare-metal test (`docs/native-bare-metal.md`, test 2) that the libraries do not

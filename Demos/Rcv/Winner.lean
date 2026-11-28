@@ -1,4 +1,8 @@
-import Demos.Rcv.Holder
+module
+
+public import Demos.Rcv.Holder
+
+@[expose] public section
 
 /-!
 T3 of [the requirements](requirements.md), section "Theorems": the count names a winner exactly

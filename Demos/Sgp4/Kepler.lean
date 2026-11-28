@@ -1,7 +1,12 @@
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
-import Mathlib.Analysis.Real.Sqrt
-import Mathlib.Topology.Order.IntermediateValue
-import Mathlib.Logic.Function.Basic
+module
+
+public import LeanExe.Base
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+public import Mathlib.Analysis.Real.Sqrt
+public import Mathlib.Topology.Order.IntermediateValue
+public import Mathlib.Logic.Function.Basic
+
+@[expose] public section
 
 /-!
 Kepler's equation in the form of SGP4, `E + b cos E - a sin E = u`.  For `a² + b² < 1` the left

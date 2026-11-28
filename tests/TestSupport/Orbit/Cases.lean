@@ -1,5 +1,9 @@
-import Demos.Orbit.LambertBox
-import TestSupport.Host
+module
+
+public import Demos.Orbit.LambertBox
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the orbit-determination modules.  `cases` prints the module cases of `gibbsBounds`
 and `lambertBounds` for `tests/verified/run.sh`.  `gibbs` reads lines of the bit patterns of the
@@ -84,7 +88,7 @@ partial def serve (n : Nat) (run : List Float → String) : IO Unit := do
   let rec go : IO Unit := do
     let text ← stdin.getLine
     if text.isEmpty then return
-    let words := (text.trim.splitOn " ").filterMap String.toNat?
+    let words := (text.trimAscii.copy.splitOn " ").filterMap String.toNat?
     if words.length != n then throw (IO.userError s!"expected {n} words: {text}")
     IO.println (run (words.map fun w => Float.ofBits (UInt64.ofNat w)))
     (← IO.getStdout).flush

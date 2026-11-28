@@ -1,5 +1,9 @@
-import Demos.Drone.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Demos.Drone.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! A `Choice` is represented as its three words, the time, the excess, and the parent. -/
 

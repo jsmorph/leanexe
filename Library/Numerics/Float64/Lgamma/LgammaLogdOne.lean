@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaLogdAcc
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaLogdAcc
+
+@[expose] public section
 
 /-!
 **`Lgamma.asLogdAccurate` relative to `log y` next to 1** (`acc_one`): for `y ≠ 1` with

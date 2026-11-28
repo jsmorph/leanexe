@@ -1,6 +1,10 @@
-import Verified.Shim.Clocks
-import Verified.Shim.Strings
-import Verified.Shim.Files
+module
+
+public import Verified.Shim.Clocks
+public import Verified.Shim.Strings
+public import Verified.Shim.Files
+
+@[expose] public section
 
 /-!
 The shim's host environment.  `sysInvoke F L I replies call` is the function of the flat call

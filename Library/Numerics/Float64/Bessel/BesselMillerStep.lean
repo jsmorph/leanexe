@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.BesselMillerFacts
-import Library.Numerics.Float64.Bessel.BesselStepF
+module
+
+public import Library.Numerics.Float64.Bessel.BesselMillerFacts
+public import Library.Numerics.Float64.Bessel.BesselStepF
+
+@[expose] public section
 
 /-!
 One step `b ⊗ dᵢ ⊘ x ⊖ a` of the backward recurrence of `jn`, in the form that keeps relative

@@ -1,8 +1,12 @@
-import LeanExe.A64.BootImage
-import LeanExe.A64.Proof.StartupCode
-import LeanExe.Proof.Area
-import LeanExe.A64.Proof.Machine
-import LeanExe.A64.File
+module
+
+public import LeanExe.A64.BootImage
+public import LeanExe.A64.Proof.StartupCode
+public import LeanExe.Proof.Area
+public import LeanExe.A64.Proof.Machine
+public import LeanExe.A64.File
+
+@[expose] public section
 
 /-!
 Where the bytes of an image that `genImage` gives lie.  `gen_image` unpacks the generator, and

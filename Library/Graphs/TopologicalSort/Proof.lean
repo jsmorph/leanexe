@@ -1,8 +1,12 @@
-import Library.Graphs.TopologicalSort.Program
-import Library.Graphs.TopologicalSort.Spec
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
-import Mathlib.Data.Finset.Card
+module
+
+public import Library.Graphs.TopologicalSort.Program
+public import Library.Graphs.TopologicalSort.Spec
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+public import Mathlib.Data.Finset.Card
+
+@[expose] public section
 
 /-! The proof that topological sorting returns a topological order, or the empty array when none
 exists.  `count r P` counts the indices below `r` that satisfy `P`, and `pend xs done k` counts the

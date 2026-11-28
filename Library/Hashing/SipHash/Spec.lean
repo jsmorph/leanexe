@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! SipHash-c-d, transcribed from §2 of J.-P. Aumasson and D. J. Bernstein, "SipHash: a fast
 short-input PRF", the version of 2012-09-18, which the reference implementation's README lists
 as accepted at INDOCRYPT 2012.  A key is 16 bytes and a message a string of bytes.  The words are

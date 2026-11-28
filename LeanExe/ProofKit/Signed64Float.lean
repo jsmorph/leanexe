@@ -1,9 +1,16 @@
-import LeanExe.ProofKit.Signed64
-import LeanExe.ProofKit.F64Convert
-import LeanExe.ProofKit.F64NegateOps
-import LeanExe.ProofKit.F32Convert
-import LeanExe.ProofKit.F32Negate
-import LeanExe.ProofKit.F32TruncSat
+module
+
+public import LeanExe.ProofKit.Signed64
+public import LeanExe.ProofKit.F64Convert
+public import LeanExe.ProofKit.F64NegateOps
+public import LeanExe.ProofKit.F32Convert
+public import LeanExe.ProofKit.F32Negate
+public import LeanExe.ProofKit.F32TruncSat
+import all Init.Data.SInt.Float
+import all Init.Data.SInt.Float32
+import all Init.Data.BitVec.BasicAux
+
+@[expose] public section
 
 /-!
 The word forms of Lean's conversions between `Int64` and the floats, over the unsigned conversions,
@@ -164,14 +171,8 @@ theorem toNat_min (a b : UInt64) : (min a b).toNat = min a.toNat b.toNat := by
     omega
 
 theorem ofNatClamp_toNat (q : Nat) :
-    (UInt64.ofNatClamp q).toNat = min q 18446744073709551615 := by
-  have hs : UInt64.size = 18446744073709551616 := rfl
-  unfold UInt64.ofNatClamp
-  split
-  · rw [UInt64.toNat_ofNatLT]
-    omega
-  · rw [UInt64.toNat_ofNatLT]
-    omega
+    (UInt64.ofNatClamp q).toNat = min q 18446744073709551615 :=
+  BitVec.toNat_ofNatClamp
 
 /-- Lean's clamp of a natural number into `Int64`, on words: the clamp into `UInt64` saturated at
 `2 ^ 63 - 1`. -/

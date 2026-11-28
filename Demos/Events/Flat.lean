@@ -1,5 +1,9 @@
-import Demos.Events.Program
-import Demos.Screening.Flat
+module
+
+public import Demos.Events.Program
+public import Demos.Screening.Flat
+
+@[expose] public section
 
 namespace Demos.Events
 

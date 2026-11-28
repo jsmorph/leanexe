@@ -1,4 +1,8 @@
-import TestSupport.PassiveSafety.Cases
+module
+
+public import TestSupport.PassiveSafety.Cases
+
+@[expose] public section
 
 /-! The cases of the module `passivesafety` alone, for `tests/verified/run.sh --cases
 passivesafety`.  With the argument `--bits`, it prints the lines that

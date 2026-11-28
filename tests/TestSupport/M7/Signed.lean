@@ -1,6 +1,10 @@
-import LeanExe.Native.Requests
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import LeanExe.Native.Requests
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 A step over a UART for the Cortex-M7 back end whose state holds an `Int64`, a leaky integrator of

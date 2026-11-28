@@ -1,5 +1,9 @@
-import Verified.Wasi.SysCommand
-import Verified.Wasi.ReadFunction
+module
+
+public import Verified.Wasi.SysCommand
+public import Verified.Wasi.ReadFunction
+
+@[expose] public section
 
 /-! The command `read buffer start count`: the take of the buffer, as a `sys` command takes its
 buffer, and the read of stdin into the window of the taken buffer through the read wrapper, which

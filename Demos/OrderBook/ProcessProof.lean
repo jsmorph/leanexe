@@ -1,6 +1,10 @@
-import Demos.OrderBook.ProcessModule
-import Verified.Wasi.ProcessCorrect
-import Verified.Wasi.ProcessNative
+module
+
+public import Demos.OrderBook.ProcessModule
+public import Verified.Wasi.ProcessCorrect
+public import Verified.Wasi.ProcessNative
+
+@[expose] public section
 
 /-! The refinement of [the process](Process.lean) by its compiled module.  `step_related` and
 `begin_related` relate the reflected `step` and `begin` to the native ones on the state's tuple,

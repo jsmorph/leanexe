@@ -1,5 +1,9 @@
-import LeanExe.M7.Board
-import TestSupport.Bare.Req
+module
+
+public import LeanExe.M7.Board
+public import TestSupport.Bare.Req
+
+@[expose] public section
 
 /-!
 The echo of `usart3Tick` through the Cortex-M7 back end on the NUCLEO-F767ZI: the image of

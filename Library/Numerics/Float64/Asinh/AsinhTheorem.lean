@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Asinh.AsinhTheoremSmallCases
-import Library.Numerics.Float64.Asinh.AsinhTheoremLarge
-import Library.Numerics.Float64.Asinh.AsinhTheoremTiny
-import Library.Numerics.Float64.Asinh.AtanhTheorem
+module
+
+public import Library.Numerics.Float64.Asinh.AsinhTheoremSmallCases
+public import Library.Numerics.Float64.Asinh.AsinhTheoremLarge
+public import Library.Numerics.Float64.Asinh.AsinhTheoremTiny
+public import Library.Numerics.Float64.Asinh.AtanhTheorem
+
+@[expose] public section
 
 /-!
 **`asinh` within two steps** and its exceptional inputs.  Below `2 ^ -28` the result is `x`

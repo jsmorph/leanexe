@@ -1,6 +1,10 @@
-import Library.Hashing.XxHash64.Encoding
-import Library.Hashing.XxHash64.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Hashing.XxHash64.Encoding
+public import Library.Hashing.XxHash64.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Hashing.XxHash64
 

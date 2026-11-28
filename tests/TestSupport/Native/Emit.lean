@@ -1,19 +1,23 @@
-import TestSupport.Native.Gcd
-import Verified.Examples.Arrays
-import Library.Arrays.Filter.Compiled
-import Library.Arrays.Range.Compiled
-import Library.Arrays.Repeat.Compiled
-import Library.Arrays.Search.Compiled
-import Library.Arrays.Word.Compiled
-import Library.Hashing.Crc.Compiled
-import Library.Lists.Word.Compiled
-import Library.Sorting.Insertion.Compiled
-import Library.Hashing.Sha256.Compiled
-import Library.Hashing.Sha512.Compiled
-import Library.Hashing.Sha3.Compiled
-import Library.Hashing.SipHash.Compiled
-import Library.Hashing.XxHash64.Compiled
-import LeanExe.Native.ClightCheck
+module
+
+public import TestSupport.Native.Gcd
+public import Verified.Examples.Arrays
+public import Library.Arrays.Filter.Compiled
+public import Library.Arrays.Range.Compiled
+public import Library.Arrays.Repeat.Compiled
+public import Library.Arrays.Search.Compiled
+public import Library.Arrays.Word.Compiled
+public import Library.Hashing.Crc.Compiled
+public import Library.Lists.Word.Compiled
+public import Library.Sorting.Insertion.Compiled
+public import Library.Hashing.Sha256.Compiled
+public import Library.Hashing.Sha512.Compiled
+public import Library.Hashing.Sha3.Compiled
+public import Library.Hashing.SipHash.Compiled
+public import Library.Hashing.XxHash64.Compiled
+public import LeanExe.Native.ClightCheck
+
+@[expose] public section
 
 /-!
 The executable of the translator's end-to-end test (`tests/native/run.sh`).  `native-emit emit

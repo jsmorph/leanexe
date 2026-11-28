@@ -1,5 +1,9 @@
-import Verified.Wasi.Program
-import Verified.Wasi.ModuleCompileInitial
+module
+
+public import Verified.Wasi.Program
+public import Verified.Wasi.ModuleCompileInitial
+
+@[expose] public section
 
 namespace Verified.Wasi
 

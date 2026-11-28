@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Log.LogCoreStep
-import Library.Numerics.Float64.Log.LogBranches
-import LeanExe.ProofKit.F64ExactProduct
+module
+
+public import Library.Numerics.Float64.Log.LogCoreStep
+public import Library.Numerics.Float64.Log.LogBranches
+public import LeanExe.ProofKit.F64ExactProduct
+
+@[expose] public section
 
 /-!
 `Log.log` on positive normal arguments outside the path near 1, `[15/16, 1 + 265/4096)`: the result

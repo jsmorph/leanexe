@@ -1,4 +1,8 @@
-import Verified.Bytes.StaticEnv
+module
+
+public import Verified.Bytes.StaticEnv
+
+@[expose] public section
 
 namespace Verified.Bytes.LiteralPool
 

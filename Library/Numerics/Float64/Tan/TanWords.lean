@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tan.Compiled
-import Library.Numerics.Float64.Trig.TrigKernelWords
+module
+
+public import Library.Numerics.Float64.Tan.Compiled
+public import Library.Numerics.Float64.Trig.TrigKernelWords
+
+@[expose] public section
 
 /-!
 `Tan.kernelTan` on words: the polynomial part, shared by both forms, and the two forms selected by

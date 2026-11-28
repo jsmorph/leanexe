@@ -1,5 +1,11 @@
-import Library.Numerics.Arithmetic.Fma.Program
-import TestSupport.Numerics.Reference
+module
+
+public import Library.Numerics.Arithmetic.Fma.Program
+public import TestSupport.Numerics.Reference
+public meta import Library.Numerics.Arithmetic.Fma.Program
+public meta import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Arithmetic.Fma.fma` against the exact value of `a · b + c`, an integer times a power of
 two, rounded to the nearest double by `Reference.toFloat`.  The check requires the same bits as the

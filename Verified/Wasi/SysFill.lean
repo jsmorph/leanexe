@@ -1,4 +1,8 @@
-import Verified.Wasi.SysWindow
+module
+
+public import Verified.Wasi.SysWindow
+
+@[expose] public section
 
 /-! The code of a call that fills a window of a buffer, from the window's computation to the
 errno, the count, and the buffer's root and size on the stack.  The window's length takes the

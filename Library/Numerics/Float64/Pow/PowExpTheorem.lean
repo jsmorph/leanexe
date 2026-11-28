@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowExpFar
+module
+
+public import Library.Numerics.Float64.Pow.PowExpFar
+
+@[expose] public section
 
 /-!
 `Pow.powExp` with `signBias = 0` within one step of `exp L`, for finite `x` and `xtail` with

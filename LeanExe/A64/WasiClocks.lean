@@ -1,5 +1,9 @@
-import LeanExe.A64.Gen
-import LeanExe.Area
+module
+
+public import LeanExe.A64.Gen
+public import LeanExe.Area
+
+@[expose] public section
 
 /-!
 The stubs of `clock_time_get` and `random_get`, which follow `clockInvoke` and `randomInvoke` of

@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Trig.TrigTheorem
-import LeanExe.A64.Proof.ProgramRuns
-import LeanExe.Native.Bare
-import Verified.Bare
+module
+
+public import Library.Numerics.Float64.Trig.TrigTheorem
+public import LeanExe.A64.Proof.ProgramRuns
+public import LeanExe.Native.Bare
+public import Verified.Bare
+
+@[expose] public section
 
 /-!
 The theorem of the sine's bare-metal program for AArch64, in the form `ProgramRuns`, for every

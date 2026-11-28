@@ -1,5 +1,9 @@
-import LeanExe.A64.WasiPreopen
-import LeanExe.A64.WasiClocks
+module
+
+public import LeanExe.A64.WasiPreopen
+public import LeanExe.A64.WasiClocks
+
+@[expose] public section
 
 /-!
 The stubs of `fd_close`, of `fd_read` and `fd_write` on a handle, of `path_open`, and of

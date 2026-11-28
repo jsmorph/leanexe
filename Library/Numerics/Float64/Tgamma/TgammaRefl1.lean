@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaLarge
-import LeanExe.ProofKit.F64Sterbenz
-import LeanExe.ProofKit.GammaBasic
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaLarge
+public import LeanExe.ProofKit.F64Sterbenz
+public import LeanExe.ProofKit.GammaBasic
+
+@[expose] public section
 
 /-!
 The first steps of the path of `tgammaWith` from `-184` to `-3`.  `fastTwoSum (-x) 1` is the exact

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Atan.AtanTheoremReduce
-import Library.Numerics.Float64.Atan.AtanTheoremConst
+module
+
+public import Library.Numerics.Float64.Atan.AtanTheoremReduce
+public import Library.Numerics.Float64.Atan.AtanTheoremConst
+
+@[expose] public section
 
 /-!
 The reduced branches of `Atan.atan` within one step.  `finish` combines the error of the reduced

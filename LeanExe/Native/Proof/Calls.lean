@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Branches
+module
+
+public import LeanExe.Native.Proof.Branches
+
+@[expose] public section
 
 /-!
 The simulation of `call`.  `CallSim g k` states what a call of function `k` at fuel `g` needs:

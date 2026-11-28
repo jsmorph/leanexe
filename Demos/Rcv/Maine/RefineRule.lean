@@ -1,5 +1,9 @@
-import Demos.Rcv.Maine.RefineTally
-import Demos.Rcv.Maine.Rounds
+module
+
+public import Demos.Rcv.Maine.RefineTally
+public import Demos.Rcv.Maine.Rounds
+
+@[expose] public section
 
 /-!
 The end of a round of the Maine program: `Demos.Rcv.Maine.Program.decideRound` gives the words of

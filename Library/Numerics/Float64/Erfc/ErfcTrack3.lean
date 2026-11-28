@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erfc.ErfcTrack2
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTrack2
+
+@[expose] public section
 
 /-!
 The stages of `cr_erf_accurate` and its tiny case, in the form of `ErfcTrack`.  `pr_twoS` and

@@ -1,6 +1,10 @@
-import Library.Regex.Compiled
-import Library.Regex.Proof
-import Verified.Call
+module
+
+public import Library.Regex.Compiled
+public import Library.Regex.Proof
+public import Verified.Call
+
+@[expose] public section
 
 /-! The bytes of the module `regex` match regular expressions given at run time.  The entry
 `matchWith`, called from a ready store with a borrowed pattern array `pat`, a word count `pn` with

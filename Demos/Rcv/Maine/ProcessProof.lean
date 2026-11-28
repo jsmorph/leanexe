@@ -1,5 +1,9 @@
-import Demos.Rcv.Maine.ProcessModule
-import Demos.Rcv.ProcessRun
+module
+
+public import Demos.Rcv.Maine.ProcessModule
+public import Demos.Rcv.ProcessRun
+
+@[expose] public section
 
 /-! The refinement of [the Maine process](Process.lean) by its compiled module, as
 `Demos/Rcv/ProcessProof.lean` states it for the Oakland process.  `step_related` and

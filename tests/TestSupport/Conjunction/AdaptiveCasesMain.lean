@@ -1,5 +1,9 @@
-import TestSupport.Conjunction.AdaptiveCases
-import TestSupport.Conjunction.Evaluate
+module
+
+public import TestSupport.Conjunction.AdaptiveCases
+public import TestSupport.Conjunction.Evaluate
+
+@[expose] public section
 
 /-! The cases of the module `adaptive` alone, for `tests/verified/run.sh --cases adaptive`.  With
 the argument `--bits` or `--sweep`, it prints the lines that `tests/conjunction/accuracy.py`

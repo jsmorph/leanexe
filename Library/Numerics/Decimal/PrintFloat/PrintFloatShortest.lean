@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatChoice
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatChoice
+
+@[expose] public section
 
 /-!
 `PrintFloat.shortest` computes the printers' choice (`shortest_spec`): its decimal `t · 10 ^ k`

@@ -1,5 +1,9 @@
-import Verified.Examples.WasiRetain
-import Verified.Wasi.ResourceRules
+module
+
+public import Verified.Examples.WasiRetain
+public import Verified.Wasi.ResourceRules
+
+@[expose] public section
 
 namespace Verified.Examples.WasiRetain
 

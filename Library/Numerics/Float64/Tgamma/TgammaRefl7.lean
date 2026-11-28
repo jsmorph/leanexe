@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaRefl6
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRefl6
+
+@[expose] public section
 
 /-!
 The subnormal results of the path of `tgammaWith` below `-170`.  `subPart` is the code of the

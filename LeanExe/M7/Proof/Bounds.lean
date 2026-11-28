@@ -1,4 +1,8 @@
-import LeanExe.M7.Proof.Branch
+module
+
+public import LeanExe.M7.Proof.Branch
+
+@[expose] public section
 
 /-!
 The code of the area's accesses in the model: the loads and stores at a register plus an offset,

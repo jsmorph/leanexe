@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! The energy authorizer, in the verified compiler's dialect.
 
 `authorizeWith site xs` decides whether a gateway may send the proposed power limits of the

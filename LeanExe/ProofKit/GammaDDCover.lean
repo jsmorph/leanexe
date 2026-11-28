@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.GammaConvex
+module
+
+public import LeanExe.ProofKit.GammaConvex
+
+@[expose] public section
 
 /-!
 Bounds on the divided difference `g s = (lgamma (x0 + s) - lgamma x0)/s` against a function `Q` on

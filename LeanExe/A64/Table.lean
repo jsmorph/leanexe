@@ -1,4 +1,8 @@
-import LeanExe.A64.Boot
+module
+
+public import LeanExe.A64.Boot
+
+@[expose] public section
 
 /-!
 The startup places a level-1 translation table of 32 bytes, aligned to 32 bytes, in the image and

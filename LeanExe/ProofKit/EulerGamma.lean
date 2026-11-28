@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.PolyCalc
-import Mathlib.NumberTheory.Harmonic.EulerMascheroni
+module
+
+public import LeanExe.ProofKit.PolyCalc
+public import Mathlib.NumberTheory.Harmonic.EulerMascheroni
+
+@[expose] public section
 
 /-!
 Rational enclosures of `log 2` and of Euler's constant `γ = Real.eulerMascheroniConstant`, which

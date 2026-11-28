@@ -1,4 +1,8 @@
-import Verified.PTX.Kernel
+module
+
+public import Verified.PTX.Kernel
+
+@[expose] public section
 
 /-!
 `compile` translates a source expression that is a build into a PTX kernel, or gives `none`.

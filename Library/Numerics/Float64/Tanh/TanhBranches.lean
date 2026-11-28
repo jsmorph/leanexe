@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.Expm1Branches
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1Branches
+
+@[expose] public section
 
 /-!
 The branches of fdlibm's `tanh` in `Tanh.tanh`.  Outside the non-finite and tiny inputs the code

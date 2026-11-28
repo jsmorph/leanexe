@@ -1,7 +1,11 @@
-import LeanExe.M7.Proof.Memory
-import LeanExe.M7.Gen
-import LeanExe.ProofKit.Typed
-import Interpreter.Wasm.Semantics
+module
+
+public import LeanExe.M7.Proof.Memory
+public import LeanExe.M7.Gen
+public import LeanExe.ProofKit.Typed
+public import Interpreter.Wasm.Semantics
+
+@[expose] public section
 
 /-!
 The relation of the simulation proof between a Talos frame and a state of the Cortex-M7 model, at

@@ -1,4 +1,8 @@
-import Verified.TreeCopyStep
+module
+
+public import Verified.TreeCopyStep
+
+@[expose] public section
 
 namespace Verified
 

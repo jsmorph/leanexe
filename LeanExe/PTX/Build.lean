@@ -1,7 +1,11 @@
-import LeanExe.PTX.Translate
-import LeanExe.PTX.Launch
-import LeanExe.Source.Build
-import LeanExe.Dialect.Build
+module
+
+public import LeanExe.PTX.Translate
+public import LeanExe.PTX.Launch
+public import LeanExe.Source.Build
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 /-!
 The PTX kernel of a build: thread `g` with `g` below the count stores the element of index `g` to

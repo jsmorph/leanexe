@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tan.TanTrunc
-import Library.Numerics.Float64.Tan.TanComp
-import Library.Numerics.Float64.Trig.TrigApprox
-import LeanExe.ProofKit.F64DivBounds
+module
+
+public import Library.Numerics.Float64.Tan.TanTrunc
+public import Library.Numerics.Float64.Tan.TanComp
+public import Library.Numerics.Float64.Trig.TrigApprox
+public import LeanExe.ProofKit.F64DivBounds
+
+@[expose] public section
 
 /-!
 The odd path of `Tan.kernelTan` below `0x3FE59428`: the compensated reciprocal `-1/(x + r)`.

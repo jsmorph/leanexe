@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.Traps
-import LeanExe.ProofKit.Exec
-import LeanExe.ProofKit.Signed64
+module
+
+public import LeanExe.A64.Proof.Traps
+public import LeanExe.ProofKit.Exec
+public import LeanExe.ProofKit.Signed64
+
+@[expose] public section
 
 /-!
 The simulation of the integer comparisons and operations beyond GCD's loop.  `genCmp` compares

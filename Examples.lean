@@ -1,44 +1,48 @@
-import Examples.Axpy.Cases
-import Examples.Axpy.Program
-import Examples.Below100.Cases
-import Examples.Below100.Program
-import Examples.Binary32.Cases
-import Examples.Binary32.Program
-import Examples.Bools.Cases
-import Examples.Bucket.Cases
-import Examples.Bucket.Program
-import Examples.Calc.Cases
-import Examples.Calc.Program
-import Examples.Convert.Cases
-import Examples.Convert.Program
-import Examples.Floor.Cases
-import Examples.Floor.Program
-import Examples.Grids.Cases
-import Examples.Increment.Cases
-import Examples.Increment.Program
-import Examples.Lists.Cases
-import Examples.Lookup.Cases
-import Examples.Lookup.Program
-import Examples.PairSum.Cases
-import Examples.PairSum.Program
-import Examples.Piecewise.Cases
-import Examples.Piecewise.Program
-import Examples.RemoveZero.Cases
-import Examples.RemoveZero.Program
-import Examples.Scale.Cases
-import Examples.Scale.Program
-import Examples.ScaledHypot.Cases
-import Examples.ScaledHypot.Program
-import Examples.Shape.Cases
-import Examples.Shape.Program
-import Examples.SumArray.Cases
-import Examples.SumArray.Program
-import Examples.SumCount.Cases
-import Examples.SumCount.Program
-import Examples.TreeLookup.Program
-import Examples.Trees.Cases
-import Examples.Trees.Encode
-import Examples.Updates.Cases
-import Examples.Words.Cases
-import Examples.Words.Encode
-import Examples.Binary32.VerifiedGpuCases
+module
+
+public import Examples.Axpy.Cases
+public import Examples.Axpy.Program
+public import Examples.Below100.Cases
+public import Examples.Below100.Program
+public import Examples.Binary32.Cases
+public import Examples.Binary32.Program
+public import Examples.Bools.Cases
+public import Examples.Bucket.Cases
+public import Examples.Bucket.Program
+public import Examples.Calc.Cases
+public import Examples.Calc.Program
+public import Examples.Convert.Cases
+public import Examples.Convert.Program
+public import Examples.Floor.Cases
+public import Examples.Floor.Program
+public import Examples.Grids.Cases
+public import Examples.Increment.Cases
+public import Examples.Increment.Program
+public import Examples.Lists.Cases
+public import Examples.Lookup.Cases
+public import Examples.Lookup.Program
+public import Examples.PairSum.Cases
+public import Examples.PairSum.Program
+public import Examples.Piecewise.Cases
+public import Examples.Piecewise.Program
+public import Examples.RemoveZero.Cases
+public import Examples.RemoveZero.Program
+public import Examples.Scale.Cases
+public import Examples.Scale.Program
+public import Examples.ScaledHypot.Cases
+public import Examples.ScaledHypot.Program
+public import Examples.Shape.Cases
+public import Examples.Shape.Program
+public import Examples.SumArray.Cases
+public import Examples.SumArray.Program
+public import Examples.SumCount.Cases
+public import Examples.SumCount.Program
+public import Examples.TreeLookup.Program
+public import Examples.Trees.Cases
+public import Examples.Trees.Encode
+public import Examples.Updates.Cases
+public import Examples.Words.Cases
+public import Examples.Words.Encode
+public import Examples.Binary32.VerifiedGpuCases
+
+@[expose] public section

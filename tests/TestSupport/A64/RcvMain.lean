@@ -1,5 +1,9 @@
-import TestSupport.A64.Rcv
-import TestSupport.A64.RcvMaine
+module
+
+public import TestSupport.A64.Rcv
+public import TestSupport.A64.RcvMaine
+
+@[expose] public section
 
 /-!
 The command `a64-rcv emit DIR` of the tabulators' AArch64 images, which read a canonical file from

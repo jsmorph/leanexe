@@ -1,5 +1,10 @@
-import Mathlib.Analysis.SpecialFunctions.Complex.Arg
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
+module
+
+public import LeanExe.Base
+public import Mathlib.Analysis.SpecialFunctions.Complex.Arg
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Arctan
+
+@[expose] public section
 
 /-!
 `Complex.arg (x + y i)` through `arctan (y / x)`: the angle itself for `x > 0`, and the angle

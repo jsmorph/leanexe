@@ -1,4 +1,9 @@
-import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
+module
+
+public import LeanExe.Base
+public import Mathlib.MeasureTheory.Integral.IntervalIntegral.Basic
+
+@[expose] public section
 
 /-! The physical model and the claims of the energy authorizer, in integers and reals.  A profile
 holds the site's limits and device parameters: energies in joules, powers in watts, times in

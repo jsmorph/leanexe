@@ -1,4 +1,9 @@
-import TestSupport.A64.CicTable
+module
+
+public import TestSupport.A64.CicTable
+public meta import TestSupport.A64.CicTable
+
+@[expose] public section
 
 /-!
 The CIC filter of `TestSupport.A64.Cic` written over `Int64`: each pass of

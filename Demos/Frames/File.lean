@@ -1,5 +1,9 @@
-import Demos.Frames.Verified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Frames.Verified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/frames.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Demos/Frames/File.lean`: the file holds

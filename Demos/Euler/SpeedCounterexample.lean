@@ -1,6 +1,10 @@
-import Demos.Euler.Verified
-import Demos.Euler.RealState
-import Demos.Euler.Equations.CharacteristicSpeed
+module
+
+public import Demos.Euler.Verified
+public import Demos.Euler.RealState
+public import Demos.Euler.Equations.CharacteristicSpeed
+
+@[expose] public section
 
 /-! The first-order solver's signal speed can underestimate the exact characteristic speed.  At the
 admissible state of density 1, zero momenta, and total energy 1, `side` accepts and returns a speed

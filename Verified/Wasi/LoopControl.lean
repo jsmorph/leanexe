@@ -1,7 +1,11 @@
-import Verified.TailLoop
-import Verified.LocalFrame
-import LeanExe.ProofKit.Sequencing
-import Verified.AlignedTailLoop
+module
+
+public import Verified.TailLoop
+public import Verified.LocalFrame
+public import LeanExe.ProofKit.Sequencing
+public import Verified.AlignedTailLoop
+
+@[expose] public section
 
 namespace Verified.Wasi
 

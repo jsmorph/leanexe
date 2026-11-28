@@ -1,7 +1,11 @@
-import LeanExe.A64.Proof.WithMachine
-import LeanExe.A64.Proof.WasiStubs
-import LeanExe.A64.Proof.LinuxImage
-import LeanExe.A64.Proof.Program
+module
+
+public import LeanExe.A64.Proof.WithMachine
+public import LeanExe.A64.Proof.WasiStubs
+public import LeanExe.A64.Proof.LinuxImage
+public import LeanExe.A64.Proof.Program
+
+@[expose] public section
 
 /-!
 The program of `genWasiProgram` over a machine.  `gen_wasiProgram` unpacks the generator, whose

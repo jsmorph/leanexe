@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaDD
-import Library.Numerics.Float64.Tgamma.TgammaFloor
-import LeanExe.ProofKit.F64Exact
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaDD
+public import Library.Numerics.Float64.Tgamma.TgammaFloor
+public import LeanExe.ProofKit.F64Exact
+
+@[expose] public section
 
 /-!
 The kernel of `Tgamma.asLogd` after the argument reduction.  For doubles `r` and `t` with

@@ -1,4 +1,8 @@
-import Library.Combinatorics.DancingLinks.BuildLoop
+module
+
+public import Library.Combinatorics.DancingLinks.BuildLoop
+
+@[expose] public section
 
 /-! The proof that `valid` decides `Valid`.  After a prefix of the words, the loop's state holds
 the number of the current option, which each zero increases, a flag, and the marks.  The invariant

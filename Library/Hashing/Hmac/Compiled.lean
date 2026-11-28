@@ -1,6 +1,14 @@
-import Library.Hashing.Hmac.Program
-import Library.Hashing.Words.Encoding
-import Verified.Reflect.Command
+module
+
+public import Library.Hashing.Hmac.Program
+public import Library.Hashing.Words.Encoding
+public import Verified.Reflect.Command
+public meta import Library.Hashing.Sha256.Program
+public meta import Library.Hashing.Sha512.Program
+public meta import Library.Hashing.Hmac.Program
+public meta import Library.Hashing.Words.Encoding
+
+@[expose] public section
 
 /-! The modules `hmac_sha256` and `hmac_sha512`.  Each holds the compression and the block loop of
 its hash function, since the two families name their functions alike and a module's exports take

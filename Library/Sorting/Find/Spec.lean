@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! The specification of selection: the word at position `k` of the array's elements in
 nondecreasing order, as Lean's `List.mergeSort` arranges them, and 0 when `k` is not a position of
 the array.  Words compare as unsigned numbers.  Exactly one list holds the same words with the same

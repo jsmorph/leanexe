@@ -1,5 +1,9 @@
-import Library.Regex.Bytes
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Library.Regex.Bytes
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/regex.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Library/Regex/File.lean`: the file holds

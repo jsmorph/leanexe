@@ -1,5 +1,9 @@
-import Demos.Gate.Program
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Gate.Program
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Gate
 

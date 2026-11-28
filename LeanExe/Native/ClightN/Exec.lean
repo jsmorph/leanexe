@@ -1,5 +1,9 @@
-import LeanExe.Native.ClightN.Arrays
-import LeanExe.Native.Proof.Reacts
+module
+
+public import LeanExe.Native.ClightN.Arrays
+public import LeanExe.Native.Proof.Reacts
+
+@[expose] public section
 
 /-!
 The executions of the Lean copy of Clight are executions of N (`clightn/N.nsx`), for the

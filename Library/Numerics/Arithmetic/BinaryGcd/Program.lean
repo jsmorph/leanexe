@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! The binary GCD, Algorithm B of TAOCP §4.5.2.  Knuth's algorithm takes positive integers, and
 `binaryGcd` returns the other argument when one argument is 0.  Step B1 divides both arguments by 2
 while both are even and counts the divisions in `k` (`commonTwos`).  At least one quotient is then

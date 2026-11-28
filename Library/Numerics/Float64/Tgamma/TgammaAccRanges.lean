@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccPoly3
-import Library.Numerics.Float64.Tgamma.TgammaApprox
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccPoly3
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+
+@[expose] public section
 
 /-!
 `poly3` on the nine ranges of `Tgamma.accurate` above `1/4`.  The kernel checks the coefficients

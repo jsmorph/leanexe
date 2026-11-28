@@ -1,5 +1,9 @@
 --#--
-import Library.Hashing.Sha2.Spec.SHA512t
+module
+
+public import Library.Hashing.Sha2.Spec.SHA512t
+
+@[expose] public section
 set_option autoImplicit true
 --#--
 

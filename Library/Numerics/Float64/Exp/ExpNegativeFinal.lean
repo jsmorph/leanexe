@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpSpecialNegative
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import Library.Numerics.Float64.Exp.ExpSpecialNegative
+public import LeanExe.ProofKit.F64Magnitude
+
+@[expose] public section
 
 /-!
 The final multiplication of the negative special path of `Exp.exp`: the exact product of

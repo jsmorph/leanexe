@@ -1,4 +1,8 @@
-import Verified.Wasi.SysRecordCall
+module
+
+public import Verified.Wasi.SysRecordCall
+
+@[expose] public section
 
 /-! The code of a record call, from the argument test to the errno and the field words on the
 stack: the test of the arguments, the field locals set to 0, the accepted call with the record in

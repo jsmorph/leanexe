@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.FixedArraySearchFrame
-import LeanExe.ProofKit.Memory
-import Interpreter.Wasm.Wp.Tactic
+module
+
+public import LeanExe.ProofKit.FixedArraySearchFrame
+public import LeanExe.ProofKit.Memory
+public import Interpreter.Wasm.Wp.Tactic
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArraySearch
 open Wasm Memory

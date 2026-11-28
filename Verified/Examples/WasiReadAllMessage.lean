@@ -1,5 +1,9 @@
-import Verified.Examples.WasiReadAllShim
-import Verified.Shim.Images
+module
+
+public import Verified.Examples.WasiReadAllShim
+public import Verified.Shim.Images
+
+@[expose] public section
 
 /-!
 readAll's message corollary at the shim's specification level.  Under `linuxHost`, a run of

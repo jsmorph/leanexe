@@ -1,6 +1,10 @@
-import Interpreter.Wasm.Wp.Defs
-import Interpreter.Wasm.Semantics.Lemmas
-import LeanExe.ProofKit.AlignedDefs
+module
+
+public import Interpreter.Wasm.Wp.Defs
+public import Interpreter.Wasm.Semantics.Lemmas
+public import LeanExe.ProofKit.AlignedDefs
+
+@[expose] public section
 
 /-!
 Aligned runs.  `AlignedExec fuel m st s p env` states that every 64-bit load and store that

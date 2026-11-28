@@ -1,4 +1,8 @@
-import Demos.Conjunction.Program
+module
+
+public import Demos.Conjunction.Program
+
+@[expose] public section
 
 /-!
 The radius at a probability.  `circularError` returns an interval that contains the radius of the

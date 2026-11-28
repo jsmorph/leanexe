@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Exp2.Exp10Evaluation
-import Library.Numerics.Float64.Exp2.Exp2Selection
-import Library.Numerics.Float64.Exp.ExpShiftedBits
-import LeanExe.ProofKit.F64ExactProduct
+module
+
+public import Library.Numerics.Float64.Exp2.Exp10Evaluation
+public import Library.Numerics.Float64.Exp2.Exp2Selection
+public import Library.Numerics.Float64.Exp.ExpShiftedBits
+public import LeanExe.ProofKit.F64ExactProduct
+
+@[expose] public section
 
 /-!
 The reduction of `Exp2.exp10Core`.  With `ratio = log 2 / (128 log 10) = log10 2 / 128`, the code

@@ -1,6 +1,10 @@
-import Demos.RunningSum.Module
-import Verified.Wasi.ProcessCorrect
-import Verified.Wasi.ProcessNative
+module
+
+public import Demos.RunningSum.Module
+public import Verified.Wasi.ProcessCorrect
+public import Verified.Wasi.ProcessNative
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

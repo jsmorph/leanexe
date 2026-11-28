@@ -1,13 +1,17 @@
-import Library.Numerics.Float64.Erfc.ErfcTaccData
-import Library.Numerics.Float64.Erfc.ErfcAsymRowsA0
-import Library.Numerics.Float64.Erfc.ErfcAsymRowsA1
-import Library.Numerics.Float64.Erfc.ErfcAsymZ
-import Library.Numerics.Float64.Erfc.ErfcAsymIdx
-import Library.Numerics.Float64.Erfc.ErfcRecip
-import Library.Numerics.Float64.Erfc.ErfcRel
-import Library.Numerics.Float64.Erfc.ErfcEAcc
-import LeanExe.ProofKit.TaylorRemainder
-import Library.Numerics.Float64.Erfc.ErfcCast
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTaccData
+public import Library.Numerics.Float64.Erfc.ErfcAsymRowsA0
+public import Library.Numerics.Float64.Erfc.ErfcAsymRowsA1
+public import Library.Numerics.Float64.Erfc.ErfcAsymZ
+public import Library.Numerics.Float64.Erfc.ErfcAsymIdx
+public import Library.Numerics.Float64.Erfc.ErfcRecip
+public import Library.Numerics.Float64.Erfc.ErfcRel
+public import Library.Numerics.Float64.Erfc.ErfcEAcc
+public import LeanExe.ProofKit.TaylorRemainder
+public import Library.Numerics.Float64.Erfc.ErfcCast
+
+@[expose] public section
 
 /-!
 `erfc_asympt_accurate` of `Erfc` before its final scaling, for

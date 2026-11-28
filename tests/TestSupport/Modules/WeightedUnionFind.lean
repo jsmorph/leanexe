@@ -1,4 +1,8 @@
-import TestSupport.Modules.UnionFind
+module
+
+public import TestSupport.Modules.UnionFind
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of equivalence classes with path compression and
 union by size. -/

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiExact
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiExact
+
+@[expose] public section
 
 /-!
 The exact results of `Sinpi.tanpi` as bit equalities.  An integer `n` gives `±0`, with the sign

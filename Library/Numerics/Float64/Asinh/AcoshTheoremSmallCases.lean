@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Asinh.AcoshTheoremPieces0
-import Library.Numerics.Float64.Asinh.AcoshTheoremPieces1
-import Library.Numerics.Float64.Asinh.AcoshTheoremPieces2
-import Library.Numerics.Float64.Asinh.AcoshTheoremPieces3
+module
+
+public import Library.Numerics.Float64.Asinh.AcoshTheoremPieces0
+public import Library.Numerics.Float64.Asinh.AcoshTheoremPieces1
+public import Library.Numerics.Float64.Asinh.AcoshTheoremPieces2
+public import Library.Numerics.Float64.Asinh.AcoshTheoremPieces3
+
+@[expose] public section
 
 /-!
 `Asinh.acosh` from 1 to `2 (1 + 2 ^ -20)` within two steps.  `t = x - 1` is `N 2 ^ -52` for a

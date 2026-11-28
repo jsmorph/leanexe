@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erf.ErfEnds
+module
+
+public import Library.Numerics.Float64.Erf.ErfEnds
+
+@[expose] public section
 
 /-!
 One step for `erf x` below `2^-1015`, where `s_erf.c` computes `(8 x + efx8 x)/8` so that no

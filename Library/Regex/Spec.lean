@@ -1,4 +1,9 @@
-import Mathlib.Computability.RegularExpressions
+module
+
+public import LeanExe.Base
+public import Mathlib.Computability.RegularExpressions
+
+@[expose] public section
 
 /-! Regular expressions over bytes, their languages, and the postfix form in which a pattern
 reaches the matcher.  A regular expression matches no string, the empty string, one byte of a

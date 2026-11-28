@@ -1,5 +1,9 @@
-import Verified.Wasi.Return
-import Verified.Wasi.ReadAllCost
+module
+
+public import Verified.Wasi.Return
+public import Verified.Wasi.ReadAllCost
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

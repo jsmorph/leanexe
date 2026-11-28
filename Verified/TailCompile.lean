@@ -1,2 +1,6 @@
-import Verified.Compile
-import Verified.TailSource
+module
+
+public import Verified.Compile
+public import Verified.TailSource
+
+@[expose] public section

@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: division, remainder, the bitwise operations, and
 both shifts on 64-bit words, with Lean's results for a zero divisor and for shift amounts of 64

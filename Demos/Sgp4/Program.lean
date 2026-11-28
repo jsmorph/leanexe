@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Trig.Program
-import Library.Numerics.Float64.Pow.Program
-import Library.Numerics.Float64.Atan.Program
-import LeanExe.Dialect.RepeatWhile
+module
+
+public import Library.Numerics.Float64.Trig.Program
+public import Library.Numerics.Float64.Pow.Program
+public import Library.Numerics.Float64.Atan.Program
+public import LeanExe.Dialect.RepeatWhile
+
+@[expose] public section
 
 /-!
 The near-Earth SGP4 propagator in binary64.  `initWith` computes the constants of an element set,

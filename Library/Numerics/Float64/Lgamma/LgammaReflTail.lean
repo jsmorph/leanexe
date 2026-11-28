@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaReflCore
-import LeanExe.ProofKit.GammaThresholds
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaReflCore
+public import LeanExe.ProofKit.GammaThresholds
+
+@[expose] public section
 
 /-!
 `FastSpec` for the reflection of `Lgamma.lgammaWith` from `x = -6` down to `-2 ^ 52`.  Within

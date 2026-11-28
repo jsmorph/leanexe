@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaApprox
-import Mathlib.Analysis.SpecialFunctions.Gamma.BohrMollerup
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+public import Mathlib.Analysis.SpecialFunctions.Gamma.BohrMollerup
+
+@[expose] public section
 
 /-!
 The size of `Γ` on the ranges of the accurate path.  On each row `[j, j + 1]` of

@@ -1,5 +1,9 @@
-import Library.Arrays.Range.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Arrays.Range.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Arrays.Range
 

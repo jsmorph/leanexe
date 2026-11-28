@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Log2.Log2Near1
-import Library.Numerics.Float64.Log2.Log2Power
-import Verified.Call
-import Mathlib.Analysis.SpecialFunctions.Log.Base
+module
+
+public import Library.Numerics.Float64.Log2.Log2Near1
+public import Library.Numerics.Float64.Log2.Log2Power
+public import Verified.Call
+public import Mathlib.Analysis.SpecialFunctions.Log.Base
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Log2.log2`.  For every finite binary64 input with positive value, the

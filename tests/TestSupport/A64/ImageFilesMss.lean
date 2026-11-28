@@ -1,5 +1,9 @@
-import TestSupport.A64.Mss
-import LeanExe.A64.File
+module
+
+public import TestSupport.A64.Mss
+public import LeanExe.A64.File
+
+@[expose] public section
 
 /-!
 The theorems of the arm64 Image that `a64-uart emit` writes for `mss`, Kadane's maximum segment

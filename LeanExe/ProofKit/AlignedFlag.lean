@@ -1,6 +1,10 @@
-import Interpreter.Wasm.Wp.Tactic
-import Interpreter.Wasm.Wp.Loop
-import LeanExe.ProofKit.AlignedLoop
+module
+
+public import Interpreter.Wasm.Wp.Tactic
+public import Interpreter.Wasm.Wp.Loop
+public import LeanExe.ProofKit.AlignedLoop
+
+@[expose] public section
 
 /-!
 The flag `strict`.  `wpX false` is Talos's `wp` and `wpX true` is `wpA`, both by definition, so a

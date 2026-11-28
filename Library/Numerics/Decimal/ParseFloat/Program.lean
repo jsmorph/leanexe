@@ -1,9 +1,13 @@
-import Library.Numerics.Arithmetic.Uscale.Program
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
-import LeanExe.Dialect.InsertErase
-import LeanExe.Dialect.Float32
+module
+
+public import Library.Numerics.Arithmetic.Uscale.Program
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+public import LeanExe.Dialect.InsertErase
+public import LeanExe.Dialect.Float32
+
+@[expose] public section
 
 /-! Decimal and hexadecimal number strings to binary64 and binary32, rounded once to nearest with
 ties to even, for strings of any length.  A string is an array of words, one byte per word.

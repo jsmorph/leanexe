@@ -1,4 +1,8 @@
-import LeanExe.A64.Gen
+module
+
+public import LeanExe.A64.Gen
+
+@[expose] public section
 
 /-!
 The stubs of `args_sizes_get`, `args_get`, `environ_sizes_get`, and `environ_get` of a WASI command

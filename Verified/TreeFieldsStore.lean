@@ -1,7 +1,11 @@
-import Verified.TreeFieldsCode
-import Verified.TreeFieldsMemory
-import Verified.LocalFrame
-import Verified.WordCode
+module
+
+public import Verified.TreeFieldsCode
+public import Verified.TreeFieldsMemory
+public import Verified.LocalFrame
+public import Verified.WordCode
+
+@[expose] public section
 
 namespace Verified
 

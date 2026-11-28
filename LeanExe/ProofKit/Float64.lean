@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 namespace LeanExe.ProofKit.Float64
 
 def addBits (left right : UInt64) : UInt64 :=

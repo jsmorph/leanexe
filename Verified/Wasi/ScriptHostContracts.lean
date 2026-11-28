@@ -1,4 +1,8 @@
-import Verified.Wasi.ScriptHostABI
+module
+
+public import Verified.Wasi.ScriptHostABI
+
+@[expose] public section
 
 namespace Verified.Wasi.ScriptHost
 

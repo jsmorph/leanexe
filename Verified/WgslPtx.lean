@@ -1,5 +1,9 @@
-import Verified.WGSL.Compile
-import Verified.PTX.Compile
+module
+
+public import Verified.WGSL.Compile
+public import Verified.PTX.Compile
+
+@[expose] public section
 
 /-!
 A build that both the WGSL and the PTX compiler translate has one kernel plan, so its PTX record,

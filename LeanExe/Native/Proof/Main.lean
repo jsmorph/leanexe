@@ -1,6 +1,10 @@
-import LeanExe.Native.Proof.Quiet
-import LeanExe.ProofKit.Array
-import LeanExe.Native.Proof.Native
+module
+
+public import LeanExe.Native.Proof.Quiet
+public import LeanExe.ProofKit.Array
+public import LeanExe.Native.Proof.Native
+
+@[expose] public section
 
 /-!
 The run of `main` of a bare-metal program (`LeanExe/Native/Bare.lean`), statement by statement:

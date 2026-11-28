@@ -8,7 +8,7 @@ the translator to C accepts, and otherwise the first part outside it; fails in t
 unsafe def check (moduleName constName : Name) : IO UInt32 := do
   initSearchPath (← findSysroot)
   let env ← importModules
-    #[{ module := moduleName, importAll := false, isExported := true, isMeta := false }] {}
+    #[{ module := moduleName, importAll := false, isExported := true, isMeta := true }] {}
   let module_ ← IO.ofExcept <| env.evalConst Wasm.Module {} constName
   match LeanExe.Native.violation module_ with
   | none =>

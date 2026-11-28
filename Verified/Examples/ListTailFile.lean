@@ -1,5 +1,9 @@
-import Verified.Examples.ListTail
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.ListTail
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/listtail.wasm`: the file holds
 `encode ListTail.compiled.module`, and it decodes to the module of `ListTail.compiled.bytes`. -/

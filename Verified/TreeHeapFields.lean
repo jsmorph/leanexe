@@ -1,5 +1,9 @@
-import Verified.TreePackedBlocks
-import Verified.TreeFieldPositions
+module
+
+public import Verified.TreePackedBlocks
+public import Verified.TreeFieldPositions
+
+@[expose] public section
 
 /-! The slots of a record's array and buffer fields, which follow its word and child slots: their
 words, the locals that hold them, the code that stores them, and their blocks. -/

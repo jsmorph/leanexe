@@ -1,7 +1,11 @@
-import Demos.RunningSumFp.Model
-import Demos.StreamFold.Correct
-import Demos.StreamFold.Observed
-import Verified.Wasi.ProcessEntryProofs
+module
+
+public import Demos.RunningSumFp.Model
+public import Demos.StreamFold.Correct
+public import Demos.StreamFold.Observed
+public import Verified.Wasi.ProcessEntryProofs
+
+@[expose] public section
 
 namespace Demos.RunningSumFp
 

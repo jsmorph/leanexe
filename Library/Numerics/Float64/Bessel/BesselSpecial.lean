@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Bessel.Compiled
-import Library.Numerics.Float64.Trig.TrigSinCos
+module
+
+public import Library.Numerics.Float64.Bessel.Compiled
+public import Library.Numerics.Float64.Trig.TrigSinCos
+
+@[expose] public section
 
 /-!
 The exceptional results of `Bessel.j0`, `Bessel.j1`, `Bessel.y0`, and `Bessel.y1`, as POSIX gives

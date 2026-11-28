@@ -1,6 +1,10 @@
-import Verified.Wasi.CallArguments
-import Verified.Wasi.CallAfter
-import Verified.ArgPot
+module
+
+public import Verified.Wasi.CallArguments
+public import Verified.Wasi.CallAfter
+public import Verified.ArgPot
+
+@[expose] public section
 
 namespace Verified.Wasi
 

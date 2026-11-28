@@ -1,8 +1,12 @@
-import Verified.Wasi.FunctionRun
-import Verified.Wasi.LoopAfter
-import Verified.Wasi.Return
-import Verified.Wasi.Cleanup
-import Verified.Wasi.CommandResultStore
+module
+
+public import Verified.Wasi.FunctionRun
+public import Verified.Wasi.LoopAfter
+public import Verified.Wasi.Return
+public import Verified.Wasi.Cleanup
+public import Verified.Wasi.CommandResultStore
+
+@[expose] public section
 
 namespace Verified.Wasi
 

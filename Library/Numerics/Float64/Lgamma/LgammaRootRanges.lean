@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaRootKern
-import Library.Numerics.Float64.Lgamma.LgammaRootDom
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaRootKern
+public import Library.Numerics.Float64.Lgamma.LgammaRootDom
+
+@[expose] public section
 
 /-!
 **The 17 polynomials about the negative zeros** of `Lgamma.accurate`, each within

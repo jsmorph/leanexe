@@ -1,5 +1,9 @@
-import LeanExe.Native.ClightN.Exec
-import LeanExe.Native.Proof.Input
+module
+
+public import LeanExe.Native.ClightN.Exec
+public import LeanExe.Native.Proof.Input
+
+@[expose] public section
 
 /-!
 The traces of N (`clightn/N.nsx`) hold only volatile loads and stores (`nprog_events`).  The

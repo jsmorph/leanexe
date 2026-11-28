@@ -1,5 +1,9 @@
-import Demos.Geolocation.Program
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Geolocation.Program
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Geolocation
 

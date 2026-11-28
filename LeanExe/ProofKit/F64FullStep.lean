@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64PositiveRounding
-import LeanExe.ProofKit.F64NearestBinade
+module
+
+public import LeanExe.ProofKit.F64PositiveRounding
+public import LeanExe.ProofKit.F64NearestBinade
+
+@[expose] public section
 
 /-!
 A nonnegative word within one and a half spacings of a real number lies within one

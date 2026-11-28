@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-! Marsaglia's xorshift64 generator with the shifts 13, 7, and 17: each step replaces the state
 `x` with `x ^^^ (x <<< 13)`, then with `x ^^^ (x >>> 7)`, and then with `x ^^^ (x <<< 17)`.

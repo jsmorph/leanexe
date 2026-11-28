@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erf.ErfTailCompose
-import Mathlib.Analysis.Complex.ExponentialBounds
+module
+
+public import Library.Numerics.Float64.Erf.ErfTailCompose
+public import Mathlib.Analysis.Complex.ExponentialBounds
+
+@[expose] public section
 
 /-!
 One step for `erf x` on an interval of the tail `[1.25, 6]`, from the words of the two computed

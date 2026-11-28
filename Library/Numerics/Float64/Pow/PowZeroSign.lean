@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Pow.PowTheorem
-import Library.Numerics.Float64.Pow.PowExpSign
-import Library.Numerics.Float64.Exp.ExpNegativeFinal
-import LeanExe.ProofKit.F64Packing
+module
+
+public import Library.Numerics.Float64.Pow.PowTheorem
+public import Library.Numerics.Float64.Pow.PowExpSign
+public import Library.Numerics.Float64.Exp.ExpNegativeFinal
+public import LeanExe.ProofKit.F64Packing
+
+@[expose] public section
 
 /-!
 The sign of a zero result of `Pow.pow`.  `PowTheorem.pow_within` bounds the results within one

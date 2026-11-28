@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.BinaryGcd.Program
-import Library.Numerics.Arithmetic.BinaryGcd.Spec
-import Mathlib.Data.Nat.Prime.Basic
+module
+
+public import Library.Numerics.Arithmetic.BinaryGcd.Program
+public import Library.Numerics.Arithmetic.BinaryGcd.Spec
+public import Mathlib.Data.Nat.Prime.Basic
+
+@[expose] public section
 
 /-! The proof that the binary GCD computes `Nat.gcd`.  `removeTwos_spec` and `commonTwos_spec`
 state what the two shifting loops compute in terms of powers of 2.  `oddGcd_spec` follows from

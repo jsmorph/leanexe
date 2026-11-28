@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.BesselLarge0
-import LeanExe.ProofKit.BesselLarge1
+module
+
+public import LeanExe.ProofKit.BesselLarge0
+public import LeanExe.ProofKit.BesselLarge1
+
+@[expose] public section
 
 /-!
 Lower bounds on the moduli `M₀ = √(J₀² + Y₀²)` and `M₁ = √(J₁² + Y₁²)`, the units of the decided

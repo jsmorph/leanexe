@@ -1,4 +1,8 @@
-import TestSupport.Numerics.ArcReference
+module
+
+public import TestSupport.Numerics.ArcReference
+
+@[expose] public section
 
 /-! Exact references for `erf` and `erfc`, computed with Lean's integers in the fixed point of
 `Reference`.  Below 6, `erf x = (2/√π) x e^(-x²) S` with the series of positive terms

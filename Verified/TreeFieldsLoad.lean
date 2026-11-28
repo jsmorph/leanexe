@@ -1,7 +1,11 @@
-import Verified.TreeFieldsCode
-import Verified.LocalFrame
-import Verified.WordCode
-import LeanExe.Pipeline.Records
+module
+
+public import Verified.TreeFieldsCode
+public import Verified.LocalFrame
+public import Verified.WordCode
+public import LeanExe.Pipeline.Records
+
+@[expose] public section
 
 namespace Verified
 

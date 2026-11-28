@@ -1,5 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselStepF
-import Library.Numerics.Float64.Bessel.BesselJ1Large
+module
+
+public import Library.Numerics.Float64.Bessel.BesselStepF
+public import Library.Numerics.Float64.Bessel.BesselJ1Large
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-!
 The loops of `jn` and `yn` for `4 ≤ x ≤ 2^302` and `2 n ≤ x`.  `jn` runs

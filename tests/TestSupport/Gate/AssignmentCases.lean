@@ -1,5 +1,9 @@
-import Demos.Gate.Assignment
-import TestSupport.Host
+module
+
+public import Demos.Gate.Assignment
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the module `assignment`.  `solve` is the unproved solver, the Hungarian method with
 potentials in the form of e-maxx's assignment algorithm, which returns an optimal assignment and

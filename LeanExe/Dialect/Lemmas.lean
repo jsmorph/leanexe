@@ -1,6 +1,11 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import Mathlib.Tactic
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-! Lemmas about the combinators `LeanExe.loop` and `LeanExe.build`. -/
 
@@ -22,6 +27,46 @@ theorem loop_induction {α : Type} {n : UInt64} {init : α} {f : UInt64 → α �
     intro hm
     rw [Nat.fold_succ]
     exact hStep m _ (by omega) (ih (by omega))
+
+/-- A property that holds at the start of `LeanExe.repeatWhile` and that each step under the
+condition keeps holds at the end. -/
+theorem repeatWhile_induction {α : Type} {fuel : UInt64} {init : α} {cond : α → Bool}
+    {step : α → α} (P : α → Prop) (h0 : P init) (hs : ∀ s, P s → cond s = true → P (step s)) :
+    P (LeanExe.repeatWhile fuel init cond step) := by
+  unfold LeanExe.repeatWhile
+  generalize fuel.toNat = k
+  induction k generalizing init with
+  | zero => exact h0
+  | succ k ih =>
+    rw [LeanExe.repeatWhile.go]
+    by_cases hc : cond init = true
+    · rw [ite_eq_left hc]
+      exact ih (hs _ h0 hc)
+    · rw [ite_eq_right hc]
+      exact h0
+
+/-- `repeatWhile_induction` with a measure `μ`, at most the fuel at the start, that each step under
+the condition lowers: the property holds at the end, and the condition fails there. -/
+theorem repeatWhile_induction_stop {α : Type} {fuel : UInt64} {init : α} {cond : α → Bool}
+    {step : α → α} (P : α → Prop) (μ : α → Nat) (h0 : P init) (hμ : μ init ≤ fuel.toNat)
+    (hs : ∀ s, P s → cond s = true → P (step s) ∧ μ (step s) < μ s) :
+    P (LeanExe.repeatWhile fuel init cond step) ∧
+      cond (LeanExe.repeatWhile fuel init cond step) = false := by
+  unfold LeanExe.repeatWhile
+  generalize fuel.toNat = k at hμ
+  induction k generalizing init with
+  | zero =>
+    refine ⟨h0, Bool.eq_false_iff.mpr fun hc => ?_⟩
+    have := (hs _ h0 hc).2
+    omega
+  | succ k ih =>
+    rw [LeanExe.repeatWhile.go]
+    by_cases hc : cond init = true
+    · rw [ite_eq_left hc]
+      obtain ⟨h1, h2⟩ := hs _ h0 hc
+      exact ih h1 (by omega)
+    · rw [ite_eq_right hc]
+      exact ⟨h0, by simpa using hc⟩
 
 /-- Two loops whose steps agree at every index give the same state. -/
 theorem loop_congr {α : Type} {n : UInt64} {init : α} {f g : UInt64 → α → α}

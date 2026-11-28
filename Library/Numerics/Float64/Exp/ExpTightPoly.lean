@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.TaylorRemainder
-import Library.Numerics.Float64.Exp.ExpApproximation
+module
+
+public import LeanExe.ProofKit.TaylorRemainder
+public import Library.Numerics.Float64.Exp.ExpApproximation
+
+@[expose] public section
 
 /-!
 The approximation error of the polynomial of Arm's `exp` on the residual range of the code.

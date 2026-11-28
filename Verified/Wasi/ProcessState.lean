@@ -1,5 +1,9 @@
-import Verified.Wasi.ProcessCode
-import Verified.Wasi.OwnedScratch
+module
+
+public import Verified.Wasi.ProcessCode
+public import Verified.Wasi.OwnedScratch
+
+@[expose] public section
 
 namespace Verified.Wasi
 

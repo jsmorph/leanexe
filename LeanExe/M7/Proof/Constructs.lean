@@ -1,8 +1,12 @@
-import LeanExe.M7.Proof.Call
-import LeanExe.M7.Proof.Access
-import LeanExe.M7.Proof.Control
-import LeanExe.ProofKit.Exec
-import Interpreter.Wasm.Semantics.Lemmas
+module
+
+public import LeanExe.M7.Proof.Call
+public import LeanExe.M7.Proof.Access
+public import LeanExe.M7.Proof.Control
+public import LeanExe.ProofKit.Exec
+public import Interpreter.Wasm.Semantics.Lemmas
+
+@[expose] public section
 
 /-!
 The simulation of instruction lists and of `block`, `loop`, and `if`, as

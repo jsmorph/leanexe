@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaLogAccTail
-import Library.Numerics.Float64.Tgamma.TgammaMainRed
-import Library.Numerics.Float64.Tgamma.TgammaPolyLip
-import Library.Numerics.Float64.Tgamma.TgammaDDTop
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaLogAccTail
+public import Library.Numerics.Float64.Tgamma.TgammaMainRed
+public import Library.Numerics.Float64.Tgamma.TgammaPolyLip
+public import Library.Numerics.Float64.Tgamma.TgammaDDTop
+
+@[expose] public section
 
 /-!
 **`Lgamma.asLogdAccurate` within `2^-88` of `log y`** for every positive finite double `y`

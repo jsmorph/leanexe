@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: `let` bindings, including one inside the operand
 of a division, whose locals have indices above the division's scratch locals. -/

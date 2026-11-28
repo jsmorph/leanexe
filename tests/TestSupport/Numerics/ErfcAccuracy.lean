@@ -1,6 +1,13 @@
-import Library.Numerics.Float64.Erfc.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.ErfReference
+module
+
+public import Library.Numerics.Float64.Erfc.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.ErfReference
+public meta import Library.Numerics.Float64.Erfc.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.ErfReference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Erfc.erfc`, the port of CORE-MATH's `erfc`, against the reference of
 `ErfReference` rounded to the nearest double.  CORE-MATH's `erfc` is correctly rounded, and the

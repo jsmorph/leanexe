@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaBits
-import Library.Numerics.Float64.Tgamma.TgammaExpLow
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaBits
+public import Library.Numerics.Float64.Tgamma.TgammaExpLow
+
+@[expose] public section
 
 /-!
 The real error analysis of the path of `tgammaWith` below `-3`, with the hypotheses that other

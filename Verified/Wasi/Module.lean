@@ -1,5 +1,9 @@
-import Verified.Wasi.ABI
-import Verified.Wasi.Relocation
+module
+
+public import Verified.Wasi.ABI
+public import Verified.Wasi.Relocation
+
+@[expose] public section
 
 /-!
 Assembly of a WASI module from the pure module and an extension.  `assembleWith calls` imports the

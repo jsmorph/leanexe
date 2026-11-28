@@ -1,4 +1,8 @@
-import Verified.Tree
+module
+
+public import Verified.Tree
+
+@[expose] public section
 
 namespace Verified
 
@@ -53,7 +57,7 @@ theorem treeSlots_word_get (fields : List Bool) :
       · have hi : i = ⟨0, by simp⟩ := Fin.ext hz
         subst i
         simp [treeSlots, fieldPosition]
-      · rw [fieldPosition, dite_eq_left rfl, dite_eq_right hz]
+      · unfold fieldPosition; simp only [↓reduceDIte, hz]
         simp only [Fin.val_succ, treeSlots, List.getElem_cons_succ]
         rw [ih]
         congr 1
@@ -82,7 +86,7 @@ theorem treeSlots_child_get (fields : List Bool) :
       · have hi : i = ⟨0, by simp⟩ := Fin.ext hz
         subst i
         simp [treeSlots, fieldPosition]
-      · rw [fieldPosition, dite_eq_left rfl, dite_eq_right hz]
+      · unfold fieldPosition; simp only [↓reduceDIte, hz]
         simp only [Fin.val_succ, treeSlots, List.getElem_cons_succ]
         rw [ih]
         congr 1

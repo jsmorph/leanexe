@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselRecur
-import LeanExe.ProofKit.BesselModulus
-import Library.Numerics.Float64.Bessel.BesselCombine
+module
+
+public import Library.Numerics.Float64.Bessel.BesselRecur
+public import LeanExe.ProofKit.BesselModulus
+public import Library.Numerics.Float64.Bessel.BesselCombine
+
+@[expose] public section
 
 /-!
 Upper bounds on the modulus `M_m(x)` for `m < x`, from an energy of the recurrence 10.6.1.  For a

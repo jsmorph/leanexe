@@ -1,5 +1,9 @@
-import Verified.Wasi.CommandCodeSpec
-import Verified.Wasi.CostResults
+module
+
+public import Verified.Wasi.CommandCodeSpec
+public import Verified.Wasi.CostResults
+
+@[expose] public section
 
 namespace Verified.Wasi
 

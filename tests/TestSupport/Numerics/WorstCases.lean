@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! The double-precision inputs that give the largest known errors of the libraries compared in
 B. Gladman, V. Innocente, J. Mather, K. Ozaki, and P. Zimmermann, "Accuracy of Mathematical
 Functions in Single, Double, Double Extended, and Quadruple Precision", August 2026, Tables 4 to

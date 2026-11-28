@@ -1,4 +1,8 @@
-import Verified.Bound
+module
+
+public import Verified.Bound
+
+@[expose] public section
 
 /-! Facts about the allocation bound for proofs that use it: names for the blocks that it charges,
 with their sizes in bytes, and the sums of `sumBelow` and `loopCost`.  `loopCost_le` bounds the

@@ -1,5 +1,9 @@
-import Verified.Wasi.ReflectCommand
-import Verified.Wasi.ResourceRules
+module
+
+public import Verified.Wasi.ReflectCommand
+public import Verified.Wasi.ResourceRules
+
+@[expose] public section
 
 /-! A loop of record calls whose charge does not grow with the number of passes.  `stat count`
 calls `fd_fdstat_get` on the preopened directory `count` times and returns the errno of the last

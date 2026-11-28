@@ -1,6 +1,10 @@
-import Demos.Euler.Reference.Interface
-import LeanExe.ProofKit.F64AffineUpdate
-import LeanExe.ProofKit.RealAffineError
+module
+
+public import Demos.Euler.Reference.Interface
+public import LeanExe.ProofKit.F64AffineUpdate
+public import LeanExe.ProofKit.RealAffineError
+
+@[expose] public section
 
 /-! The first-order solver's conservative update against the exact update.  For a positive ratio
 `r ≤ 1` of timestep to cell width and three neighboring states that satisfy the state bounds,

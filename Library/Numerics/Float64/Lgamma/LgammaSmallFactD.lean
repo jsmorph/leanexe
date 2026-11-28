@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaSmallFactBase
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaSmallFactBase
+
+@[expose] public section
 
 /-!
 The kernel check `posc` of `LgammaSmallFact`.  Each module holds checks of at most 62,000

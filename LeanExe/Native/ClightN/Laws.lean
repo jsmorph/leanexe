@@ -1,4 +1,8 @@
-import LeanExe.Native.ClightN.Spec
+module
+
+public import LeanExe.Native.ClightN.Spec
+
+@[expose] public section
 
 /-!
 The laws of the base symbols of `clightn/N.nsx`, proved of the definitions in `Base.lean`.  Rocq

@@ -1,7 +1,11 @@
-import LeanExe.Native.Proof.Calls
-import LeanExe.Native.Proof.MemOps
-import LeanExe.Native.Proof.AlignedMem
-import LeanExe.Native.Proof.Sqrt32
+module
+
+public import LeanExe.Native.Proof.Calls
+public import LeanExe.Native.Proof.MemOps
+public import LeanExe.Native.Proof.AlignedMem
+public import LeanExe.Native.Proof.Sqrt32
+
+@[expose] public section
 
 /-!
 The simulation of every instruction, and of instruction lists at every fuel up to a bound, for

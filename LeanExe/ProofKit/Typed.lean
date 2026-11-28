@@ -1,4 +1,9 @@
-import Interpreter.Wasm.Syntax
+module
+
+public import LeanExe.Base
+public import Interpreter.Wasm.Syntax
+
+@[expose] public section
 
 /-!
 The types of Talos values, which the simulation proofs of the AArch64 and Cortex-M7 back ends

@@ -1,11 +1,15 @@
-import Verified.Examples.WasiReadAll
-import Verified.Examples.WasiClockRandom
-import Verified.Examples.WasiSys
-import Verified.Examples.WasiSysEnviron
-import Verified.Examples.WasiPrestat
-import Verified.Examples.WasiFiles
-import TestSupport.A64.WasiArgs
-import LeanExe.A64.Wasi
+module
+
+public import Verified.Examples.WasiReadAll
+public import Verified.Examples.WasiClockRandom
+public import Verified.Examples.WasiSys
+public import Verified.Examples.WasiSysEnviron
+public import Verified.Examples.WasiPrestat
+public import Verified.Examples.WasiFiles
+public import TestSupport.A64.WasiArgs
+public import LeanExe.A64.Wasi
+
+@[expose] public section
 
 /-!
 WASI commands as native executables for AArch64 Linux, each the file that `genWasiElf` writes for

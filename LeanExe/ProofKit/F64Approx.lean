@@ -1,11 +1,15 @@
-import LeanExe.ProofKit.F64ArithmeticBounds
-import LeanExe.ProofKit.F64SqrtBounds
-import LeanExe.ProofKit.F64SignedRounding
-import LeanExe.ProofKit.F64FullStep
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64PositiveSpacing
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.PolyBound
+module
+
+public import LeanExe.ProofKit.F64ArithmeticBounds
+public import LeanExe.ProofKit.F64SqrtBounds
+public import LeanExe.ProofKit.F64SignedRounding
+public import LeanExe.ProofKit.F64FullStep
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64PositiveSpacing
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 Error tracking for straight-line binary64 code.  `Approx w v e` states that the word `w` is finite

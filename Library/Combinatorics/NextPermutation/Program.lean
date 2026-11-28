@@ -1,4 +1,8 @@
-import Library.Sorting.Heapsort.Program
+module
+
+public import Library.Sorting.Heapsort.Program
+
+@[expose] public section
 
 /-! The next arrangement in lexicographic order, one step of Algorithm L of TAOCP §7.2.1.2, on an
 array of words, with indices from 0.  Step L2 finds the last position `j` with `a[j] < a[j + 1]`,

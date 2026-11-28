@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Sinh.SinhWords
-import Library.Numerics.Float64.Tanh.Expm1Near
-import Library.Numerics.Float64.Tanh.TanhTheorem
-import LeanExe.ProofKit.F64NearestHalve
-import LeanExe.ProofKit.F64DivBounds
-import LeanExe.ProofKit.F64RoundedStep
+module
+
+public import Library.Numerics.Float64.Sinh.SinhWords
+public import Library.Numerics.Float64.Tanh.Expm1Near
+public import Library.Numerics.Float64.Tanh.TanhTheorem
+public import LeanExe.ProofKit.F64NearestHalve
+public import LeanExe.ProofKit.F64DivBounds
+public import LeanExe.ProofKit.F64RoundedStep
+
+@[expose] public section
 
 /-!
 `Sinh.cosh` within one step of `cosh x` for `abs(x) < 0.34657359`, where the code computes

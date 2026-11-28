@@ -1,5 +1,9 @@
-import Library.Hashing.Sha256.CompressProof
-import Library.Hashing.Sha256.PaddingProof
+module
+
+public import Library.Hashing.Sha256.CompressProof
+public import Library.Hashing.Sha256.PaddingProof
+
+@[expose] public section
 
 /-! SHA-256 and SHA-224 compute FIPS 180-4.  For a message of fewer than `2 ^ 61` bytes held in
 `msg`, the digest bytes of `sha256 msg n`, read most significant bit first, are the digest that
@@ -91,7 +95,7 @@ theorem hashFrom_toVec32 (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) 
           (SHS.SHA256.Impl.toU32s (paddedBlock (pre ++ bytes msg n.toNat) (p + i)))) h.toVec32 := by
     intro k
     induction k with
-    | zero => intro _; rfl
+    | zero => intro _; simp only [Nat.fold_zero]
     | succ k ih =>
       intro hk
       rw [Nat.fold_succ, Nat.fold_succ, compress_toVec32, ih (by omega),
@@ -114,7 +118,7 @@ theorem paddedBlock_pre (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p)
 theorem fold_split {β : Type} (g : Nat → β → β) (init : β) (p : Nat) : ∀ N,
     Nat.fold (p + N) (fun i _ b => g i b) init =
       Nat.fold N (fun i _ b => g (p + i) b) (Nat.fold p (fun i _ b => g i b) init)
-  | 0 => rfl
+  | 0 => by simp only [Nat.add_zero, Nat.fold_zero]
   | N + 1 => by rw [← Nat.add_assoc, Nat.fold_succ, Nat.fold_succ, fold_split g init p N]
 
 /-- A fold over the padded blocks of `pre ++ data` is the fold over the blocks of `data` from the

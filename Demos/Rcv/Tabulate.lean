@@ -1,5 +1,9 @@
-import Demos.Rcv.TabulateProgram
-import Verified.Reflect.Command
+module
+
+public import Demos.Rcv.TabulateProgram
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-!
 The Oakland tabulator compiled by the verified compiler.  `compiled.module` exports the count

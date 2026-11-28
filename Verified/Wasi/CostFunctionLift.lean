@@ -1,4 +1,8 @@
-import Verified.Wasi.CostEffectSpec
+module
+
+public import Verified.Wasi.CostEffectSpec
+
+@[expose] public section
 
 namespace Verified.Wasi
 

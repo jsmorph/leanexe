@@ -1,8 +1,12 @@
-import Library.Hashing.Sha2.Equiv.SHA256.Lift
-import Library.Hashing.Sha2.Equiv.SHA256.Functions
-import Library.Hashing.Sha2.Equiv.SHA256.Constants
-import Library.Hashing.Sha2.Equiv.SHA256.Foldl.Fused
-import Mathlib.Tactic.IntervalCases
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA256.Lift
+public import Library.Hashing.Sha2.Equiv.SHA256.Functions
+public import Library.Hashing.Sha2.Equiv.SHA256.Constants
+public import Library.Hashing.Sha2.Equiv.SHA256.Foldl.Fused
+public import Mathlib.Tactic.IntervalCases
+
+@[expose] public section
 
 /-! # Compression equivalence — implementation-side factoring
 

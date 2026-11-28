@@ -1,6 +1,10 @@
-import LeanExe.Wasi.Action
-import LeanExe.Wasi.CallTable
-import LeanExe.Wasi.Window
+module
+
+public import LeanExe.Wasi.Action
+public import LeanExe.Wasi.CallTable
+public import LeanExe.Wasi.Window
+
+@[expose] public section
 
 /-!
 Typed operations for flat WASI calls.  Each returns a structure whose `errno` field is the call's

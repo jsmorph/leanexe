@@ -1,5 +1,9 @@
-import Demos.Energy.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Demos.Energy.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! Representations for the verified compiler: a status is the index of its constructor, and a
 decision is the tuple of its status, limits, and expiry. -/

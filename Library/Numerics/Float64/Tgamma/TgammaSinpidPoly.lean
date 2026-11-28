@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaDD
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaDD
+
+@[expose] public section
 
 /-!
 The two polynomials of `Tgamma.asSinpid` in `d2 = d * d`, for `|d| ≤ 1/2`.  The code evaluates

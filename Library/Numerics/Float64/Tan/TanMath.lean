@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tan.TanPoly
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+module
+
+public import Library.Numerics.Float64.Tan.TanPoly
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+
+@[expose] public section
 
 /-!
 Real facts for the tangent kernel: the cosine stays above `0.76` on `|x| ≤ 0.6745`, so `tan`

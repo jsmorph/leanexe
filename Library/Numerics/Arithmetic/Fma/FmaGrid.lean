@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64RoundNearest
-import LeanExe.ProofKit.F64PositiveOrder
+module
+
+public import LeanExe.ProofKit.F64RoundNearest
+public import LeanExe.ProofKit.F64PositiveOrder
+
+@[expose] public section
 
 /-!
 The grid of binary64 values in units of `2 ^ -2400`, for the rounding of `Fma.roundPack`.  The

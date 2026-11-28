@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erfc.ErfcAccRow
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAccRow
+
+@[expose] public section
 
 /-!
 The certificate parameters of the 47 rows of `C2`, the table of `cr_erf_accurate` from `1/8` on,

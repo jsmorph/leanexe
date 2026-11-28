@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.Expm1Theorem
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1Theorem
+
+@[expose] public section
 
 /-!
 The exceptional results of `Tanh.expm1`: both zeros return themselves, positive infinity returns

@@ -1,7 +1,11 @@
-import Demos.Rcv.Maine.ProcessFuture
-import Demos.Rcv.Maine.ProcessProof
-import Demos.Rcv.ProcessSizes
-import Verified.Wasi.ResourceRules
+module
+
+public import Demos.Rcv.Maine.ProcessFuture
+public import Demos.Rcv.Maine.ProcessProof
+public import Demos.Rcv.ProcessSizes
+public import Verified.Wasi.ResourceRules
+
+@[expose] public section
 
 /-! The allocation charges of the compiled Maine process's `begin` and steps.  `begin` allocates
 the buffer of `readAll`, of `limit + 4,096` bytes, and then calls `tabulate` on an input of at most

@@ -1,5 +1,9 @@
-import Verified.Native
-import LeanExe.Native.Proof.Main
+module
+
+public import Verified.Native
+public import LeanExe.Native.Proof.Main
+
+@[expose] public section
 
 /-!
 The theorems of bare-metal programs (`docs/native-bare-metal.md`).  `bare_of_nativeTables` is
@@ -98,7 +102,7 @@ syntax (name := bareProgramCmd)
 whose `main` calls the entry of `f` on the words `a₁, …` of the argument `x`, with the result
 `r`, which must be `f x`. -/
 @[command_elab bareProgramCmd]
-def elabBareProgram : CommandElab
+meta def elabBareProgram : CommandElab
   | `(bare_program $pf:ident $x:term [$args,*] $res:term) => do
     let implName ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo
       (mkIdent (pf.getId ++ `implements))

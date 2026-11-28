@@ -1,5 +1,9 @@
-import Demos.Conjunction.Adaptive
-import Demos.Conjunction.AccuracySoundness
+module
+
+public import Demos.Conjunction.Adaptive
+public import Demos.Conjunction.AccuracySoundness
+
+@[expose] public section
 
 /-!
 Soundness of the adaptive panels.  `pcAdaptive_enclosure` states that an accepted result of

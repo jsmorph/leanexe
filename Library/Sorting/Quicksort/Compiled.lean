@@ -1,6 +1,10 @@
-import Library.Sorting.Quicksort.Proof
-import Verified.Reflect.Command
-import Verified.Congr
+module
+
+public import Library.Sorting.Quicksort.Proof
+public import Verified.Reflect.Command
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of quicksort.  The compiler translates the tail recursions of
 `scanUp`, `scanDown`, `part`, and `stages`, and the loop of straight insertion, into loops, so the

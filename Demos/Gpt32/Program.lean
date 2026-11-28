@@ -1,7 +1,11 @@
-import Library.Numerics.LinearAlgebra.Binary32.Program
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Float32
+module
+
+public import Library.Numerics.LinearAlgebra.Binary32.Program
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Float32
+
+@[expose] public section
 
 /-!
 GPT-2 124M in binary32, written for WGSL kernels: every array is built element by element, and

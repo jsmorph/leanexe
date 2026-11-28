@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.FixedArraySearchRead
-import Interpreter.Wasm.Wp.Block
-import Interpreter.Wasm.Wp.Loop
+module
+
+public import LeanExe.ProofKit.FixedArraySearchRead
+public import Interpreter.Wasm.Wp.Block
+public import Interpreter.Wasm.Wp.Loop
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArraySearch
 open Wasm LeanExe.Runtime

@@ -1,5 +1,9 @@
-import TestSupport.A64.Uart
-import LeanExe.A64.File
+module
+
+public import TestSupport.A64.Uart
+public import LeanExe.A64.File
+
+@[expose] public section
 
 /-!
 The theorems of the arm64 Image that `a64-uart emit` writes, GCD's loop on two words read from the

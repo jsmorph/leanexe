@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erf.ErfSmallPieces1
+module
+
+public import Library.Numerics.Float64.Erf.ErfSmallPieces1
+
+@[expose] public section
 
 /-!
 One step for `erf` on the first range `[2^-28, 0.84375]` for positive arguments, from the intervals

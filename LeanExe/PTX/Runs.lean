@@ -1,4 +1,8 @@
-import LeanExe.PTX.Det
+module
+
+public import LeanExe.PTX.Det
+
+@[expose] public section
 
 /-!
 Runs of statement lists that neither stop, store, nor return: `Runs s o l code P` states that from

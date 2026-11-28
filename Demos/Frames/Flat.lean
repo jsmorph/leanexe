@@ -1,6 +1,10 @@
-import Demos.Frames.Program
-import Demos.Frames.Time
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Frames.Program
+public import Demos.Frames.Time
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Frames
 

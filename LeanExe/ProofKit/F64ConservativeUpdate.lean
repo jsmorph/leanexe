@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RoundingResidual
+module
+
+public import LeanExe.ProofKit.F64RoundingResidual
+
+@[expose] public section
 
 /-! The rounding certificate of a conservative update and the balance of a sequence of such updates. -/
 

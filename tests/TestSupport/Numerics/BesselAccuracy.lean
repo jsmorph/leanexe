@@ -1,6 +1,13 @@
-import Library.Numerics.Float64.Bessel.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.BesselReference
+module
+
+public import Library.Numerics.Float64.Bessel.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.BesselReference
+public meta import Library.Numerics.Float64.Bessel.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.BesselReference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Bessel.j0`, `j1`, `y0`, `y1`, `jn`, and `yn` against the references of
 `BesselReference`, in units of the modulus.  For a result `y` of order `n` at `x`, with references

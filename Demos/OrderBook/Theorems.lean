@@ -1,4 +1,8 @@
-import Demos.OrderBook.Spec
+module
+
+public import Demos.OrderBook.Spec
+
+@[expose] public section
 
 /-! Theorems of [the order book's specification](Spec.lean).  `Valid` holds of the empty book and
 after every step and stream, matching trades with the first orders of the opposite side at their

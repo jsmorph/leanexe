@@ -1,6 +1,10 @@
-import Library.Graphs.WeightedUnionFind.Proof
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Graphs.WeightedUnionFind.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+
+@[expose] public section
 
 /-! The verified compiler's module of equivalence classes with path compression and union by size.
 By the compiler's rules, which the verified compiler's manual states, the compiler translates the

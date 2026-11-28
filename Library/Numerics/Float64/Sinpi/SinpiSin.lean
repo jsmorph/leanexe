@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiCommon
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiCommon
+
+@[expose] public section
 
 /-!
 `Sinpi.sinpi` from `2 ^ -29` on in magnitude: within one step of `sin (π x)` for every finite

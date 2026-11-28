@@ -1,6 +1,10 @@
-import Demos.Slew.Safety
-import Mathlib.Geometry.Euclidean.Angle.Unoriented.TriangleInequality
-import Mathlib.Analysis.InnerProductSpace.PiL2
+module
+
+public import Demos.Slew.Safety
+public import Mathlib.Geometry.Euclidean.Angle.Unoriented.TriangleInequality
+public import Mathlib.Analysis.InnerProductSpace.PiL2
+
+@[expose] public section
 
 /-! The premise theorem of the slew planner.  `plan_premise` relates a plan of status 1 to a
 flown slew whose attitude, cone axes, and cone half-angles differ from the planned ones.  The

@@ -1,5 +1,9 @@
-import Library.Trees.Search.Spec
-import Examples.Trees.Cases
+module
+
+public import Library.Trees.Search.Spec
+public import Examples.Trees.Cases
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of tree search and insertion. -/
 

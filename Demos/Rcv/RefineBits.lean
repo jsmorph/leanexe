@@ -1,7 +1,12 @@
-import Demos.Rcv.Spec
-import Demos.Rcv.Program
-import LeanExe.Dialect.Lemmas
-import Mathlib.Data.Nat.BitIndices
+module
+
+public import Demos.Rcv.Spec
+public import Demos.Rcv.Program
+public import LeanExe.Dialect.Lemmas
+public import Mathlib.Data.Nat.BitIndices
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-!
 Facts about words and masks for the refinement of `Demos.Rcv.Program.count`: the position of a word

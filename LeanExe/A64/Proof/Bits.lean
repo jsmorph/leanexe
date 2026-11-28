@@ -1,4 +1,8 @@
-import LeanExe.A64.Machine
+module
+
+public import LeanExe.A64.Machine
+
+@[expose] public section
 
 /-!
 Arithmetic facts about the bitwise definitions of the AArch64 model: `load64` is the

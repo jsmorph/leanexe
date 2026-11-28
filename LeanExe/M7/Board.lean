@@ -1,6 +1,10 @@
-import LeanExe.M7.Boot
-import LeanExe.M7.Init
-import LeanExe.M7.Setup
+module
+
+public import LeanExe.M7.Boot
+public import LeanExe.M7.Init
+public import LeanExe.M7.Setup
+
+@[expose] public section
 
 /-!
 The NUCLEO-F767ZI's STM32F767ZI for the Cortex-M7 back end: its memories and devices, the

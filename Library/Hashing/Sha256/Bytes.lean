@@ -1,6 +1,10 @@
-import Library.Hashing.Sha256.Compiled
-import Library.Hashing.Sha256.Proof
-import Verified.Call
+module
+
+public import Library.Hashing.Sha256.Compiled
+public import Library.Hashing.Sha256.Proof
+public import Verified.Call
+
+@[expose] public section
 
 /-! The bytes of the module `sha256` compute SHA-256 and SHA-224 of FIPS 180-4.  Each entry, called
 from a ready store with a borrowed array `msg` and a byte count `n < 2 ^ 61`, returns without a

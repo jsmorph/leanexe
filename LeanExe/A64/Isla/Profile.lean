@@ -1,4 +1,10 @@
-import LeanExe.A64.Isla.Trace
+module
+
+public import LeanExe.A64.Isla.Trace
+public import LeanExe.A64.Isla.Features
+public meta import LeanExe.A64.Isla.Features
+
+@[expose] public section
 
 /-!
 The processor profiles of the traces of `tests/isla/traces.sh`, `tcg` and `kvm`, as the registers
@@ -34,25 +40,6 @@ their theorems carry them as premises.
 -/
 
 namespace LeanExe.A64.Isla
-
-/-- The settings of a profile's `features` file: `settings` holds the pair `(NAME, b)` of each line
-`NAME=b` in order, which `traces.sh` passes as `-I NAME=b`, and `impl` the values `b` of the lines
-whose names begin with `FEAT_`, in order. -/
-structure Features where
-  settings : List (String × Bool)
-  impl : List Bool
-  deriving Lean.ToExpr
-
-/-- The settings of the text `s` of a `features` file, whose nonempty lines are `NAME=true` or
-`NAME=false`. -/
-def parseFeatures (s : String) : Except String Features := do
-  let settings ← ((s.splitOn "\n").filter (· ≠ "")).mapM fun l =>
-    match l.splitOn "=" with
-    | [n, "true"] => .ok (n, true)
-    | [n, "false"] => .ok (n, false)
-    | _ => .error s!"bad setting {l}"
-  return ⟨settings,
-    settings.filterMap fun (n, b) => if n.startsWith "FEAT_" then some b else none⟩
 
 open Lean Elab Term in
 /-- The features in the file at the path, relative to the directory of the source file, read when

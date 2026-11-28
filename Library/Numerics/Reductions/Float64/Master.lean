@@ -1,13 +1,19 @@
-import Library.Numerics.Reductions.Float64.Compiled
-import Library.Numerics.Reductions.Binary64
-import LeanExe.Dialect.ArrayLemmas
-import Verified.Master
+module
+
+public import Library.Numerics.Reductions.Float64.Compiled
+public import Library.Numerics.Reductions.Binary64
+public import LeanExe.Dialect.ArrayLemmas
+public import Verified.Master
+
+@[expose] public section
 
 /-!
 The master theorems of the binary64 reductions.  `total` and `select` are left-to-right sums,
 whose errors `Binary64.sum_bound` gives; `sumRange` sums by halves, and `sumRange_approx` bounds
-its error by induction on the recursion, with `γ` of the depth `⌈log₂ n⌉`; `largest` returns the
-last element that is not a NaN and that no element exceeds, by the invariant `LargestInv`.
+its error by induction on the recursion, with `γ` of the depth `⌈log₂ n⌉`; `largest`, a fold of
+Lean's `max`, IEEE 754-2019's `maximum`, returns negative infinity for no elements, the canonical
+NaN once an element is a NaN, and otherwise the element that `maximum` selects, by the invariant
+`LargestInv`.
 -/
 
 namespace Library.Numerics.Reductions.Float64
@@ -177,73 +183,109 @@ theorem lt_bits (a b : Float) (ha : Wasm.IEEE64.isNaN a.toBits = false)
   rw [F64Bits.lt_iff]
   simp [Wasm.IEEE64.lt, ha, hb]
 
-/-- The state after the first `k` elements: negative infinity when they are all NaNs, and
-otherwise the last of them that is not a NaN and that none of them exceeds. -/
+/-- `y` is at or above `x` in the order of IEEE 754-2019's `maximum`: `x` is below `y` in value,
+`x` is the word `y`, or `x` is `-0` and `y` is `+0`. -/
+def AtOrAbove (y x : UInt64) : Prop :=
+  Wasm.IEEE64.scaledValue x < Wasm.IEEE64.scaledValue y ∨ x = y ∨
+    (x = 0x8000000000000000 ∧ y = 0)
+
+theorem AtOrAbove.value_le {y x : UInt64} (h : AtOrAbove y x) :
+    Wasm.IEEE64.scaledValue x ≤ Wasm.IEEE64.scaledValue y := by
+  rcases h with h | rfl | ⟨rfl, rfl⟩
+  · exact h.le
+  · exact le_rfl
+  · decide
+
+/-- The state after the first `k` elements: negative infinity for none, the canonical NaN once
+one of them is a NaN, and otherwise one of them that is at or above all of them. -/
 def LargestInv (xs : Array Float) (k : ℕ) (acc : Float) : Prop :=
-  (acc.toBits = negInf ∧ ∀ j < k, Wasm.IEEE64.isNaN xs[j]!.toBits = true) ∨
-  ∃ i < k, Wasm.IEEE64.isNaN xs[i]!.toBits = false ∧ acc.toBits = xs[i]!.toBits ∧
-    (∀ j < k, Wasm.IEEE64.isNaN xs[j]!.toBits = false →
-      Wasm.IEEE64.scaledValue xs[j]!.toBits ≤ Wasm.IEEE64.scaledValue xs[i]!.toBits) ∧
-    ∀ j, i < j → j < k → Wasm.IEEE64.isNaN xs[j]!.toBits = false →
-      Wasm.IEEE64.scaledValue xs[j]!.toBits < Wasm.IEEE64.scaledValue xs[i]!.toBits
+  (k = 0 → acc.toBits = negInf) ∧
+  ((∃ j < k, Wasm.IEEE64.isNaN xs[j]!.toBits = true) →
+    acc.toBits = Wasm.IEEE64.canonicalNaN) ∧
+  (0 < k → (∀ j < k, Wasm.IEEE64.isNaN xs[j]!.toBits = false) →
+    ∃ i < k, acc.toBits = xs[i]!.toBits ∧ ∀ j < k, AtOrAbove xs[i]!.toBits xs[j]!.toBits)
+
+theorem max_nan_right (a x : UInt64) (hx : Wasm.IEEE64.isNaN x = true) :
+    Wasm.IEEE64.max a x = Wasm.IEEE64.canonicalNaN := by
+  simp [Wasm.IEEE64.max, hx]
+
+theorem max_nan_left (a x : UInt64) (ha : Wasm.IEEE64.isNaN a = true) :
+    Wasm.IEEE64.max a x = Wasm.IEEE64.canonicalNaN := by
+  simp [Wasm.IEEE64.max, ha]
+
+theorem canonicalNaN_isNaN : Wasm.IEEE64.isNaN Wasm.IEEE64.canonicalNaN = true := by decide
+
+/-- IEEE 754-2019's `maximum` of a word that is not a NaN and of `x`, which is at or above every
+word that the first one is at or above, is one of the two and is at or above both. -/
+theorem max_step (a x : UInt64) (ha : Wasm.IEEE64.isNaN a = false)
+    (hx : Wasm.IEEE64.isNaN x = false) :
+    (Wasm.IEEE64.max a x = a ∧ AtOrAbove a x) ∨
+      (Wasm.IEEE64.max a x = x ∧ AtOrAbove x a ∧ ∀ z, AtOrAbove a z → AtOrAbove x z) := by
+  rw [FloatMinMax.max_bits]
+  cases h1 : Wasm.IEEE64.lt a x
+  · cases h2 : Wasm.IEEE64.lt x a
+    · cases h3 : Wasm.IEEE64.eq a x
+      · have := FloatMinMax.nan_of_unordered h1 h2 h3
+        rw [ha, hx] at this
+        exact absurd this (by decide)
+      · simp only [Bool.false_eq_true, ↓reduceIte]
+        rcases FloatMinMax.eq_cases h3 with ⟨hza, hzx⟩ | ⟨-, rfl⟩
+        · have ea := FloatMinMax.zero_signMask hza
+          have ex := FloatMinMax.zero_signMask hzx
+          generalize Wasm.IEEE64.sign a = sa at ea
+          generalize Wasm.IEEE64.sign x = sx at ex
+          subst ea ex
+          cases sa <;> cases sx
+          · exact Or.inl ⟨by decide, Or.inr (Or.inl rfl)⟩
+          · exact Or.inl ⟨by decide, Or.inr (Or.inr (by decide))⟩
+          · refine Or.inr ⟨by decide, Or.inr (Or.inr (by decide)), fun z hz => ?_⟩
+            rcases hz with hz | rfl | ⟨_, h⟩
+            · exact Or.inl hz
+            · exact Or.inr (Or.inr (by decide))
+            · exact absurd h (by decide)
+          · exact Or.inl ⟨by decide, Or.inr (Or.inl rfl)⟩
+        · exact Or.inl ⟨ite_self _, Or.inr (Or.inl rfl)⟩
+    · simp only [Bool.false_eq_true, ↓reduceIte]
+      exact Or.inl ⟨trivial, Or.inl (FloatMinMax.lt_true h2).2.2⟩
+  · simp only [↓reduceIte]
+    have hv := (FloatMinMax.lt_true h1).2.2
+    exact Or.inr ⟨trivial, Or.inl hv, fun z hz => Or.inl (lt_of_le_of_lt hz.value_le hv)⟩
 
 theorem largestInv_step (xs : Array Float) (k : ℕ) (acc : Float) (h : LargestInv xs k acc) :
     LargestInv xs (k + 1) (max acc xs[k]!) := by
+  obtain ⟨h0, hnan, hall⟩ := h
   have hmax := F64Bits.toBits_max acc xs[k]!
-  by_cases hk : Wasm.IEEE64.isNaN xs[k]!.toBits = true
-  · have hle : Wasm.IEEE64.le acc.toBits xs[k]!.toBits = false := by
-      simp [Wasm.IEEE64.le, hk]
-    rw [hle] at hmax
-    simp only [Bool.false_eq_true, ↓reduceIte] at hmax
-    rcases h with ⟨h1, h2⟩ | ⟨i, hi, hn, he, hle', hlt⟩
-    · exact Or.inl ⟨hmax.trans h1, fun j hj => by
+  refine ⟨fun hk => absurd hk (by omega), fun ⟨j, hj, hjn⟩ => ?_, fun _ hnn => ?_⟩
+  · rw [hmax]
+    rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
+    · exact max_nan_left _ _ (by rw [hnan ⟨j, hj, hjn⟩]; exact canonicalNaN_isNaN)
+    · exact max_nan_right _ _ hjn
+  · have hk := hnn k (by omega)
+    rcases Nat.eq_zero_or_pos k with rfl | hpos
+    · have ha := h0 rfl
+      refine ⟨0, by omega, ?_, fun j hj => ?_⟩
+      · rw [hmax, ha]
+        rcases max_step negInf xs[0]!.toBits negInf_not_nan hk with ⟨he, hab⟩ | ⟨he, -, -⟩
+        · rw [he]
+          rcases hab with hlt | heq | ⟨_, h⟩
+          · exact absurd hlt (not_lt.mpr (negInf_le _ hk))
+          · exact heq.symm
+          · exact absurd h (by decide)
+        · exact he
+      · have : j = 0 := by omega
+        subst this
+        exact Or.inr (Or.inl rfl)
+    · obtain ⟨i, hi, he, hab⟩ := hall hpos fun j hj => hnn j (by omega)
+      have ha : Wasm.IEEE64.isNaN acc.toBits = false := by rw [he]; exact hnn i (by omega)
+      rcases max_step acc.toBits xs[k]!.toBits ha hk with ⟨hm, hak⟩ | ⟨hm, -, hup⟩
+      · refine ⟨i, by omega, by rw [hmax, hm, he], fun j hj => ?_⟩
         rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
-        · exact h2 j hj
-        · exact hk⟩
-    · refine Or.inr ⟨i, by omega, hn, hmax.trans he, fun j hj hjn => ?_, fun j hij hj hjn => ?_⟩
-      · rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
-        · exact hle' j hj hjn
-        · rw [hk] at hjn; exact absurd hjn (by decide)
-      · rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
-        · exact hlt j hij hj hjn
-        · rw [hk] at hjn; exact absurd hjn (by decide)
-  · have hk' : Wasm.IEEE64.isNaN xs[k]!.toBits = false := by simpa using hk
-    rcases h with ⟨h1, h2⟩ | ⟨i, hi, hn, he, hle', hlt⟩
-    · have hle : Wasm.IEEE64.le acc.toBits xs[k]!.toBits = true := by
-        simp only [Wasm.IEEE64.le, h1, negInf_not_nan, hk', Bool.or_self, Bool.false_eq_true,
-          ↓reduceIte, decide_eq_true_eq]
-        exact negInf_le _ hk'
-      rw [hle] at hmax
-      simp only [↓reduceIte] at hmax
-      refine Or.inr ⟨k, by omega, hk', hmax, fun j hj hjn => ?_, fun j hkj hj _ => by omega⟩
-      rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
-      · rw [h2 j hj] at hjn; exact absurd hjn (by decide)
-      · exact le_rfl
-    · by_cases hc : Wasm.IEEE64.scaledValue xs[i]!.toBits ≤ Wasm.IEEE64.scaledValue xs[k]!.toBits
-      · have hle : Wasm.IEEE64.le acc.toBits xs[k]!.toBits = true := by
-          simp only [Wasm.IEEE64.le, he, hn, hk', Bool.or_self, Bool.false_eq_true, ↓reduceIte,
-            decide_eq_true_eq]
-          exact hc
-        rw [hle] at hmax
-        simp only [↓reduceIte] at hmax
-        refine Or.inr ⟨k, by omega, hk', hmax, fun j hj hjn => ?_, fun j hkj hj _ => by omega⟩
+        · exact hab j hj
+        · rw [← he]; exact hak
+      · refine ⟨k, by omega, by rw [hmax, hm], fun j hj => ?_⟩
         rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
-        · exact (hle' j hj hjn).trans hc
-        · exact le_rfl
-      · have hle : Wasm.IEEE64.le acc.toBits xs[k]!.toBits = false := by
-          simp only [Wasm.IEEE64.le, he, hn, hk', Bool.or_self, Bool.false_eq_true, ↓reduceIte,
-            decide_eq_false_iff_not]
-          exact hc
-        rw [hle] at hmax
-        simp only [Bool.false_eq_true, ↓reduceIte] at hmax
-        refine Or.inr ⟨i, by omega, hn, hmax.trans he, fun j hj hjn => ?_,
-          fun j hij hj hjn => ?_⟩
-        · rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
-          · exact hle' j hj hjn
-          · exact (lt_of_not_ge hc).le
-        · rcases Nat.lt_succ_iff_lt_or_eq.mp hj with hj | rfl
-          · exact hlt j hij hj hjn
-          · exact lt_of_not_ge hc
+        · exact hup _ (he ▸ hab j hj)
+        · exact Or.inr (Or.inl rfl)
 
 theorem largest_inv (xs : Array Float) (h : xs.size < 2 ^ 64) :
     LargestInv xs xs.size (largest xs) := by
@@ -253,51 +295,48 @@ theorem largest_inv (xs : Array Float) (h : xs.size < 2 ^ 64) :
   rw [h1, size_toUInt64 xs h]
   generalize xs.size = n
   induction n with
-  | zero => exact Or.inl ⟨largest_init, fun j hj => absurd hj (by omega)⟩
+  | zero =>
+    exact ⟨fun _ => largest_init, fun ⟨j, hj, _⟩ => absurd hj (by omega),
+      fun h => absurd h (by omega)⟩
   | succ k ih =>
     rw [List.range_succ, List.foldl_append, List.foldl_cons, List.foldl_nil]
     exact largestInv_step xs k _ ih
 
-/-- The export `largest`, called on an array of floats, returns negative infinity when every
-element is a NaN, the empty array included, and otherwise the last element that is not a NaN and
-that no element exceeds in the IEEE 754 order of `Float`.  For finite elements, the result is
-therefore an element of the largest value, the last one among equal values such as `+0` and
-`-0`. -/
+/-- The export `largest`, called on an array of floats, returns negative infinity for the empty
+array, the canonical NaN when an element is a NaN, and otherwise the element that IEEE 754-2019's
+`maximum` gives: an element `xs[i]` such that every element is below it, is the same bit pattern,
+or is `-0` when it is `+0`. -/
 theorem largest_master :
     Verified.Master compiled.module compiled.tables "largest" compiled.largest.bound
       (fun _ => True)
       (fun (xs : Array Float) (y : Float) =>
-        ((∀ x ∈ xs, Wasm.IEEE64.isNaN x.toBits = true) → y.toBits = 0xFFF0000000000000) ∧
-        ((∃ x ∈ xs, Wasm.IEEE64.isNaN x.toBits = false) →
-          ∃ i, ∃ hi : i < xs.size, Wasm.IEEE64.isNaN xs[i].toBits = false ∧
-            y.toBits = xs[i].toBits ∧
-            (∀ j, ∀ hj : j < xs.size, Wasm.IEEE64.isNaN xs[j].toBits = false → xs[j] ≤ xs[i]) ∧
-            ∀ j, ∀ hj : j < xs.size, i < j → Wasm.IEEE64.isNaN xs[j].toBits = false →
-              xs[j] < xs[i])) :=
+        (xs.size = 0 → y.toBits = 0xFFF0000000000000) ∧
+        ((∃ x ∈ xs, Wasm.IEEE64.isNaN x.toBits = true) → y.toBits = 0x7FF8000000000000) ∧
+        (0 < xs.size → (∀ x ∈ xs, Wasm.IEEE64.isNaN x.toBits = false) →
+          ∃ i, ∃ hi : i < xs.size, y.toBits = xs[i].toBits ∧
+            ∀ j, ∀ hj : j < xs.size, xs[j] < xs[i] ∨ xs[j].toBits = xs[i].toBits ∨
+              (xs[j].toBits = 0x8000000000000000 ∧ xs[i].toBits = 0))) :=
   .of_trapFree (.ofA compiled.largest.trapFree) nofun largest_export
     (fun _ _ _ _ _ => trivial) (fun _ _ _ _ _ h => h)
     fun _ _ _ xs ⟨_, _, hxs⟩ _ => by
       have hs := size_lt hxs.values.size_lt_memory32
-      have hinv := largest_inv xs (by omega)
+      obtain ⟨h0, hnan, hall⟩ := largest_inv xs (by omega)
       have hget : ∀ j (hj : j < xs.size), xs[j]! = xs[j] := fun j hj => getElem!_pos xs j hj
-      refine ⟨fun hall => ?_, fun ⟨x, hx, hxn⟩ => ?_⟩
-      · rcases hinv with ⟨h1, _⟩ | ⟨i, hi, hn, _, _, _⟩
-        · exact h1
-        · rw [hget i hi, hall _ (Array.getElem_mem hi)] at hn
-          exact absurd hn (by decide)
-      · rcases hinv with ⟨_, h2⟩ | ⟨i, hi, hn, he, hle, hlt⟩
-        · obtain ⟨j, hj, rfl⟩ := Array.mem_iff_getElem.mp hx
-          have := h2 j hj
-          rw [hget j hj, hxn] at this
-          exact absurd this (by decide)
-        · rw [hget i hi] at hn he
-          refine ⟨i, hi, hn, he, fun j hj hjn => ?_, fun j hj hij hjn => ?_⟩
-          · have := hle j hj (by rw [hget j hj]; exact hjn)
-            rw [hget j hj, hget i hi] at this
-            exact (le_bits _ _ hjn hn).mpr this
-          · have := hlt j hij hj (by rw [hget j hj]; exact hjn)
-            rw [hget j hj, hget i hi] at this
-            exact (lt_bits _ _ hjn hn).mpr this
+      refine ⟨h0, fun ⟨x, hx, hxn⟩ => ?_, fun hpos hnn => ?_⟩
+      · obtain ⟨j, hj, rfl⟩ := Array.mem_iff_getElem.mp hx
+        exact hnan ⟨j, hj, by rw [hget j hj]; exact hxn⟩
+      · have hnn' : ∀ j < xs.size, Wasm.IEEE64.isNaN xs[j]!.toBits = false := fun j hj => by
+          rw [hget j hj]; exact hnn _ (Array.getElem_mem hj)
+        obtain ⟨i, hi, he, hab⟩ := hall hpos hnn'
+        rw [hget i hi] at he
+        refine ⟨i, hi, he, fun j hj => ?_⟩
+        have h := hab j hj
+        rw [hget j hj, hget i hi] at h
+        rcases h with h | h | h
+        · exact Or.inl ((lt_bits _ _ (hnn _ (Array.getElem_mem hj))
+            (hnn _ (Array.getElem_mem hi))).mpr h)
+        · exact Or.inr (Or.inl h)
+        · exact Or.inr (Or.inr h)
 
 #print axioms largest_master
 

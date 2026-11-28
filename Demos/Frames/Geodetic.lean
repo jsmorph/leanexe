@@ -1,6 +1,10 @@
-import Demos.Frames.Model
-import Mathlib.Topology.Order.IntermediateValue
-import Mathlib.Topology.Algebra.Order.Field
+module
+
+public import Demos.Frames.Model
+public import Mathlib.Topology.Order.IntermediateValue
+public import Mathlib.Topology.Algebra.Order.Field
+
+@[expose] public section
 
 /-!
 Geodetic coordinates over the real numbers.  The latitude of a point solves

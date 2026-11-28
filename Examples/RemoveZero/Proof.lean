@@ -1,7 +1,12 @@
-import Library.Arrays.Search.Proof
-import Examples.RemoveZero.Program
-import Examples.RemoveZero.Spec
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Arrays.Search.Proof
+public import Examples.RemoveZero.Program
+public import Examples.RemoveZero.Spec
+public import LeanExe.Dialect.Lemmas
+import all Init.Data.Array.Basic
+
+@[expose] public section
 
 /-! The program equals the specification, a fact about the Lean definitions that the theorems of
 the verified compilation use. -/

@@ -1,7 +1,11 @@
-import Library.Bytes.Packed
-import Mathlib.Algebra.BigOperators.Group.Finset.Basic
-import Mathlib.Tactic.NormNum
-import Mathlib.Tactic.Ring
+module
+
+public import Library.Bytes.Packed
+public import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+public import Mathlib.Tactic.NormNum
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-! Little-endian values of byte strings.  The value of the bytes `b_0` to `b_(k-1)` is
 `b_0 + 256 b_1 + … + 256^(k-1) b_(k-1)`, which `List.foldr (fun b acc => b.toNat + 256 * acc) 0`

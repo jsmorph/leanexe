@@ -1,5 +1,9 @@
-import Library.Hashing.Sha2.Equiv.SHA256.Compress.Impl
-import Mathlib.Tactic.IntervalCases
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA256.Compress.Impl
+public import Mathlib.Tactic.IntervalCases
+
+@[expose] public section
 
 /-! # Compression equivalence — `MatchAfter` invariant + cross-side meet
 

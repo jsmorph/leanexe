@@ -1,6 +1,10 @@
-import Library.Numerics.Bounds.Compiled
-import Library.Numerics.Bounds.Proof
-import Verified.Master
+module
+
+public import Library.Numerics.Bounds.Compiled
+public import Library.Numerics.Bounds.Proof
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Numerics.Bounds
 

@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64SqrtRounding
-import LeanExe.ProofKit.F64NormalizeTiny
+module
+
+public import LeanExe.ProofKit.F64SqrtRounding
+public import LeanExe.ProofKit.F64NormalizeTiny
+
+@[expose] public section
 
 /-! The relative error of the rounded binary64 square root of a word's value. -/
 

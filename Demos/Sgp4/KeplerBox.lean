@@ -1,7 +1,12 @@
-import Demos.Sgp4.Kepler
-import Demos.Sgp4.Program
-import Library.Numerics.Interval.EncloseAttr
-import Library.Numerics.Interval.FunctionsProof
+module
+
+public import Demos.Sgp4.Kepler
+public import Demos.Sgp4.Program
+public import Library.Numerics.Interval.EncloseAttr
+public import Library.Numerics.Interval.FunctionsProof
+public meta import Library.Numerics.Interval.EncloseAttr
+
+@[expose] public section
 
 /-!
 An interval that contains the root of Kepler's equation.  `rootI` computes an approximate

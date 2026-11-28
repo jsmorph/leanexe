@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Normalize
+module
+
+public import LeanExe.ProofKit.F64Normalize
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64AddFinite
 open Float.Model Float.Model.UnpackedFloat F64Normalize FloatCommon

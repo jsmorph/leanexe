@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.AlignedSearch
-import LeanExe.ProofKit.AlignedHeaderExec
-import LeanExe.ProofKit.FixedArraySearchFit
+module
+
+public import LeanExe.ProofKit.AlignedSearch
+public import LeanExe.ProofKit.AlignedHeaderExec
+public import LeanExe.ProofKit.FixedArraySearchFit
+
+@[expose] public section
 
 /-!
 The reuse of a free block by `alloc` under `wpA`: the ports of the programs of

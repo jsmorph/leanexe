@@ -10,6 +10,13 @@ request in Python, compared it with every output, and ran no Lean code of the re
 `spec.sha256` holds the hashes of the reviewed specification and samples, which the demo's driver
 checks.
 
+The conversion of leanexe to Lean's module system (`ad4562d27`) is the only commit that changed
+`Spec.lean` and `Samples.lean` after the reviewed version, that of `7d5444ebb`, and it changed only
+their header lines, so `spec.sha256` records the hashes of the files with the new lines.  In each
+file, it added `module` and a blank line before the import, made the import `public import
+LeanExe.Dialect.Bytes`, and added a blank line and `@[expose] public section` after it.  Every other
+line of the two files is the line that the reviews below covered.
+
 ### First review
 
 The first review found no disagreement.  Its model agreed with the 119 outputs of the first sample
@@ -61,6 +68,14 @@ serves](picks-request.txt), with the specifications of [the pure core](Spec.lean
 received only the paths of those files and of the samples' outputs, wrote its own model in Python,
 compared it with every output, and ran no Lean code of the repository.  `picks.sha256` holds the
 hashes of the reviewed specification and samples, which the demo's driver checks.
+
+The conversion of leanexe to Lean's module system (`ad4562d27`) is the only commit that changed
+`PicksSpec.lean` and `PicksSamples.lean` after the reviewed version, that of `b9b65a4b2`, and it
+changed only their header lines, so `picks.sha256` records the hashes of the files with the new
+lines.  In each file, it added `module` and a blank line before the import, made the import public,
+and added a blank line and `@[expose] public section` after it.  The new import lines are `public
+import Demos.RandomChoice.Spec` in `PicksSpec.lean` and `public import LeanExe.Dialect.Bytes` in
+`PicksSamples.lean`.  Every other line of the two files is the line that the reviews below covered.
 
 ### First review
 

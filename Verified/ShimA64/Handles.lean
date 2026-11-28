@@ -1,4 +1,8 @@
-import Verified.ShimA64.Files
+module
+
+public import Verified.ShimA64.Files
+
+@[expose] public section
 
 /-!
 The stub of `fd_read` and `fd_write` on a handle against the shim's host environment:

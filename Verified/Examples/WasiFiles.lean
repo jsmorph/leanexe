@@ -1,4 +1,8 @@
-import Verified.Wasi
+module
+
+public import Verified.Wasi
+
+@[expose] public section
 
 /-! A command that writes a file in one bracket and reads it back in another, with the functions
 that the Linux shim implements.  `main` opens the file `f` under the preopened directory with

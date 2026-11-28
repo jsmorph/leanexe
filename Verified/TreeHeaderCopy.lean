@@ -1,5 +1,9 @@
-import Verified.TreeAllocate
-import Verified.TreeDetach
+module
+
+public import Verified.TreeAllocate
+public import Verified.TreeDetach
+
+@[expose] public section
 
 namespace Verified
 

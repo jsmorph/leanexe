@@ -1,5 +1,12 @@
-import Verified.Reflect.TailTermination
-import Verified.Reflect.TailState
+module
+
+public import Verified.Reflect.TailTermination
+public import Verified.Reflect.TailState
+public meta import Verified.Reflect.Definitions
+public meta import Verified.Reflect.TailState
+public meta import Verified.Reflect.TailTermination
+
+@[expose] public section
 
 namespace Verified.Examples.TailReflection
 

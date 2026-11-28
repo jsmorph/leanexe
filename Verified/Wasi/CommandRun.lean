@@ -1,5 +1,9 @@
-import Verified.Wasi.EntryCorrect
-import Verified.Wasi.ExitStack
+module
+
+public import Verified.Wasi.EntryCorrect
+public import Verified.Wasi.ExitStack
+
+@[expose] public section
 
 namespace Verified.Wasi
 

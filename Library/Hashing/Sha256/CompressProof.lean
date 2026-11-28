@@ -1,5 +1,9 @@
-import Library.Hashing.Sha256.WordProof
-import Library.Hashing.Sha2.Equiv.SHA256.Main
+module
+
+public import Library.Hashing.Sha256.WordProof
+public import Library.Hashing.Sha2.Equiv.SHA256.Main
+
+@[expose] public section
 
 /-! `compress` computes the compression `SHS.SHA256.compress` of FIPS 180-4 §6.2.2 on the 32-bit
 words that the low halves of its words hold, and therefore equals `SHS.SHA256.Impl.compress`,
@@ -145,7 +149,7 @@ theorem rounds (k : Array UInt64) (h : Words8) (m : Words16) (n : Nat) :
       (Nat.fold n (fun i _ s => roundStep k[(UInt64.ofNat i).toNat]! (advance^[i] m).w0 s) h,
         advance^[n] m) := by
   induction n with
-  | zero => rfl
+  | zero => simp only [Nat.fold_zero, Function.iterate_zero, id_eq]
   | succ n ih =>
     rw [Nat.fold_succ, Nat.fold_succ, ih, Function.iterate_succ_apply']
 
@@ -159,7 +163,7 @@ theorem rounds_spec (h : Words8) (m : Words16) : ∀ n, n ≤ 64 →
   rw [finFoldl_eq_fold n
     (fun t s => specRoundStep (SHS.SHA256.schedule (toSpecBlock m.toVec32)) t s)]
   induction n with
-  | zero => rfl
+  | zero => simp only [Nat.fold_zero]
   | succ n ih =>
     rw [Nat.fold_succ, Nat.fold_succ, ← ih (by omega)]
     have hn' : (UInt64.ofNat n).toNat = n := by rw [UInt64.toNat_ofNat']; omega

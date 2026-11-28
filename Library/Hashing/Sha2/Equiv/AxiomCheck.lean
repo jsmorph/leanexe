@@ -1,5 +1,9 @@
-import Library.Hashing.Sha2.Equiv.SHA256.Main
-import Library.Hashing.Sha2.Equiv.SHA512.Main
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA256.Main
+public import Library.Hashing.Sha2.Equiv.SHA512.Main
+
+@[expose] public section
 
 /-! # Axiom regression gate
 

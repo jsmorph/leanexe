@@ -1,6 +1,10 @@
-import Examples.ArrayCall
-import Examples.RemoveZero.Proof
-import Verified.Reflect.Command
+module
+
+public import Examples.ArrayCall
+public import Examples.RemoveZero.Proof
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of the library's `firstZero` and of `compute`.
 `removeZero_call` composes the generated `compiled.compute.trapFree` with `compute_eq`: from a

@@ -1,7 +1,11 @@
-import Demos.Frames.Verified
-import Demos.Frames.Soundness
-import Demos.Frames.TimeSound
-import Verified.Call
+module
+
+public import Demos.Frames.Verified
+public import Demos.Frames.Soundness
+public import Demos.Frames.TimeSound
+public import Verified.Call
+
+@[expose] public section
 
 /-! The calls of the module's exports.  Each call theorem states that the export, called from a
 ready store with represented arguments, returns the Lean function's result without a trap, from the

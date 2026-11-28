@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcEft2
-import Library.Numerics.Float64.Erfc.Compiled
-import LeanExe.ProofKit.F64Bits
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcEft2
+public import Library.Numerics.Float64.Erfc.Compiled
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-!
 The operations of `Erfc` on floats with their error bounds, for the proof of `Erfc.erfc`.  `fv x`

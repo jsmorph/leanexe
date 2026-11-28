@@ -1,4 +1,8 @@
-import Verified.Reflect.TreeLemmas
+module
+
+public import Verified.Reflect.TreeLemmas
+
+@[expose] public section
 
 namespace Verified.Reflect
 

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiKernels
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiKernels
+
+@[expose] public section
 
 /-!
 `Sinpi.kernelTanpi` for `x` from `2 ^ -54` below `1/2`: within one step of `tan (π x)`.  Below

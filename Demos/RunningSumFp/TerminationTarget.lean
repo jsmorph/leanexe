@@ -1,4 +1,8 @@
-import Demos.RunningSumFp.TerminationTyped
+module
+
+public import Demos.RunningSumFp.TerminationTyped
+
+@[expose] public section
 
 namespace Demos.RunningSumFp.Termination
 

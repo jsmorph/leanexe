@@ -1,4 +1,8 @@
-import Demos.Energy.Flat
+module
+
+public import Demos.Energy.Flat
+
+@[expose] public section
 
 /-! The authorizer over fields.  `authorizeFlat` decides as `authorizeWith` does, with the profile
 table's words and the snapshot's words as the fields of the structures `Prof` and `Snap`, which

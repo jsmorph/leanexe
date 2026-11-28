@@ -1,4 +1,8 @@
-import Verified.Shim.SysEnv
+module
+
+public import Verified.Shim.SysEnv
+
+@[expose] public section
 
 /-!
 The shim's file functions: `path_open`, `fd_close`, `fd_read` and `fd_write` on a handle,

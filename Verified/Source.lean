@@ -1,10 +1,14 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.InsertErase
-import LeanExe.Dialect.Float32
-import LeanExe.Dialect.Bytes
-import Verified.Tree
-import Verified.TreeFold
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.InsertErase
+public import LeanExe.Dialect.Float32
+public import LeanExe.Dialect.Bytes
+public import Verified.Tree
+public import Verified.TreeFold
+
+@[expose] public section
 
 /-! The source language of the verified compiler: functions whose body is a typed expression over
 the function's arguments and the values that bindings and loops introduce.  The types are 64-bit

@@ -1,4 +1,8 @@
-import TestSupport.OrderBook.Cases
+module
+
+public import TestSupport.OrderBook.Cases
+
+@[expose] public section
 
 /-! The cases of the module `orderbook` alone, for `tests/verified/run.sh --cases orderbook`. -/
 

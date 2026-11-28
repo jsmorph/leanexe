@@ -1,7 +1,11 @@
-import Demos.Rcv.Maine.Rounds
-import Demos.Rcv.Maine.TabulateProgram
-import Demos.Rcv.Maine.Variants
-import Demos.Rcv.Maine.Winner
+module
+
+public import Demos.Rcv.Maine.Rounds
+public import Demos.Rcv.Maine.TabulateProgram
+public import Demos.Rcv.Maine.Variants
+public import Demos.Rcv.Maine.Winner
+
+@[expose] public section
 
 /-!
 Native runs of the Maine specification and programs on canonical ballot files and word arrays, and

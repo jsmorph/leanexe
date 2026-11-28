@@ -1,4 +1,8 @@
-import Library.Regex.ScanProof
+module
+
+public import Library.Regex.ScanProof
+
+@[expose] public section
 
 /-! The matcher computes the specification: `matchWith_eq` states that `matchWith pat pn msg n` is
 `Spec.answer` for the first `pn` words of `pat`, read as the compiled code reads them, and the

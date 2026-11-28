@@ -1,5 +1,9 @@
-import Demos.Rcv.Maine.Tabulate
-import TestSupport.A64.Rcv
+module
+
+public import Demos.Rcv.Maine.Tabulate
+public import TestSupport.A64.Rcv
+
+@[expose] public section
 
 /-!
 The Maine tabulator as a bare-metal program that reads its input from the UART: `tabulate`,

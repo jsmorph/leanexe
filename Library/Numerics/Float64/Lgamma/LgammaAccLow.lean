@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Lgamma.LgammaAccPoly
-import Library.Numerics.Float64.Lgamma.LgammaLogdAcc
-import Library.Numerics.Float64.Sinpi.SinpiTiny
-import Library.Numerics.Float64.Sinh.SinhWords
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaAccPoly
+public import Library.Numerics.Float64.Lgamma.LgammaLogdAcc
+public import Library.Numerics.Float64.Sinpi.SinpiTiny
+public import Library.Numerics.Float64.Sinh.SinhWords
+
+@[expose] public section
 
 /-!
 The two branches of `Lgamma.accurate` below `1/4`, at `x = |sx|`.  Below `2^-100` the code returns

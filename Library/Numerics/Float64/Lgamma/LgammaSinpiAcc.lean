@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaKernelBase
-import Library.Numerics.Float64.Lgamma.Compiled
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaKernelBase
+public import Library.Numerics.Float64.Lgamma.Compiled
+
+@[expose] public section
 
 /-!
 Bounds on the kernels of `as_sinpipid_accurate` (`lgamma.c` lines 1330-1363, commit

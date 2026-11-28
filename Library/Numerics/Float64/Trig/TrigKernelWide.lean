@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Trig.TrigKernelPoly
+module
+
+public import Library.Numerics.Float64.Trig.TrigKernelPoly
+
+@[expose] public section
 
 /-!
 The approximation errors of the kernel polynomials of `TrigKernelPoly` on `|x| ≤ 0.78541`.

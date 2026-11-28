@@ -1,7 +1,12 @@
-import Mathlib.Data.Real.Basic
-import Mathlib.LinearAlgebra.Matrix.Notation
-import Mathlib.Tactic.FieldSimp
-import Mathlib.Tactic.Ring
+module
+
+public import LeanExe.Base
+public import Mathlib.Data.Real.Basic
+public import Mathlib.LinearAlgebra.Matrix.Notation
+public import Mathlib.Tactic.FieldSimp
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-! The two-dimensional Euler equations in conservative variables with γ = 7/5: states, pressure,
 admissibility, the physical fluxes, and the reduced x-flux Jacobian.

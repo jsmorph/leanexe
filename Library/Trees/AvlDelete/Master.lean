@@ -1,5 +1,9 @@
-import Library.Trees.AvlDelete.Compiled
-import Verified.Master
+module
+
+public import Library.Trees.AvlDelete.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Trees.AvlDelete
 

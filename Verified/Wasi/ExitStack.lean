@@ -1,9 +1,13 @@
-import Verified.Wasi.Relocation
-import Verified.Wasi.HostSpec
-import Verified.Wasi.WrapperCode
-import LeanExe.TalosCompat
-import Verified.LocalFrame
-import Interpreter.Wasm.Wp.Call
+module
+
+public import Verified.Wasi.Relocation
+public import Verified.Wasi.HostSpec
+public import Verified.Wasi.WrapperCode
+public import LeanExe.TalosCompat
+public import Verified.LocalFrame
+public import Interpreter.Wasm.Wp.Call
+
+@[expose] public section
 
 namespace Verified.Wasi
 

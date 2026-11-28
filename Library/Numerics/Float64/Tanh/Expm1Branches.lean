@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tanh.Compiled
-import LeanExe.ProofKit.F64NearestSum
-import LeanExe.ProofKit.F64StrictOrder
+module
+
+public import Library.Numerics.Float64.Tanh.Compiled
+public import LeanExe.ProofKit.F64NearestSum
+public import LeanExe.ProofKit.F64StrictOrder
+
+@[expose] public section
 
 /-!
 The branches of fdlibm's `expm1`.  `highWord w` is the high word of the magnitude of `w`, which the

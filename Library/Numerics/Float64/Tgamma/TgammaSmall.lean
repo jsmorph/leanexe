@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tgamma.TgammaPolyDDD
-import Library.Numerics.Float64.Tgamma.TgammaExpr
-import Library.Numerics.Float64.Tgamma.TgammaApprox
-import Library.Numerics.Float64.Tgamma.TgammaWords
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaPolyDDD
+public import Library.Numerics.Float64.Tgamma.TgammaExpr
+public import Library.Numerics.Float64.Tgamma.TgammaApprox
+public import Library.Numerics.Float64.Tgamma.TgammaWords
+
+@[expose] public section
 
 /-!
 The fast path of `tgammaWith` from `2 ^ -112` to `1/4` in magnitude.  The polynomial `Q` of degree

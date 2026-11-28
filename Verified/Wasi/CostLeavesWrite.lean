@@ -1,6 +1,10 @@
-import Verified.Wasi.CostCodeSpec
-import Verified.Wasi.CompilerFacts
-import Verified.Wasi.WriteCommand
+module
+
+public import Verified.Wasi.CostCodeSpec
+public import Verified.Wasi.CompilerFacts
+public import Verified.Wasi.WriteCommand
+
+@[expose] public section
 
 namespace Verified.Wasi
 

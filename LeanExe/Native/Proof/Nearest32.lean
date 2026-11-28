@@ -1,6 +1,10 @@
-import LeanExe.Native.Proof.Floats32
-import LeanExe.ProofKit.F32Nearest
-import LeanExe.ProofKit.F32Decoded
+module
+
+public import LeanExe.Native.Proof.Floats32
+public import LeanExe.ProofKit.F32Nearest
+public import LeanExe.ProofKit.F32Decoded
+
+@[expose] public section
 
 /-!
 The simulation of `f32.nearest`, which `nearest32Stmt` computes from the word of the float.

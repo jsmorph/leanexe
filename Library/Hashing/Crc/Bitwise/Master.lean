@@ -1,5 +1,9 @@
-import Library.Hashing.Crc.Bitwise.Compiled
-import Verified.Master
+module
+
+public import Library.Hashing.Crc.Bitwise.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Hashing.Crc.Bitwise
 

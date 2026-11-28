@@ -1,5 +1,9 @@
-import LeanExe.Wasi.Calls
-import LeanExe.Wasi.Window
+module
+
+public import LeanExe.Wasi.Calls
+public import LeanExe.Wasi.Window
+
+@[expose] public section
 
 namespace LeanExe.Wasi
 

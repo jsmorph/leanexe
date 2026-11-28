@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Erfc.ErfcSeries
-import Library.Numerics.Float64.Erfc.ErfcRound
-import Library.Numerics.Float64.Erfc.ErfcCast
-import LeanExe.ProofKit.RatExpLog
-import LeanExe.ProofKit.RealErfScaled
-import LeanExe.ProofKit.F64NearestSteps
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcSeries
+public import Library.Numerics.Float64.Erfc.ErfcRound
+public import Library.Numerics.Float64.Erfc.ErfcCast
+public import LeanExe.ProofKit.RatExpLog
+public import LeanExe.ProofKit.RealErfScaled
+public import LeanExe.ProofKit.F64NearestSteps
+
+@[expose] public section
 
 /-!
 The tables of hard cases of `Erfc`.  `hardCase_cases`: `Erfc.hardCase` returns its fallback or

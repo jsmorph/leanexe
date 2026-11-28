@@ -1,6 +1,10 @@
-import Library.Strings.Kmp.Spec
-import Library.Random.SplitMix64.Program
-import TestSupport.Host
+module
+
+public import Library.Strings.Kmp.Spec
+public import Library.Random.SplitMix64.Program
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of the occurrences of a pattern. -/
 

@@ -71,10 +71,11 @@ least `y` and that one below it has a value of at most `y`, and `position_nextUp
 | `sq a`, `imax a b` | Squares and maxima of the points | Nothing beyond a rejected operand |
 | `ifPos c p q` | `p` when `c` lies above zero, `q` when it lies at or below zero | A `c` with points on both sides |
 | `sinI a`, `cosI a` | Sines and cosines of the points: the library's value at the midpoint, two steps outward, widened by the distance to the endpoints | A step past the finite range |
+| `logI tab tab2 a` | Logarithms of the points of an interval above zero: `Log.logWith` at the endpoints, two steps outward | An interval that does not lie above zero, or a step past the finite range |
 | `twoThirds a` | `x^(2/3)` for an interval above zero: `pow` at the endpoints, four steps outward, accepted when the cubes bracket the squares of the endpoints | An interval that reaches zero, or a failed test of the cubes |
 | `threeHalves a`, `sevenHalves a` | `x^(3/2)` and `x^(7/2)` as products with the square root | A lower endpoint below zero |
 
-`encloses_ifLt` states the selection on `x < y`, computed from the sign of the difference.  `encloses_twoThirds` holds for any tables of `pow`, since the test of the cubes decides acceptance, and `encloses_sinI` and `encloses_cosI` hold for the tables `Trig.invPi` and `Trig.halfPi`, whose accuracy theorems they use.  `Contains.pos_of_lo` and its siblings turn a comparison of an endpoint with zero into the sign of every point.
+`encloses_ifLt` states the selection on `x < y`, computed from the sign of the difference.  `encloses_twoThirds` holds for any tables of `pow`, since the test of the cubes decides acceptance, and `encloses_sinI` and `encloses_cosI` hold for the tables `Trig.invPi` and `Trig.halfPi`, whose accuracy theorems they use.  `encloses_logI` holds for the tables `Log.logTable` and `Log.logTable2` of the logarithm, whose accuracy theorem `Log.LogTheorem.log_within_one` it uses.  `Contains.pos_of_lo` and its siblings turn a comparison of an endpoint with zero into the sign of every point.
 
 ## One source for a real function and its interval program
 

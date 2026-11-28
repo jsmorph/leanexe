@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.FixedArrayBumpInstall
-import LeanExe.ProofKit.FixedArrayHeaderExec
-import LeanExe.ProofKit.MemoryEnsure
+module
+
+public import LeanExe.ProofKit.FixedArrayBumpInstall
+public import LeanExe.ProofKit.FixedArrayHeaderExec
+public import LeanExe.ProofKit.MemoryEnsure
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArrayBump
 open Wasm FixedArrayFold MemoryGrowth

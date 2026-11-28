@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.Expm1ReduceOne
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1ReduceOne
+
+@[expose] public section
 
 /-!
 The reduction of fdlibm's `expm1` from `abs(x) ≥ 1.5 log 2` on.  For positive `x` the code takes

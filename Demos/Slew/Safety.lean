@@ -1,5 +1,9 @@
-import Demos.Slew.Search
-import Demos.Slew.Angle
+module
+
+public import Demos.Slew.Search
+public import Demos.Slew.Angle
+
+@[expose] public section
 
 /-! The safety theorem of the slew planner.  For an output of status 1, `plan_safe` states that
 the plan starts at the input's start attitude and ends at its goal, bit for bit; that each

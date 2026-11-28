@@ -1,5 +1,9 @@
-import LeanExe.M7.Isla.Check
-import LeanExe.M7.Proof.Pair
+module
+
+public import LeanExe.M7.Isla.Check
+public import LeanExe.M7.Proof.Pair
+
+@[expose] public section
 
 /-!
 Lemmas and tactics for the theorems of `Agrees` of the forms that compute `AddWithCarry` and of
@@ -230,7 +234,7 @@ elab "t32_clear" : tactic => withMainContext do
 
 open Lean Elab Tactic Meta in
 /-- The terms `Bool.toNat b` of an expression. -/
-partial def collectToNat (e : Expr) (acc : Array Expr) : Array Expr :=
+meta partial def collectToNat (e : Expr) (acc : Array Expr) : Array Expr :=
   if e.isAppOfArity ``Bool.toNat 1 && !e.hasLooseBVars then
     if acc.contains e.appArg! then acc else acc.push e.appArg!
   else match e with

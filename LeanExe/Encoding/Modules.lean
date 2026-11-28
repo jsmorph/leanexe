@@ -1,5 +1,9 @@
-import LeanExe.Encoding.Instructions
-import LeanExe.Encoding.Spec.Modules
+module
+
+public import LeanExe.Encoding.Instructions
+public import LeanExe.Encoding.Spec.Modules
+
+@[expose] public section
 
 deriving instance DecidableEq for Wasm.GcTypeDef
 deriving instance DecidableEq for Wasm.TableDecl

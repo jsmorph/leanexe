@@ -1,4 +1,8 @@
-import Demos.Rcv.Maine.ProcessCompiledCorrect
+module
+
+public import Demos.Rcv.Maine.ProcessCompiledCorrect
+
+@[expose] public section
 
 /-! The axiom audit of the Maine process, native and compiled, and of the Maine module's C call
 theorems: every theorem in the namespace `Demos.Rcv.Maine.Process`, which holds the Maine

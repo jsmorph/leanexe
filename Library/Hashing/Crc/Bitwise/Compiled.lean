@@ -1,5 +1,9 @@
-import Library.Hashing.Crc.Bitwise.Proof
-import Verified.Reflect.Command
+module
+
+public import Library.Hashing.Crc.Bitwise.Proof
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of the bitwise CRC-32, `crcBitwise`.  The functions use no
 linear memory, so the generated `compiled.f.pure` of each states that the function computes its

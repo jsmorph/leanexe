@@ -1,4 +1,8 @@
-import Verified.Wasi.FunctionEntry
+module
+
+public import Verified.Wasi.FunctionEntry
+
+@[expose] public section
 
 namespace Verified.Wasi
 

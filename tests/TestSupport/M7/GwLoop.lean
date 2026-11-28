@@ -1,9 +1,13 @@
-import TestSupport.M7.GwImages
-import TestSupport.M7.GwStep
-import TestSupport.M7.QemuLoop
-import LeanExe.M7.Proof.Board
-import LeanExe.M7.Parts
-import LeanExe.Requests.Reads
+module
+
+public import TestSupport.M7.GwImages
+public import TestSupport.M7.GwStep
+public import TestSupport.M7.QemuLoop
+public import LeanExe.M7.Proof.Board
+public import LeanExe.M7.Parts
+public import LeanExe.Requests.Reads
+
+@[expose] public section
 
 /-!
 The loop theorems of the energy controller's gateway through the Cortex-M7 back end, from reset,

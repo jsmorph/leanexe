@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaRefl8
-import Library.Numerics.Float64.Tgamma.TgammaInt
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaRefl8
+public import Library.Numerics.Float64.Tgamma.TgammaInt
+
+@[expose] public section
 
 /-!
 **The path of `tgammaWith` from `-184` to `-3`** within one step of `Γ x` (`reflPath_within`).

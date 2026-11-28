@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Pow.PowTheorem
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Pow.PowTheorem
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorems for the module of `Pow.lean`, whose export `pow` (function 11) reads

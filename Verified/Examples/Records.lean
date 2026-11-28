@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: records.  A structure with a `Flat` instance is
 represented as the tuple of its fields, as `Implements` represents it, and a nested structure as

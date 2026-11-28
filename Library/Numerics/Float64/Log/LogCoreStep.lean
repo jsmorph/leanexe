@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Log.LogCoreFinal
-import Library.Numerics.Float64.Log.LogTables
-import Library.Numerics.Float64.Log.LogKernelPoly
-import Library.Numerics.Float64.Exp.ExpReductionBounds
-import LeanExe.ProofKit.F64RelativeStep
+module
+
+public import Library.Numerics.Float64.Log.LogCoreFinal
+public import Library.Numerics.Float64.Log.LogTables
+public import Library.Numerics.Float64.Log.LogKernelPoly
+public import Library.Numerics.Float64.Exp.ExpReductionBounds
+public import LeanExe.ProofKit.F64RelativeStep
+
+@[expose] public section
 
 /-!
 One step for `Log.logCore` on every argument that reaches it.  The argument word stands for

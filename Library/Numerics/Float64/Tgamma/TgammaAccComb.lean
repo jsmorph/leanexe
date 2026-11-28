@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaMulDD3
-import Library.Numerics.Float64.Tgamma.TgammaRecipDD
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaMulDD3
+public import Library.Numerics.Float64.Tgamma.TgammaRecipDD
+
+@[expose] public section
 
 /-!
 The combination of the polynomial `fh + fl` with the product `wh + wl` of the shift loop in

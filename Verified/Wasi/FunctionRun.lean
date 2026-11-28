@@ -1,6 +1,10 @@
-import Verified.Wasi.FunctionEntry
-import Verified.Wasi.EffectSpec
-import Verified.Wasi.FunctionDispatcher
+module
+
+public import Verified.Wasi.FunctionEntry
+public import Verified.Wasi.EffectSpec
+public import Verified.Wasi.FunctionDispatcher
+
+@[expose] public section
 
 namespace Verified.Wasi
 

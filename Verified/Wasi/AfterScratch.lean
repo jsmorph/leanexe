@@ -1,5 +1,9 @@
-import Verified.Wasi.ScratchContext
-import Verified.Bytes.StaticEnv
+module
+
+public import Verified.Wasi.ScratchContext
+public import Verified.Bytes.StaticEnv
+
+@[expose] public section
 
 namespace Verified.Wasi
 

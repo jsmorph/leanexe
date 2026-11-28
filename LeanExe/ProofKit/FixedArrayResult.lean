@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.Array
-import LeanExe.ProofKit.FixedArrayAllocator
-import LeanExe.ProofKit.Memory
+module
+
+public import LeanExe.ProofKit.Array
+public import LeanExe.ProofKit.FixedArrayAllocator
+public import LeanExe.ProofKit.Memory
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArrayResult
 

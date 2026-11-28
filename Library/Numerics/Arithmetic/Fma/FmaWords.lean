@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.Fma.Compiled
-import Mathlib.Tactic
+module
+
+public import Library.Numerics.Arithmetic.Fma.Compiled
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-!
 Natural-number specifications of the word routines of `Fma`.  A pair of words `(h, l)` holds the

@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Asin.AsinTheoremSmall
-import Library.Numerics.Float64.Log1p.Log1pTheoremCorr
-import Library.Numerics.Float64.Atan.AtanTheoremReduce
-import Library.Numerics.Float64.Atan.AtanTheoremConst
+module
+
+public import Library.Numerics.Float64.Asin.AsinTheoremSmall
+public import Library.Numerics.Float64.Log1p.Log1pTheoremCorr
+public import Library.Numerics.Float64.Atan.AtanTheoremReduce
+public import Library.Numerics.Float64.Atan.AtanTheoremConst
+
+@[expose] public section
 
 /-!
 The half-angle forms for `1/2 ≤ |x| ≤ 1`: `arccos a = 2 arcsin √((1 - a)/2)` for `-1 ≤ a ≤ 1`, so

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowSpecial
+module
+
+public import Library.Numerics.Float64.Pow.PowSpecial
+
+@[expose] public section
 
 /-!
 The accuracy theorem of `Pow.pow`: for finite `x` and `y` with a real value of `x ^ y`, the

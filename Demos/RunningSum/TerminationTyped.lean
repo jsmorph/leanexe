@@ -1,6 +1,10 @@
-import Demos.RunningSum.Proof
-import Demos.RunningSum.Termination
-import Verified.Wasi.ProcessTotalCorrect
+module
+
+public import Demos.RunningSum.Proof
+public import Demos.RunningSum.Termination
+public import Verified.Wasi.ProcessTotalCorrect
+
+@[expose] public section
 
 namespace Demos.RunningSum.Termination
 

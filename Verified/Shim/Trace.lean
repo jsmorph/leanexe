@@ -1,5 +1,9 @@
-import LeanExe.Linux.Trace
-import Verified.Shim.Footprint
+module
+
+public import LeanExe.Linux.Trace
+public import Verified.Shim.Footprint
+
+@[expose] public section
 
 /-!
 The bytes that a trace of images moved through a descriptor.  `committedReads fd trace`

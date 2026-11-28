@@ -1,5 +1,9 @@
-import Library.Numerics.Statistics.Mean.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Statistics.Mean.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of `mean`.  The function allocates nothing, so the generated
 `compiled.mean.implements` states that function 2 computes `mean` without a trap. -/

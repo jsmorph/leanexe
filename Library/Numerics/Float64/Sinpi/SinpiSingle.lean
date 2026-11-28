@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tan.TanTrunc
-import Library.Numerics.Float64.Tan.TanStep
-import Library.Numerics.Float64.Sinpi.Compiled
+module
+
+public import Library.Numerics.Float64.Tan.TanTrunc
+public import Library.Numerics.Float64.Tan.TanStep
+public import Library.Numerics.Float64.Sinpi.Compiled
+
+@[expose] public section
 
 /-!
 `Sinpi.toSingle` on words.  For a positive normal word, the low 29 bits of the fraction are

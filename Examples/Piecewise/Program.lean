@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 namespace Examples.Piecewise
 
 /-- A piecewise function of `x` with the bounds `lo` and `hi`. -/

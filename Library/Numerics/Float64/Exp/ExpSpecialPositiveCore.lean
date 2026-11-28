@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpSpecialReconstruction
-import Library.Numerics.Float64.Exp.ExpBranches
+module
+
+public import Library.Numerics.Float64.Exp.ExpSpecialReconstruction
+public import Library.Numerics.Float64.Exp.ExpBranches
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpSpecialPositiveCore
 open CodeLib.IEEE64

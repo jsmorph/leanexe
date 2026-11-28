@@ -1,5 +1,9 @@
-import Demos.Attitude.Spec
-import Library.Numerics.Float64.Asin.Program
+module
+
+public import Demos.Attitude.Spec
+public import Library.Numerics.Float64.Asin.Program
+
+@[expose] public section
 
 /-!
 TRIAD with an error bound.  `triadWith` evaluates TRIAD's frames and matrix on the point intervals

@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tgamma.TgammaTiny
-import Library.Numerics.Float64.Tgamma.TgammaMainRed
-import LeanExe.ProofKit.F64RelativeSteps
-import LeanExe.ProofKit.GammaThresholds
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaTiny
+public import Library.Numerics.Float64.Tgamma.TgammaMainRed
+public import LeanExe.ProofKit.F64RelativeSteps
+public import LeanExe.ProofKit.GammaThresholds
+
+@[expose] public section
 
 /-!
 The overflow, underflow, and pole results of `tgammaWith`.  From `0x1.573fae561f648p+7` on, the code

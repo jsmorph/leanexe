@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tanh.Expm1NearForms
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1NearForms
+
+@[expose] public section
 
 /-!
 The forms of fdlibm's `expm1` for `k = 1` and `k = 2` with the error of the exact value before the

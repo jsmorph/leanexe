@@ -1,6 +1,10 @@
-import LeanExe.M7.Proof.Step
-import LeanExe.M7.Proof.Bound
-import Demos.Energy.Loop
+module
+
+public import LeanExe.M7.Proof.Step
+public import LeanExe.M7.Proof.Bound
+public import Demos.Energy.Loop
+
+@[expose] public section
 
 /-!
 The step theorems of the gateway on the Cortex-M7: the calls of `gwTickUsart3`, function 34 of

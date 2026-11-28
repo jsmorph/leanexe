@@ -1,4 +1,8 @@
-import Verified.Bytes.Code
+module
+
+public import Verified.Bytes.Code
+
+@[expose] public section
 
 namespace Verified.Bytes
 

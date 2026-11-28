@@ -1,6 +1,10 @@
-import Verified.Compile
-import LeanExe.Pipeline.Allocation
-import Verified.Bytes.StaticInput
+module
+
+public import Verified.Compile
+public import LeanExe.Pipeline.Allocation
+public import Verified.Bytes.StaticInput
+
+@[expose] public section
 
 /-! Instantiation establishes the allocator invariant, borrowed constant arrays, and the protected
 byte-literal pool.  Table segments follow one another from 4096, and the literal segment starts

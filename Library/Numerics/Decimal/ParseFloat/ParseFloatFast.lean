@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.ParseFloat.ParseFloatDec
-import Library.Numerics.Decimal.Shared.StrconvOfScientific
+module
+
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatDec
+public import Library.Numerics.Decimal.Shared.StrconvOfScientific
+
+@[expose] public section
 
 /-!
 Clinger's fast path of `ParseFloat.parse64`.  `Exact w A` says that a binary64 word is finite and

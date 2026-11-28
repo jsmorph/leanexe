@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.TaylorRemainder
-import Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral
-import Mathlib.Analysis.Real.Pi.Bounds
+module
+
+public import LeanExe.ProofKit.TaylorRemainder
+public import Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral
+public import Mathlib.Analysis.Real.Pi.Bounds
+
+@[expose] public section
 
 /-!
 The error function `erf x = (2/√π) ∫₀ˣ exp (-t²) dt`, which Mathlib lacks, its complement

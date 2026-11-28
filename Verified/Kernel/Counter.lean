@@ -1,4 +1,8 @@
-import Verified.Kernel.ParamLookup
+module
+
+public import Verified.Kernel.ParamLookup
+
+@[expose] public section
 
 namespace Verified.Kernel
 

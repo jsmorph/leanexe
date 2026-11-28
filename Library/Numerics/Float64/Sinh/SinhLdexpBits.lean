@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Sinh.Compiled
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64NearestScale
+module
+
+public import Library.Numerics.Float64.Sinh.Compiled
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64NearestScale
+
+@[expose] public section
 
 /-!
 The words of `Sinh.ldexpExp` with the exponent argument `-1`, which `sinh` and `cosh` use from

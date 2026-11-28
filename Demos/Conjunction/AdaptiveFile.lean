@@ -1,5 +1,9 @@
-import Demos.Conjunction.AdaptiveVerified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Conjunction.AdaptiveVerified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/adaptive.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Demos/Conjunction/AdaptiveFile.lean`: the file holds

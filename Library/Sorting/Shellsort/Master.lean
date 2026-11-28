@@ -1,5 +1,9 @@
-import Library.Sorting.Shellsort.Compiled
-import Verified.Master
+module
+
+public import Library.Sorting.Shellsort.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Sorting.Shellsort
 

@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatPick
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatPick
+
+@[expose] public section
 
 /-!
 The length of the search of `PrintFloat.shortest`.  The search returns `steps = jstart - top`

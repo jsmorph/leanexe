@@ -1,5 +1,9 @@
-import Demos.Euler.Balance
-import Demos.Euler.Cfl
+module
+
+public import Demos.Euler.Balance
+public import Demos.Euler.Cfl
+
+@[expose] public section
 
 /-! Conservation balance of the reconstructed solver: of a sweep, of an accepted step, and of a
 run that returns status 0. -/

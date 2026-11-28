@@ -1,4 +1,8 @@
-import Demos.RunningSum.Spec
+module
+
+public import Demos.RunningSum.Spec
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

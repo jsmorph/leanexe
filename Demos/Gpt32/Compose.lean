@@ -1,4 +1,8 @@
-import Demos.Gpt32.Exec
+module
+
+public import Demos.Gpt32.Exec
+
+@[expose] public section
 
 /-!
 The step program computes `step32`: the layer lemma follows the eighteen calls of a layer, and

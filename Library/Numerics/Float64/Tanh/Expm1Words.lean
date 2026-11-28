@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tanh.Compiled
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64Convert
+module
+
+public import Library.Numerics.Float64.Tanh.Compiled
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64Convert
+
+@[expose] public section
 
 /-!
 The kernel of fdlibm's `expm1`, `Tanh.expm1Kernel`, on bit patterns.  `kernel x c neg m` applies

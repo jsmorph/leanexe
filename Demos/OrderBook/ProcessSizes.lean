@@ -1,7 +1,11 @@
-import Demos.OrderBook.ProcessFuture
-import Demos.OrderBook.ProcessProof
-import Demos.OrderBook.ProgramCounts
-import Verified.ChargeFacts
+module
+
+public import Demos.OrderBook.ProcessFuture
+public import Demos.OrderBook.ProcessProof
+public import Demos.OrderBook.ProgramCounts
+public import Verified.ChargeFacts
+
+@[expose] public section
 
 /-! The sizes that the charges of the compiled process need.  `run_batch_out_size` bounds the event
 words of `Program.run` on a batch of at most 74 records from any book, by the count of

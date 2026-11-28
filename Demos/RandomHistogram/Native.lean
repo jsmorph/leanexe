@@ -1,7 +1,11 @@
-import Demos.RandomHistogram.Budget
-import Verified.Shim
-import Verified.Shim.Args
-import Verified.ShimA64.Elf
+module
+
+public import Demos.RandomHistogram.Budget
+public import Verified.Shim
+public import Verified.Shim.Args
+public import Verified.ShimA64.Elf
+
+@[expose] public section
 
 /-! The footprint theorem of the random-residue histogram's command at the memory cap of a native
 executable.  The shim implements every flat call that the command imports, `args_sizes_get`,

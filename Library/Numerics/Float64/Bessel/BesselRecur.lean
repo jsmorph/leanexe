@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselOrderN
+module
+
+public import Library.Numerics.Float64.Bessel.BesselOrderN
+
+@[expose] public section
 
 /-!
 The propagation of errors through the recurrence 10.6.1.  A real sequence `f` with

@@ -1,5 +1,9 @@
-import Demos.Sgp4.Box
-import LeanExe.Dialect.Loop
+module
+
+public import Demos.Sgp4.Box
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 A reader of two-line element sets.  A line is an array of words that hold one byte each.

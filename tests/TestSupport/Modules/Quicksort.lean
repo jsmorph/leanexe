@@ -1,5 +1,9 @@
-import Library.Sorting.Quicksort.Spec
-import TestSupport.Modules.StraightInsertion
+module
+
+public import Library.Sorting.Quicksort.Spec
+public import TestSupport.Modules.StraightInsertion
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of quicksort. -/
 

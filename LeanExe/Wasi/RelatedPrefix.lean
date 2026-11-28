@@ -1,5 +1,9 @@
-import LeanExe.Wasi.Related
-import LeanExe.Wasi.PrefixProgress
+module
+
+public import LeanExe.Wasi.Related
+public import LeanExe.Wasi.PrefixProgress
+
+@[expose] public section
 
 namespace LeanExe.Wasi
 

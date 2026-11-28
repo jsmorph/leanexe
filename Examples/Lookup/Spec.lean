@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! The specification, as the request in `request.txt` states it: for 21 words
 `#[query, key1, value1, …, key10, value10]`, `#[value, 1]` for the first pair whose key equals the
 query, and `#[0, 0]` when no key matches or the input does not have 21 words. -/

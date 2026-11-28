@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Basics
+module
+
+public import LeanExe.Native.Proof.Basics
+
+@[expose] public section
 
 /-!
 Loads after stores in the Lean copy of CompCert's memory model, for the chunks `Mint32`, `Mint64`,

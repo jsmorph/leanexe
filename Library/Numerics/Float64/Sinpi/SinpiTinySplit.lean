@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiTinyWords
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiTinyWords
+
+@[expose] public section
 
 /-!
 The head and tail of `x 2 ^ 53` in `Sinpi.piTiny`, for a finite word `x` below 1 in magnitude:

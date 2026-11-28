@@ -1,7 +1,11 @@
-import Verified.AlignedTreeHeaderCopy
-import Verified.AlignedBytes
-import Verified.AlignedWriters
-import Verified.AlignedRuntime
+module
+
+public import Verified.AlignedTreeHeaderCopy
+public import Verified.AlignedBytes
+public import Verified.AlignedWriters
+public import Verified.AlignedRuntime
+
+@[expose] public section
 
 /-!
 The copy of a value under the flag.  `wpX_copyCode` is `wp_copyCode` with `wpX strict` for

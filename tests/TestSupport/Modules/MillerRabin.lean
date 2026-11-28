@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.MillerRabin.Spec
-import TestSupport.Host
-import Mathlib.Tactic
+module
+
+public import Library.Numerics.Arithmetic.MillerRabin.Spec
+public import TestSupport.Host
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of modular exponentiation and the strong
 probable-prime test. -/

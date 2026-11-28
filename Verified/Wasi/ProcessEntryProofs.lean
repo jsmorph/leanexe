@@ -1,5 +1,9 @@
-import Verified.Wasi.ProcessIteration
-import Verified.Wasi.ExitStack
+module
+
+public import Verified.Wasi.ProcessIteration
+public import Verified.Wasi.ExitStack
+
+@[expose] public section
 
 namespace Verified.Wasi
 

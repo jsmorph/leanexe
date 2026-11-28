@@ -1,5 +1,9 @@
-import Verified.Wasi.ProcessFacts
-import Verified.Wasi.ProcessTotalEntry
+module
+
+public import Verified.Wasi.ProcessFacts
+public import Verified.Wasi.ProcessTotalEntry
+
+@[expose] public section
 
 namespace Verified.Wasi
 

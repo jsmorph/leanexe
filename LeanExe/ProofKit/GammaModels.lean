@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.TaylorModel
-import LeanExe.ProofKit.GammaStirling
+module
+
+public import LeanExe.ProofKit.TaylorModel
+public import LeanExe.ProofKit.GammaStirling
+
+@[expose] public section
 
 /-!
 Taylor models of `lgamma` and `Γ` on intervals of positive numbers.  For a center `a > r` and

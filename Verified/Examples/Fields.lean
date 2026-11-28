@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: records with array fields.  A structure
 whose `Flat` tuple holds arrays is represented as that tuple, by `instRepresentOfFlat`, so its

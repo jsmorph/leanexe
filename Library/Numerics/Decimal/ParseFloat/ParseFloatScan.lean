@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.ParseFloat.ParseFloatRound
-import Library.Numerics.Decimal.Shared.StrconvDecode
+module
+
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatRound
+public import Library.Numerics.Decimal.Shared.StrconvDecode
+
+@[expose] public section
 
 /-!
 The parsers' scanner against the decoder's splits of a list.  For a string `s` of bytes held as

@@ -1,4 +1,8 @@
-import Library.Regex.Spec
+module
+
+public import Library.Regex.Spec
+
+@[expose] public section
 
 /-! Glushkov's theorem for the regular expressions of `Library.Regex.Spec`.  The sets of bytes of
 an expression are its positions, numbered `k + 1` to `k + r.positions` from an offset `k` in the

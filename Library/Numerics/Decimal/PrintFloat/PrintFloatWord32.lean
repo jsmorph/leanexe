@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatWord
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatWord
+
+@[expose] public section
 
 /-!
 The binary32 words of the printers, as `PrintFloatWord` has them for binary64.  For a finite

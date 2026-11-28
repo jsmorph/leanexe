@@ -1,5 +1,9 @@
-import Demos.RunningSumFp.Program
-import LeanExe.Wasi.Process
+module
+
+public import Demos.RunningSumFp.Program
+public import LeanExe.Wasi.Process
+
+@[expose] public section
 
 namespace Demos.RunningSumFp
 

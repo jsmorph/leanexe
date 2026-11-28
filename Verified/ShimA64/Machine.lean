@@ -1,7 +1,11 @@
-import Verified.Shim
-import LeanExe.A64.Proof.WithMachine
-import LeanExe.A64.Proof.WasiStubs
-import LeanExe.A64.Proof.WasiLaunch
+module
+
+public import Verified.Shim
+public import LeanExe.A64.Proof.WithMachine
+public import LeanExe.A64.Proof.WasiStubs
+public import LeanExe.A64.Proof.WasiLaunch
+
+@[expose] public section
 
 /-!
 The A64 binding of the shim: the process of the Linux call layer's binding as the machine of the

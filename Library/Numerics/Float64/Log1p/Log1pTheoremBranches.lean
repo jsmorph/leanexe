@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Log1p.Compiled
-import LeanExe.ProofKit.Signed64Value
-import LeanExe.ProofKit.F64UpperWord
+module
+
+public import Library.Numerics.Float64.Log1p.Compiled
+public import LeanExe.ProofKit.Signed64Value
+public import LeanExe.ProofKit.F64UpperWord
+
+@[expose] public section
 
 /-!
 The branches of `Log1p.log1p` and `Log1p.log1pTail` as equations.  `hxOf x` is the high word of

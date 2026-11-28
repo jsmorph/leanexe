@@ -1,7 +1,11 @@
-import Library.Numerics.Filters.Cic.Spec
-import Mathlib.Tactic.Linarith
-import Mathlib.Tactic.Positivity
-import Mathlib.Tactic.Ring
+module
+
+public import Library.Numerics.Filters.Cic.Spec
+public import Mathlib.Tactic.Linarith
+public import Mathlib.Tactic.Positivity
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-! This module defines the block form of the CIC decimation filter of `Spec.lean` and proves that
 it computes `outputs`.  Each stage of the block form maps a whole list to a list.  `integrate xs` is

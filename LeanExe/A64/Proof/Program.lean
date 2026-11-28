@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.Function
-import LeanExe.Proof.Area
-import LeanExe.ProofKit.Array
+module
+
+public import LeanExe.A64.Proof.Function
+public import LeanExe.Proof.Area
+public import LeanExe.ProofKit.Array
+
+@[expose] public section
 
 /-!
 The run of a program that `genProgram` generates.  `main` saves X30 in its frame, sets the

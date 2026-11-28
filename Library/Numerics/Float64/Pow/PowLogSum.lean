@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowLogReduce
+module
+
+public import Library.Numerics.Float64.Pow.PowLogReduce
+
+@[expose] public section
 
 /-!
 The exact steps of `Pow.powLog` among its sums, on the grid of `2 ^ -60` (`2 ^ 1014` scaled

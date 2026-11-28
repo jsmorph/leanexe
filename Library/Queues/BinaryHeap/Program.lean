@@ -1,4 +1,8 @@
-import Library.Sorting.Heapsort.Program
+module
+
+public import Library.Sorting.Heapsort.Program
+
+@[expose] public section
 
 /-! A priority queue as a binary heap, TAOCP §5.2.3.  The input holds the operations as pairs
 `xs[2i], xs[2i + 1]` of a code and a value: code 0 inserts the value, any other code removes the

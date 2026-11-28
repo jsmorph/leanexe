@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaApprox
-import Library.Numerics.Float64.Tgamma.TgammaAccPath
-import LeanExe.ProofKit.F64RoundNearest
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaApprox
+public import Library.Numerics.Float64.Tgamma.TgammaAccPath
+public import LeanExe.ProofKit.F64RoundNearest
+
+@[expose] public section
 
 /-!
 **The last step of `Lgamma.accurate`**: the sum `fh + fl`, rounded once, or the value of the table

@@ -1,7 +1,11 @@
-import Library.Arrays.BinarySearch.Proof
-import Verified.Reflect.Command
-import Verified.Call
-import Verified.Congr
+module
+
+public import Library.Arrays.BinarySearch.Proof
+public import Verified.Reflect.Command
+public import Verified.Call
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of binary search.  The compiler translates the tail recursion of
 `search` into a loop.  `lowerBound` allocates nothing, so the generated

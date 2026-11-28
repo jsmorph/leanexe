@@ -1,7 +1,11 @@
-import Demos.Euler.Reference.Side
-import Demos.Euler.Reference.Component
-import Demos.Euler.Equations.Rusanov
-import Demos.Euler.Balance
+module
+
+public import Demos.Euler.Reference.Side
+public import Demos.Euler.Reference.Component
+public import Demos.Euler.Equations.Rusanov
+public import Demos.Euler.Balance
+
+@[expose] public section
 
 /-! The first-order solver's Rusanov interface flux against the exact Rusanov flux.  For two
 states that satisfy the state bounds, `flux` accepts, its speed `alpha` is positive and at most

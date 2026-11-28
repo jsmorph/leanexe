@@ -1,4 +1,8 @@
-import LeanExe.A64.Encode
+module
+
+public import LeanExe.A64.Encode
+
+@[expose] public section
 
 /-!
 The co-simulation of the AArch64 model of `LeanExe/A64/Machine.lean` against QEMU and the

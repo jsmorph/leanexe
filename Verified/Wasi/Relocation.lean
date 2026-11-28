@@ -1,6 +1,10 @@
-import Verified.Wasi.PureTransport
-import LeanExe.Encoding.Domain
-import LeanExe.Wasi.Calls
+module
+
+public import Verified.Wasi.PureTransport
+public import LeanExe.Encoding.Domain
+public import LeanExe.Wasi.Calls
+
+@[expose] public section
 
 /-!
 Relocation of the pure module's code into a WASI module.  A WASI module imports `fd_read`,

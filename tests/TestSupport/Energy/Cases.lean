@@ -1,5 +1,9 @@
-import Demos.Energy.Site
-import Library.Random.SplitMix64.Program
+module
+
+public import Demos.Energy.Site
+public import Library.Random.SplitMix64.Program
+
+@[expose] public section
 
 /-! The cases of the module `energy`: `authorize` on the inputs of the worked example of
 `Demos/Energy/README.md`, on invalid inputs, on inputs at the boundary of each check, and on inputs

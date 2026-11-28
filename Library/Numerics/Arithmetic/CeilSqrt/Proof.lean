@@ -1,6 +1,10 @@
-import Library.Numerics.Arithmetic.CeilSqrt.Program
-import Mathlib.Tactic.Linarith
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Numerics.Arithmetic.CeilSqrt.Program
+public import Mathlib.Tactic.Linarith
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! `ceilSqrt` is the exact ceiling square root for inputs up to `2^32`. -/
 

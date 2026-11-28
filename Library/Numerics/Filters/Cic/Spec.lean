@@ -1,5 +1,10 @@
-import Mathlib.Algebra.BigOperators.Group.Finset.Basic
-import Mathlib.Logic.Function.Iterate
+module
+
+public import LeanExe.Base
+public import Mathlib.Algebra.BigOperators.Group.Finset.Basic
+public import Mathlib.Logic.Function.Iterate
+
+@[expose] public section
 
 /-! This module specifies a cascaded integrator–comb (CIC) decimation filter of order `N`,
 decimation `R`, and differential delay `M` over the integers.  A signal is a function from the

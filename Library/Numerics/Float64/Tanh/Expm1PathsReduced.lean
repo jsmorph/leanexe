@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tanh.Expm1ReduceK
-import Library.Numerics.Float64.Tanh.Expm1FormsMid
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1ReduceK
+public import Library.Numerics.Float64.Tanh.Expm1FormsMid
+
+@[expose] public section
 
 /-!
 The reduced paths of fdlibm's `expm1` on words, each within one step of `exp x - 1`: the

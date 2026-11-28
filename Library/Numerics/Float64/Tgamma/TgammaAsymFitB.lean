@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaAsymFit
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAsymFit
+
+@[expose] public section
 
 /-!
 The bound on CORE-MATH's Stirling fit for `x ≤ 11.5` on `[8, 12]`, with eight pieces of radius

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselJ1Large
-import Library.Numerics.Float64.Bessel.BesselJ1Small
-import Library.Numerics.Float64.Bessel.BesselModSmall1
+module
+
+public import Library.Numerics.Float64.Bessel.BesselJ1Large
+public import Library.Numerics.Float64.Bessel.BesselJ1Small
+public import Library.Numerics.Float64.Bessel.BesselModSmall1
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Bessel.j1`: for every finite `x`, the result lies within

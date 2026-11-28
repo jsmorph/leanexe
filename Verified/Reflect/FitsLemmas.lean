@@ -1,4 +1,8 @@
-import Verified.Reflect.BoundLemmas
+module
+
+public import Verified.Reflect.BoundLemmas
+
+@[expose] public section
 
 /-! The lemmas from which the reflector builds the equation between whether a function's calls find
 their frames, `Expr.fits`, and a Lean term: one lemma per source form with parts, with the forms

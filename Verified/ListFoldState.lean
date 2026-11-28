@@ -1,6 +1,10 @@
-import Verified.ListFoldSource
-import Verified.TailBound
-import Verified.FieldsOrder
+module
+
+public import Verified.ListFoldSource
+public import Verified.TailBound
+public import Verified.FieldsOrder
+
+@[expose] public section
 
 namespace Verified
 

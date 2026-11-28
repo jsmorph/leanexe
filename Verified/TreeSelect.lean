@@ -1,6 +1,10 @@
-import Verified.LocalFrame
-import Verified.TreeCopyCode
-import Verified.TreeStorage
+module
+
+public import Verified.LocalFrame
+public import Verified.TreeCopyCode
+public import Verified.TreeStorage
+
+@[expose] public section
 
 namespace Verified
 

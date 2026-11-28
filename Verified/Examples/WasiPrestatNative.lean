@@ -1,5 +1,9 @@
-import Verified.Examples.WasiPrestat
-import Verified.ShimA64.Elf
+module
+
+public import Verified.Examples.WasiPrestat
+public import Verified.ShimA64.Elf
+
+@[expose] public section
 
 /-!
 The footprint theorem for the prestat command at the memory cap of a native executable.  The

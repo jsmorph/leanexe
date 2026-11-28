@@ -26,7 +26,7 @@ for (const file of active) {
   if (core && /^(?:open|def|abbrev|theorem|namespace) [^\n]*\b(?:Library|Demos|Examples|TestSupport)\./m.test(source)) {
     errors.push(`${file}: LeanExe or Verified declaration refers to application code`);
   }
-  const names = [...source.matchAll(/^import ([\w.]+)/gm)]
+  const names = [...source.matchAll(/^(?:public )?(?:meta )?import (?:all )?([\w.]+)/gm)]
     .map(m => m[1]).filter(m => internal.test(m));
   imports.set(file, names.map(modulePath));
   for (const name of names) {

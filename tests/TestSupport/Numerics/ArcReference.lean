@@ -1,4 +1,8 @@
-import TestSupport.Numerics.Reference
+module
+
+public import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! Exact references for the inverse trigonometric functions, computed with Lean's integers in the
 fixed point of `Reference`: a value at precision `q` is an integer `v` that stands for

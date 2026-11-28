@@ -1,5 +1,9 @@
-import Demos.Euler.Equations.Hyperbolicity
-import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
+module
+
+public import Demos.Euler.Equations.Hyperbolicity
+public import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
+
+@[expose] public section
 
 /-! The left eigenvectors of the directional flux derivative, as the inverse of the right
 eigenvector matrix, and the characteristic decomposition of a jump. -/

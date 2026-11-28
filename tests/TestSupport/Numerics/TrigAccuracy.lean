@@ -1,6 +1,13 @@
-import Library.Numerics.Float64.Trig.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.Reference
+module
+
+public import Library.Numerics.Float64.Trig.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.Reference
+public meta import Library.Numerics.Float64.Trig.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.Reference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Trig.sin` and `Library.Numerics.Float64.Trig.cos` against `Reference.sinCos`, which reduces the
 argument with a 2,400-bit `π` from Machin's formula and sums the Taylor series of `sin` and `cos` in

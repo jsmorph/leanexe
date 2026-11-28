@@ -1,6 +1,10 @@
-import Library.Sorting.Heapsort.Proof
-import Verified.Reflect.Command
-import Verified.Congr
+module
+
+public import Library.Sorting.Heapsort.Proof
+public import Verified.Reflect.Command
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of heapsort.  The compiler translates the tail recursion of
 `siftDown` into a loop, and `heapsort` consumes its array, which the caller moves as

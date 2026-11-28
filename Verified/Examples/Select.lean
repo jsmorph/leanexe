@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: comparisons, `Bool` operations, `Bool`-valued
 `let` bindings, `if` on a `Bool` and on a comparison, and functions that take or return a

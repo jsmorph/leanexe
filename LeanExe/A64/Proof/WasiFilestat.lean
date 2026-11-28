@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.WasiFiles
+module
+
+public import LeanExe.A64.Proof.WasiFiles
+
+@[expose] public section
 
 /-!
 The runs of the stub of `fd_filestat_get` of `LeanExe/A64/WasiFiles.lean` in the program's model.

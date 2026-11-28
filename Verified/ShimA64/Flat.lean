@@ -1,7 +1,11 @@
-import Verified.ShimA64.Strings
-import Verified.ShimA64.Clocks
-import Verified.ShimA64.Preopen
-import Verified.ShimA64.Filestat
+module
+
+public import Verified.ShimA64.Strings
+public import Verified.ShimA64.Clocks
+public import Verified.ShimA64.Preopen
+public import Verified.ShimA64.Filestat
+
+@[expose] public section
 
 /-!
 The flat stubs against the shim's host environment: `flatStub_sim` states that the code of each

@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.Shared.StrconvGrammar
+module
+
+public import Library.Numerics.Decimal.Shared.StrconvGrammar
+
+@[expose] public section
 
 /-!
 A decoder for the grammar of `StrconvGrammar`, written as a function on lists of bytes with

@@ -1,6 +1,10 @@
-import TestSupport.Native.Gcd
-import LeanExe.A64.Proof.ProgramRuns
-import LeanExe.Native.Bare
+module
+
+public import TestSupport.Native.Gcd
+public import LeanExe.A64.Proof.ProgramRuns
+public import LeanExe.Native.Bare
+
+@[expose] public section
 
 /-!
 The theorems of GCD's bare-metal programs for AArch64, in the form `ProgramRuns`, for every room

@@ -1,7 +1,11 @@
-import Demos.Sgp4.BoxVerified
-import Demos.Sgp4.TleSound
-import Demos.Sgp4.OmmSound
-import Verified.Master
+module
+
+public import Demos.Sgp4.BoxVerified
+public import Demos.Sgp4.TleSound
+public import Demos.Sgp4.OmmSound
+public import Verified.Master
+
+@[expose] public section
 
 /-!
 The master theorems of the exports of the enclosing SGP4 module `sgp4box`: `sgp4Box` on

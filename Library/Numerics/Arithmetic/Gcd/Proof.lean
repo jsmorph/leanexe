@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.Gcd.Program
-import Library.Numerics.Arithmetic.Gcd.Spec
+module
+
+public import Library.Numerics.Arithmetic.Gcd.Program
+public import Library.Numerics.Arithmetic.Gcd.Spec
+
+@[expose] public section
 
 namespace Library.Numerics.Arithmetic.Gcd
 

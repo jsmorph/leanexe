@@ -1,12 +1,16 @@
-import Verified.Locals
-import Verified.HeapStep
-import Verified.TreeHeader
-import Verified.Bytes.Represent
-import LeanExe.Pipeline.Rebuilt
-import LeanExe.Pipeline.RecordPointers
-import LeanExe.Pipeline.Allocation
-import LeanExe.Pipeline.MovedTuples
-import LeanExe.TalosCompat
+module
+
+public import Verified.Locals
+public import Verified.HeapStep
+public import Verified.TreeHeader
+public import Verified.Bytes.Represent
+public import LeanExe.Pipeline.Rebuilt
+public import LeanExe.Pipeline.RecordPointers
+public import LeanExe.Pipeline.Allocation
+public import LeanExe.Pipeline.MovedTuples
+public import LeanExe.TalosCompat
+
+@[expose] public section
 
 /-! The states of the verified compiler's proof: how locals hold words, how words represent values
 in a heap and store, the steps that a heap and store take, and `Holds`, the facts about the

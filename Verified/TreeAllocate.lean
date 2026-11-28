@@ -1,9 +1,13 @@
-import Verified.RuntimeFacts
-import Verified.HeapStep
-import Verified.LocalFrame
-import Verified.TreeStorage
-import Verified.TreeCopyCode
-import Verified.TreeSelect
+module
+
+public import Verified.RuntimeFacts
+public import Verified.HeapStep
+public import Verified.LocalFrame
+public import Verified.TreeStorage
+public import Verified.TreeCopyCode
+public import Verified.TreeSelect
+
+@[expose] public section
 
 namespace Verified
 

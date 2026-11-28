@@ -1,6 +1,10 @@
-import Demos.Attitude.QProgram
-import Verified.Reflect.Command
-import Demos.Attitude.QFlat
+module
+
+public import Demos.Attitude.QProgram
+public import Verified.Reflect.Command
+public import Demos.Attitude.QFlat
+
+@[expose] public section
 
 /-! The q-method of `Demos/Attitude/QProgram.lean`, compiled by the verified compiler with the
 interval operations and the library's `sin`, `cos`, and `asin`.  The list puts each definition

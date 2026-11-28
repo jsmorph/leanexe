@@ -1,4 +1,8 @@
-import LeanExe.Native.CText
+module
+
+public import LeanExe.Native.CText
+
+@[expose] public section
 
 /-!
 The `main` of a bare-metal program and the declaration of `lx_out` (`docs/native-bare-metal.md`).

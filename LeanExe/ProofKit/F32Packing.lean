@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F32Encoding
-import CodeLib.IEEE32.SpecialValues
+module
+
+public import LeanExe.ProofKit.F32Encoding
+public import CodeLib.IEEE32.SpecialValues
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32Packing
 open Float.Model Float.Model.UnpackedFloat F32Encoding FloatCommon

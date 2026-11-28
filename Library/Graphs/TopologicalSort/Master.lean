@@ -1,5 +1,9 @@
-import Library.Graphs.TopologicalSort.Compiled
-import Verified.Master
+module
+
+public import Library.Graphs.TopologicalSort.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Graphs.TopologicalSort
 

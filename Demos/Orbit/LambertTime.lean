@@ -1,6 +1,10 @@
-import Demos.Orbit.LambertOrbit
-import Demos.Orbit.LambertRoot
-import Demos.Orbit.NewtonUnique
+module
+
+public import Demos.Orbit.LambertOrbit
+public import Demos.Orbit.LambertRoot
+public import Demos.Orbit.NewtonUnique
+
+@[expose] public section
 
 /-!
 Lambert's theorem for every conic.  For every `x`, `izzo_target` states that the motion from

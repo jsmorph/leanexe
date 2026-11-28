@@ -1,5 +1,9 @@
-import Verified.Wasi.SysFlatInvoke
-import Verified.Wasi.ReadAllocation
+module
+
+public import Verified.Wasi.SysFlatInvoke
+public import Verified.Wasi.ReadAllocation
+
+@[expose] public section
 
 /-! The code of a flat call without an output from the argument test to the result words on the
 stack: the test of the arguments, the locals set to 0, the accepted call, and the pushes of the

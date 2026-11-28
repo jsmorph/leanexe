@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpReductionBounds
-import LeanExe.ProofKit.PolyBound
+module
+
+public import Library.Numerics.Float64.Exp.ExpReductionBounds
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 The polynomial of `Exp2.exp2Core`, `C1 r + C2 r ^ 2 + C3 r ^ 3 + C4 r ^ 4 + C5 r ^ 5`, against

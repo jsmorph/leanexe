@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.FloatRationalRounding
-import Mathlib.Data.Nat.Sqrt
+module
+
+public import LeanExe.ProofKit.FloatRationalRounding
+public import Mathlib.Data.Nat.Sqrt
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FloatSqrtRounding
 open Float.Model.UnpackedFloat FloatRationalRounding

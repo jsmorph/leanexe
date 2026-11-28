@@ -1,6 +1,10 @@
-import Demos.OrderBook.Abstract
-import TestSupport.OrderBook.Edges
-import TestSupport.OrderBook.Words
+module
+
+public import Demos.OrderBook.Abstract
+public import TestSupport.OrderBook.Edges
+public import TestSupport.OrderBook.Words
+
+@[expose] public section
 
 /-! The native comparison of [the program](../../../Demos/OrderBook/Program.lean) with [the
 specification](../../../Demos/OrderBook/Spec.lean) on command streams.

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Log10.Log10Main
-import Verified.Call
-import Mathlib.Analysis.SpecialFunctions.Log.Base
+module
+
+public import Library.Numerics.Float64.Log10.Log10Main
+public import Verified.Call
+public import Mathlib.Analysis.SpecialFunctions.Log.Base
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Log10.log10`.  For every finite binary64 input with positive value, the

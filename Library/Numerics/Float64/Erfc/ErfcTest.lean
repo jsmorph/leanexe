@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Erfc.ErfcRound
-import LeanExe.ProofKit.F64NearestRelative
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcRound
+public import LeanExe.ProofKit.F64NearestRelative
+public import LeanExe.ProofKit.F64Magnitude
+
+@[expose] public section
 
 /-!
 The rounding test of `cr_erfc`.  The fast path returns `left = h + (l - err)` when it equals

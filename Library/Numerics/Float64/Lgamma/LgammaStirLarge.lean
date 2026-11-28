@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.GammaFitsX
-import Library.Numerics.Float64.Lgamma.LgammaStirFast
+module
+
+public import LeanExe.ProofKit.GammaFitsX
+public import Library.Numerics.Float64.Lgamma.LgammaStirFast
+
+@[expose] public section
 
 /-!
 The Stirling fits of `cr_lgamma` from 16 on (`lgamma.c`, commit `ff2f71f6`): the fast path's fit

@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinh.SinhRanges
+module
+
+public import Library.Numerics.Float64.Sinh.SinhRanges
+
+@[expose] public section
 
 /-!
 `Sinh.sinh` within three steps of `sinh x` on every finite input, and its exceptional results.

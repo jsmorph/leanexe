@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaSinpi
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaSinpi
+
+@[expose] public section
 
 /-!
 `Lgamma.asSinpipid` with its two branches stated apart (`asSinpipid_abs`): within `3/256` of an

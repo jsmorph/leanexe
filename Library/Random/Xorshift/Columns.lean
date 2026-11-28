@@ -1,5 +1,10 @@
-import Mathlib.Logic.Function.Iterate
-import Mathlib.Tactic.Ring
+module
+
+public import LeanExe.Base
+public import Mathlib.Logic.Function.Iterate
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-! A map on words that distributes over xor is a linear map of 64 bits over GF(2), and these
 lemmas represent it by its columns, the images of the powers of 2, as lists of natural numbers.

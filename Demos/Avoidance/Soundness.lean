@@ -1,9 +1,13 @@
-import Demos.Avoidance.Program
-import Demos.Avoidance.Geometry
-import Demos.Conjunction.BoxSoundness
-import Demos.PassiveSafety.Soundness
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
+module
+
+public import Demos.Avoidance.Program
+public import Demos.Avoidance.Geometry
+public import Demos.Conjunction.BoxSoundness
+public import Demos.PassiveSafety.Soundness
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+
+@[expose] public section
 
 /-!
 Soundness of the authorizer.  `encounter xs j dv d` is the model's encounter of conjunction `j`

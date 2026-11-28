@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.LogRatioRemainder
-import LeanExe.ProofKit.PolyChecks
+module
+
+public import LeanExe.ProofKit.LogRatioRemainder
+public import LeanExe.ProofKit.PolyChecks
+
+@[expose] public section
 
 /-!
 The approximation error of fdlibm's `log1p` polynomial, as FreeBSD msun's `s_log1p.c` at commit

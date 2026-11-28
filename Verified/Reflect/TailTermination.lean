@@ -1,5 +1,9 @@
-import Verified.Reflect.TailBody
-import Verified.TailTransport
+module
+
+public import Verified.Reflect.TailBody
+public import Verified.TailTransport
+
+@[expose] public section
 
 namespace Verified.Reflect
 
@@ -66,5 +70,31 @@ def tailWellFounded (step : Lean.Expr) (params : Array Lean.Expr) (types : List 
     let proof := mkAppN curried values.toArray
     mkLambdaFVars #[state] (← mkExpectedTypeHint proof (← mkAppM ``Acc #[relation, state]))
   mkAppM ``WellFounded.intro #[all]
+
+/-- Adds the theorem `name : type` with the proof that `prove` computes on an environment branch of
+its own, as the elaborator does for the proof of a `theorem` (`Lean.Elab.Term.elabMutualDef`).
+The functional induction principles that `deriveTailAcc` realizes then stay with the proof.
+Realized on the command's branch, they would join this module's public interface as axioms, and
+Lean v4.36.0 refuses to import two modules that hold such axioms for the same function: it merges
+two exported axioms only when the conclusion starts with a constant, and these conclude in their
+motive.  Lean v4.36.0 exports a principle realized on a proof's branch as a theorem, which it
+merges, and later versions do not export it (lean4#16623).  The branch accepts only declarations
+under `name`, so the proof runs under `withDeclName name`, which names the auxiliary lemmas that
+`simp` adds after the theorem, as the elaborator does. -/
+def addTheoremOnBranch (name : Name) (type : Lean.Expr) (prove : TermElabM Lean.Expr) :
+    TermElabM Unit := do
+  let env ← getEnv
+  let env := if env.header.isModule then recordOriginalConstKind env name .thm else env
+  let async ← env.addConstAsync name .thm (exportedKind? := some .axiom)
+  async.commitSignature { name, levelParams := [], type }
+  setEnv async.asyncEnv
+  try
+    withDeclName name do
+      let value ← prove
+      addDecl <| .thmDecl { name, levelParams := [], type, value }
+    async.commitConst (← getEnv)
+    async.commitCheckEnv (← getEnv)
+  finally
+    setEnv async.mainEnv
 
 end Verified.Reflect

@@ -1,7 +1,11 @@
-import Demos.Frames.Program
-import Demos.Frames.Time
-import Verified.Reflect.Command
-import Demos.Frames.Flat
+module
+
+public import Demos.Frames.Program
+public import Demos.Frames.Time
+public import Verified.Reflect.Command
+public import Demos.Frames.Flat
+
+@[expose] public section
 
 namespace Demos.Frames
 

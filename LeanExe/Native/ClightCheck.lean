@@ -1,4 +1,8 @@
-import LeanExe.Native.Bare
+module
+
+public import LeanExe.Native.Bare
+
+@[expose] public section
 
 /-!
 The per-build check of the printed C text: a reader of the Coq file that `clightgen` writes for

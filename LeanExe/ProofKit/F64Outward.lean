@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64Adjacent
+module
+
+public import LeanExe.ProofKit.F64Adjacent
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Outward
 open LeanExe.ProofKit.F64Order

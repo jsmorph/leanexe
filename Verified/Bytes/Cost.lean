@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 namespace Verified.Bytes
 
 def allocationCost (count : Nat) : Nat :=

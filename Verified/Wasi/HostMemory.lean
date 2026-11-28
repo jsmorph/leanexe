@@ -1,6 +1,10 @@
-import Verified.Wasi.HostBytes
-import Verified.Wasi.Scratch
-import Verified.Wasi.GuestFrame
+module
+
+public import Verified.Wasi.HostBytes
+public import Verified.Wasi.Scratch
+public import Verified.Wasi.GuestFrame
+
+@[expose] public section
 
 /-! Guest memory facts that the host imports use: reading the bytes of a write request,
 placing the bytes of a read reply, and the guest frames of those writes. -/

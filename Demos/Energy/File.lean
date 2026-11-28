@@ -1,5 +1,9 @@
-import Demos.Energy.Verified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Energy.Verified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! The file theorems of `build/verified/energy.wasm`, which `tests/verified/run.sh` checks with
 `tools/leanrun --timeout 10m lake env lean Demos/Energy/File.lean` after it writes the file.  The

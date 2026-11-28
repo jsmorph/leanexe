@@ -1,4 +1,8 @@
-import LeanExe.A64.Machine
+module
+
+public import LeanExe.A64.Machine
+
+@[expose] public section
 
 /-!
 The encoder of the model's instruction forms and the lemma `decode_encode`: the decoder reads

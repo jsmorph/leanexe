@@ -1,4 +1,9 @@
-import Mathlib.Tactic
+module
+
+public import LeanExe.Base
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-- The rules with which `simp` runs straight-line code under `wpA`, together with Talos's
 `wp_simp`: the rule for each atomic access-free instruction, the continuation `thenA` that these

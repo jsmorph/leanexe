@@ -1,8 +1,12 @@
-import LeanExe.ProofKit.Bessel
-import LeanExe.ProofKit.EulerGamma
-import LeanExe.ProofKit.PolyChecks
-import LeanExe.ProofKit.F64Approx
-import Mathlib.Analysis.Real.Pi.Bounds
+module
+
+public import LeanExe.ProofKit.Bessel
+public import LeanExe.ProofKit.EulerGamma
+public import LeanExe.ProofKit.PolyChecks
+public import LeanExe.ProofKit.F64Approx
+public import Mathlib.Analysis.Real.Pi.Bounds
+
+@[expose] public section
 
 /-!
 fdlibm's rational approximations below 2 against the series of `LeanExe.ProofKit.Bessel`, in

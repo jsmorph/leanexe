@@ -1,4 +1,8 @@
-import Verified.Wasi.NativeEntry
+module
+
+public import Verified.Wasi.NativeEntry
+
+@[expose] public section
 
 namespace Verified.Wasi
 

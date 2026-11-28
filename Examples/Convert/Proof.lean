@@ -1,6 +1,12 @@
-import Examples.Convert.Program
-import Examples.Convert.Spec
-import LeanExe.ProofKit.Signed64Wasm
+module
+
+public import Examples.Convert.Program
+public import Examples.Convert.Spec
+public import LeanExe.ProofKit.Signed64Wasm
+import all Init.Data.SInt.Float
+import all Init.Data.SInt.Float32
+
+@[expose] public section
 
 /-! The programs meet their specifications, by the equations of `LeanExe.ProofKit.Signed64Wasm`
 between Lean's conversions and Talos's, and for `scale` by `F64Bits.toBits_mul`, which equates

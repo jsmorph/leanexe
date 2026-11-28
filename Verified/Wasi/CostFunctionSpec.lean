@@ -1,7 +1,11 @@
-import Verified.Wasi.CostFunctionRun
-import Verified.Wasi.CostEffectSpec
-import Verified.Wasi.CostCodeSpec
-import Verified.Wasi.CompilerFacts
+module
+
+public import Verified.Wasi.CostFunctionRun
+public import Verified.Wasi.CostEffectSpec
+public import Verified.Wasi.CostCodeSpec
+public import Verified.Wasi.CompilerFacts
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,5 +1,9 @@
-import Verified.Wasi.LoopContext
-import Verified.Wasi.Return
+module
+
+public import Verified.Wasi.LoopContext
+public import Verified.Wasi.Return
+
+@[expose] public section
 
 namespace Verified.Wasi
 

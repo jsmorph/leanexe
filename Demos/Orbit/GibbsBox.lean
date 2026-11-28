@@ -1,5 +1,9 @@
-import Demos.Orbit.Gibbs
-import Library.Numerics.Interval.Enclose
+module
+
+public import Demos.Orbit.Gibbs
+public import Library.Numerics.Interval.Enclose
+
+@[expose] public section
 
 /-!
 The interval program of Gibbs' method.  `gibbsCoords` states Gibbs' formula in coordinates with

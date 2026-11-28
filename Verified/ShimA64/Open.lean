@@ -1,8 +1,12 @@
-import Verified.ShimA64.Handles
-import Verified.ShimA64.OpenHow
-import Verified.ShimA64.Utf8
-import LeanExe.A64.Proof.WasiOpen
-import LeanExe.A64.Proof.WasiUtf8
+module
+
+public import Verified.ShimA64.Handles
+public import Verified.ShimA64.OpenHow
+public import Verified.ShimA64.Utf8
+public import LeanExe.A64.Proof.WasiOpen
+public import LeanExe.A64.Proof.WasiUtf8
+
+@[expose] public section
 
 /-!
 The stub of `path_open` against the shim's host environment: `openStub_sim` proves that the stub

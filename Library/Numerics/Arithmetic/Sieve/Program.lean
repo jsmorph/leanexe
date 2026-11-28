@@ -1,5 +1,9 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+
+@[expose] public section
 
 /-! The primes below a word `N` by the sieve of Eratosthenes.  `marks` holds a flag for each number
 below `N`, and `sieveFrom` sets the flags of the multiples `p·p`, `p·p + p`, … below `N` of each

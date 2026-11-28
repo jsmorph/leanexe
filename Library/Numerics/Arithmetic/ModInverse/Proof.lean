@@ -1,7 +1,11 @@
-import Library.Numerics.Arithmetic.ModInverse.Program
-import Library.Numerics.Arithmetic.ModInverse.Spec
-import Mathlib.Tactic.LinearCombination
-import Mathlib.Tactic.Ring
+module
+
+public import Library.Numerics.Arithmetic.ModInverse.Program
+public import Library.Numerics.Arithmetic.ModInverse.Spec
+public import Mathlib.Tactic.LinearCombination
+public import Mathlib.Tactic.Ring
+
+@[expose] public section
 
 /-! The proof that the modular inverse computes `expected`.  The hypotheses of `euclid_spec` state
 the invariant of Algorithm X: `t1 * r0 + t0 * r1 = m`, `r1 < r0`, `t0 ≤ t1`,

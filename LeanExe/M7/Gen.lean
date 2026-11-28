@@ -1,6 +1,10 @@
-import LeanExe.Area
-import LeanExe.CallGraph
-import LeanExe.M7.Init
+module
+
+public import LeanExe.Area
+public import LeanExe.CallGraph
+public import LeanExe.M7.Init
+
+@[expose] public section
 
 /-!
 The code generator of the Cortex-M7 back end: from the module that the verified compiler emits,

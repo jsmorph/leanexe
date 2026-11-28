@@ -1,8 +1,15 @@
-import Library.Hashing.Sha256.Program
-import Library.Hashing.Words.Encoding
-import LeanExe.Requests.Records
-import Verified.Reflect.Command
-import Verified.Call
+module
+
+public import Library.Hashing.Sha256.Program
+public import Library.Hashing.Words.Encoding
+public import LeanExe.Requests.Records
+public import Verified.Reflect.Command
+public import Verified.Call
+public meta import Library.Hashing.Sha256.Program
+public meta import Library.Hashing.Words.Encoding
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-!
 A SHA-256 step over a UART for the Cortex-M7 back end, a program with requests that hashes the

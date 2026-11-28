@@ -1,6 +1,10 @@
-import Verified.ShimA64.Preopen
-import Verified.ShimA64.Clocks
-import LeanExe.A64.Proof.WasiFiles
+module
+
+public import Verified.ShimA64.Preopen
+public import Verified.ShimA64.Clocks
+public import LeanExe.A64.Proof.WasiFiles
+
+@[expose] public section
 
 /-!
 The scratch's bytes of the shim's descriptors, the ends of a stub on `shimMachine`, and the stub

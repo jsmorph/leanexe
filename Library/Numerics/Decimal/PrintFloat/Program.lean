@@ -1,9 +1,13 @@
-import Library.Numerics.Arithmetic.Uscale.Program
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
-import LeanExe.Dialect.InsertErase
-import LeanExe.Dialect.Float32
+module
+
+public import Library.Numerics.Arithmetic.Uscale.Program
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+public import LeanExe.Dialect.InsertErase
+public import LeanExe.Dialect.Float32
+
+@[expose] public section
 
 /-! Binary64 and binary32 words to decimal strings: the shortest decimal that rounds to the word,
 the nearest to the word's value among the shortest, with an even last digit at a tie, written in

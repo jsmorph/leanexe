@@ -1,7 +1,11 @@
-import Library.Arrays.Filter.Compiled
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
-import Verified.Master
+module
+
+public import Library.Arrays.Filter.Compiled
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Arrays.Filter
 

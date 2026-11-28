@@ -313,7 +313,11 @@ theorem mid_{name} (x : Float) (hx : Finite x.toBits) (h1 : {Q(alo)} ≤ |value 
     linarith
 '''
 out=open('../AsinTheoremMid.lean','w')
-out.write('''import Library.Numerics.Float64.Asin.AsinTheoremBig
+out.write('''module
+
+public import Library.Numerics.Float64.Asin.AsinTheoremBig
+
+@[expose] public section
 
 /-!
 `Asin.asin x` for `1/2 ≤ |x| < 0.975`: with `t = (1 - |x|)/2`, `s = √t`, `w` the high part of

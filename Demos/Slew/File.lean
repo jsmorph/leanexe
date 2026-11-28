@@ -1,5 +1,9 @@
-import Demos.Slew.Verified
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Demos.Slew.Verified
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/slew.wasm`, with
 `tools/leanrun --timeout 10m lake env lean Demos/Slew/File.lean`: the file holds

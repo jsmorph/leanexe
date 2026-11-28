@@ -1,6 +1,11 @@
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.F64Normalize
-import LeanExe.ProofKit.F32TruncSat
+module
+
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.F64Normalize
+public import LeanExe.ProofKit.F32TruncSat
+import all Init.Data.BitVec.BasicAux
+
+@[expose] public section
 
 /-!
 Lean's conversions between `UInt64` and `Float` agree with WebAssembly's
@@ -62,12 +67,12 @@ theorem clamp_nat (q : Nat) :
       if (q : Int) ≤ 0 then 0
       else if (2 : Int) ^ 64 - 1 ≤ q then 0xFFFFFFFFFFFFFFFF
       else Wasm.IEEE64.intToUInt64 q := by
-  have hs : UInt64.size = 18446744073709551616 := rfl
-  unfold UInt64.ofNatClamp
-  split_ifs with h1 h2 h3 h4 <;> apply UInt64.toNat.inj <;>
-    simp only [UInt64.toNat_ofNatLT, Wasm.IEEE64.intToUInt64, Int.natAbs_natCast,
-      show ¬(q : Int) < 0 by omega, ↓reduceIte, UInt64.toNat_ofNat', UInt64.toNat_zero,
-      UInt64.reduceToNat] <;> first | rfl | omega
+  apply UInt64.toNat.inj
+  have hc : (UInt64.ofNatClamp q).toNat = min q (2 ^ 64 - 1) := BitVec.toNat_ofNatClamp
+  rw [hc]
+  split_ifs with h1 h2 <;>
+    simp only [Wasm.IEEE64.intToUInt64, Int.natAbs_natCast, show ¬(q : Int) < 0 by omega,
+      ↓reduceIte, UInt64.toNat_ofNat', UInt64.toNat_zero, UInt64.reduceToNat] <;> omega
 
 theorem truncSat_eq (value : UInt64) :
     (Float.Model.ofBits value).unpack.toUInt64 = Wasm.IEEE64.truncSatI64U value := by

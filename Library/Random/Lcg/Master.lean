@@ -1,5 +1,9 @@
-import Library.Random.Lcg.Verified
-import Verified.Master
+module
+
+public import Library.Random.Lcg.Verified
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Random.Lcg
 

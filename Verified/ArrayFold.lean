@@ -1,6 +1,11 @@
-import Verified.State
-import Verified.Rename
-import Verified.Bound
+module
+
+public import Verified.State
+public import Verified.Rename
+public import Verified.Bound
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 namespace Verified
 

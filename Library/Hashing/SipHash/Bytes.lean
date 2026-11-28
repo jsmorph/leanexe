@@ -1,6 +1,10 @@
-import Library.Hashing.SipHash.Compiled
-import Library.Hashing.SipHash.Proof
-import Verified.Call
+module
+
+public import Library.Hashing.SipHash.Compiled
+public import Library.Hashing.SipHash.Proof
+public import Verified.Call
+
+@[expose] public section
 
 /-! The bytes of the module `siphash` compute SipHash-2-4 and SipHash-1-3.  An entry, called from a
 ready store with the key words `k0` and `k1`, a borrowed array `msg`, and a byte count `n`, returns

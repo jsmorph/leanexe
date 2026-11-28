@@ -1,6 +1,10 @@
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
+module
+
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+
+@[expose] public section
 
 /-! The order book of [the specification](Spec.lean) in the verified compiler's dialect.  Slots 1
 to 4,096 of five slot arrays hold the resting orders, and the orders of one side at one price form

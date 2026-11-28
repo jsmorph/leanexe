@@ -1,7 +1,11 @@
-import Demos.Rcv.Maine.Rounds
-import Demos.Rcv.Maine.Variants
-import Demos.Rcv.PrintProof
-import Demos.Rcv.Holder
+module
+
+public import Demos.Rcv.Maine.Rounds
+public import Demos.Rcv.Maine.Variants
+public import Demos.Rcv.PrintProof
+public import Demos.Rcv.Holder
+
+@[expose] public section
 
 /-!
 T3 of [the requirements](requirements.md), section "Theorems", for the Maine count: (a) the count

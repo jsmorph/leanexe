@@ -1,5 +1,9 @@
-import Verified.Examples.Mix
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Mix
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/mix.wasm`: the file holds
 `encode Mix.compiled.module`, and it decodes to the module of `Mix.compiled.bytes`. -/

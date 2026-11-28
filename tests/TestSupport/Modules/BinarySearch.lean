@@ -1,5 +1,9 @@
-import Library.Arrays.BinarySearch.Spec
-import TestSupport.Host
+module
+
+public import Library.Arrays.BinarySearch.Spec
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! The inputs of the verified compiler's cases of binary search: sorted arrays with keys below,
 at, between, and above their elements. -/

@@ -1,6 +1,10 @@
-import Demos.Sgp4.Omm
-import Verified.Reflect.Command
-import Library.Numerics.Interval.Encoding
+module
+
+public import Demos.Sgp4.Omm
+public import Verified.Reflect.Command
+public import Library.Numerics.Interval.Encoding
+
+@[expose] public section
 
 namespace Demos.Sgp4.Omm
 

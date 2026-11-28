@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Basics
+module
+
+public import LeanExe.Native.Proof.Basics
+
+@[expose] public section
 
 /-!
 Global environments built by `globalenv`: when a program's identifiers are distinct, each

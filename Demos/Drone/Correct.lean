@@ -1,4 +1,8 @@
-import Demos.Drone.Output
+module
+
+public import Demos.Drone.Output
+
+@[expose] public section
 
 /-! `compute` returns the flight that attains the least cost: for valid terrain its words are the
 altitude and speed of each station on an admitted flight from rest on the ground to rest on the

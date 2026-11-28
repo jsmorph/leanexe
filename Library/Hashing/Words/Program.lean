@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! Words shared by the hash functions.  A message of `n` bytes is an `Array UInt64` holding eight
 bytes per word in little-endian order: byte `i` is bits `8 (i % 8)` to `8 (i % 8) + 7` of word
 `i / 8`, the layout of Wasm memory.  A digest uses the same packing in a structure of words, so

@@ -1,4 +1,8 @@
-import Verified.Shim.Descriptors
+module
+
+public import Verified.Shim.Descriptors
+
+@[expose] public section
 
 /-!
 How a layer event changes the descriptor numbers that the shim holds, `openNumbers`, and whether

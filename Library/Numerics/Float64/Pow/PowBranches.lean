@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpBranches
-import Library.Numerics.Float64.Pow.Compiled
+module
+
+public import Library.Numerics.Float64.Exp.ExpBranches
+public import Library.Numerics.Float64.Pow.Compiled
+
+@[expose] public section
 
 /-!
 The branches of `Pow.powWith` for a positive finite `x` and a finite `y`.  For a normal `x` and

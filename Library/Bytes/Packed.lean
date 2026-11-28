@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-! Bytes packed eight to a word.  A string of `n` bytes is an `Array UInt64` holding eight bytes
 per word in little-endian order: byte `i` is bits `8 (i % 8)` to `8 (i % 8) + 7` of word `i / 8`,
 the layout of Wasm memory, so a file read as little-endian words is a byte string.  The

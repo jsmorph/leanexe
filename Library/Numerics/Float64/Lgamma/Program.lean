@@ -1,9 +1,13 @@
-import Library.Numerics.Float64.Tgamma.Program
-import LeanExe.Dialect.Loop
-import LeanExe.Dialect.Build
-import LeanExe.Dialect.RepeatWhile
-import LeanExe.Dialect.InsertErase
-import LeanExe.Dialect.Float32
+module
+
+public import Library.Numerics.Float64.Tgamma.Program
+public import LeanExe.Dialect.Loop
+public import LeanExe.Dialect.Build
+public import LeanExe.Dialect.RepeatWhile
+public import LeanExe.Dialect.InsertErase
+public import LeanExe.Dialect.Float32
+
+@[expose] public section
 
 /-! A program of the verified compiler: `lgamma` and `lgammaR`, CORE-MATH's
 correctly rounded `ln |Γ|` and the sign of `Γ`, ported from `src/binary64/lgamma/lgamma.c` at commit

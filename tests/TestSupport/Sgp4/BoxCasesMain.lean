@@ -1,4 +1,8 @@
-import TestSupport.Sgp4.BoxCases
+module
+
+public import TestSupport.Sgp4.BoxCases
+
+@[expose] public section
 
 /-! The cases of the module `sgp4box` alone, for `tests/verified/run.sh --cases sgp4box`.  With
 the argument `--boxes` or `--lines`, it serves `tests/sgp4/reference.py`. -/

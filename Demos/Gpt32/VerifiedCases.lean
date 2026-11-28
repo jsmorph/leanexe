@@ -1,20 +1,24 @@
-import Demos.Gpt32.Program
-import LeanExe.WGSL.Build
-import LeanExe.PTX.Build
+module
+
+public import Demos.Gpt32.Program
+public import LeanExe.WGSL.Build
+public import LeanExe.PTX.Build
+
+@[expose] public section
 
 namespace Demos.Gpt32.VerifiedCases
 
 open _root_.Demos.Gpt32 LeanExe.WGSL
 open LeanExe.Source (Arg Arg.word Arg.float Arg.array)
 
-private def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
-private def fwords (xs : Array Float32) : Array UInt64 := xs.map fun x => x.toBits.toUInt64
-private def arr (xs : Array Float32) : Arg := .array (fwords xs)
+def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
+def fwords (xs : Array Float32) : Array UInt64 := xs.map fun x => x.toBits.toUInt64
+def arr (xs : Array Float32) : Arg := .array (fwords xs)
 
-private def gpuArg (arg : Arg) : String :=
+def gpuArg (arg : Arg) : String :=
   s!"u32:{",".intercalate (arg.wgslBuffer.toList.map toString)}"
 
-private def ptxArg (arg : Arg) : String := s!"u64:{words arg.ptxBuffer.toList}"
+def ptxArg (arg : Arg) : String := s!"u64:{words arg.ptxBuffer.toList}"
 
 /-- The case formats: `tests/verified/run.sh` for `gpt32.wasm`, `tests/wgsl/run.sh` for the WGSL
 kernels, and `tests/ptx/run.sh` for the PTX kernels. -/
@@ -23,12 +27,12 @@ inductive Format where
   | wgsl
   | ptx
 
-private def wasmArg : Arg → String
+def wasmArg : Arg → String
   | .word value => s!"i64:{value}"
   | .float bits => s!"f32:{bits}"
   | .array xs => s!"array-u64:{words xs.toList}"
 
-private def emit (format : Format) (kernel entry : String) (inputs : List Arg)
+def emit (format : Format) (kernel entry : String) (inputs : List Arg)
     (result : Array Float32) : IO Unit := do
   let encoded := fwords result
   let n := result.size
@@ -45,11 +49,11 @@ private def emit (format : Format) (kernel entry : String) (inputs : List Arg)
     let blocks := 1 + (inputs.filter fun a => match a with | .array _ => true | _ => false).length
     IO.println s!"gpt32|{entry}|array-u64|{" ".intercalate (inputs.map wasmArg)}|{encoded.toList}|{blocks}|{blocks}"
 
-private def specials : Array Float32 :=
+def specials : Array Float32 :=
   #[0, 0x80000000, 0x3f800000, 0xbf800000, 1, 0x007fffff, 0x7f800000, 0xff800000,
     0x7fc00000, 0x3f000000, 0xbf000000, 0x3fc00000, 0xbfc00000].map Float32.ofBits
 
-private def values (n seed : Nat) : Array Float32 :=
+def values (n seed : Nat) : Array Float32 :=
   Array.ofFn (n := n) fun i =>
     if (i.val + seed) % 11 = 0 then specials[(i.val / 11 + seed) % specials.size]!
     else (((i.val * 37 + seed * 101) % 401).toFloat / 100.0 - 2.0).toFloat32

@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.Shared.StrconvWords
-import LeanExe.ProofKit.F64RoundFinish
+module
+
+public import Library.Numerics.Decimal.Shared.StrconvWords
+public import LeanExe.ProofKit.F64RoundFinish
+
+@[expose] public section
 
 /-!
 Talos's executable roundings of a positive rational `N / D` and of a dyadic `n / 2 ^ k`, in units

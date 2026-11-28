@@ -1,4 +1,8 @@
-import LeanExe.Wasi.Calls
+module
+
+public import LeanExe.Wasi.Calls
+
+@[expose] public section
 
 /-!
 The descriptions of the flat Preview 1 functions, which `tools/wasi-calls.py` generates from the

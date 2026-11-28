@@ -1,18 +1,22 @@
-import TestSupport.Native.Gcd
-import TestSupport.Bare.Programs
-import TestSupport.A64.CicTable
-import TestSupport.A64.GptScores
-import TestSupport.A64.GptLayer32
-import TestSupport.A64.Conv32
-import Verified.Examples.Fold
-import Demos.Euler.Verified
-import Library.Numerics.Float64.Exp.Compiled
-import Library.Numerics.Float64.Trig.Compiled
-import Examples.Floor.Compiled
-import Examples.Convert.Compiled
-import Library.Numerics.Decimal.Int64Text.Compiled
-import LeanExe.Native.Bare
-import LeanExe.A64.BootImage
+module
+
+public import TestSupport.Native.Gcd
+public import TestSupport.Bare.Programs
+public import TestSupport.A64.CicTable
+public import TestSupport.A64.GptScores
+public import TestSupport.A64.GptLayer32
+public import TestSupport.A64.Conv32
+public import Verified.Examples.Fold
+public import Demos.Euler.Verified
+public import Library.Numerics.Float64.Exp.Compiled
+public import Library.Numerics.Float64.Trig.Compiled
+public import Examples.Floor.Compiled
+public import Examples.Convert.Compiled
+public import Library.Numerics.Decimal.Int64Text.Compiled
+public import LeanExe.Native.Bare
+public import LeanExe.A64.BootImage
+
+@[expose] public section
 
 /-!
 The bare-metal programs of the AArch64 back end, the counterparts of the programs of

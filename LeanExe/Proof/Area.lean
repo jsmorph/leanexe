@@ -1,5 +1,9 @@
-import LeanExe.Area
-import LeanExe.ProofKit.Typed
+module
+
+public import LeanExe.Area
+public import LeanExe.ProofKit.Typed
+
+@[expose] public section
 
 /-!
 Facts about the area of `LeanExe/Area.lean` and the store in which a module starts.  The module's

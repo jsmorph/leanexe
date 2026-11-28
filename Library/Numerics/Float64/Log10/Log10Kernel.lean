@@ -1,8 +1,12 @@
-import Library.Numerics.Float64.Log10.Log10Bits
-import Library.Numerics.Float64.Log10.Log10Consts
-import Library.Numerics.Float64.Log.LogCoreFinal
-import LeanExe.ProofKit.F64DivBounds
-import LeanExe.ProofKit.F64ExactProduct
+module
+
+public import Library.Numerics.Float64.Log10.Log10Bits
+public import Library.Numerics.Float64.Log10.Log10Consts
+public import Library.Numerics.Float64.Log.LogCoreFinal
+public import LeanExe.ProofKit.F64DivBounds
+public import LeanExe.ProofKit.F64ExactProduct
+
+@[expose] public section
 
 /-!
 The error of `Log10Bits.kWord`, fdlibm's `k_log1p`, and of `hfsq = f²/2`, for `f = x' - 1` from

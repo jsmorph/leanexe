@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Asin.AsinTheorem
+module
+
+public import Library.Numerics.Float64.Asin.AsinTheorem
+
+@[expose] public section
 
 /-!
 The branches of `Asin.acos` as equations, the exact arguments `z = (1 + x)/2` and

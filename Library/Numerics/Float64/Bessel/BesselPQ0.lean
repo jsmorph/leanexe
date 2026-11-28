@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselPQRange
-import LeanExe.ProofKit.BesselFd0a
-import LeanExe.ProofKit.BesselFd0b
+module
+
+public import Library.Numerics.Float64.Bessel.BesselPQRange
+public import LeanExe.ProofKit.BesselFd0a
+public import LeanExe.ProofKit.BesselFd0b
+
+@[expose] public section
 
 /-!
 `Bessel.pAsym Bessel.j0Table` and the `Q` term of `j0 and y0` on each of fdlibm's four ranges from 2 on, as

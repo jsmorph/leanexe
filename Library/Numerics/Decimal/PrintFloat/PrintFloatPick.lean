@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatSearch
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatSearch
+
+@[expose] public section
 
 /-!
 The code of `PrintFloat.shortest` against `PrintFloatSearch`: the words of the interval's

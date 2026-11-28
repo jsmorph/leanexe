@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.GammaDDCover
-import LeanExe.ProofKit.GammaDD
-import Library.Numerics.Float64.Lgamma.LgammaData
+module
+
+public import LeanExe.ProofKit.GammaDDCover
+public import LeanExe.ProofKit.GammaDD
+public import Library.Numerics.Float64.Lgamma.LgammaData
+
+@[expose] public section
 
 /-!
 The definitions of the checks of `LgammaSmallFact`: the polynomial, and the Taylor-model parameters

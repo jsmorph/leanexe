@@ -9,6 +9,7 @@
     "LeanExe.loop n true (fun k ok => if !ok then false else P k) = true",
     "Fin.foldl n (fun x i => g i.val x) init = Nat.fold n (fun i _ x => g i x) init",
     "(LeanExe.repeatWhile.go cond step k s).2",
+    "P (LeanExe.repeatWhile fuel init cond step) ∧ cond (LeanExe.repeatWhile fuel init cond step) = false",
     "LeanExe.loop n out (fun i acc => acc.set! i.toNat (f i)) = LeanExe.build n f",
     "π (LeanExe.repeatWhile fuel init cond step) = LeanExe.repeatWhile fuel (π init) cond' step'",
     "Inv n js ks (t + 1) q from Inv n js ks t p and a link of one root to the other",
@@ -44,9 +45,12 @@
     "Demos.Slew.Search",
     "Library.Hashing.Crc.Bitwise.Proof",
     "Demos.PassiveSafety.Soundness",
-    "Demos.Screening.Cover"
+    "Demos.Screening.Cover",
+    "Demos.OrderBook.RefineChains"
   ],
   "declarations": [
+    "LeanExe.Dialect.repeatWhile_induction",
+    "LeanExe.Dialect.repeatWhile_induction_stop",
     "LeanExe.Dialect.loop_induction",
     "LeanExe.Dialect.loop_congr",
     "LeanExe.Dialect.loop_and_iff",

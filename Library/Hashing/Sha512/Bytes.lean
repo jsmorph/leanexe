@@ -1,6 +1,10 @@
-import Library.Hashing.Sha512.Compiled
-import Library.Hashing.Sha512.Proof
-import Verified.Call
+module
+
+public import Library.Hashing.Sha512.Compiled
+public import Library.Hashing.Sha512.Proof
+public import Verified.Call
+
+@[expose] public section
 
 /-! The bytes of the module `sha512` compute the SHA-512 family of FIPS 180-4.  Each entry, called
 from a ready store with a borrowed array `msg` and a byte count `n < 2 ^ 61`, returns without a

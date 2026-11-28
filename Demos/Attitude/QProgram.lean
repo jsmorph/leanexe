@@ -1,6 +1,10 @@
-import Demos.Attitude.QSpec
-import Demos.Attitude.Program
-import LeanExe.Dialect.Loop
+module
+
+public import Demos.Attitude.QSpec
+public import Demos.Attitude.Program
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-!
 The q-method with a certified error bound.  `qmethodWith` reads `n` observations, each a

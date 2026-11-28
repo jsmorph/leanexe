@@ -1,5 +1,9 @@
-import Library.Numerics.Filters.Cic.Program
-import Library.Numerics.Filters.Cic.Cascade
+module
+
+public import Library.Numerics.Filters.Cic.Program
+public import Library.Numerics.Filters.Cic.Cascade
+
+@[expose] public section
 
 /-! `cic_toList` proves that the dialect's filter `cic` of `Program.lean` computes the block cascade
 `cascade 3 8 1` at `UInt64` on every input array.  Each pass equals its stage of `Cascade.lean` as a

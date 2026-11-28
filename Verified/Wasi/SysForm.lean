@@ -1,6 +1,10 @@
-import Verified.Source
-import Verified.Wasi.ABI
-import LeanExe.Wasi.Sys
+module
+
+public import Verified.Source
+public import Verified.Wasi.ABI
+public import LeanExe.Wasi.Sys
+
+@[expose] public section
 
 /-! The forms of flat call that `Command.sys` compiles, with the result type and the action of
 each.  A `flat` call takes word arguments and inputs and returns at most two result words, which

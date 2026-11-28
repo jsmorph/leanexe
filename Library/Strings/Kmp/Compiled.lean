@@ -1,6 +1,10 @@
-import Library.Strings.Kmp.Proof
-import Verified.Reflect.Command
-import Verified.Congr
+module
+
+public import Library.Strings.Kmp.Proof
+public import Verified.Reflect.Command
+public import Verified.Congr
+
+@[expose] public section
 
 /-! The verified compiler's module of the occurrences of a pattern.  By the compiler's rules, which
 the verified compiler's manual states, the compiler translates the tail recursion of `fall` and the

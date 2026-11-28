@@ -1,10 +1,14 @@
-import Verified.Reflect.Command
-import TestSupport.Native.Common
-import LeanExe.Native.Proof.Req
-import LeanExe.Requests.Records
-import Verified.Bare
-import Verified.Call
-import Demos.Energy.Gateway
+module
+
+public import Verified.Reflect.Command
+public import TestSupport.Native.Common
+public import LeanExe.Native.Proof.Req
+public import LeanExe.Requests.Records
+public import Verified.Bare
+public import Verified.Call
+public import Demos.Energy.Gateway
+
+@[expose] public section
 
 /-!
 The energy controller's program: the gateway of `Demos/Energy/Gateway.lean` in the program with

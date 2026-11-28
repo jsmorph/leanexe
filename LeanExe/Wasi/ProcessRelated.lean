@@ -1,6 +1,10 @@
-import LeanExe.Wasi.ProcessRelations
-import LeanExe.Wasi.RelatedExec
-import LeanExe.Wasi.RelatedPrefix
+module
+
+public import LeanExe.Wasi.ProcessRelations
+public import LeanExe.Wasi.RelatedExec
+public import LeanExe.Wasi.RelatedPrefix
+
+@[expose] public section
 
 namespace LeanExe.Wasi
 

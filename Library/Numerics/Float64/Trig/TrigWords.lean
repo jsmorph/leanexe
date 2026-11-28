@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Trig.Compiled
+module
+
+public import Library.Numerics.Float64.Trig.Compiled
+
+@[expose] public section
 
 /-!
 Natural-number specifications of the word routines of the Payne–Hanek reduction in `Trig`:

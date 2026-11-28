@@ -1,5 +1,9 @@
-import Verified.Reflect.Definitions
-import Verified.Reflect.TailListLemmas
+module
+
+public import Verified.Reflect.Definitions
+public import Verified.Reflect.TailListLemmas
+
+@[expose] public section
 
 namespace Verified.Reflect
 
@@ -66,7 +70,7 @@ def fieldNames (n : Nat) : Array Ident :=
 
 /-- The pieces of one constructor in the lemmas of a match: its record constructor, when it is
 one, the names and types of its fields, and its word and child families. -/
-private structure CtorParts where
+structure CtorParts where
   record : Option Term
   fields : Array Ident
   types : Array Term

@@ -1,6 +1,11 @@
-import Library.Hashing.Crc.Program
-import Library.Hashing.Crc.Division
-import Library.Bytes.Packed
+module
+
+public import Library.Hashing.Crc.Program
+public import Library.Hashing.Crc.Division
+public import Library.Bytes.Packed
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-! The CRC programs compute the transcription.  A register holds a remainder of the division of
 `Library.Hashing.Crc.Division` as its 32 low bits, the coefficient of `x^31` in the least

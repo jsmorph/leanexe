@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-!
 # SHA-512 family — performance-tuned implementation
 

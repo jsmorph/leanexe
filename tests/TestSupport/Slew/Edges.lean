@@ -1,4 +1,8 @@
-import TestSupport.Slew.Cases
+module
+
+public import TestSupport.Slew.Cases
+
+@[expose] public section
 
 /-! The single-cone edge cases of the module `slew`: 100,000 calls of the `edgeOk` export, each
 on an input of one body vector and one cone with a start attitude and a relative quaternion, with

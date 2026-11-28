@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Sinh.SinhTheorem
-import Library.Numerics.Float64.Sinh.CoshTheorem
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Sinh.SinhTheorem
+public import Library.Numerics.Float64.Sinh.CoshTheorem
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorems for the module of `Sinh.lean`, whose exports `sinh` (function 11) and `cosh`

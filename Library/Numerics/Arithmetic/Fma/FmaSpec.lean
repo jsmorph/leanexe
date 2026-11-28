@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.Fma.Compiled
-import LeanExe.ProofKit.F64SignedRounding
+module
+
+public import Library.Numerics.Arithmetic.Fma.Compiled
+public import LeanExe.ProofKit.F64SignedRounding
+
+@[expose] public section
 
 /-!
 The property of `Fma.fma` that the proof of `Library.Numerics.Float64.Erfc.erfc` uses, as a proposition.  For finite

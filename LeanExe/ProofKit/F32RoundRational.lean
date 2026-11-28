@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F32RoundFinish
-import LeanExe.ProofKit.FloatRationalRounding
-import CodeLib.IEEE32.Rounders
+module
+
+public import LeanExe.ProofKit.F32RoundFinish
+public import LeanExe.ProofKit.FloatRationalRounding
+public import CodeLib.IEEE32.Rounders
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F32RoundRational
 open Float.Model Float.Model.UnpackedFloat F32Encoding F32RoundScaled F32RoundFinish FloatRationalRounding FloatCommon

@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.F64RounderEnclosure
-import CodeLib.IEEE64.Operations
+module
+
+public import LeanExe.ProofKit.F64RounderEnclosure
+public import CodeLib.IEEE64.Operations
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64Adjacent
 open CodeLib.IEEE64

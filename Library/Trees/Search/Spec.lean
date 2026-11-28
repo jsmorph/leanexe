@@ -1,5 +1,9 @@
-import Library.Trees.WordTree.Program
-import Mathlib.Data.List.Sort
+module
+
+public import Library.Trees.WordTree.Program
+public import Mathlib.Data.List.Sort
+
+@[expose] public section
 
 /-! The specification of Algorithm T, tree search and insertion, on `KeyTree`.  `algorithmT x t`
 states the steps as a recursion on the tree and gives whether the search succeeds and the tree

@@ -1,6 +1,10 @@
-import Library.Numerics.Interval.Enclose
-import Library.Numerics.Float64.Atan.AtanTheorem
-import Demos.Frames.Geodetic
+module
+
+public import Library.Numerics.Interval.Enclose
+public import Library.Numerics.Float64.Atan.AtanTheorem
+public import Demos.Frames.Geodetic
+
+@[expose] public section
 
 /-!
 The formulas of `requirements.md` in interval arithmetic.  Each `enclosure_def` declares a real

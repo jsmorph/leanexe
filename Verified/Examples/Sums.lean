@@ -1,5 +1,9 @@
-import Verified.Reflect.Command
-import Examples.Shape.Flat
+module
+
+public import Verified.Reflect.Command
+public import Examples.Shape.Flat
+
+@[expose] public section
 
 namespace Verified.Examples.Sums
 

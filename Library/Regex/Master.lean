@@ -1,5 +1,9 @@
-import Library.Regex.Bytes
-import Verified.Master
+module
+
+public import Library.Regex.Bytes
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Regex
 

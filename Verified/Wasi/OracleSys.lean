@@ -1,5 +1,9 @@
-import Verified.Wasi.OracleHost
-import Verified.Wasi.NestedBytes
+module
+
+public import Verified.Wasi.OracleHost
+public import Verified.Wasi.NestedBytes
+
+@[expose] public section
 
 /-! A Talos host for the flat call imports of `hostSpecWith`, from an oracle that answers each
 request of an abstract host.  The import for a call decodes the request from its core arguments,

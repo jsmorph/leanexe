@@ -1,4 +1,8 @@
-import LeanExe.WGSL.Semantics
+module
+
+public import LeanExe.WGSL.Semantics
+
+@[expose] public section
 
 /-!
 The memory operations of one invocation.  This semantics runs the statements of `Semantics.lean`

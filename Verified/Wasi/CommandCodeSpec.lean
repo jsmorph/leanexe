@@ -1,6 +1,10 @@
-import Verified.Wasi.CommandSpec
-import Verified.Wasi.CommandReady
-import Verified.Wasi.ResourceCost
+module
+
+public import Verified.Wasi.CommandSpec
+public import Verified.Wasi.CommandReady
+public import Verified.Wasi.ResourceCost
+
+@[expose] public section
 
 namespace Verified.Wasi
 

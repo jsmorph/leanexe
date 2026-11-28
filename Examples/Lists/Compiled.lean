@@ -1,5 +1,9 @@
-import Examples.Lists.Program
-import Verified.Reflect.Command
+module
+
+public import Examples.Lists.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of the library's `listSum`, `listRange`, and `sumRange`.  The
 functions take or build lists, so their generated

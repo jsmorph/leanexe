@@ -1,6 +1,10 @@
-import Library.Hashing.Sha256.Program
-import Library.Hashing.Words.Proof
-import Library.Hashing.Sha2.Impl.SHA256
+module
+
+public import Library.Hashing.Sha256.Program
+public import Library.Hashing.Words.Proof
+public import Library.Hashing.Sha2.Impl.SHA256
+
+@[expose] public section
 
 /-! The 32-bit words of `Library.Hashing.Sha256` are the low 32 bits of `UInt64` values, read by
 `UInt64.toUInt32`.  Truncation commutes with addition and the bitwise operations, and the

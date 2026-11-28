@@ -1,5 +1,10 @@
-import LeanExe.M7.Isla.Arith
-import LeanExe.M7.Isla.Profile
+module
+
+public import LeanExe.M7.Isla.Arith
+public import LeanExe.M7.Isla.Profile
+public import LeanExe.A64.Isla.TraceElab
+
+@[expose] public section
 
 /-!
 Theorems of `Agrees` for the shifts of `LeanExe/M7/Machine.lean`, `LSL.W` and `LSR.W` by a

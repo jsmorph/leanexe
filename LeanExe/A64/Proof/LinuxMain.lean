@@ -1,6 +1,10 @@
-import LeanExe.A64.Proof.Linux
-import LeanExe.A64.Proof.BytesMain
-import LeanExe.A64.Elf
+module
+
+public import LeanExe.A64.Proof.Linux
+public import LeanExe.A64.Proof.BytesMain
+public import LeanExe.A64.Elf
+
+@[expose] public section
 
 /-!
 The loops of `genSysMain`, the entry routine of a Linux executable.  `run_readLoop` follows the

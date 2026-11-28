@@ -1,4 +1,8 @@
-import Demos.Conjunction.Message
+module
+
+public import Demos.Conjunction.Message
+
+@[expose] public section
 
 /-!
 The projection of the conjunction-message form.  `projection_sound` states that each accepted

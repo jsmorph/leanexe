@@ -1,4 +1,8 @@
-import TestSupport.Events.Cases
+module
+
+public import TestSupport.Events.Cases
+
+@[expose] public section
 
 /-! The cases of the module `events` alone, for `tests/verified/run.sh --cases events`. -/
 

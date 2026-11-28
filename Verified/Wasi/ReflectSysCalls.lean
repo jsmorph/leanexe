@@ -1,6 +1,10 @@
-import Verified.Wasi.ReflectLemmas
-import Verified.Wasi.ReflectSysOperation
-import LeanExe.Wasi.SysCalls
+module
+
+public import Verified.Wasi.ReflectLemmas
+public import Verified.Wasi.ReflectSysOperation
+public import LeanExe.Wasi.SysCalls
+
+@[expose] public section
 
 /-!
 The `Flat` instances of the record result types, the reflection equations of the generated typed

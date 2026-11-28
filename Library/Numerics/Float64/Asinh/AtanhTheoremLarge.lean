@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Asinh.AtanhTheoremSmallCases
+module
+
+public import Library.Numerics.Float64.Asinh.AtanhTheoremSmallCases
+
+@[expose] public section
 
 /-!
 `Asinh.atanh` from `1/2` to 1: the code returns `0.5 log1p ((a + a)/(1 - a))` for `a = |x|`.

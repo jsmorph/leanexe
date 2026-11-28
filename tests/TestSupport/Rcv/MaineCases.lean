@@ -1,5 +1,9 @@
-import Demos.Rcv.Maine.Cases
-import TestSupport.Rcv.Cases
+module
+
+public import Demos.Rcv.Maine.Cases
+public import TestSupport.Rcv.Cases
+
+@[expose] public section
 
 /-! The cases of the module `rcvMaine`, the Maine tabulator of `Demos/Rcv/Maine/Tabulate.lean`.
 The export `count` takes word arrays and the export `tabulate` canonical files, and the expected

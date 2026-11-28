@@ -1,15 +1,19 @@
-import Std.Data.HashMap
-import LeanExe.M7.Div
-import LeanExe.M7.Image
-import TestSupport.M7.Asm
-import TestSupport.M7.Crc
-import TestSupport.M7.Sha
-import TestSupport.M7.Signed
-import TestSupport.M7.Delim
-import Demos.Bms.Compiled
-import Demos.Bms.Cases
-import TestSupport.Bare.Req
-import Demos.Energy.Loop
+module
+
+public import Std.Data.HashMap
+public import LeanExe.M7.Div
+public import LeanExe.M7.Image
+public import TestSupport.M7.Asm
+public import TestSupport.M7.Crc
+public import TestSupport.M7.Sha
+public import TestSupport.M7.Signed
+public import TestSupport.M7.Delim
+public import Demos.Bms.Compiled
+public import Demos.Bms.Cases
+public import TestSupport.Bare.Req
+public import Demos.Energy.Loop
+
+@[expose] public section
 
 /-!
 The instruction counts of the windows of the programs with requests that `LeanExe/M7/Gen.lean`

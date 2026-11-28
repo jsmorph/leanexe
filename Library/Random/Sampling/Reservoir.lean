@@ -1,4 +1,8 @@
-import Library.Random.Sampling.Select
+module
+
+public import Library.Random.Sampling.Select
+
+@[expose] public section
 
 /-! The proof that `reservoir` satisfies `Reservoirs`.  The loop of `reservoir` keeps the candidates
 of Algorithm R in an array, and step `t` replaces candidate `scale us[t] (k + t + 1)` with record

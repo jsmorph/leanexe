@@ -1,6 +1,11 @@
-import Demos.Conjunction.Adaptive
-import Verified.Reflect.Command
-import Demos.Conjunction.AdaptiveFlat
+module
+
+public import Demos.Conjunction.Adaptive
+public import Verified.Reflect.Command
+public import Demos.Conjunction.AdaptiveFlat
+public meta import Library.Numerics.Float64.Exp.Program
+
+@[expose] public section
 
 namespace Demos.Conjunction.Adaptive
 

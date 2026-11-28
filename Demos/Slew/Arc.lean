@@ -1,6 +1,10 @@
-import Demos.Slew.Spec
-import Mathlib.Analysis.Calculus.Deriv.MeanValue
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+module
+
+public import Demos.Slew.Spec
+public import Mathlib.Analysis.Calculus.Deriv.MeanValue
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+
+@[expose] public section
 
 /-! The arc lemmas of the edge check.  During a rotation by `φ` about the axis `n`, the cosine
 between a body vector `v` and a cone axis `u` is `A cos φ + B sin φ + C` (`dot_rod`).  On `[0, θ]`

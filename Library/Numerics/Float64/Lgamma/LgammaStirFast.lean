@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.GammaFits
-import Library.Numerics.Float64.Tgamma.TgammaFactsBase
-import Library.Numerics.Float64.Lgamma.Compiled
-import Library.Numerics.Float64.Tgamma.GammaPi
+module
+
+public import LeanExe.ProofKit.GammaFits
+public import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+public import Library.Numerics.Float64.Lgamma.Compiled
+public import Library.Numerics.Float64.Tgamma.GammaPi
+
+@[expose] public section
 
 /-!
 The fast path's Stirling fit of `cr_lgamma` from `0x1.0974p+3 - 2 ^ -40` to 16 (`lgamma.c` lines

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Bessel.BesselMillerFacts
-import Library.Numerics.Float64.Bessel.BesselMillerLast
-import Library.Numerics.Float64.Bessel.BesselModSmall
+module
+
+public import Library.Numerics.Float64.Bessel.BesselMillerFacts
+public import Library.Numerics.Float64.Bessel.BesselMillerLast
+public import Library.Numerics.Float64.Bessel.BesselModSmall
+
+@[expose] public section
 
 /-!
 The forward recurrence 10.6.1 from `Y₀` and `Y₁` below 2, on the reals.  For `0 < x < 2`,

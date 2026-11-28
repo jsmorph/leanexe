@@ -1,5 +1,9 @@
-import Verified.Reflect.FitsLemmas
-import Lean
+module
+
+public import Verified.Reflect.FitsLemmas
+public import Lean
+
+@[expose] public section
 
 /-! The meta functions that build the equation between a source expression's allocation bound and
 a Lean term from the lemmas of `Verified.Reflect.BoundLemmas`.  A builder takes the modes and the

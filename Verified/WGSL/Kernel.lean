@@ -1,5 +1,9 @@
-import Verified.Kernel.Plan
-import LeanExe.WGSL.Build
+module
+
+public import Verified.Kernel.Plan
+public import LeanExe.WGSL.Build
+
+@[expose] public section
 
 namespace Verified.WGSL
 

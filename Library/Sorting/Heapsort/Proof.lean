@@ -1,7 +1,11 @@
-import Library.Sorting.Heapsort.Program
-import Library.Sorting.Heapsort.Spec
-import Library.Sorting.Sorted
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Sorting.Heapsort.Program
+public import Library.Sorting.Heapsort.Spec
+public import Library.Sorting.Sorted
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! The proof that heapsort returns the array's elements in nondecreasing order.  Every step of
 the program exchanges two elements, so the result is a permutation of the input

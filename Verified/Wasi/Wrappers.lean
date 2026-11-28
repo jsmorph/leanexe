@@ -1,5 +1,9 @@
-import Verified.Wasi.Module
-import Verified.Wasi.ReadCode
+module
+
+public import Verified.Wasi.Module
+public import Verified.Wasi.ReadCode
+
+@[expose] public section
 
 namespace Verified.Wasi.Wrappers
 

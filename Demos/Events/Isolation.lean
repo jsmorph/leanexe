@@ -1,5 +1,9 @@
-import Demos.Events.Program
-import Demos.Screening.Soundness
+module
+
+public import Demos.Events.Program
+public import Demos.Screening.Soundness
+
+@[expose] public section
 
 /-!
 Soundness of the isolation for any event.  `Parts` is the real side of an event: two functions

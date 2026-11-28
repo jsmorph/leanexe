@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.Frame
-import LeanExe.Runtime.FreeList
+module
+
+public import LeanExe.ProofKit.Frame
+public import LeanExe.Runtime.FreeList
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FixedArraySearch
 open Wasm

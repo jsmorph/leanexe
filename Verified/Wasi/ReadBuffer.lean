@@ -1,5 +1,9 @@
-import Verified.Wasi.ReadFrame
-import LeanExe.Wasi.Semantics
+module
+
+public import Verified.Wasi.ReadFrame
+public import LeanExe.Wasi.Semantics
+
+@[expose] public section
 
 namespace Verified.Wasi
 

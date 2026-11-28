@@ -1,4 +1,8 @@
-import LeanExe.Wasi.Bind
+module
+
+public import LeanExe.Wasi.Bind
+
+@[expose] public section
 
 namespace LeanExe.Wasi
 

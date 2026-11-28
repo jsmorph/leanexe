@@ -1,5 +1,9 @@
-import Library.Hashing.Hmac.Program
-import TestSupport.Hashing.Sha256Cases
+module
+
+public import Library.Hashing.Hmac.Program
+public import TestSupport.Hashing.Sha256Cases
+
+@[expose] public section
 
 /-! The cases of the modules `hmac_sha256` and `hmac_sha512`: keys whose lengths reach each side of
 the block sizes of 64 and 128 bytes, against messages whose lengths cross the padding boundaries

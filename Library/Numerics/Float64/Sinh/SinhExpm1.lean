@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Tanh.Expm1NearPos
-import Library.Numerics.Float64.Tanh.Expm1Theorem
-import Library.Numerics.Float64.Tanh.Expm1Near
-import Library.Numerics.Float64.Exp.ExpTightFloat
+module
+
+public import Library.Numerics.Float64.Tanh.Expm1NearPos
+public import Library.Numerics.Float64.Tanh.Expm1Theorem
+public import Library.Numerics.Float64.Tanh.Expm1Near
+public import Library.Numerics.Float64.Exp.ExpTightFloat
+
+@[expose] public section
 
 /-!
 `Tanh.expm1` on the positive arguments of `sinh` from `θ1 ≈ 0.3466` to 22, with the error of the

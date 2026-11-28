@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Erfc.ErfcTheorem
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcTheorem
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The byte theorem for `erfc` in the module of `Erfc.lean`, whose export `erfc` is function 49.

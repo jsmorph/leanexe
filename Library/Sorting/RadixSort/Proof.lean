@@ -1,10 +1,14 @@
-import Library.Sorting.RadixSort.Program
-import Library.Sorting.RadixSort.Spec
-import Library.Sorting.Sorted
-import LeanExe.Dialect.Lemmas
-import LeanExe.Dialect.ArrayLemmas
-import Mathlib.Data.List.FinRange
-import Mathlib.Data.Fintype.Card
+module
+
+public import Library.Sorting.RadixSort.Program
+public import Library.Sorting.RadixSort.Spec
+public import Library.Sorting.Sorted
+public import LeanExe.Dialect.Lemmas
+public import LeanExe.Dialect.ArrayLemmas
+public import Mathlib.Data.List.FinRange
+public import Mathlib.Data.Fintype.Card
+
+@[expose] public section
 
 /-! The proof that `radixSort` returns the array's elements in nondecreasing order.  A pass on the
 byte at bit `s` puts the word at position `j` at `pos s src j`, the number of words with a smaller
@@ -139,7 +143,7 @@ theorem prefix_loop (s : UInt64) (L : List UInt64) (hL : L.length < 2 ^ 64) (c0 
         have h3 := countP_le_eq s (i + 1) L
         have h4 : L.countP (fun x => decide ((digit s x).toNat < i + 1)) =
             L.countP (fun x => decide ((digit s x).toNat ≤ i)) := by
-          congr 1; funext x; exact decide_eq_decide.mpr (by omega)
+          congr 1
         have hlen := List.countP_le_length (p := fun x => decide ((digit s x).toNat ≤ i + 1))
           (l := L)
         omega

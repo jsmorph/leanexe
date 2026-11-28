@@ -1,3 +1,9 @@
+module
+
+public import LeanExe.Base
+
+@[expose] public section
+
 /-!
 The word forms of Lean's `Int64` operations and their equations.  An `Int64` is the word
 `x.toUInt64`, its two's-complement bits, and the reflector writes each `Int64` operation as an

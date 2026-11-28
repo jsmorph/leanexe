@@ -1,7 +1,11 @@
-import Demos.RunningSumFp.Wasi
-import Verified.ChargeFacts
-import LeanExe.Dialect.Lemmas
-import Library.Numerics.Decimal.PrintFloat.PrintFloatSteps
+module
+
+public import Demos.RunningSumFp.Wasi
+public import Verified.ChargeFacts
+public import LeanExe.Dialect.Lemmas
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatSteps
+
+@[expose] public section
 
 /-! Bounds on the generated allocation bounds of the big-integer arithmetic and the printer that
 the binary64 running sum compiles, and the sizes of the arrays that their callers pass on.  Each

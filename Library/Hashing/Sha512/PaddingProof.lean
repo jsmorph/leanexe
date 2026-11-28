@@ -1,6 +1,10 @@
-import Library.Hashing.Sha512.Program
-import Library.Hashing.Words.Proof
-import Library.Hashing.Sha2.Equiv.SHA512.Padding.Layout
+module
+
+public import Library.Hashing.Sha512.Program
+public import Library.Hashing.Words.Proof
+public import Library.Hashing.Sha2.Equiv.SHA512.Padding.Layout
+
+@[expose] public section
 
 /-! `paddedWord` reads the words of the padded message.  For a message `pre ++ m` of fewer than
 `2 ^ 61` bytes, where `pre` holds `p` whole blocks and `m` is the `n` bytes of `msg`, word

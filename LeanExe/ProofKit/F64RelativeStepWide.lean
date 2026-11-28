@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64RelativeStep
+module
+
+public import LeanExe.ProofKit.F64RelativeStep
+
+@[expose] public section
 
 /-!
 `F64RelativeStep` with the relative bound widened from `11/8` to `47/32` units of roundoff.  The

@@ -1,5 +1,9 @@
-import Verified.ShimA64.Stubs
-import LeanExe.A64.Proof.WasiStrings
+module
+
+public import Verified.ShimA64.Stubs
+public import LeanExe.A64.Proof.WasiStrings
+
+@[expose] public section
 
 /-!
 The shim's `sizesInvoke` and `stringsInvoke` in the terms of the runs of the stubs of

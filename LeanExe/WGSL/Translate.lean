@@ -1,6 +1,10 @@
-import LeanExe.WGSL.Pair
-import LeanExe.Source.Denote
-import LeanExe.WGSL.F32Canonical
+module
+
+public import LeanExe.WGSL.Pair
+public import LeanExe.Source.Denote
+public import LeanExe.WGSL.F32Canonical
+
+@[expose] public section
 
 /-!
 The translation of source expressions of the kernel subset into WGSL `let` statements, one per node,

@@ -1,5 +1,9 @@
-import Verified.Wasi.HostMemory
-import Verified.Wasi.SysWords
+module
+
+public import Verified.Wasi.HostMemory
+public import Verified.Wasi.SysWords
+
+@[expose] public section
 
 /-! The bytes of the nested parameters: the little-endian bytes of a value, the element of an iovec,
 and the subscription array.  The element and each field of a subscription read back as the words

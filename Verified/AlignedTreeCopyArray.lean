@@ -1,10 +1,14 @@
-import Verified.AlignedTreeCopySteps
-import Verified.TreeSlotCode
-import Verified.TreeCopyInvariant
-import Verified.TreeAdvance
-import Verified.TreeCopyLocals
-import Verified.TreeCopyStartInv
-import Verified.ArrayCopy
+module
+
+public import Verified.AlignedTreeCopySteps
+public import Verified.TreeSlotCode
+public import Verified.TreeCopyInvariant
+public import Verified.TreeAdvance
+public import Verified.TreeCopyLocals
+public import Verified.TreeCopyStartInv
+public import Verified.ArrayCopy
+
+@[expose] public section
 
 /-!
 The copy of an array slot under the flag: the ports of `CopyInv.arrayStep` and

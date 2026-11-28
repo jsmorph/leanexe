@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselYnTheorem
+module
+
+public import Library.Numerics.Float64.Bessel.BesselYnTheorem
+
+@[expose] public section
 
 /-!
 The exceptional results of `Bessel.jn` and `Bessel.yn`, the arguments outside `jn_accuracy` and

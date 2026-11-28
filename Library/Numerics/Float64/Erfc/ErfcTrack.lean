@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erfc.ErfcOps
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcOps
+
+@[expose] public section
 
 /-!
 Error tracking for the proof of `Erfc.erfc`.  `Tr x v M e` states that the float `x` is finite,

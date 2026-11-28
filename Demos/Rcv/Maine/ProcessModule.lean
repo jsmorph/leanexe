@@ -1,5 +1,11 @@
-import Demos.Rcv.Maine.ProcessWasi
-import Verified.Wasi.ProcessCode
+module
+
+public import Demos.Rcv.Maine.ProcessWasi
+public import Verified.Wasi.ProcessCode
+public meta import Verified.Wasi.ProcessCode
+public meta import Demos.Rcv.Maine.ProcessWasi
+
+@[expose] public section
 
 /-! The Maine process as a WASI command module: the process entry of the compiled `begin` and
 `step`, the module, its stack check, its calls with costs and effects, and its validity and

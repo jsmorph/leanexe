@@ -1,5 +1,9 @@
-import Library.Numerics.Arithmetic.Fma.FmaWords
-import Library.Numerics.Arithmetic.Fma.FmaGrid
+module
+
+public import Library.Numerics.Arithmetic.Fma.FmaWords
+public import Library.Numerics.Arithmetic.Fma.FmaGrid
+
+@[expose] public section
 
 /-!
 The parts of `Fma.roundPack s w h l`, which rounds `N · 2 ^ (w - 2400)`, `N = h · 2 ^ 64 + l`, as

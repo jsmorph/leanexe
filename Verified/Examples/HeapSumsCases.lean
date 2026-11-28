@@ -1,5 +1,9 @@
-import Verified.Examples.HeapSums
-import Examples.Trees.Cases
+module
+
+public import Verified.Examples.HeapSums
+public import Examples.Trees.Cases
+
+@[expose] public section
 
 /-! The cases of the sums that hold heap values.  The host passes an `Item` as its tuple: the tag,
 the bytes, the array, the scale, the tree, and the weight.  An active text is a block of the

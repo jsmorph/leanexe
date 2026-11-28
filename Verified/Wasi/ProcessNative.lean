@@ -1,5 +1,9 @@
-import Verified.Wasi.ProcessRunProofs
-import LeanExe.Wasi.ProcessRelated
+module
+
+public import Verified.Wasi.ProcessRunProofs
+public import LeanExe.Wasi.ProcessRelated
+
+@[expose] public section
 
 namespace Verified.Wasi
 

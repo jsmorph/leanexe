@@ -1,5 +1,11 @@
-import Demos.Rcv.ProcessWasi
-import Verified.Wasi.ProcessCode
+module
+
+public import Demos.Rcv.ProcessWasi
+public import Verified.Wasi.ProcessCode
+public meta import Verified.Wasi.ProcessCode
+public meta import Demos.Rcv.ProcessWasi
+
+@[expose] public section
 
 /-! The tabulator's process as a WASI command module: the process entry of the compiled `begin` and
 `step`, the module, its stack check, its calls with costs and effects, and its validity and

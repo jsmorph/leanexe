@@ -1,4 +1,8 @@
-import TestSupport.Hashing.Sha512Cases
+module
+
+public import TestSupport.Hashing.Sha512Cases
+
+@[expose] public section
 
 /-! The cases of the module `sha512` alone, for `tests/verified/run.sh --cases sha512`. -/
 

@@ -1,5 +1,9 @@
-import Verified.Examples.ScalarComposition
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.ScalarComposition
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/scalarcomposition.wasm`: the file
 holds `encode ScalarComposition.compiled.module`, and it decodes to the module of

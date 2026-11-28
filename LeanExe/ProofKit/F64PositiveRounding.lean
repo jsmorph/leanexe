@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64NearestEven
+module
+
+public import LeanExe.ProofKit.F64NearestEven
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.F64PositiveRounding
 open CodeLib.IEEE64

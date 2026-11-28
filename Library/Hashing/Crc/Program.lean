@@ -1,4 +1,8 @@
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Dialect.Loop
+
+@[expose] public section
 
 /-! CRC-32 and CRC-32C of `Library.Hashing.Crc.Spec` for a message of `n` bytes packed eight to a
 word as `Library.Hashing.Words` describes.  The register holds the remainder of the division in

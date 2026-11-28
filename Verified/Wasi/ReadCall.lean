@@ -1,7 +1,11 @@
-import Verified.Wasi.Scratch
-import Verified.Wasi.GuestFrame
-import Verified.Wasi.ReadCode
-import Interpreter.Wasm.Wp.Call
+module
+
+public import Verified.Wasi.Scratch
+public import Verified.Wasi.GuestFrame
+public import Verified.Wasi.ReadCode
+public import Interpreter.Wasm.Wp.Call
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,5 +1,9 @@
-import Library.Numerics.Limiters.Minmod.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Numerics.Limiters.Minmod.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Numerics.Limiters.Minmod
 

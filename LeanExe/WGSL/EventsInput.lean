@@ -1,4 +1,8 @@
-import LeanExe.WGSL.EventsAgree
+module
+
+public import LeanExe.WGSL.EventsAgree
+
+@[expose] public section
 
 /-!
 With the oracle that returns the initial buffers' words, the event semantics computes what the
@@ -233,7 +237,7 @@ mutual
     | .while_ c body, l, evs => by
         simp only [Stmt.execE, Stmt.exec]
         refine loopRunsE_input (fun l evs => ⟨?_, ?_⟩) (fun l evs => ?_) loopBound l evs
-        · simp only [Res.andThen_snd, Expr.evalE_input, Local.toRun_env]
+        · simp only [whileTest, Res.andThen_snd, Expr.evalE_input, Local.toRun_env]
           rcases Expr.eval ctx l.env c with _ | x
           · rfl
           · cases x <;> rfl

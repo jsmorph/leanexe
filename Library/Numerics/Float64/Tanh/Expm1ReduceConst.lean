@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Exp.ExpReductionBounds
-import Library.Numerics.Float64.Tanh.Expm1FormBase
+module
+
+public import Library.Numerics.Float64.Exp.ExpReductionBounds
+public import Library.Numerics.Float64.Tanh.Expm1FormBase
+
+@[expose] public section
 
 /-!
 The constants of the reduction in fdlibm's `expm1`: `ln2Hi`, `ln2Lo`, and `invln2`, and the

@@ -1,5 +1,9 @@
-import Demos.Gate.GateSoundness
-import Demos.Gate.Gaussian
+module
+
+public import Demos.Gate.GateSoundness
+public import Demos.Gate.Gaussian
+
+@[expose] public section
 
 /-!
 The probability of a missed association.  When `gate nu s g` accepts, the real covariance `S` of

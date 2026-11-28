@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Log.LogNear1
-import Library.Numerics.Float64.Log.LogMain
-import Verified.Call
+module
+
+public import Library.Numerics.Float64.Log.LogNear1
+public import Library.Numerics.Float64.Log.LogMain
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The accuracy theorem for `Log.log`.  For every finite binary64 input with positive value, the

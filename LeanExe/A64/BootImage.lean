@@ -1,5 +1,9 @@
-import LeanExe.A64.Startup
-import LeanExe.A64.Table
+module
+
+public import LeanExe.A64.Startup
+public import LeanExe.A64.Table
+
+@[expose] public section
 
 /-!
 The bytes of a program's arm64 Image, laid out as `LeanExe.A64.Startup` describes: the header,

@@ -1,6 +1,11 @@
-import TestSupport.M7.Sha
-import Library.Hashing.Sha256.Proof
-import LeanExe.Requests.Reads
+module
+
+public import TestSupport.M7.Sha
+public import Library.Hashing.Sha256.Proof
+public import LeanExe.Requests.Reads
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-!
 The record machine of the SHA-256 step against FIPS 180-4.  `machRun (shaSpec roundConstants)

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Lgamma.LgammaPolyDD
-import Library.Numerics.Float64.Lgamma.LgammaApprox
-import Library.Numerics.Float64.Tgamma.TgammaWords
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaPolyDD
+public import Library.Numerics.Float64.Lgamma.LgammaApprox
+public import Library.Numerics.Float64.Tgamma.TgammaWords
+
+@[expose] public section
 
 /-!
 The kernel of `Lgamma.asLogdAccurate`: for the reduced argument `X = dxh + dxl`, `|X| ≤ 1/2400`, the

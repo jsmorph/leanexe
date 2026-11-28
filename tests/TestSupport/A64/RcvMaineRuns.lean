@@ -1,8 +1,12 @@
-import TestSupport.A64.RcvMaine
-import TestSupport.A64.Flip
-import Demos.Rcv.Maine.TabulateCall
-import Demos.Rcv.Maine.TabulateBound
-import LeanExe.A64.Proof.BytesRuns
+module
+
+public import TestSupport.A64.RcvMaine
+public import TestSupport.A64.Flip
+public import Demos.Rcv.Maine.TabulateCall
+public import Demos.Rcv.Maine.TabulateBound
+public import LeanExe.A64.Proof.BytesRuns
+
+@[expose] public section
 
 /-!
 The theorem of the Maine tabulator's bare-metal program of `TestSupport.A64.RcvMaine`.

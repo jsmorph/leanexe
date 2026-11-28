@@ -1,8 +1,12 @@
-import LeanExe.ProofKit.F64SignedNearestSum
-import Library.Numerics.Float64.Trig.TrigLargeFloat
-import Library.Numerics.Float64.Trig.TrigPi
-import LeanExe.ProofKit.F64ArithmeticBounds
-import Mathlib.Analysis.Real.Pi.Bounds
+module
+
+public import LeanExe.ProofKit.F64SignedNearestSum
+public import Library.Numerics.Float64.Trig.TrigLargeFloat
+public import Library.Numerics.Float64.Trig.TrigPi
+public import LeanExe.ProofKit.F64ArithmeticBounds
+public import Mathlib.Analysis.Real.Pi.Bounds
+
+@[expose] public section
 
 /-!
 The count of `π/2` in fdlibm's medium reduction.  `fn = (x · invpio2 + 1.5 · 2 ^ 52) - 1.5 · 2 ^ 52`

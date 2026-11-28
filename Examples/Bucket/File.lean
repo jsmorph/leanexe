@@ -1,5 +1,9 @@
-import Examples.Bucket.Compiled
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Examples.Bucket.Compiled
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/bucket.wasm`: the file holds
 `encode compiled.module`, and it decodes to the module of `compiled.bytes`. -/

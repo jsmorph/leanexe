@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! Matches on structures whose patterns fix fields to constructors of enumerations and bind the
 other fields, as `{ value, steps, last := .add }` does.  The reflector reads such a match as a chain

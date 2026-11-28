@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Asin.AcosTheoremNeg
-import LeanExe.ProofKit.F64RoundDouble
+module
+
+public import Library.Numerics.Float64.Asin.AcosTheoremNeg
+public import LeanExe.ProofKit.F64RoundDouble
+
+@[expose] public section
 
 /-!
 `Asin.acos x` for `1/2 ≤ x < 1`: `2 (df + (r s + c))` with the exact `z = (1 - x)/2`, `s = √z`,

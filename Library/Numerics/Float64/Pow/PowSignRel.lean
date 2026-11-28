@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Pow.PowNegate
-import LeanExe.ProofKit.F64Bits
+module
+
+public import Library.Numerics.Float64.Pow.PowNegate
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-!
 Negation through the operations of `Pow.powExp`.  `Rel x y` states that the word `x` is the
@@ -266,8 +270,8 @@ theorem mul_left (a a' b : UInt64) (ha : Rel a' a) :
     generalize (Wasm.IEEE64.sign a != Wasm.IEEE64.sign b) = ng
     rw [infinity_not, signMask_not, roundDyadic_not]
     split_ifs <;> first
-      | exact nan_rel _ _ canonical_nan canonical_nan
       | exact negate_rel _
+      | exact nan_rel _ _ canonical_nan canonical_nan
 
 /-- A product whose second operand is replaced by a related word is related. -/
 theorem mul_right (a b b' : UInt64) (hb : Rel b' b) :
@@ -308,8 +312,8 @@ theorem mul_right (a b b' : UInt64) (hb : Rel b' b) :
     generalize (Wasm.IEEE64.sign a != Wasm.IEEE64.sign b) = ng
     rw [infinity_not, signMask_not, roundDyadic_not]
     split_ifs <;> first
-      | exact nan_rel _ _ canonical_nan canonical_nan
       | exact negate_rel _
+      | exact nan_rel _ _ canonical_nan canonical_nan
 
 theorem fadd {a b a' b' : Float} (ha : Rel a'.toBits a.toBits) (hb : Rel b'.toBits b.toBits) :
     Rel (a' + b').toBits (a + b).toBits := by

@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Atan.AtanTwoAtan
-import Library.Numerics.Float64.Atan.AtanTwoArg
+module
+
+public import Library.Numerics.Float64.Atan.AtanTwoAtan
+public import Library.Numerics.Float64.Atan.AtanTwoArg
+
+@[expose] public section
 
 /-!
 Word facts for `Atan.atan2`.  The tests of the code on the high words `ix`, `iy` and the low

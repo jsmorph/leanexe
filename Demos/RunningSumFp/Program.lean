@@ -1,6 +1,10 @@
-import Library.Numerics.Decimal.ParseFloat.Program
-import Library.Numerics.Decimal.PrintFloat.Program
-import LeanExe.Dialect.Bytes
+module
+
+public import Library.Numerics.Decimal.ParseFloat.Program
+public import Library.Numerics.Decimal.PrintFloat.Program
+public import LeanExe.Dialect.Bytes
+
+@[expose] public section
 
 namespace Demos.RunningSumFp
 

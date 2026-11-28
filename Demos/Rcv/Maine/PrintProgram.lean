@@ -1,4 +1,8 @@
-import Demos.Rcv.PrintProgram
+module
+
+public import Demos.Rcv.PrintProgram
+
+@[expose] public section
 
 /-!
 The Maine report's printer in the verified compiler's dialect.  `printReport b n counted res`

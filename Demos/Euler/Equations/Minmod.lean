@@ -1,4 +1,8 @@
-import Library.Numerics.Limiters.Minmod.Real
+module
+
+public import Library.Numerics.Limiters.Minmod.Real
+
+@[expose] public section
 
 namespace Demos.Euler.Equations.Minmod
 

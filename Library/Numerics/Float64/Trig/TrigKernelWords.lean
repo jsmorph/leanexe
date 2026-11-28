@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Trig.Compiled
-import Library.Numerics.Float64.Trig.TrigApprox
-import LeanExe.ProofKit.F64Bits
-import LeanExe.ProofKit.PolyBound
+module
+
+public import Library.Numerics.Float64.Trig.Compiled
+public import Library.Numerics.Float64.Trig.TrigApprox
+public import LeanExe.ProofKit.F64Bits
+public import LeanExe.ProofKit.PolyBound
+
+@[expose] public section
 
 /-!
 `Trig.kernelSin` and `Trig.kernelCos` on words, the bounds of their coefficients, and the error

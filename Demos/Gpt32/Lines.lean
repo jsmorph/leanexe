@@ -1,4 +1,8 @@
-import Demos.Gpt32.HostProgram
+module
+
+public import Demos.Gpt32.HostProgram
+
+@[expose] public section
 
 /-!
 `gpt32-lines NH F CHUNK VOCAB LAYERS` prints the host commands of `Demos/Gpt32/HostProgram.lean`

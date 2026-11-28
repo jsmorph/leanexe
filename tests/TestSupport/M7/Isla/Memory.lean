@@ -1,4 +1,9 @@
-import LeanExe.M7.Isla.Walk
+module
+
+public import LeanExe.M7.Isla.Walk
+public import LeanExe.A64.Isla.TraceElab
+
+@[expose] public section
 
 /-!
 Theorems of `Agrees` for the word loads and stores of `LeanExe/M7/Machine.lean`: `LDR.W` and

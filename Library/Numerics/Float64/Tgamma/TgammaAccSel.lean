@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Tgamma.TgammaAccDown
-import Library.Numerics.Float64.Tgamma.TgammaCases
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaAccDown
+public import Library.Numerics.Float64.Tgamma.TgammaCases
+
+@[expose] public section
 
 /-!
 The reduction of `Tgamma.accurate` above `1/4`.  For `1/4 ≤ |x| ≤ 2 ^ 8`, the code's

@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64TopPack
-import LeanExe.ProofKit.F64TwoSum
-import LeanExe.ProofKit.F64Admissibility
+module
+
+public import LeanExe.ProofKit.F64TopPack
+public import LeanExe.ProofKit.F64TwoSum
+public import LeanExe.ProofKit.F64Admissibility
+
+@[expose] public section
 
 /-!
 Exact sums and Dekker's error-free sum up to the overflow threshold.  `F64GridExact` packs a grid

@@ -1,4 +1,9 @@
-import Batteries.Data.List.Basic
+module
+
+public import LeanExe.Base
+public import Batteries.Data.List.Basic
+
+@[expose] public section
 
 /-! The specification of the maximum segment sum of a list of integers.  A segment of `xs` is a run
 of consecutive elements of `xs`, a suffix of a prefix of `xs`.  `xs.inits` lists the prefixes of

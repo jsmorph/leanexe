@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Sinh.SinhWords
-import LeanExe.ProofKit.F64MulEnclosure
-import LeanExe.ProofKit.F64RoundFinish
-import LeanExe.ProofKit.F64Sterbenz
+module
+
+public import Library.Numerics.Float64.Sinh.SinhWords
+public import LeanExe.ProofKit.F64MulEnclosure
+public import LeanExe.ProofKit.F64RoundFinish
+public import LeanExe.ProofKit.F64Sterbenz
+
+@[expose] public section
 
 /-!
 Overflow of a product.  The rounding of a scaled product magnitude `n ≥ 2 ^ 3172`, whose value is

@@ -1,4 +1,8 @@
-import Library.Hashing.Sha512.Program
+module
+
+public import Library.Hashing.Sha512.Program
+
+@[expose] public section
 
 /-! The cases of the module `sha512`: the four digests of messages whose lengths reach every
 position of a 128-byte block around the boundaries at 112 and 128 bytes, and of longer messages.

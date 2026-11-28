@@ -1,4 +1,8 @@
-import Verified.Wasi.SysIovecCall
+module
+
+public import Verified.Wasi.SysIovecCall
+
+@[expose] public section
 
 /-! The parts of the code of a `poll` call.  Its parameters are the subscriptions of `records` and
 the result word.  The code writes the subscriptions into the call area: it zeroes their `48 n`

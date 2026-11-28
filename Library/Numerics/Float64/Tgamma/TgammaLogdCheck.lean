@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaLogdRed
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaLogdRed
+
+@[expose] public section
 
 /-!
 The reduction check of `TgammaLogdRed` for `Tgamma.logdTable`, evaluated by the kernel one bucket per

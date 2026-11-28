@@ -1,5 +1,9 @@
-import Library.Numerics.Decimal.PrintFloat.PrintFloatQuot
-import Library.Numerics.Decimal.ParseFloat.ParseFloatDigits
+module
+
+public import Library.Numerics.Decimal.PrintFloat.PrintFloatQuot
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatDigits
+
+@[expose] public section
 
 /-!
 The search of `PrintFloat.shortest` for the top exponent.  For a word of significand `Q ≥ 1` and

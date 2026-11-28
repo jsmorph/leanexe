@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64StageBounds
-import LeanExe.ProofKit.RealRoundedError
-import Library.Numerics.Float64.Exp.ExpApproximation
+module
+
+public import LeanExe.ProofKit.F64StageBounds
+public import LeanExe.ProofKit.RealRoundedError
+public import Library.Numerics.Float64.Exp.ExpApproximation
+
+@[expose] public section
 
 namespace Library.Numerics.Float64.Exp.ExpEvaluationBounds
 open CodeLib.IEEE64

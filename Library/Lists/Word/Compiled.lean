@@ -1,5 +1,9 @@
-import Library.Lists.Word.Program
-import Verified.Reflect.Command
+module
+
+public import Library.Lists.Word.Program
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 namespace Library.Lists.Word
 

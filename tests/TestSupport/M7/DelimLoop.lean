@@ -1,8 +1,12 @@
-import TestSupport.M7.DelimImages
-import TestSupport.M7.DelimStep
-import TestSupport.M7.DelimAbs
-import TestSupport.M7.QemuLoop
-import LeanExe.M7.Proof.Board
+module
+
+public import TestSupport.M7.DelimImages
+public import TestSupport.M7.DelimStep
+public import TestSupport.M7.DelimAbs
+public import TestSupport.M7.QemuLoop
+public import LeanExe.M7.Proof.Board
+
+@[expose] public section
 
 /-!
 The loop theorems of the echo of records of `tests/TestSupport/M7/Delim.lean` through the

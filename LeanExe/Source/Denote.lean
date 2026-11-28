@@ -1,6 +1,11 @@
-import LeanExe.Source.Syntax
-import LeanExe.Pipeline.Implements
-import LeanExe.Dialect.Loop
+module
+
+public import LeanExe.Source.Syntax
+public import LeanExe.Pipeline.Implements
+public import LeanExe.Dialect.Loop
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-!
 The denotation of the source language from the values of the locals it reads and the arrays at

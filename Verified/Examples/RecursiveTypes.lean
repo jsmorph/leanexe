@@ -1,7 +1,11 @@
-import Verified.Reflect.Command
-import Examples.Words.Reflected
-import Examples.Trees.Encode
-import Library.Trees.WordTree.Reflected
+module
+
+public import Verified.Reflect.Command
+public import Examples.Words.Reflected
+public import Examples.Trees.Encode
+public import Library.Trees.WordTree.Reflected
+
+@[expose] public section
 
 namespace Verified.Examples.RecursiveTypes
 

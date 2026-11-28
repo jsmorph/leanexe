@@ -1,5 +1,9 @@
-import Demos.Conjunction.Message
-import TestSupport.Host
+module
+
+public import Demos.Conjunction.Message
+public import TestSupport.Host
+
+@[expose] public section
 
 /-! Cases of the conjunction module.  `cases` prints the module cases of `pc`, `assess`,
 `pcMessage`, and `assessMessage` for `tests/verified/run.sh`.  `bits` prints, for each valid input

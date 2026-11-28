@@ -1,5 +1,9 @@
-import Verified.Wasi.Program
-import LeanExe.Encoding.RoundTrip
+module
+
+public import Verified.Wasi.Program
+public import LeanExe.Encoding.RoundTrip
+
+@[expose] public section
 
 namespace Verified.Examples.WasiCodegen
 
@@ -7,14 +11,14 @@ open LeanExe.Wasi Verified.Wasi
 
 /-- Writes the bytes of variable 0 to `output`, with the window from 0 of the bytes' size, and
 returns the count. -/
-private def writeHere (output : Output) :
+def writeHere (output : Output) :
     Command [] effectSigs (.bytes :: context) (.value .word) :=
   .bind (.ret (.word 0))
     (.bind (.ret (.bytesSize (.there .here)))
       (.bind (.write output (.there (.there .here)) (.there .here) .here)
         (.ret (.proj .here (.snd .here)))))
 
-private def writeBytes (output : Output) (bytes : List UInt8) :
+def writeBytes (output : Output) (bytes : List UInt8) :
     Command [] effectSigs context (.value .word) :=
   .bind (.ret (.bytesLiteral bytes)) (writeHere output)
 
@@ -28,7 +32,7 @@ def writeLiteral (effectSigs : List EffectSig) : EffectFunc [] effectSigs where
 /-- Binds a buffer of as many zero bytes as variable 0 holds and the start 0, and reads stdin into
 the buffer's window from 0 of that count, which leaves the result over the start, the buffer, and
 the count. -/
-private def readZeros (next : Command [] effectSigs
+def readZeros (next : Command [] effectSigs
     (wordsBytesTy 2 :: .word :: .bytes :: .word :: context) (.value .word)) :
     Command [] effectSigs (.word :: context) (.value .word) :=
   .bind (.ret (.bytesBuild (.var .here) (.word 0)))

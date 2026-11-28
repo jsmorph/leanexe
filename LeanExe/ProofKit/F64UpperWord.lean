@@ -1,7 +1,11 @@
-import LeanExe.ProofKit.F64PositiveOrder
-import LeanExe.ProofKit.F64Sign
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64Bits
+module
+
+public import LeanExe.ProofKit.F64PositiveOrder
+public import LeanExe.ProofKit.F64Sign
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64Bits
+
+@[expose] public section
 
 /-!
 The tests that fdlibm's code makes on the high 32 bits of a binary64 word, as magnitudes.  `ix`,

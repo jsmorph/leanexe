@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaZerosB
-import Library.Numerics.Float64.Lgamma.LgammaCancelTail
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaZerosB
+public import Library.Numerics.Float64.Lgamma.LgammaCancelTail
+
+@[expose] public section
 
 /-!
 **`CancelFact`**: at every non-integer double `x ≤ -21/2`, `lgamma (1 - x) ≤ 2 ^ 32 |lgamma x|`.

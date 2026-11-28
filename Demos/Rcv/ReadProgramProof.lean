@@ -1,8 +1,14 @@
-import Demos.Rcv.ReadProgram
-import Demos.Rcv.ReadWords
-import Demos.Rcv.ReadProof
-import Library.Numerics.Decimal.Int64Text.Proof
-import LeanExe.Dialect.Lemmas
+module
+
+public import Demos.Rcv.ReadProgram
+public import Demos.Rcv.ReadWords
+public import Demos.Rcv.ReadProof
+public import Library.Numerics.Decimal.Int64Text.Proof
+public import LeanExe.Dialect.Lemmas
+import all Init.Data.Nat.Fold
+import all Init.Data.List.SplitOn.Basic
+
+@[expose] public section
 
 /-!
 The reader program equals the specification: `readContest b` holds the words of `readResult` of the

@@ -1,5 +1,9 @@
-import Lean
-import LeanExe.Encoding.RoundTrip
+module
+
+public import Lean
+public import LeanExe.Encoding.RoundTrip
+
+@[expose] public section
 
 /-! `binary_file% "path"` elaborates to the bytes of the file at `path`, relative to the
 directory of the source file, as a `ByteArray` term.  Lean's `include_str` reads a text
@@ -14,7 +18,7 @@ open Lean Elab Term
 
 syntax (name := binaryFile) "binary_file% " str : term
 
-@[term_elab binaryFile] def elabBinaryFile : TermElab := fun stx _ => do
+@[term_elab binaryFile] meta def elabBinaryFile : TermElab := fun stx _ => do
   let some path := stx[1].isStrLit? | throwUnsupportedSyntax
   let some dir := (System.FilePath.mk (← readThe Core.Context).fileName).parent
     | throwError "cannot compute the directory of the source file"
@@ -57,7 +61,7 @@ open Meta in
 /-- The number of first conjuncts that lead from a byte theorem's statement to an existential
 `∃ bytes, encode m = .ok bytes ∧ decode bytes = .ok m ∧ …`, and whether the existential has a
 conjunct after the decoding. -/
-private partial def bytesShape (type : Expr) : MetaM (Nat × Bool) := do
+private meta partial def bytesShape (type : Expr) : MetaM (Nat × Bool) := do
   let type ← whnf type
   if let some (first, _) := type.and? then
     let (depth, rest) ← bytesShape first
@@ -89,7 +93,7 @@ kernel checks the decoder's limit on the locals of each function. -/
 syntax (name := fileTheorems) "file_theorems " ident ident str (" from " term,+)? : command
 
 open Meta Command in
-@[command_elab fileTheorems] def elabFileTheorems : CommandElab := fun stx => do
+@[command_elab fileTheorems] meta def elabFileTheorems : CommandElab := fun stx => do
   let `(file_theorems $name $p $path $[from $bytes,*]?) := stx | throwUnsupportedSyntax
   let fileId := mkIdent (name.getId.appendAfter "_file")
   let decodeId := mkIdent (name.getId.appendAfter "_file_decode")

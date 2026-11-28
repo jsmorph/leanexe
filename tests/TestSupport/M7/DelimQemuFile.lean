@@ -1,4 +1,8 @@
-import TestSupport.M7.DelimLoop
+module
+
+public import TestSupport.M7.DelimLoop
+
+@[expose] public section
 
 /-!
 The kernel's check of the image of the echo of records of `dlCmsdkTick` for QEMU's `mps2-an500`

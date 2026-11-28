@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64PositiveRounding
-import LeanExe.ProofKit.F64NearestBinade
-import LeanExe.ProofKit.F64ExponentBounds
+module
+
+public import LeanExe.ProofKit.F64PositiveRounding
+public import LeanExe.ProofKit.F64NearestBinade
+public import LeanExe.ProofKit.F64ExponentBounds
+
+@[expose] public section
 
 /-!
 Relations between the fields of a binary64 word and its value: the exponent field bounds the

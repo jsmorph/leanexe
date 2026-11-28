@@ -1,5 +1,9 @@
-import Demos.Sgp4.Tle
-import TestSupport.Sgp4.Cases
+module
+
+public import Demos.Sgp4.Tle
+public import TestSupport.Sgp4.Cases
+
+@[expose] public section
 
 /-! Cases of the enclosing SGP4 module.  `cases` prints the module cases of `sgp4BoxAround` for
 `tests/verified/run.sh`.  `boxes` reads lines of the bit patterns `n e incl node argp m bstar t`
@@ -31,7 +35,7 @@ partial def boxes : IO Unit := do
   let rec go : IO Unit := do
     let text ← stdin.getLine
     if text.isEmpty then return
-    let words := (text.trim.splitOn " ").filterMap String.toNat?
+    let words := (text.trimAscii.copy.splitOn " ").filterMap String.toNat?
     match words.map fun w => Float.ofBits (UInt64.ofNat w) with
     | [n, e, incl, node, argp, m, bstar, t] =>
       IO.println (boxText (sgp4BoxAround n e incl node argp m bstar t))
@@ -49,11 +53,11 @@ partial def lines : IO Unit := do
     if line1.isEmpty then return
     let line2 ← stdin.getLine
     let time ← stdin.getLine
-    match time.trim.toNat? with
+    match time.trimAscii.copy.toNat? with
     | some w =>
       let t := around (Float.ofBits (UInt64.ofNat w))
-      IO.println (boxText (Tle.propagate (bytes (line1.dropRightWhile (· == '\n')))
-        (bytes (line2.dropRightWhile (· == '\n'))) t))
+      IO.println (boxText (Tle.propagate (bytes (line1.dropEndWhile (· == '\n')).copy)
+        (bytes (line2.dropEndWhile (· == '\n')).copy) t))
     | none => throw (IO.userError s!"expected a time: {time}")
     go
   go

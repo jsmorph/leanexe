@@ -1,8 +1,12 @@
-import Demos.RunningSumFp.Model
-import Demos.RunningSumFp.TerminationTyped
-import Demos.RunningSumFp.PrintCharges
-import Demos.StreamFold.Observed
-import Demos.StreamFold.Sizes
+module
+
+public import Demos.RunningSumFp.Model
+public import Demos.RunningSumFp.TerminationTyped
+public import Demos.RunningSumFp.PrintCharges
+public import Demos.StreamFold.Observed
+public import Demos.StreamFold.Sizes
+
+@[expose] public section
 
 /-! A limit on the lines of an input of the binary64 running sum, and the kernel specification
 that keeps it through a run. -/

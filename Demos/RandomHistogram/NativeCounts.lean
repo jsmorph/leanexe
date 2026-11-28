@@ -1,6 +1,15 @@
-import Demos.RandomHistogram.Native
-import Verified.Examples.WasiReadAllMessage
-import Verified.Shim.Images
+module
+
+public import Demos.RandomHistogram.Native
+public import Verified.Examples.WasiReadAllMessage
+public import Verified.Shim.Images
+import all Init.Data.Nat.Fold
+import all Init.Data.Repr
+import all Init.Data.ToString.Basic
+import all Init.Data.String.Basic
+import all Init.Data.String.Defs
+
+@[expose] public section
 
 /-! The random-residue histogram's corollary at the shim's specification level, over the layer
 events of a run under `linuxHost`.

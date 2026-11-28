@@ -1,4 +1,8 @@
-import Demos.Rcv.Rounds
+module
+
+public import Demos.Rcv.Rounds
+
+@[expose] public section
 
 /-!
 The single count and the county count of [the requirements](requirements.md), section "Theorems",

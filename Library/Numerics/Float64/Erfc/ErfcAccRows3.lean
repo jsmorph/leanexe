@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erfc.ErfcAccPlan
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcAccPlan
+
+@[expose] public section
 
 /-!
 The kernel's checks of rows 25 to 32 of `C2` (`ErfcAccPlan.rowOK`).

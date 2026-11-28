@@ -1,6 +1,10 @@
-import LeanExe.PTX.Runs
-import LeanExe.Source.Denote
-import LeanExe.ProofKit.F32Canonical
+module
+
+public import LeanExe.PTX.Runs
+public import LeanExe.Source.Denote
+public import LeanExe.ProofKit.F32Canonical
+
+@[expose] public section
 
 /-!
 The translation of source expressions and statements of words, Booleans, and binary32 values into

@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tan.TanBigReal
-import Library.Numerics.Float64.Tan.TanEven
-import Library.Numerics.Float64.Trig.TrigReduce
+module
+
+public import Library.Numerics.Float64.Tan.TanBigReal
+public import Library.Numerics.Float64.Tan.TanEven
+public import Library.Numerics.Float64.Trig.TrigReduce
+
+@[expose] public section
 
 /-!
 The steps of `Tan.kernelTan` from `0x3FE59428` on, on words.  `arg_spec` bounds the argument
@@ -255,7 +259,7 @@ theorem chain_spec (x' v r w ww den q e1 f g h : UInt64) (X : ℝ)
     rcases hv with rfl | rfl
     · rw [value_one, abs_one]
     · rw [value_negOne, abs_neg, abs_one]
-  have hvf : Finite v := by rcases hv with rfl | rfl <;> assumption
+  have hvf : Finite v := by rcases hv with rfl | rfl; exacts [hof, hnf]
   rw [hη] at hrb
   have hW : |value x' + value r| ≤ 1213 / 10000 := by
     have := abs_add_le (value x') (value r)

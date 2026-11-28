@@ -1,5 +1,9 @@
-import Verified.Wasi.ResourceNativePrefix
-import LeanExe.Wasi.WriteAll
+module
+
+public import Verified.Wasi.ResourceNativePrefix
+public import LeanExe.Wasi.WriteAll
+
+@[expose] public section
 
 /-! Runs that stop before they end.  `Stops host action world trace` states that `trace` holds the
 events of a prefix of a run of `action` from `world`, which describes a compiled run that a trap of

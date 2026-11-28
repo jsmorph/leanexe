@@ -1,10 +1,15 @@
-import LeanExe.Dialect.Loop
-import Mathlib.Data.FinEnum
-import Mathlib.Dynamics.PeriodicPts.Defs
-import Mathlib.SetTheory.Cardinal.Finite
-import Mathlib.Data.Nat.Prime.Basic
-import Mathlib.Tactic.Ring
-import Mathlib.Order.Interval.Finset.Nat
+module
+
+public import LeanExe.Dialect.Loop
+public import Mathlib.Data.FinEnum
+public import Mathlib.Dynamics.PeriodicPts.Defs
+public import Mathlib.SetTheory.Cardinal.Finite
+public import Mathlib.Data.Nat.Prime.Basic
+public import Mathlib.Tactic.Ring
+public import Mathlib.Order.Interval.Finset.Nat
+import all Init.Data.Nat.Fold
+
+@[expose] public section
 
 /-! Facts about iterates and orbits that the generator examples share: `LeanExe.loop` with an unused
 index computes an iterate, the minimal period of a point is the `N` whose multiples are its periods,

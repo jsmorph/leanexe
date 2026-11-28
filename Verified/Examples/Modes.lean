@@ -1,4 +1,8 @@
-import Verified.Reflect.Command
+module
+
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! A program of the verified compiler: parameter modes.  The reflector makes a parameter that
 holds arrays owned when the body consumes it where it dies, and a caller then moves an owned

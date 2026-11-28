@@ -1,7 +1,11 @@
-import Library.Numerics.Float64.Exp.ExpSpecialPositiveCore
-import Library.Numerics.Float64.Exp.ExpOneStep
-import LeanExe.ProofKit.F64PowerScale
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import Library.Numerics.Float64.Exp.ExpSpecialPositiveCore
+public import Library.Numerics.Float64.Exp.ExpOneStep
+public import LeanExe.ProofKit.F64PowerScale
+public import LeanExe.ProofKit.F64Magnitude
+
+@[expose] public section
 
 /-!
 The positive special path of `Exp.exp`.  For finite `512 ≤ a ≤ 768`, the result is the product of

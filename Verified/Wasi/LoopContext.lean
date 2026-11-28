@@ -1,4 +1,8 @@
-import Verified.Wasi.LoopAfter
+module
+
+public import Verified.Wasi.LoopAfter
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,5 +1,9 @@
-import Verified.TreeFieldsCode
-import Verified.TreeLayout
+module
+
+public import Verified.TreeFieldsCode
+public import Verified.TreeLayout
+
+@[expose] public section
 
 namespace Verified
 

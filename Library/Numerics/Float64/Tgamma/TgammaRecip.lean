@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaDD
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaDD
+
+@[expose] public section
 
 /-!
 The reciprocal `fh = 1/x` with the correction `(fma fh (-x) 1) fh` of `tgammaWith` below `1/4`.

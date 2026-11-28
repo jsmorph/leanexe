@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.FloatRounding
+module
+
+public import LeanExe.ProofKit.FloatRounding
+
+@[expose] public section
 
 namespace LeanExe.ProofKit.FloatShift
 open Float.Model Float.Model.UnpackedFloat FloatRounding

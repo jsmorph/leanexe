@@ -1,5 +1,9 @@
-import Verified.TailCompile
-import Verified.After
+module
+
+public import Verified.TailCompile
+public import Verified.After
+
+@[expose] public section
 
 namespace Verified
 

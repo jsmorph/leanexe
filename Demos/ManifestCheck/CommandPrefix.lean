@@ -1,5 +1,9 @@
-import Demos.ManifestCheck.CommandProof
-import Verified.Wasi.Stops
+module
+
+public import Demos.ManifestCheck.CommandProof
+public import Verified.Wasi.Stops
+
+@[expose] public section
 
 /-! The events of every run of the command's `main` followed by its exit that stops without an
 accepted exit meet `SoFar` (`stops_soFar`): a prefix of a run, which a trap of the guest cuts short

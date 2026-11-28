@@ -1,5 +1,9 @@
-import Demos.Conjunction.Projection
-import Demos.Conjunction.BoxSoundness
+module
+
+public import Demos.Conjunction.Projection
+public import Demos.Conjunction.BoxSoundness
+
+@[expose] public section
 
 /-!
 Soundness of the conjunction-message form.  `pcMessage_enclosure` composes `projection_sound` with

@@ -1,5 +1,9 @@
-import Demos.RunningSum.Kernel
-import Demos.StreamFold.Host
+module
+
+public import Demos.RunningSum.Kernel
+public import Demos.StreamFold.Host
+
+@[expose] public section
 
 namespace Demos.RunningSum.Termination
 

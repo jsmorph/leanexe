@@ -1,6 +1,10 @@
-import Demos.Euler.Reference.SoundRatio
-import Demos.Euler.Reference.Radicand
-import LeanExe.ProofKit.F64SqrtComposition
+module
+
+public import Demos.Euler.Reference.SoundRatio
+public import Demos.Euler.Reference.Radicand
+public import LeanExe.ProofKit.F64SqrtComposition
+
+@[expose] public section
 
 namespace Demos.Euler.Reference
 open CodeLib.IEEE64

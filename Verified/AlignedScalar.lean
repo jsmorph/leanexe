@@ -1,6 +1,10 @@
-import Verified.AlignedSpecIn
-import LeanExe.ProofKit.AlignedAtomic
-import LeanExe.ProofKit.Signed64
+module
+
+public import Verified.AlignedSpecIn
+public import LeanExe.ProofKit.AlignedAtomic
+public import LeanExe.ProofKit.Signed64
+
+@[expose] public section
 
 /-!
 The constructs whose values are scalars, under the flag: constants, the operations on words,

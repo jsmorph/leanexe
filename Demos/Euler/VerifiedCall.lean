@@ -1,7 +1,11 @@
-import Demos.Euler.Verified
-import Demos.Euler.ReconstructedSpec
-import Demos.Euler.BufferedSpec
-import Verified.Call
+module
+
+public import Demos.Euler.Verified
+public import Demos.Euler.ReconstructedSpec
+public import Demos.Euler.BufferedSpec
+public import Verified.Call
+
+@[expose] public section
 
 /-! The calls of the verified Euler solvers from the store in which the module starts.  The module
 exports the buffered solvers of `Demos.Euler.Buffered` as `solve` and `reconstructedSolve`, and

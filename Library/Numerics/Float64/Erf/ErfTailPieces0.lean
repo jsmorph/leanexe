@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erf.ErfTailCoeffs
+module
+
+public import Library.Numerics.Float64.Erf.ErfTailCoeffs
+
+@[expose] public section
 
 /-!
 Pieces 0 to 3 of the tail kernels' proof, from `x = 28` down to

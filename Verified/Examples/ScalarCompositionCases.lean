@@ -1,5 +1,9 @@
-import Verified.Examples.ScalarComposition
-import TestSupport.Host
+module
+
+public import Verified.Examples.ScalarComposition
+public import TestSupport.Host
+
+@[expose] public section
 
 namespace Verified.Examples.ScalarComposition
 

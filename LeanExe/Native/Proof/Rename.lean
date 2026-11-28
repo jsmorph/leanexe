@@ -1,4 +1,8 @@
-import LeanExe.Native.Proof.Genv
+module
+
+public import LeanExe.Native.Proof.Genv
+
+@[expose] public section
 
 /-!
 Renaming of identifiers in Clight programs, and the theorem `bigstep_program_terminates_rename`:

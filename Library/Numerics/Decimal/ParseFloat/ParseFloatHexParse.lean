@@ -1,4 +1,8 @@
-import Library.Numerics.Decimal.ParseFloat.ParseFloatDecParse
+module
+
+public import Library.Numerics.Decimal.ParseFloat.ParseFloatDecParse
+
+@[expose] public section
 
 /-!
 `ParseFloat.hexParse` against the decoder.  For the rest `r = s.drop i0` of a string after its

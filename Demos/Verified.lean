@@ -1,35 +1,39 @@
-import Demos.Gpt.Verified
-import Demos.Gpt.VerifiedGeneration
-import Demos.Gpt32.VerifiedHost
-import Demos.Gpt32.VerifiedPtxHost
-import Demos.Euler.Verified
-import Demos.Euler.VerifiedCall
-import Demos.Drone.Verified
-import Demos.Drone.VerifiedCall
-import Demos.RunningSum.Correct
-import Demos.RunningSumFp.Correct
-import Demos.Slew.Bound
-import Demos.Slew.Verified
-import Demos.Energy.Theorems
-import Demos.Energy.Examples
-import Demos.OrderBook.Bound
-import Demos.OrderBook.Verified
-import Demos.OrderBook.VerifiedCall
-import Demos.Rcv.VerifiedCall
-import Demos.Rcv.ProcessAxioms
-import Demos.Rcv.TabulateBound
-import Demos.Rcv.Maine.TabulateBound
-import Demos.Rcv.Maine.ProcessAxioms
-import Demos.RandomHistogram.Compiled
-import Demos.RandomHistogram.CommandStart
-import Demos.RandomHistogram.Budget
-import Demos.RandomHistogram.Native
-import Demos.RandomHistogram.NativeCounts
-import Demos.ManifestCheck.Compiled
-import Demos.RandomChoice.Compiled
-import Demos.RandomChoice.Budget
-import Demos.RandomChoice.CommandStart
-import Demos.RandomChoice.Output
-import Demos.RandomChoice.Native
-import Demos.RandomChoice.NativeChoices
-import Demos.RandomChoice.Unbiased
+module
+
+public import Demos.Gpt.Verified
+public import Demos.Gpt.VerifiedGeneration
+public import Demos.Gpt32.VerifiedHost
+public import Demos.Gpt32.VerifiedPtxHost
+public import Demos.Euler.Verified
+public import Demos.Euler.VerifiedCall
+public import Demos.Drone.Verified
+public import Demos.Drone.VerifiedCall
+public import Demos.RunningSum.Correct
+public import Demos.RunningSumFp.Correct
+public import Demos.Slew.Bound
+public import Demos.Slew.Verified
+public import Demos.Energy.Theorems
+public import Demos.Energy.Examples
+public import Demos.OrderBook.Bound
+public import Demos.OrderBook.Verified
+public import Demos.OrderBook.VerifiedCall
+public import Demos.Rcv.VerifiedCall
+public import Demos.Rcv.ProcessAxioms
+public import Demos.Rcv.TabulateBound
+public import Demos.Rcv.Maine.TabulateBound
+public import Demos.Rcv.Maine.ProcessAxioms
+public import Demos.RandomHistogram.Compiled
+public import Demos.RandomHistogram.CommandStart
+public import Demos.RandomHistogram.Budget
+public import Demos.RandomHistogram.Native
+public import Demos.RandomHistogram.NativeCounts
+public import Demos.ManifestCheck.Compiled
+public import Demos.RandomChoice.Compiled
+public import Demos.RandomChoice.Budget
+public import Demos.RandomChoice.CommandStart
+public import Demos.RandomChoice.Output
+public import Demos.RandomChoice.Native
+public import Demos.RandomChoice.NativeChoices
+public import Demos.RandomChoice.Unbiased
+
+@[expose] public section

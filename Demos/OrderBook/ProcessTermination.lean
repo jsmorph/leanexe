@@ -1,6 +1,10 @@
-import Demos.OrderBook.ProcessControl
-import Demos.OrderBook.ProcessProof
-import Verified.Wasi.ProcessTotalCorrect
+module
+
+public import Demos.OrderBook.ProcessControl
+public import Demos.OrderBook.ProcessProof
+public import Verified.Wasi.ProcessTotalCorrect
+
+@[expose] public section
 
 /-! The termination of the compiled process.  A control ghost pairs the native step result with the
 host's ghost, and its rank orders the running flag before the rank of `ProcessControl`.

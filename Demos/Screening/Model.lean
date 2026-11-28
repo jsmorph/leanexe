@@ -1,4 +1,8 @@
-import Demos.Sgp4.Kepler
+module
+
+public import Demos.Sgp4.Kepler
+
+@[expose] public section
 
 /-!
 The two-body model of the screening demo over the real numbers.  An object follows the Kepler

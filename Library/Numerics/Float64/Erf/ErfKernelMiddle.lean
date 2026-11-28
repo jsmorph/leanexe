@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.RealErf
-import LeanExe.ProofKit.PolyCalculus
-import Library.Numerics.Float64.Erf.ErfKernelSmall
+module
+
+public import LeanExe.ProofKit.RealErf
+public import LeanExe.ProofKit.PolyCalculus
+public import Library.Numerics.Float64.Erf.ErfKernelSmall
+
+@[expose] public section
 
 /-!
 The approximation error of `s_erf.c`'s rational function on `0.84375 ≤ |x| < 1.25`, where

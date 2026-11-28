@@ -1,5 +1,9 @@
-import Verified.Examples.Records
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Records
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/records.wasm`: the file holds
 `encode Records.compiled.module`, and it decodes to the module of `Records.compiled.bytes`. -/

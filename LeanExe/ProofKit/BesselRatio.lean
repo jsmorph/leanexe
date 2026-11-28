@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.BesselAsym
+module
+
+public import LeanExe.ProofKit.BesselAsym
+
+@[expose] public section
 
 /-!
 Kernel checks that compare the approximations of `BesselChain` with fdlibm's rational functions

@@ -1,7 +1,11 @@
-import Demos.RunningSum.Stream
-import Demos.StreamFold.Control
-import Demos.StreamFold.Map
-import LeanExe.Wasi.ProcessRelated
+module
+
+public import Demos.RunningSum.Stream
+public import Demos.StreamFold.Control
+public import Demos.StreamFold.Map
+public import LeanExe.Wasi.ProcessRelated
+
+@[expose] public section
 
 namespace Demos.RunningSum
 

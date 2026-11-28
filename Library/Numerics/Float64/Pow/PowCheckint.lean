@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Pow.Compiled
-import Library.Numerics.Float64.Exp.ExpBranches
-import LeanExe.ProofKit.F64Magnitude
+module
+
+public import Library.Numerics.Float64.Pow.Compiled
+public import Library.Numerics.Float64.Exp.ExpBranches
+public import LeanExe.ProofKit.F64Magnitude
+
+@[expose] public section
 
 /-!
 `Pow.checkint` on the bits of a finite nonzero `y`: 0 when `y` is not an integer, 1 when it is an

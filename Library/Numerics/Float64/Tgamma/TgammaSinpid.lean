@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Tgamma.TgammaSinpidTail
-import Library.Numerics.Float64.Tgamma.TgammaSinpidRed
-import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidTail
+public import Library.Numerics.Float64.Tgamma.TgammaSinpidRed
+public import Mathlib.Analysis.SpecialFunctions.Trigonometric.Bounds
+
+@[expose] public section
 
 /-!
 **`Tgamma.asSinpid` within `2^-58` of `sin (π x)`, relative,** for every double `x = n/2^53` with

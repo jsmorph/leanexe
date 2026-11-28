@@ -1,4 +1,9 @@
-import Verified.Wasi.ReflectDefinition
+module
+
+public import Verified.Wasi.ReflectDefinition
+public meta import Verified.Wasi.ReflectDefinition
+
+@[expose] public section
 
 namespace Verified.Wasi
 
@@ -29,19 +34,19 @@ structure ProgramReflection where
   out : Array Reflected := #[]
   callees : List Callee := []
 
-def pureSignatures (program : Verified.Reflect.ProgramReflection) : Lean.Expr :=
+meta def pureSignatures (program : Verified.Reflect.ProgramReflection) : Lean.Expr :=
   listExpr (mkConst ``Sig) (program.sigs.map sigExpr)
 
-def ProgramReflection.signatures (program : ProgramReflection) : Lean.Expr :=
+meta def ProgramReflection.signatures (program : ProgramReflection) : Lean.Expr :=
   listExpr (mkConst ``EffectSig) (program.sigs.map effectSigExpr)
 
-def ProgramReflection.empty (pure : Verified.Reflect.ProgramReflection) : ProgramReflection :=
+meta def ProgramReflection.empty (pure : Verified.Reflect.ProgramReflection) : ProgramReflection :=
   { pure
     sigs := []
     prog := mkApp (mkConst ``EffectProg.nil) (pureSignatures pure)
     funs := mkConst ``EffectFuns.nil }
 
-def ProgramReflection.context (base : Name) (program : ProgramReflection)
+meta def ProgramReflection.context (base : Name) (program : ProgramReflection)
     (fuel : Lean.Expr := mkNatLit 0) : MetaM Ctx := do
   let sigs := pureSignatures program.pure
   let pureContext : Verified.Reflect.Ctx :=
@@ -55,13 +60,13 @@ def ProgramReflection.context (base : Name) (program : ProgramReflection)
     callees := program.callees
     bindings := ← pureBindingsOf program.pure }
 
-private def closedExpr (expression : Lean.Expr) : MetaM Lean.Expr := do
+meta def closedExpr (expression : Lean.Expr) : MetaM Lean.Expr := do
   let expression ← instantiateMVars expression
   if expression.hasExprMVar || expression.hasLevelMVar || expression.hasFVar then
     throwError "verified_compile_wasi: an expression remains open between definitions: {expression}"
   return expression
 
-def reflectProgramFunction (base name : Name) (program : ProgramReflection)
+meta def reflectProgramFunction (base name : Name) (program : ProgramReflection)
     (fuel : Lean.Expr := mkNatLit 0) : MetaM ProgramReflection := do
   let context ← program.context base fuel
   let reflected ← reflectDefinition (base ++ Name.mkSimple name.getString!) name context
@@ -80,15 +85,15 @@ def reflectProgramFunction (base name : Name) (program : ProgramReflection)
     out := program.out.push reflected
     callees := reflected.callee :: program.callees }
 
-def tableValues (program : Verified.Reflect.ProgramReflection) : Lean.Expr :=
+meta def tableValues (program : Verified.Reflect.ProgramReflection) : Lean.Expr :=
   let words := mkApp (mkConst ``Array [.zero]) (mkConst ``UInt64)
   listExpr words (program.tableNames.toList.map mkConst)
 
-def tableAddresses (program : Verified.Reflect.ProgramReflection) (tables : List StaticTable) :
+meta def tableAddresses (program : Verified.Reflect.ProgramReflection) (tables : List StaticTable) :
     MetaM (List Lean.Expr) :=
   tables.mapM fun table => mkAppM ``tableAddr #[tableValues program, mkNatLit table.index]
 
-def hiddenTablesExpr : List Ty → List Mode → List Lean.Expr → MetaM Lean.Expr
+meta def hiddenTablesExpr : List Ty → List Mode → List Lean.Expr → MetaM Lean.Expr
   | params, modes, [] =>
     mkAppOptM ``HiddenTables.nil #[some (ctxExpr params), some (modesExpr modes)]
   | .array .word :: params, .borrowed :: modes, address :: rest => do
@@ -96,14 +101,14 @@ def hiddenTablesExpr : List Ty → List Mode → List Lean.Expr → MetaM Lean.E
     mkAppM ``HiddenTables.cons #[address, tail]
   | _, _, _ => throwError "verified_compile_wasi: hidden tables require borrowed Array UInt64 parameters"
 
-private def findFunction (program : ProgramReflection) (name : Name) : MetaM (Reflected × Nat) := do
+meta def findFunction (program : ProgramReflection) (name : Name) : MetaM (Reflected × Nat) := do
   let some reflected := program.out.find? (·.name == name)
     | throwError "verified_compile_wasi: no reflected effectful definition {name}"
   let some index := program.callees.findIdx? (·.name == name)
     | throwError "verified_compile_wasi: no effectful callee {name}"
   return (reflected, index)
 
-def entryExpr (program : ProgramReflection) (name : Name) : MetaM Lean.Expr := do
+meta def entryExpr (program : ProgramReflection) (name : Name) : MetaM Lean.Expr := do
   let (reflected, index) ← findFunction program name
   let addresses ← tableAddresses program.pure reflected.tables
   let tables ← hiddenTablesExpr reflected.signature.params reflected.signature.modes addresses
@@ -113,7 +118,7 @@ def entryExpr (program : ProgramReflection) (name : Name) : MetaM Lean.Expr := d
       (`callee, callee), (`tables, tables)]
   constructor.finish
 
-def mainExpr (program : ProgramReflection) (name : Name) : MetaM Lean.Expr := do
+meta def mainExpr (program : ProgramReflection) (name : Name) : MetaM Lean.Expr := do
   let (reflected, index) ← findFunction program name
   unless reflected.nativeParams.isEmpty && (← isDefEq reflected.nativeResult (mkConst ``UInt64)) do
     throwError "verified_compile_wasi: main {name} must be a closed Action UInt64"
@@ -126,7 +131,7 @@ def mainExpr (program : ProgramReflection) (name : Name) : MetaM Lean.Expr := do
   constructor.finish
 
 /-- Whether the source of a reflected function holds a `sys` command. -/
-def ProgramReflection.usesCalls (program : ProgramReflection) : MetaM Bool :=
+meta def ProgramReflection.usesCalls (program : ProgramReflection) : MetaM Bool :=
   program.out.anyM fun reflected => do
     let some value := (← getConstInfo reflected.function).value? | return false
     return (value.find? (·.isConstOf ``Command.sys)).isSome
@@ -138,7 +143,7 @@ structure MaterializedProgram where
   pure : Verified.Reflect.MaterializedProgram
   calls : Bool
 
-def materializeProgram (base : Name) (program : ProgramReflection)
+meta def materializeProgram (base : Name) (program : ProgramReflection)
     (selected : List Name) (main? : Option Name := none) : TermElabM MaterializedProgram := do
   let pool ← mkAppM ``combinedLiteralPool
     #[program.pure.prog, program.prog, ← mkAppM ``tablesEnd #[tableValues program.pure]]

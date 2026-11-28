@@ -1,5 +1,9 @@
-import LeanExe.Native.Proof.Ctl
-import LeanExe.Requests.Windows
+module
+
+public import LeanExe.Native.Proof.Ctl
+public import LeanExe.Requests.Windows
+
+@[expose] public section
 
 /-!
 The program with requests (`reqMain` of `LeanExe/Native/Bare.lean`), which runs a step function

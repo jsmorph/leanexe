@@ -1,6 +1,13 @@
-import Library.Numerics.Float64.Asinh.Program
-import TestSupport.Numerics.WorstCases
-import TestSupport.Numerics.HyperbolicReference
+module
+
+public import Library.Numerics.Float64.Asinh.Program
+public import TestSupport.Numerics.WorstCases
+public import TestSupport.Numerics.HyperbolicReference
+public meta import Library.Numerics.Float64.Asinh.Program
+public meta import TestSupport.Numerics.WorstCases
+public meta import TestSupport.Numerics.HyperbolicReference
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Float64.Asinh.asinh`, `Library.Numerics.Float64.Asinh.acosh`, and `Library.Numerics.Float64.Asinh.atanh` against references computed
 with Lean's integers through `HyperbolicReference`, rounded to the nearest double.  fdlibm states no

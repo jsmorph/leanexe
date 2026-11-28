@@ -1,4 +1,8 @@
-import Verified.Call
+module
+
+public import Verified.Call
+
+@[expose] public section
 
 /-! Theorems that transfer a module's theorem from one Lean function to another that equals it on
 the represented arguments.  `implementsA_congr` transfers `ImplementsA`, which also covers arguments

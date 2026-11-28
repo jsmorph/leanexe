@@ -1,4 +1,9 @@
-import Verified.AlignedLoops
+module
+
+public import Verified.AlignedLoops
+import all Init.Data.Array.Basic
+
+@[expose] public section
 
 /-!
 The array writers under the flag: `build`, `set`, `push`, `append`, `insertAt`, `eraseAt`, and the

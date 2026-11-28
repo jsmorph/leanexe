@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Sinpi.SinpiCosFloor
+module
+
+public import Library.Numerics.Float64.Sinpi.SinpiCosFloor
+
+@[expose] public section
 
 /-!
 `Sinpi.tanpi` from `2 ^ -29` on in magnitude: within one step of `tan (π x)` for every finite `x`

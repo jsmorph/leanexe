@@ -1,5 +1,9 @@
-import LeanExe.A64.Proof.StampCalls
-import LeanExe.Pipeline.Allocation
+module
+
+public import LeanExe.A64.Proof.StampCalls
+public import LeanExe.Pipeline.Allocation
+
+@[expose] public section
 
 /-!
 The loops of the stamp program under `ProcReachWith`.  `ReadStore` is the store that the calls

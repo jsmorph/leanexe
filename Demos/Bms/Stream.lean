@@ -1,4 +1,8 @@
-import Demos.Bms.Theorems
+module
+
+public import Demos.Bms.Theorems
+
+@[expose] public section
 
 /-!
 The machine's theorems over every byte stream.  The delimited framing of

@@ -1,4 +1,8 @@
-import TestSupport.Conjunction.Cases
+module
+
+public import TestSupport.Conjunction.Cases
+
+@[expose] public section
 
 /-! The cases of the module `conjunction` alone, for `tests/verified/run.sh --cases conjunction`.
 With the argument `--bits`, it prints the lines that `tests/conjunction/reference.py` reads, and

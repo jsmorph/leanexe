@@ -1,9 +1,13 @@
-import Verified.Reflect.Command
-import TestSupport.Native.Common
-import LeanExe.Native.Proof.Req
-import LeanExe.Native.Requests
-import Verified.Bare
-import Verified.Call
+module
+
+public import Verified.Reflect.Command
+public import TestSupport.Native.Common
+public import LeanExe.Native.Proof.Req
+public import LeanExe.Native.Requests
+public import Verified.Bare
+public import Verified.Call
+
+@[expose] public section
 
 /-!
 The step of the request protocol's test (`docs/native-bare-metal.md`): an echo over a UART that

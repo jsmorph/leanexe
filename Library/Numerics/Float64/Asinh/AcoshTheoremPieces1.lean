@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Asinh.AcoshTheoremSmall
+module
+
+public import Library.Numerics.Float64.Asinh.AcoshTheoremSmall
+
+@[expose] public section
 
 /-!
 Ranges 20 to 39 of `Asinh.acosh` from 1 to `2 (1 + 2 ^ -20)`, in `t = x - 1`.

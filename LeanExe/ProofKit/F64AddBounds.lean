@@ -1,4 +1,8 @@
-import LeanExe.ProofKit.F64PackRelative
+module
+
+public import LeanExe.ProofKit.F64PackRelative
+
+@[expose] public section
 
 /-! The relative error of rounded binary64 addition and subtraction. -/
 

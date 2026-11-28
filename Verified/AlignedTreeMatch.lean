@@ -1,9 +1,13 @@
-import Verified.AlignedTreeBuild
-import Verified.AlignedAccess
-import Verified.TreeMatchFrame
-import Verified.TreeDispatch
-import Verified.AlignedCopy
-import Verified.OwnedExpr
+module
+
+public import Verified.AlignedTreeBuild
+public import Verified.AlignedAccess
+public import Verified.TreeMatchFrame
+public import Verified.TreeDispatch
+public import Verified.AlignedCopy
+public import Verified.OwnedExpr
+
+@[expose] public section
 
 /-!
 The opening of a tree record under the flag.  The tag test and the loads of the fields read

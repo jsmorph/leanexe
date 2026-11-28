@@ -1,4 +1,8 @@
-import LeanExe.A64.Proof.StampStages
+module
+
+public import LeanExe.A64.Proof.StampStages
+
+@[expose] public section
 
 /-!
 The run of a program of `genStampProgram` from `main`: the frame and the allocation of the block,

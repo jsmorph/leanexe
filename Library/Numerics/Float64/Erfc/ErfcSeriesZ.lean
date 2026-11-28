@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Erfc.ErfcSeriesI
+module
+
+public import Library.Numerics.Float64.Erfc.ErfcSeriesI
+
+@[expose] public section
 
 /-!
 The tail bound of `ErfcSeriesI` in integer arithmetic.  `rowTail` sums the absolute values of the

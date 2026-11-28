@@ -1,11 +1,15 @@
-import LeanExe.ProofKit.F64SignedNearestSum
-import Library.Numerics.Arithmetic.Fma.FmaSpec
-import LeanExe.ProofKit.F64Sterbenz
-import LeanExe.ProofKit.F64GridExact
-import LeanExe.ProofKit.F64AddBounds
-import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64RelativeStep
-import LeanExe.ProofKit.F64NearestSum
+module
+
+public import LeanExe.ProofKit.F64SignedNearestSum
+public import Library.Numerics.Arithmetic.Fma.FmaSpec
+public import LeanExe.ProofKit.F64Sterbenz
+public import LeanExe.ProofKit.F64GridExact
+public import LeanExe.ProofKit.F64AddBounds
+public import LeanExe.ProofKit.F64Magnitude
+public import LeanExe.ProofKit.F64RelativeStep
+public import LeanExe.ProofKit.F64NearestSum
+
+@[expose] public section
 
 /-!
 Error-free transformations of binary64 arithmetic for the proof of `Erfc.erfc`.  `fast_two_sum`

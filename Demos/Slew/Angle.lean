@@ -1,8 +1,12 @@
-import Demos.Slew.Valid
-import Library.Numerics.Float64.Atan.AtanTwoTheorem
-import Library.Numerics.Float64.Atan.AtanTwoSpecial
-import LeanExe.ProofKit.F64NearestHalf
-import Mathlib.Analysis.SpecialFunctions.Complex.Arg
+module
+
+public import Demos.Slew.Valid
+public import Library.Numerics.Float64.Atan.AtanTwoTheorem
+public import Library.Numerics.Float64.Atan.AtanTwoSpecial
+public import LeanExe.ProofKit.F64NearestHalf
+public import Mathlib.Analysis.SpecialFunctions.Complex.Arg
+
+@[expose] public section
 
 /-! The output's axis and angle.  A segment reports the axis `v/s` of its relative quaternion
 `rel`, or `+X` when `s` is below `axisMin`, and the angle `2 atan2 s w`.  The rotation angle of

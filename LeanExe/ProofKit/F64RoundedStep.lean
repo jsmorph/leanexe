@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.F64RelativeStepWide
-import LeanExe.ProofKit.F64AddEnclosure
-import LeanExe.ProofKit.F64AddBounds
+module
+
+public import LeanExe.ProofKit.F64RelativeStepWide
+public import LeanExe.ProofKit.F64AddEnclosure
+public import LeanExe.ProofKit.F64AddBounds
+
+@[expose] public section
 
 /-!
 One step for a rounded sum.  `Wasm.IEEE64.add` rounds the exact sum `V` of two finite words to

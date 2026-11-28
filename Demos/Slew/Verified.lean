@@ -1,5 +1,9 @@
-import Verified.Reflect.Command
-import Demos.Slew.Flat
+module
+
+public import Verified.Reflect.Command
+public import Demos.Slew.Flat
+
+@[expose] public section
 
 /-! The slew planner of `Demos/Slew/Program.lean`, compiled unchanged by the verified compiler.
 The list puts each definition after the definitions it calls: the library's `atan` and `atan2`,

@@ -1,5 +1,9 @@
-import Verified.Wasi.NativeCommand
-import Verified.Wasi.NativeTotal
+module
+
+public import Verified.Wasi.NativeCommand
+public import Verified.Wasi.NativeTotal
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,7 +1,11 @@
-import Demos.RunningSumFp.Stream
+module
+
+public import Demos.RunningSumFp.Stream
+
+@[expose] public section
 
 @[extern "leanexe_running_sum_read_stdin"]
-private opaque readStdinSome (capacity : UInt64) : IO ByteArray
+opaque readStdinSome (capacity : UInt64) : IO ByteArray
 
 def main : IO UInt32 := do
   let streams ← LeanExe.Wasi.NativeHost.stdio

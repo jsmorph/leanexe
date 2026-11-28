@@ -1,7 +1,11 @@
-import Demos.RandomChoice.Program
-import Demos.RandomChoice.Spec
-import Demos.RandomHistogram.Proof
-import Mathlib.Data.List.GetD
+module
+
+public import Demos.RandomChoice.Program
+public import Demos.RandomChoice.Spec
+public import Demos.RandomHistogram.Proof
+public import Mathlib.Data.List.GetD
+
+@[expose] public section
 
 /-! The programs of the pure core equal their specifications: `parseArg_eq`, `pick_eq`, and
 `render_eq`.

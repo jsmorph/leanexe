@@ -1,5 +1,9 @@
-import Verified.Wasi.CodeAnalysis
-import Verified.Reflect.Definitions
+module
+
+public import Verified.Wasi.CodeAnalysis
+public import Verified.Reflect.Definitions
+
+@[expose] public section
 
 namespace Verified.Wasi
 

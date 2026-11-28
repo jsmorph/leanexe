@@ -1,8 +1,12 @@
-import Demos.Gate.GateVerified
-import Demos.Gate.GateSoundness
-import Demos.Gate.Miss
-import Verified.Call
-import Verified.BoundFacts
+module
+
+public import Demos.Gate.GateVerified
+public import Demos.Gate.GateSoundness
+public import Demos.Gate.Miss
+public import Verified.Call
+public import Verified.BoundFacts
+
+@[expose] public section
 
 /-! The call of the module's export `gate`.  The program allocates the arrays of its elimination,
 and `gate_bound` bounds the generated allocation bound by 6,496,880 bytes, so the call returns

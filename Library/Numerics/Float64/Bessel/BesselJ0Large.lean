@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Bessel.BesselLarge
+module
+
+public import Library.Numerics.Float64.Bessel.BesselLarge
+
+@[expose] public section
 
 /-!
 `Bessel.j0 x` for `|x| ≥ 2`: the result lies within `10 · 2^-53 · √(J₀(|x|)² + Y₀(|x|)²)` of

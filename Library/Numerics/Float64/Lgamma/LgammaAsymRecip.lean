@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaRecip
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaRecip
+
+@[expose] public section
 
 /-!
 The double-double reciprocal of `Lgamma.asLgammaAsymAccurate`: `zh = 1/xh` and

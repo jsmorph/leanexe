@@ -1,5 +1,9 @@
-import Demos.Sgp4.Spec
-import Mathlib.Analysis.SpecialFunctions.Complex.Arg
+module
+
+public import Demos.Sgp4.Spec
+public import Mathlib.Analysis.SpecialFunctions.Complex.Arg
+
+@[expose] public section
 
 /-!
 The argument of latitude.  The reference code computes the angle `su = atan2 (sinu, cosu)`,

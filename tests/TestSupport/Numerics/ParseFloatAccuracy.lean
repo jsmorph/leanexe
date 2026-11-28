@@ -1,6 +1,13 @@
-import Library.Numerics.Decimal.ParseFloat.Program
-import Library.Numerics.Decimal.Shared.StrconvDecode
-import Interpreter.Wasm.IEEE64
+module
+
+public import Library.Numerics.Decimal.ParseFloat.Program
+public import Library.Numerics.Decimal.Shared.StrconvDecode
+public import Interpreter.Wasm.IEEE64
+public meta import Library.Numerics.Decimal.ParseFloat.Program
+public meta import Library.Numerics.Decimal.Shared.StrconvDecode
+public meta import Interpreter.Wasm.IEEE64
+
+@[expose] public section
 
 /-! A native check of `Library.Numerics.Decimal.ParseFloat.parse64` and `parse32` on the cases of
 `data/strconv/parse-cases.txt`, which `tools/strconv/parse_cases.py` selects and computes: lines of

@@ -1,5 +1,9 @@
-import Demos.Slew.Arc
-import Demos.Slew.Rounding
+module
+
+public import Demos.Slew.Arc
+public import Demos.Slew.Rounding
+
+@[expose] public section
 
 /-! Rounding-error bounds for the vector formulas of the edge check.  Each bound compares the
 program's binary64 result with the same formula in exact arithmetic on the real values of the

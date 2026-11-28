@@ -1,7 +1,11 @@
-import Library.Hashing.Sha2.Equiv.SHA256.Padding.ByteDecoding
-import Library.Hashing.Sha2.Equiv.SHA256.ToU32s
-import Library.Hashing.Sha2.Equiv.Common.Chunks
-import Mathlib.Tactic.IntervalCases
+module
+
+public import Library.Hashing.Sha2.Equiv.SHA256.Padding.ByteDecoding
+public import Library.Hashing.Sha2.Equiv.SHA256.ToU32s
+public import Library.Hashing.Sha2.Equiv.Common.Chunks
+public import Mathlib.Tactic.IntervalCases
+
+@[expose] public section
 
 /-! # SHA-256 padding: byte-level vs bit-level parse
 

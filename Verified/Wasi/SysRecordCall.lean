@@ -1,4 +1,8 @@
-import Verified.Wasi.SysReportedCall
+module
+
+public import Verified.Wasi.SysReportedCall
+
+@[expose] public section
 
 /-! The parts of the code of a record call.  Its parameters are words, enums, flags, and inputs
 followed by the record, so the argument test and the lowering of the parameters before the record

@@ -1,5 +1,9 @@
-import LeanExe.A64.Wasi
-import LeanExe.A64.Proof.WasiLaunch
+module
+
+public import LeanExe.A64.Wasi
+public import LeanExe.A64.Proof.WasiLaunch
+
+@[expose] public section
 
 /-!
 A process that meets the premises of the file theorems of an executable that `genWasiElf` writes,

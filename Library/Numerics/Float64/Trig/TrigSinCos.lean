@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Trig.TrigQuadrant
-import LeanExe.ProofKit.F64SelfStep
+module
+
+public import Library.Numerics.Float64.Trig.TrigQuadrant
+public import LeanExe.ProofKit.F64SelfStep
+
+@[expose] public section
 
 /-!
 The accuracy of `Trig.sin` and `Trig.cos`: for every finite `x`, the result lies within one

@@ -1,7 +1,11 @@
-import LeanExe.A64.Proof.Addr
-import LeanExe.A64.Proof.ImageLayout
-import LeanExe.A64.Proof.Lift
-import LeanExe.A64.Proof.Table
+module
+
+public import LeanExe.A64.Proof.Addr
+public import LeanExe.A64.Proof.ImageLayout
+public import LeanExe.A64.Proof.Lift
+public import LeanExe.A64.Proof.Table
+
+@[expose] public section
 
 /-!
 The run of an image's entry and the startup's first part in the boot model: the header's

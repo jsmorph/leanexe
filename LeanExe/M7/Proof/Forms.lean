@@ -1,4 +1,8 @@
-import LeanExe.M7.Proof.Slots
+module
+
+public import LeanExe.M7.Proof.Slots
+
+@[expose] public section
 
 /-!
 The simulation of the forms that write one operand slot: `local.get`, the constants, and the

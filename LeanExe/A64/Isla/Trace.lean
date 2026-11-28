@@ -1,5 +1,9 @@
-import Lean
-import LeanExe.A64.Machine
+module
+
+public import Lean
+public import LeanExe.A64.Machine
+
+@[expose] public section
 
 /-!
 The traces that Isla computes from the Sail model of the Arm architecture, as a relation between
@@ -1039,14 +1043,5 @@ def parse (o s : String) : Except String Footprint := do
   let trace ← toTrace segs x
   unless opens segs trace do throw "the trace does not open with the header's declarations"
   return ⟨opcode, segs, trace⟩
-
-open Lean Elab Term in
-/-- The footprint in the files `PATH.opcode` and `PATH.trace`, read when the term elaborates. -/
-elab "isla_trace% " path:str : term => do
-  let o ← IO.FS.readFile (path.getString ++ ".opcode")
-  let s ← IO.FS.readFile (path.getString ++ ".trace")
-  match parse o s with
-  | .ok t => return toExpr t
-  | .error e => throwError "{path.getString}: {e}"
 
 end LeanExe.A64.Isla

@@ -1,5 +1,9 @@
-import Verified.Wasi.ResourceExec
-import LeanExe.Wasi.Prefix
+module
+
+public import Verified.Wasi.ResourceExec
+public import LeanExe.Wasi.Prefix
+
+@[expose] public section
 
 namespace Verified.Wasi.Resource
 

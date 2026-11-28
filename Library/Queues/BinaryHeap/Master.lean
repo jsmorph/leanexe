@@ -1,5 +1,9 @@
-import Library.Queues.BinaryHeap.Compiled
-import Verified.Master
+module
+
+public import Library.Queues.BinaryHeap.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Queues.BinaryHeap
 

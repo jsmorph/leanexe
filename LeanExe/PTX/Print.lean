@@ -1,4 +1,8 @@
-import LeanExe.PTX.Syntax
+module
+
+public import LeanExe.PTX.Syntax
+
+@[expose] public section
 
 /-!
 The printed form of a kernel: a list of tokens, rendered with one separator between consecutive

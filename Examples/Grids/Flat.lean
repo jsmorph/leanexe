@@ -1,5 +1,9 @@
-import Examples.Grids.Program
-import LeanExe.Pipeline.Implements
+module
+
+public import Examples.Grids.Program
+public import LeanExe.Pipeline.Implements
+
+@[expose] public section
 
 /-! How the theorems represent the records of the grids: a phase as the word of its constructor
 index, and a state, a cell, and a mass as their fields in declaration order.  These instances are

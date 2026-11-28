@@ -1,4 +1,8 @@
-import Library.Combinatorics.DancingLinks.Cover
+module
+
+public import Library.Combinatorics.DancingLinks.Cover
+
+@[expose] public section
 
 /-! Steps X5 and X6 for one option, and step X3.  `coverOthers b r` walks the option of node `r`
 forward from `r + 1` and covers the item of each node, and `uncoverOthers b r` walks it backward

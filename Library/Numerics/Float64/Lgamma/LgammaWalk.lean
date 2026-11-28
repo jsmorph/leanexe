@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaRoundTest
-import Library.Numerics.Float64.Lgamma.Compiled
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaRoundTest
+public import Library.Numerics.Float64.Lgamma.Compiled
+
+@[expose] public section
 
 /-!
 The step from the fast path's block to the result of `Lgamma.lgammaWith`, and a way to read the

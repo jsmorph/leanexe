@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Lgamma.LgammaRootSpec
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaRootSpec
+
+@[expose] public section
 
 /-!
 The kernel checks of the 17 polynomials of `Lgamma.accurate` about the negative zeros, the inputs

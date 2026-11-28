@@ -1,4 +1,8 @@
-import LeanExe.Encoding.Spec.Types
+module
+
+public import LeanExe.Encoding.Spec.Types
+
+@[expose] public section
 
 namespace Wasm.Encoding.Spec
 

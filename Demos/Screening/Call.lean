@@ -1,5 +1,9 @@
-import Demos.Screening.Verified
-import Verified.Call
+module
+
+public import Demos.Screening.Verified
+public import Verified.Call
+
+@[expose] public section
 
 /-! The call of the compiled screening program (C1).  `screen_callSpec` states that function 84,
 the export `screen`, returns `screen xs` without a trap from every ready store in which the

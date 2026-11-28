@@ -1,5 +1,9 @@
-import Examples.Grids.Flat
-import Verified.Reflect.Command
+module
+
+public import Examples.Grids.Flat
+public import Verified.Reflect.Command
+
+@[expose] public section
 
 /-! The verified compiler's module of the functions of `Program.lean`, with the representations
 of `Flat.lean`.  The reads, the counts, and `totalDensity` allocate nothing,

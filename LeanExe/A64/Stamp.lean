@@ -1,5 +1,9 @@
-import LeanExe.A64.Elf
-import LeanExe.Linux.CallTable
+module
+
+public import LeanExe.A64.Elf
+public import LeanExe.Linux.CallTable
+
+@[expose] public section
 
 /-!
 The stamp program, a static Linux executable for AArch64 that makes its calls through the Linux

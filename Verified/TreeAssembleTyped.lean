@@ -1,9 +1,13 @@
-import Verified.TreeFieldsRep
-import Verified.TreeAssembleCode
-import Verified.TreePackedBlocks
-import Verified.TreeHeapFields
-import Verified.TreeNodeLayout
-import Verified.TreeBufferFields
+module
+
+public import Verified.TreeFieldsRep
+public import Verified.TreeAssembleCode
+public import Verified.TreePackedBlocks
+public import Verified.TreeHeapFields
+public import Verified.TreeNodeLayout
+public import Verified.TreeBufferFields
+
+@[expose] public section
 
 namespace Verified
 

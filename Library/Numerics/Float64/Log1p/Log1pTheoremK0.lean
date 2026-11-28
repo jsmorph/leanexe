@@ -1,6 +1,10 @@
-import Library.Numerics.Float64.Log1p.Log1pTheoremCore
-import Library.Numerics.Float64.Log1p.Log1pTheoremConst
-import LeanExe.ProofKit.F64RoundNearest
+module
+
+public import Library.Numerics.Float64.Log1p.Log1pTheoremCore
+public import Library.Numerics.Float64.Log1p.Log1pTheoremConst
+public import LeanExe.ProofKit.F64RoundNearest
+
+@[expose] public section
 
 /-!
 `Log1p.log1pTail x 0 0 1 = x - (x²/2 - P)` within one step of `log (1 + x)` for

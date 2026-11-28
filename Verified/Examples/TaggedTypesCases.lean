@@ -1,6 +1,10 @@
-import Verified.Examples.TaggedTypes
-import TestSupport.Host
-import TestSupport.Records
+module
+
+public import Verified.Examples.TaggedTypes
+public import TestSupport.Host
+public import TestSupport.Records
+
+@[expose] public section
 
 namespace Verified.Examples.TaggedTypes
 

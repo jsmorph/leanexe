@@ -1,5 +1,9 @@
-import Library.Combinatorics.DancingLinks.Compiled
-import Verified.Master
+module
+
+public import Library.Combinatorics.DancingLinks.Compiled
+public import Verified.Master
+
+@[expose] public section
 
 namespace Library.Combinatorics.DancingLinks
 

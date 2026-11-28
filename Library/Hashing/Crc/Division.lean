@@ -1,5 +1,9 @@
-import Library.Hashing.Crc.Spec
-import Mathlib.Tactic
+module
+
+public import Library.Hashing.Crc.Spec
+public import Mathlib.Tactic
+
+@[expose] public section
 
 /-! A computable form of the CRCs of `Library.Hashing.Crc.Spec`.  `lfsr` divides by a generator
 `x^32 + poly gLow` one bit at a time, keeping a remainder of 32 bits with its coefficient of

@@ -1,8 +1,12 @@
-import Demos.Slew.Safety
-import Library.Numerics.Float64.Atan.AtanTheorem
-import Library.Numerics.Float64.Atan.AtanTheoremSpecial
-import Library.Numerics.Float64.Atan.AtanTwoQuot
-import LeanExe.ProofKit.F64DivEnclosure
+module
+
+public import Demos.Slew.Safety
+public import Library.Numerics.Float64.Atan.AtanTheorem
+public import Library.Numerics.Float64.Atan.AtanTheoremSpecial
+public import Library.Numerics.Float64.Atan.AtanTwoQuot
+public import LeanExe.ProofKit.F64DivEnclosure
+
+@[expose] public section
 
 /-! NaN-freedom of the slew planner.  `plan_finite` states that every floating-point value that
 `plan` computes from an input that passes `validInput` is finite, and so not a NaN.  The

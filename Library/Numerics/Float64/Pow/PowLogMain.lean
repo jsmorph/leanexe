@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Pow.PowLogError
+module
+
+public import Library.Numerics.Float64.Pow.PowLogError
+
+@[expose] public section
 
 /-!
 `Pow.powLog` against `log x`.  For the word `iz` of `z` and table entry `i`, the computed pair

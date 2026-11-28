@@ -1,15 +1,19 @@
-import Verified.Reflect.TailTermination
-import Verified.Reflect.TailState
-import Verified.Reflect.TailBounds
+module
+
+public import Verified.Reflect.TailTermination
+public import Verified.Reflect.TailState
+public import Verified.Reflect.TailBounds
+
+@[expose] public section
 
 namespace Verified.Reflect
 
 open Lean Meta Elab
 
-private def containsSelf (name : Name) (e : Lean.Expr) : Bool :=
+def containsSelf (name : Name) (e : Lean.Expr) : Bool :=
   (e.find? (·.isConstOf name)).isSome
 
-private partial def tailCallsOnly (name : Name) (e : Lean.Expr) : MetaM Bool := do
+partial def tailCallsOnly (name : Name) (e : Lean.Expr) : MetaM Bool := do
   if !containsSelf name e then return true
   let e ← projReduce e
   if e.getAppFn.isConstOf name then
@@ -88,9 +92,10 @@ def reflectTailSource (base name eqName : Name) (sigs funs rest : Lean.Expr)
     addDefinition (base ++ `step) (← inferType step) step
     enableRealizationsForConst (base ++ `step)
     let step := mkConst (base ++ `step)
-    let acc ← deriveTailAcc name (base ++ `step) params state.type resultType
-    let wf ← tailWellFounded step params types state.type resultType acc
-    addTheorem (base ++ `wellFounded) (← inferType wf) wf
+    let wfType ← mkAppM ``WellFounded #[← tailRelation step state.type resultType]
+    addTheoremOnBranch (base ++ `wellFounded) wfType do
+      let acc ← deriveTailAcc name (base ++ `step) params state.type resultType
+      tailWellFounded step params types state.type resultType acc
     let wf := mkConst (base ++ `wellFounded)
     let nativeRank ← mkAppM ``Tail.rank #[step, wf]
     let rank ← withLocalDeclD `funs (mkApp (mkConst ``Funs) sigs) fun fs => do

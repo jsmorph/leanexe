@@ -1,4 +1,8 @@
-import Verified.Wasi.LoopCostReady
+module
+
+public import Verified.Wasi.LoopCostReady
+
+@[expose] public section
 
 namespace Verified.Wasi
 

@@ -1,5 +1,9 @@
-import Verified.Shim.Satisfies
-import Verified.Wasi.CommandTotal
+module
+
+public import Verified.Shim.Satisfies
+public import Verified.Wasi.CommandTotal
+
+@[expose] public section
 
 /-!
 The footprint theorem at the specification level.  A run of `Exec` or `Prefix` under

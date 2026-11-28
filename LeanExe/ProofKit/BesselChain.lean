@@ -1,5 +1,9 @@
-import LeanExe.ProofKit.BesselEnergy
-import LeanExe.ProofKit.PolyCalc
+module
+
+public import LeanExe.ProofKit.BesselEnergy
+public import LeanExe.ProofKit.PolyCalc
+
+@[expose] public section
 
 /-!
 Bounds on `P` and `Q` over `[2, ∞)` from a chain of polynomial approximations, for any pair of

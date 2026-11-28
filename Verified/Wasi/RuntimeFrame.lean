@@ -1,4 +1,8 @@
-import Verified.Wasi.Runtime
+module
+
+public import Verified.Wasi.Runtime
+
+@[expose] public section
 
 namespace Verified.Wasi
 

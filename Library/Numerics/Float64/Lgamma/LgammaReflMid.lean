@@ -1,5 +1,9 @@
-import Library.Numerics.Float64.Lgamma.LgammaReflTail
-import Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral
+module
+
+public import Library.Numerics.Float64.Lgamma.LgammaReflTail
+public import Mathlib.Analysis.SpecialFunctions.Gaussian.GaussianIntegral
+
+@[expose] public section
 
 /-!
 `FastSpec` for the reflection of `Lgamma.lgammaWith` from `x = -6` to `-1/2`, where the positive

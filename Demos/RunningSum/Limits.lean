@@ -1,7 +1,11 @@
-import Demos.RunningSum.Model
-import Demos.RunningSum.TerminationTyped
-import Demos.StreamFold.Observed
-import Demos.StreamFold.Sizes
+module
+
+public import Demos.RunningSum.Model
+public import Demos.RunningSum.TerminationTyped
+public import Demos.StreamFold.Observed
+public import Demos.StreamFold.Sizes
+
+@[expose] public section
 
 /-! Limits on the lines and totals of an input of the integer running sum, and the kernel
 specification that keeps them through a run. -/

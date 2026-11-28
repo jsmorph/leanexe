@@ -1,9 +1,13 @@
-import Library.Sorting.Shellsort.Program
-import Library.Sorting.Shellsort.Spec
-import Library.Sorting.StraightInsertion.Proof
-import Library.Sorting.Heapsort.Proof
-import Library.Sorting.Sorted
-import LeanExe.Dialect.Lemmas
+module
+
+public import Library.Sorting.Shellsort.Program
+public import Library.Sorting.Shellsort.Spec
+public import Library.Sorting.StraightInsertion.Proof
+public import Library.Sorting.Heapsort.Proof
+public import Library.Sorting.Sorted
+public import LeanExe.Dialect.Lemmas
+
+@[expose] public section
 
 /-! The proof that `shellsort` returns the array's elements in nondecreasing order.  Every pass with
 an increment above 1 permutes the array, since each move of `insertBy` is an exchange of the word

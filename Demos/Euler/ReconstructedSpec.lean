@@ -1,5 +1,9 @@
-import Demos.Euler.ReconstructedProgram
-import Demos.Euler.Spec
+module
+
+public import Demos.Euler.ReconstructedProgram
+public import Demos.Euler.Spec
+
+@[expose] public section
 
 /-! Properties of the reconstructed Euler solver's Lean definitions. -/
 

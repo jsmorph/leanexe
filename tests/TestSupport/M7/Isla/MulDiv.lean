@@ -1,5 +1,10 @@
-import LeanExe.M7.Isla.Check
-import LeanExe.M7.Isla.Profile
+module
+
+public import LeanExe.M7.Isla.Check
+public import LeanExe.M7.Isla.Profile
+public import LeanExe.A64.Isla.TraceElab
+
+@[expose] public section
 
 /-!
 Theorems of `Agrees` for the multiply and divide forms of `LeanExe/M7/Machine.lean`, MLA, MLS,

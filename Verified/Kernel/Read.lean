@@ -1,4 +1,8 @@
-import Verified.Kernel.Scalar
+module
+
+public import Verified.Kernel.Scalar
+
+@[expose] public section
 
 namespace Verified.Kernel
 

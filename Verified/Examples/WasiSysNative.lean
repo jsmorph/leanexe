@@ -1,5 +1,9 @@
-import Verified.Examples.WasiSysShim
-import Verified.ShimA64.Elf
+module
+
+public import Verified.Examples.WasiSysShim
+public import Verified.ShimA64.Elf
+
+@[expose] public section
 
 /-!
 The footprint theorem for the flat call example at the memory cap of a native executable.  A

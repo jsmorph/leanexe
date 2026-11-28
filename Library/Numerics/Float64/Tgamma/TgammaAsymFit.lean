@@ -1,4 +1,8 @@
-import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+module
+
+public import Library.Numerics.Float64.Tgamma.TgammaFactsBase
+
+@[expose] public section
 
 /-!
 The Stirling fits of CORE-MATH's `as_lgamma_asym` (`tgamma.c` lines 1058-1105, commit `ff2f71f6`),

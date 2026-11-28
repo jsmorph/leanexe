@@ -1,4 +1,8 @@
-import Verified.Wasi.Program
+module
+
+public import Verified.Wasi.Program
+
+@[expose] public section
 
 namespace Verified.Wasi
 

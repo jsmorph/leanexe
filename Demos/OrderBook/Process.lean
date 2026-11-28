@@ -1,6 +1,10 @@
-import Demos.OrderBook.Program
-import LeanExe.Dialect.Bytes
-import LeanExe.Wasi.Process
+module
+
+public import Demos.OrderBook.Program
+public import LeanExe.Dialect.Bytes
+public import LeanExe.Wasi.Process
+
+@[expose] public section
 
 /-! The order book as a WASI process over stdin and stdout.  The process reads command records as
 little-endian 64-bit words, seven words to a record, in reads of at most 4,096 bytes.  It runs the

@@ -1,6 +1,10 @@
-import LeanExe.ProofKit.GammaThresholds
-import LeanExe.ProofKit.F64Grid
-import LeanExe.ProofKit.RatExpLog
+module
+
+public import LeanExe.ProofKit.GammaThresholds
+public import LeanExe.ProofKit.F64Grid
+public import LeanExe.ProofKit.RatExpLog
+
+@[expose] public section
 
 /-!
 The cancellation of the reflection `lgamma x = log π - log |sin (π x)| - lgamma (1 - x)` at the

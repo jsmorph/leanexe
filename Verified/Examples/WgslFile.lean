@@ -1,5 +1,9 @@
-import Verified.Examples.Wgsl
-import LeanExe.Pipeline.FileBytes
+module
+
+public import Verified.Examples.Wgsl
+public import LeanExe.Pipeline.FileBytes
+
+@[expose] public section
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/wgsl.wasm`: the file holds
 `encode Wgsl.compiled.module`, and it decodes to the module of `Wgsl.compiled.bytes`. -/
