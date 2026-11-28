@@ -12,11 +12,13 @@ public import Verified.Reflect.ScalarProof
 public import Verified.ProgramStatic
 public import Verified.AlignedProgram
 public import Verified.AlignedNative
+public import Verified.Exports
 public meta import Verified.Reflect.Definitions
 public meta import Verified.Reflect.TailDefinition
 public meta import Verified.Reflect.TailOptions
 public meta import Verified.Reflect.CommandOptions
 public meta import Verified.Reflect.ScalarProof
+public meta import Verified.Exports
 public meta import LeanExe.Native.Translate
 public meta import LeanExe.Native.Proof.Parts
 
@@ -138,12 +140,30 @@ meta def staticProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
       tables, pre, post, h, r.flatArgs, r.flatResult, F, hF, mkConst argsAgree,
       mkConst resultAgree]
 
+/-- The theorem `proof` about the module of `compileWith` carried to the module that keeps the
+exports of `alloc`, `release`, and the names `names?` (`Verified.selectExports`), when the option
+`(exports := …)` gives them, and `proof` itself otherwise. -/
+meta def selectProof (names? : Option Lean.Expr) (proof : Lean.Expr) : MetaM Lean.Expr := do
+  let some names := names? | return proof
+  let ty ← instantiateMVars (← inferType proof)
+  let transfer ← match ty.getAppFn.constName? with
+    | some ``LeanExe.Pipeline.ImplementsA => pure ``LeanExe.Pipeline.ImplementsA.selectExports
+    | some ``LeanExe.Pipeline.ImplementsAligned =>
+      pure ``LeanExe.Pipeline.ImplementsAligned.selectExports
+    | some ``Verified.ImplementsTables => pure ``Verified.ImplementsTables.selectExports
+    | some ``Verified.ImplementsTablesAligned =>
+      pure ``Verified.ImplementsTablesAligned.selectExports
+    | some ``Verified.ImplementsStatic => pure ``Verified.ImplementsStatic.selectExports
+    | _ => throwError "verified_compile: no theorem carries {ty} to the selected exports"
+  mkAppM transfer #[names, proof]
+
 meta def addStaticTheorem (base name : Name) (funsVal h : Lean.Expr) (r : Reflected)
-    (index : Nat) (tables? : Option Lean.Expr := none) : MetaM Unit := do
+    (index : Nat) (tables? : Option Lean.Expr := none) (names? : Option Lean.Expr := none) :
+    MetaM Unit := do
   let h ← mkAppM ``ImplementsStatic.lean #[h]
   let simple := Name.mkSimple r.name.getString!
-  let proof ← staticProof (base ++ `funs) funsVal h (← leanFun r) r
-    (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree)
+  let proof ← selectProof names? (← staticProof (base ++ `funs) funsVal h (← leanFun r) r
+    (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree))
   let ty ← inferType proof
   let args := ty.getAppArgs
   let tables := tables?.getD args[9]!
@@ -442,8 +462,8 @@ structure MaterializedProgram where
   pureHasLiterals : Bool
 
 meta def materializeProgram (base : Name) (state : ProgramReflection)
-    (poolOverride? : Option Lean.Expr := none) (minPages : Nat := 16) :
-    TermElabM MaterializedProgram := do
+    (poolOverride? : Option Lean.Expr := none) (minPages : Nat := 16)
+    (exports? : Option Lean.Expr := none) : TermElabM MaterializedProgram := do
   let sigs := state.sigs
   let prog := state.prog
   let funs := state.funs
@@ -486,10 +506,12 @@ meta def materializeProgram (base : Name) (state : ProgramReflection)
       let expected ← mkExpectedTypeHint pool (Lean.mkConst ``Bytes.LiteralPool)
       closedReflectionExpr expected
   addDefinition (base ++ `literalPool) (Lean.mkConst ``Bytes.LiteralPool) pool
-  addDefinition (base ++ `module) (Lean.mkConst ``Wasm.Module)
-    (mkAppN (Lean.mkConst ``compileWith) #[sigsExpr, Lean.mkConst (base ++ `program),
-      Lean.mkConst (base ++ `tables), Lean.mkConst (base ++ `wrappers),
-      Lean.mkConst (base ++ `literalPool), mkNatLit minPages])
+  let compiled := mkAppN (Lean.mkConst ``compileWith) #[sigsExpr, Lean.mkConst (base ++ `program),
+    Lean.mkConst (base ++ `tables), Lean.mkConst (base ++ `wrappers),
+    Lean.mkConst (base ++ `literalPool), mkNatLit minPages]
+  addDefinition (base ++ `module) (Lean.mkConst ``Wasm.Module) <| match exports? with
+    | none => compiled
+    | some names => mkApp2 (Lean.mkConst ``selectExports) names compiled
   let literals ← mkAppM ``Prog.literals #[prog]
   let empty := listExpr (mkApp (mkConst ``List [.zero]) (mkConst ``UInt8)) []
   return { base, pureHasLiterals := !(← isDefEq literals empty) }
@@ -501,7 +523,8 @@ inductive NativeKind where
   | static
 
 syntax (name := verifiedCompile) "verified_compile " (atomic("(" &"pages") " := " num ")")?
-  (atomic("(" &"cap") " := " num ")")? ident " := " "[" ident,* "]" : command
+  (atomic("(" &"cap") " := " num ")")? (atomic("(" &"exports") " := " "[" ident,* "]" ")")?
+  ident " := " "[" ident,* "]" : command
 
 /-- `verified_compile p := [f, g, …]` adds the program `p.program` of the listed definitions, in
 order, each of which may call those before it and, when recursive, itself; the meanings
@@ -529,12 +552,18 @@ for each definition `f` whose function it contains, the theorem `p.f.nativeAlign
 function computes `f` as `p.f.implements` states from an aligned input, as `NativeAlignedImpl` or
 `NativeTablesAlignedImpl` states it; and `p.bytes`, the module's bytes with all the functions'
 theorems.  The option `(pages := N)` starts the module's memory with `N` pages, 16 by default, or
-more when its static data needs them, and `(cap := C)` gives the translation `C` pages of
-`lx_mem`.  Either option may appear alone, and `(pages := N)` precedes `(cap := C)` when both
-appear. -/
+more when its static data needs them, `(cap := C)` gives the translation `C` pages of `lx_mem`, and
+`(exports := [f, g, …])`, whose definitions must be among the listed ones, makes `p.module` the
+module of `compileWith` with only the exports of `alloc`, `release`, and the chosen definitions
+(`Verified.selectExports`).  The module's functions, entries, and indices are those without the
+option, and every theorem of a definition, exported or not, states the same claim of `p.module`,
+carried from the module of `compileWith` by `LeanExe.Pipeline.ImplementsA.selectExports` and its
+counterparts, since a run of a module does not read its exports.  `p.initial` then states its claim
+of `p.module` too.  Each option may appear alone, and the options appear in this order. -/
 @[command_elab verifiedCompile]
 meta def elabVerifiedCompile : CommandElab
-  | `(verified_compile $[(pages := $pages?)]? $[(cap := $cap?)]? $target := [$sources,*]) => do
+  | `(verified_compile $[(pages := $pages?)]? $[(cap := $cap?)]? $[(exports := [$chosen?,*])]?
+      $target := [$sources,*]) => do
     let minPages : Nat := (pages?.map (·.getNat)).getD 16
     let pagesLit : Term := Syntax.mkNumLit (toString minPages)
     let capNat : Nat := (cap?.map (·.getNat)).getD LeanExe.Native.nativeCap
@@ -542,12 +571,21 @@ meta def elabVerifiedCompile : CommandElab
       | some c => pure c
       | none => `(LeanExe.Native.nativeCap)
     let names ← sources.getElems.mapM fun s => liftCoreM <| realizeGlobalConstNoOverloadWithInfo s
+    -- The option `(exports := …)`: the names of the chosen definitions, each one of the list.
+    let exported? ← chosen?.mapM fun chosen => chosen.getElems.mapM fun c => do
+      let name ← liftCoreM <| realizeGlobalConstNoOverloadWithInfo c
+      unless names.contains name do
+        throwErrorAt c "verified_compile: {name} is not among the listed definitions"
+      return name
+    let names? : Option Lean.Expr := exported?.map fun exported =>
+      toExpr (exported.toList.map (·.getString!))
     let base := (← getCurrNamespace) ++ target.getId
     requireRecursiveTypes "verified_compile" names
     let mut state : ProgramReflection := {}
     for name in names do
       state ← liftTermElabM (reflectProgramFunction base name state)
-    let materialized ← liftTermElabM (materializeProgram base state (minPages := minPages))
+    let materialized ← liftTermElabM
+      (materializeProgram base state (minPages := minPages) (exports? := names?))
     let reflected := state.out
     let wraps := state.wraps
     let tableNames := state.tableNames
@@ -572,8 +610,20 @@ meta def elabVerifiedCompile : CommandElab
         `(Verified.compileWith_initialStore (minPages := $pagesLit) $(mkIdent (base ++ `program))
           $(mkIdent (base ++ `tables)) $(mkIdent (base ++ `wrappers))
           (by decide +kernel) $noLiterals)
-    elabCommand (← `(theorem $(mkIdent (target.getId ++ `initial)) : type_of% $initialProof :=
-      $initialProof))
+    match names? with
+    | none =>
+      elabCommand (← `(theorem $(mkIdent (target.getId ++ `initial)) : type_of% $initialProof :=
+        $initialProof))
+    | some _ =>
+      -- The same theorem about `p.module`, whose store and memory cap do not depend on the
+      -- exports.
+      liftTermElabM do
+        let proof ← Term.elabTerm initialProof none
+        Term.synthesizeSyntheticMVarsNoPostponing
+        let proof ← instantiateMVars proof
+        let claim := (← instantiateMVars (← inferType proof)).replace fun e =>
+          if e.isAppOf ``compileWith then some (mkConst (base ++ `module)) else none
+        addTheorem (base ++ `initial) claim proof
     let progId := mkIdent (base ++ `program)
     let funsId := mkIdent (base ++ `funs)
     let meaningId := mkIdent (base ++ `meaning)
@@ -627,10 +677,11 @@ meta def elabVerifiedCompile : CommandElab
           let impl ← Term.elabTerm hImpl none
           Term.synthesizeSyntheticMVarsNoPostponing
           addStaticTheorem base implName funsVal (← instantiateMVars impl) r index
+            (names? := names?)
           let free ← Term.elabTerm hFree none
           Term.synthesizeSyntheticMVarsNoPostponing
           addStaticTheorem base (base ++ simple ++ `trapFree) funsVal
-            (← instantiateMVars free) r index
+            (← instantiateMVars free) r index (names? := names?)
         claims := claims.push (← `(type_of% $(mkIdent implName)))
         proofs := proofs.push (mkIdent implName)
         natives := natives.push (simple, index, .static)
@@ -660,8 +711,8 @@ meta def elabVerifiedCompile : CommandElab
         Term.synthesizeSyntheticMVarsNoPostponing
         let h ← instantiateMVars h
         let F ← leanFun r
-        let proof ← implementsProof (base ++ `funs) funsVal h F r (base ++ simple ++ `argsAgree)
-          (base ++ simple ++ `resultAgree)
+        let proof ← selectProof names? (← implementsProof (base ++ `funs) funsVal h F r
+          (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree))
         -- The statement with the trap flag, the module, and the index as constants, and the
         -- precondition and postcondition beta-reduced.
         let ty ← inferType proof
@@ -684,9 +735,9 @@ meta def elabVerifiedCompile : CommandElab
         let h ← Term.elabTerm (← `(Verified.ImplementsAligned.lean $alignedStx)) none
         Term.synthesizeSyntheticMVarsNoPostponing
         let h ← instantiateMVars h
-        let proof ← implementsProof (base ++ `funs) funsVal h (← leanFun r) r
+        let proof ← selectProof names? (← implementsProof (base ++ `funs) funsVal h (← leanFun r) r
           (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree)
-          ``ImplementsAligned.transferAgree
+          ``ImplementsAligned.transferAgree)
         let ty ← inferType proof
         let args := ty.getAppArgs
         let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr r.aborts)
@@ -767,8 +818,8 @@ meta def elabVerifiedCompile : CommandElab
                     LeanExe.Pipeline.Heap.Within heap store $moduleId ($boundId x))
                 else pure none,
               ← `(fun x heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + $boundId x))
-        let proof ← implementsProof (base ++ `funs) funsVal h (← leanFun r) r
-          (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree)
+        let proof ← selectProof names? (← implementsProof (base ++ `funs) funsVal h (← leanFun r) r
+          (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree))
         let ty ← inferType proof
         let args := ty.getAppArgs
         let pre ← match pre? with
@@ -798,10 +849,11 @@ meta def elabVerifiedCompile : CommandElab
           let impl ← Term.elabTerm hImpl none
           Term.synthesizeSyntheticMVarsNoPostponing
           addStaticTheorem base implName funsVal (← instantiateMVars impl) r index (some tables)
+            names?
           let free ← Term.elabTerm hFree none
           Term.synthesizeSyntheticMVarsNoPostponing
           addStaticTheorem base (base ++ simple ++ `trapFree) funsVal
-            (← instantiateMVars free) r index (some tables)
+            (← instantiateMVars free) r index (some tables) names?
         claims := claims.push (← `(type_of% $(mkIdent implName)))
         proofs := proofs.push (mkIdent implName)
         natives := natives.push (simple, index, .static)
@@ -815,8 +867,8 @@ meta def elabVerifiedCompile : CommandElab
         Term.synthesizeSyntheticMVarsNoPostponing
         let h ← instantiateMVars h
         let F ← leanFun r
-        let proof ← wrapperProof (base ++ `funs) funsVal h F r (base ++ simple ++ `argsAgree)
-          (base ++ simple ++ `resultAgree)
+        let proof ← selectProof names? (← wrapperProof (base ++ `funs) funsVal h F r
+          (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree))
         -- The statement with the trap flag, the module, the index, and the tables' addresses
         -- and names as constants.
         let ty ← inferType proof
@@ -834,9 +886,9 @@ meta def elabVerifiedCompile : CommandElab
             (j := $(Lean.quote j)) rfl (hNoLiterals := $noLiterals)))) none
         Term.synthesizeSyntheticMVarsNoPostponing
         let h ← instantiateMVars h
-        let proof ← wrapperProof (base ++ `funs) funsVal h (← leanFun r) r
+        let proof ← selectProof names? (← wrapperProof (base ++ `funs) funsVal h (← leanFun r) r
           (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree)
-          ``ImplementsTablesAligned.transferAgree
+          ``ImplementsTablesAligned.transferAgree)
         let ty ← inferType proof
         let args := ty.getAppArgs
         let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr (r.aborts || r.depth))
@@ -880,8 +932,8 @@ meta def elabVerifiedCompile : CommandElab
           wrapperBoundEquation (base ++ simple) r.name boundName callee
             (← getConstInfoDefn (base ++ `program)).value funsVal
           let h ← mkAppM ``ImplementsTables.lean #[h0]
-          let proof ← wrapperProof (base ++ `funs) funsVal h (← leanFun r) r
-            (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree)
+          let proof ← selectProof names? (← wrapperProof (base ++ `funs) funsVal h (← leanFun r) r
+            (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree))
           let ty ← inferType proof
           let args := ty.getAppArgs
           let boundId := mkIdent boundName

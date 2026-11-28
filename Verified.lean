@@ -39,6 +39,7 @@ public import Verified.Reflect.Lemmas
 public import Verified.Reflect.BoundLemmas
 public import Verified.Reflect.FitsLemmas
 public import Verified.Reflect.Command
+public import Verified.Exports
 public import Verified.Examples.Poly
 public import Verified.Examples.Mix
 public import Verified.Examples.Lets
@@ -46,6 +47,7 @@ public import Verified.Examples.Select
 public import Verified.Examples.Calls
 public import Verified.Examples.Frontend
 public import Verified.Examples.Fold
+public import Verified.Examples.Exports
 public import Verified.Examples.TreeCopy
 public import Verified.Examples.TreeCore
 public import Verified.Examples.Lists
