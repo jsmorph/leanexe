@@ -348,6 +348,22 @@ lean_exe «verified-cases-orbit» where
   srcDir := "tests"
   root := `TestSupport.Orbit.CasesMain
 
+lean_exe «verified-cases-bignum» where
+  srcDir := "tests"
+  root := `TestSupport.Bignum.CasesMain
+
+lean_exe «verified-cases-bignum2» where
+  srcDir := "tests"
+  root := `TestSupport.Bignum.SecondCasesMain
+
+lean_exe «verified-cases-bignum3» where
+  srcDir := "tests"
+  root := `TestSupport.Bignum.ThirdCasesMain
+
+lean_exe «verified-cases-bignum-calc» where
+  srcDir := "tests"
+  root := `TestSupport.BignumCalc.CasesMain
+
 -- The native comparison of the order book's program with its specification
 -- (tests/orderbook/run.sh); not a default target.
 lean_exe «orderbook-compare» where
