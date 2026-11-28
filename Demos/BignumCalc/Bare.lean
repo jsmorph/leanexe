@@ -5,8 +5,6 @@ public import LeanExe.Native.Proof.Input
 public import LeanExe.Dialect.Lemmas
 public import Verified.Call
 public import Verified.BoundFacts
-import all Init.Data.Repr
-import all Init.Data.Int.Repr
 
 @[expose] public section
 

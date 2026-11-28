@@ -2,8 +2,6 @@ module
 
 public import Demos.BignumCalc.BytesBare
 public import LeanExe.A64.File
-import all Init.Data.Repr
-import all Init.Data.Int.Repr
 
 @[expose] public section
 

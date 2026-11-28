@@ -3,8 +3,6 @@ module
 public import Demos.BignumCalc.Bare
 public import LeanExe.A64.Proof.BytesRuns
 public import Verified.ChargeFacts
-import all Init.Data.Repr
-import all Init.Data.Int.Repr
 
 @[expose] public section
 
