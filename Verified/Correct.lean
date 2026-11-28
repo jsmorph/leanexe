@@ -678,6 +678,24 @@ def ImplementsTables {α β : Type} [Represent α] [Represent β] (aborts : Bool
             heap'.Region r ∧ Represent.outside final values.reverse (f x) r) ∧
         Post x heap store heap' final
 
+/-- `ImplementsTables` under a stronger precondition and with a weaker postcondition, whose
+implication receives the new precondition and the arguments' representation, as
+`LeanExe.Pipeline.ImplementsA.mono_borrowed` states for `ImplementsA`. -/
+theorem ImplementsTables.mono {α β : Type} [Represent α] [Represent β] {aborts : Bool}
+    {m : Module} {entry : Nat} {f : α → β} {tables : List (UInt64 × Array UInt64)}
+    {Pre Pre' : α → Heap → Store Unit → Prop}
+    {Post Post' : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsTables aborts m entry f tables Pre Post)
+    (hPre : ∀ x heap store, Pre' x heap store → Pre x heap store)
+    (hPost : ∀ x heap store params heap' store', Pre' x heap store →
+      Represent.borrowed heap store params x →
+      Post x heap store heap' store' → Post' x heap store heap' store') :
+    ImplementsTables aborts m entry f tables Pre' Post' :=
+  fun env store heap params x hAt hPre' hT hA hS hC =>
+    (h env store heap params x hAt (hPre x heap store hPre') hT hA hS hC).mono
+      fun final _ ⟨heap', h1, h2, h3, h4, h5⟩ =>
+        ⟨heap', h1, h2, h3, h4, hPost x heap store params heap' final hPre' hA h5⟩
+
 /-- The context of a wrapper's callee: the tables `ks` of `tables`, then the wrapper's own
 arguments. -/
 def Env.withTables (tables : List (Array UInt64)) {Γ : List Ty} :
