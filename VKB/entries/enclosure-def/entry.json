@@ -7,7 +7,6 @@
     "the tables of sin, cos, and pow that fI takes, for a body without powers or without tables",
     "an application of a real function that enclosure_def does not know, such as arctan u",
     "Library.Numerics.Interval.Encloses (gI p c) (g x y) for a hand-written interval function over the fields of a structure",
-    "enclose: no rule proves Encloses (Library.Numerics.Interval.sq p.x) (x * x)",
     "(deterministic) timeout at whnf from exact against a projection of a structure literal whose other side is an interval program",
     "Encloses (setup xs).nb x after rw with an equation that states setup as a structure literal"
   ],
@@ -27,7 +26,8 @@
     "Demos.Attitude.Program",
     "Demos.Attitude.Soundness",
     "Demos.Gate.Soundness",
-    "Demos.Geolocation.Soundness"
+    "Demos.Geolocation.Soundness",
+    "TestSupport.Numerics.EncloseSq"
   ],
   "declarations": [
     "Library.Numerics.Interval.Encloses",
@@ -68,7 +68,8 @@
     "Demos.Screening.object_encl",
     "Demos.Attitude.triad_sound",
     "Demos.Gate.terms_sound",
-    "Demos.PassiveSafety.sepPanel_encloses"
+    "Demos.PassiveSafety.sepPanel_encloses",
+    "TestSupport.Numerics.EncloseSq.gI_encloses"
   ],
   "unimported": {
     "Demos/Sgp4/BoxVerified.lean": ["Demos.Sgp4.boxCompiled"],

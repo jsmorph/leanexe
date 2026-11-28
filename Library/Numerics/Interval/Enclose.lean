@@ -32,14 +32,16 @@ below.  A call of another function `g` becomes a call of `gI`, whose theorem
 
 The tactic `enclose` proves the theorem.  It walks the two chains of `let` bindings together,
 proves for each pair of bound values that the interval value encloses the real value, by the
-theorems labelled `enclose`, and continues with the two bound variables and that fact.
+theorems labelled `enclose`, and continues with the two bound variables and that fact.  The
+translation never produces `sq`, and the label on `encloses_sq` serves hand-written interval
+functions that square with it.
 -/
 
 namespace Library.Numerics.Interval
 
 attribute [enclose] encloses_add encloses_sub encloses_mul encloses_div encloses_neg encloses_abs
-  encloses_sqrt encloses_imax encloses_ifLt encloses_sinI encloses_cosI encloses_twoThirds
-  encloses_threeHalves encloses_sevenHalves encloses_pi
+  encloses_sq encloses_sqrt encloses_imax encloses_ifLt encloses_sinI encloses_cosI
+  encloses_twoThirds encloses_threeHalves encloses_sevenHalves encloses_pi
 
 namespace Enclose
 
