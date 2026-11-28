@@ -22,15 +22,16 @@ sets `SEE` to -1 and `DBGEN` to `Signal_Low`, and runs the reset (`armv9p4.ir` 1
 3771797-3771845).  The profile holds each register that some committed trace reads, with the value
 of the last source that sets it, and the registers that the `features` file sets.
 
-`isla_features% "PATH"` reads a `features` file, relative to the directory in which Lean runs,
-when the term elaborates, so a profile holds the settings that the traces used.  Lake does not
-rebuild this module when a file changes, and `tests/TestSupport/A64/Isla/Profiles.lean`, which
-`tests/isla/theorems.sh` elaborates on every run, checks the profiles against the files.  The
-reader `parseFeatures` is trusted as `parse` is.  A file lists the features in the order of
-`Feature`, so the values of its lines whose names begin with `FEAT_` are the first 258 elements of
-`FeatureImpl`.  Element 258 names no feature and keeps the register's undefined value,
-`Unknown.feature`.  A theorem whose trace reads `FeatureImpl` compares the whole vector with the
-one Isla read.
+`isla_features% "PATH"` reads a `features` file when the term elaborates, so a profile holds the
+settings that the traces used.  PATH is relative to the directory of the source file, as for Lean's
+`include_str` and `binary_file%`, so the module builds in the workspace of a project that requires
+leanexe, where Lake runs Lean in that project's root.  Lake does not rebuild this module when a file
+changes, and `tests/TestSupport/A64/Isla/Profiles.lean`, which `tests/isla/theorems.sh` elaborates
+on every run, checks the profiles against the files.  The reader `parseFeatures` is trusted as
+`parse` is.  A file lists the features in the order of `Feature`, so the values of its lines whose
+names begin with `FEAT_` are the first 258 elements of `FeatureImpl`.  Element 258 names no feature
+and keeps the register's undefined value, `Unknown.feature`.  A theorem whose trace reads
+`FeatureImpl` compares the whole vector with the one Isla read.
 
 A system register is a struct whose one field `bits` holds its value, and an integer of the model
 is a bit vector of width 128, as Isla prints them.  The memory forms' reset constraints and the
@@ -41,9 +42,12 @@ their theorems carry them as premises.
 namespace LeanExe.A64.Isla
 
 open Lean Elab Term in
-/-- The features in the file at the path, read when the term elaborates. -/
+/-- The features in the file at the path, relative to the directory of the source file, read when
+the term elaborates. -/
 elab "isla_features% " path:str : term => do
-  let s ← IO.FS.readFile path.getString
+  let some dir := (System.FilePath.mk (← readThe Core.Context).fileName).parent
+    | throwError "cannot compute the directory of the source file"
+  let s ← IO.FS.readFile (dir / path.getString)
   match parseFeatures s with
   | .ok f => return toExpr f
   | .error e => throwError "{path.getString}: {e}"
@@ -62,7 +66,7 @@ structure Profile where
 
 /-- The profile `tcg` of `traces.sh`, QEMU 8.2.2's Cortex-A57 under TCG. -/
 def tcg : Profile where
-  features := isla_features% "tests/isla/tcg/features"
+  features := isla_features% "../../../tests/isla/tcg/features"
   paSize := 44
   hcr := 0x80000000
   oslsr := 0xa
@@ -73,7 +77,7 @@ def tcg : Profile where
 /-- The profile `kvm` of `traces.sh`, the guest of KVM in Linux 7.0 on the Cortex-X925 and
 Cortex-A725 cores of edgexpert-18ff. -/
 def kvm : Profile where
-  features := isla_features% "tests/isla/kvm/features"
+  features := isla_features% "../../../tests/isla/kvm/features"
   paSize := 40
   hcr := 0x480000000
   oslsr := 0x8
@@ -85,7 +89,7 @@ def kvm : Profile where
 FEAT_SME_FA64, with the settings that Linux's boot protocol requires of it, for the floating-point
 forms. -/
 def sme : Profile where
-  features := isla_features% "tests/isla/sme/features"
+  features := isla_features% "../../../tests/isla/sme/features"
   paSize := 40
   hcr := 0x480000000
   oslsr := 0x8

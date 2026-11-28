@@ -25,7 +25,9 @@ generated `compiled.mean.implements` excludes the trap.
 
 `compiled.mean.implements` holds for every array, the empty one included, and it states the bits of
 Lean's `mean`.  The result is therefore the mean of the rounded sum, and the theorem says nothing
-about its error relative to the exact mean.  The generated `compiled.mean.native` states the
+about its error relative to the exact mean.  `mean_master` of [the master theorem](Master.lean)
+bounds that error: for `n > 0` finite floats whose magnitudes sum to at most `2^1021`, the result
+lies within `γ_n Σ |x_i| / n + 2^-1075` of the exact mean, where `γ_k = k / (2^53 - k)`.  The generated `compiled.mean.native` states the
 computation for the C function of the module's translation.
 
 ## Building, running, and testing
