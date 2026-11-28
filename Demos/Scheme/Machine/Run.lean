@@ -3,6 +3,7 @@ module
 public import Demos.Scheme.Machine.Read
 public import Demos.Scheme.Machine.Print
 public import Demos.Scheme.Machine.Convert
+public import Demos.Scheme.Machine.Eval
 
 @[expose] public section
 
@@ -52,7 +53,10 @@ def topCode (m : Machine) : Machine :=
 /-- One step of the machine. -/
 def step (names : Array UInt64) (src : LeanExe.Bytes) (m : Machine) : Machine :=
   let mode := m.mode
-  if mode == READ then readStep names src m
+  if mode == EVAL then evalStep m
+  else if mode == RETURN then returnStep m
+  else if mode == APPLY then applyStep m
+  else if mode == READ then readStep names src m
   else if mode == EXPAND then expandStep m
   else if mode == EXPANDED then expandReturn m
   else if mode == EXP_OR then expandOrAnd m F_OR
@@ -62,8 +66,8 @@ def step (names : Array UInt64) (src : LeanExe.Bytes) (m : Machine) : Machine :=
   else if mode == CASECL then caseClause m
   else if mode == TOPWALK then topWalk m
   else if mode == TOP then
-    if m.runMode == 0 then topStep m else topExpandNext m
-  else if mode == TOPCODE then topCode m
+    if m.runMode == 0 then topStep m else if m.runMode == 1 then topExpandNext m else startEval m
+  else if mode == TOPCODE then if m.runMode == 1 then topCode m else topRun m
   else if mode == CONV then convStep m
   else if mode == CONVK then convReturn m
   else if mode == M1NEXT then m1Next m
@@ -77,14 +81,16 @@ read error, a syntax error, an error, or a restriction, its text and irritant. -
 def renderOutcome (names : Array UInt64) (m : Machine) : Machine :=
   let cls := if m.status == 0 then 6 else m.status / 256
   let entry := m.status % 256
+  let detail := m.detail
+  let spelling := fa m.heap detail
   let m := emit { m with outLen := 0, status := 0 } cls
   if cls == 0 || cls > 4 then m
   else
     let code := names[(entry * 6).toNat]!
     let m := emitEntry names m entry
-    if code == T_KEYWORD then emitEntry names m (m.detail - 1)
-    else if code == T_SYMBOL then emitString m (fa m.heap m.detail) false
-    else if code == T_OFFSET then emitInt (emitEntry names m M_T_AT) m.detail.toInt64
+    if code == T_KEYWORD then emitEntry names m (detail - 1)
+    else if code == T_SYMBOL then emitString m spelling false
+    else if code == T_OFFSET then emitInt (emitEntry names m M_T_AT) detail.toInt64
     else m
 
 /-- The bytes of the run's outcome. -/

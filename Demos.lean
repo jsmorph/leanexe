@@ -205,6 +205,7 @@ public import Demos.Scheme.Corpus
 public import Demos.Scheme.Machine.Code
 public import Demos.Scheme.Machine.Codes
 public import Demos.Scheme.Machine.Convert
+public import Demos.Scheme.Machine.Eval
 public import Demos.Scheme.Machine.Expand
 public import Demos.Scheme.Machine.Names
 public import Demos.Scheme.Machine.Numeric

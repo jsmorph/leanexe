@@ -9,10 +9,13 @@ public import TestSupport.Scheme.Oracle
 
 /-! The cases of the module `scheme`, the export `run` of the executable interpreter.  Each program
 of the corpus `Demos.Scheme.Corpus.all` and of `syntaxCases` runs in native Lean in mode 0, which
-reads and writes the data, and mode 1, which expands and writes the code, and each result must
-equal the reference semantics's, from `TestSupport.Scheme.Oracle`.  The cases print one line for
-each program and mode, whose expected result is the native result, for the module in the
-Wasmtime host. -/
+reads and writes the data, mode 1, which expands and writes the code, and mode 2, which evaluates
+and writes the value.  Each result must equal the reference semantics's, from
+`TestSupport.Scheme.Oracle` and `Demos.Scheme.Semantics.outcome`, and in mode 2 a corpus program's
+result must also equal the outcome that the corpus states by hand.  `resourceCases` give the
+outcomes that the reference semantics does not have: fuel exhausted, out of space, and output
+limit.  The cases print one line for each program and mode, whose expected result is the native
+result, for the module in the Wasmtime host. -/
 
 namespace TestSupport.Scheme.Cases
 
@@ -54,9 +57,23 @@ def hex (bs : List UInt8) : String :=
 def native (mode : UInt64) (src : List UInt8) : List UInt8 :=
   (Machine.runWith Machine.names mode cap outCap fuel ⟨⟨src.toArray⟩⟩).data.toList
 
-/-- The reference outcome of a mode. -/
-def reference (mode : UInt64) (src : List UInt8) : List UInt8 :=
-  if mode == 0 then readOutcome src else expandOutcome src
+/-- The reference outcome of a mode, or `none` for a run of the reference semantics that has not
+ended after 100,000,000 rules. -/
+def reference (mode : UInt64) (src : List UInt8) : Option (List UInt8) :=
+  if mode == 0 then some (readOutcome src) else if mode == 1 then some (expandOutcome src)
+  else outcome Numeric.fixnum 100000000 src
+
+/-- Programs whose outcomes depend on the arena, the output buffer, or the fuel, with the export's
+arguments and the expected bytes. -/
+def resourceCases : List (String × UInt64 × UInt64 × UInt64 × List UInt8) :=
+  [("(letrec ((f (lambda () (f)))) (f))", 65536, 64, 100000, [6]),
+    ("(letrec ((f (lambda () (f)))) (f))", 256, 64, 100000000, [5]),
+    ("(let ((p (list 1 2))) (set-cdr! (cdr p) p) p)", 4096, 64, 100000, [7]),
+    ("(list 1 2 3)", 4096, 4, 100000, [7]),
+    ("(list 1 2 3)", 4096, 8, 100000, 0 :: bytes "(1 2 3)"),
+    ("(+ 1 2)", 4096, 64, 0, [6]),
+    ("(letrec ((loop (lambda (n) (if (= n 0) 'done (loop (- n 1)))))) (loop 100000))",
+      16777216, 64, 100000000, 0 :: bytes "done")]
 
 /-- Prints the cases, and returns the number of programs whose native result differs from the
 reference's. -/
@@ -65,12 +82,23 @@ def cases : IO UInt32 := do
   let programs := Corpus.all.map Corpus.Case.src ++ syntaxCases
   for src in programs do
     let b := bytes src
-    for mode in [(0 : UInt64), 1] do
+    for mode in [(0 : UInt64), 1, 2] do
       let got := native mode b
-      if got != reference mode b then
+      if some got != reference mode b then
         failures := failures + 1
         IO.eprintln s!"scheme: mode {mode} differs from the reference on {repr src}"
       IO.println s!"scheme|run|bytes|i64:{mode} i64:{cap} i64:{outCap} i64:{fuel} bytes:{hex b}|{hex got}|1"
+  for c in Corpus.all do
+    if native 2 (bytes c.src) != c.expected then
+      failures := failures + 1
+      IO.eprintln s!"scheme: the case {c.name} differs from its expected outcome"
+  for (src, cap, outCap, fuel, expected) in resourceCases do
+    let b := bytes src
+    let got := (Machine.runWith Machine.names 2 cap outCap fuel ⟨⟨b.toArray⟩⟩).data.toList
+    if got != expected then
+      failures := failures + 1
+      IO.eprintln s!"scheme: the resource case {repr src} gives {hex got}"
+    IO.println s!"scheme|run|bytes|i64:2 i64:{cap} i64:{outCap} i64:{fuel} bytes:{hex b}|{hex got}|1"
   return failures
 
 end TestSupport.Scheme.Cases

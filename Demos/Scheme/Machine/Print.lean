@@ -33,13 +33,14 @@ negative. -/
 def emitInt (m : Machine) (n : Int64) : Machine :=
   let m := if n < 0 then emit m 45 else m
   let mag := if n < 0 then (0 - n).toUInt64 else n.toUInt64
+  let base := m.outLen
   let nd := LeanExe.repeatWhile 20 ((1 : UInt64), mag / 10) (fun s => s.2 != 0)
     (fun s => (s.1 + 1, s.2 / 10)) |>.1
-  if m.outLen + nd > m.outCap then fail m S_OUTPUT 0
+  if base + nd > m.outCap then fail m S_OUTPUT 0
   else
     let st := LeanExe.loop nd (m.out, mag) fun j st =>
-      (st.1.set! (m.outLen + nd - 1 - j).toNat (48 + st.2 % 10), st.2 / 10)
-    { m with out := st.1, outLen := m.outLen + nd }
+      (st.1.set! (base + nd - 1 - j).toNat (48 + st.2 % 10), st.2 / 10)
+    { m with out := st.1, outLen := base + nd }
 
 /-- The machine with the bytes of the string `s` written, each double quote and backslash after a
 backslash when `quoted`. -/
@@ -71,15 +72,18 @@ def emitAtom (names : Array UInt64) (m : Machine) (v : UInt64) : Machine :=
 /-- One step of the printer on the value `x`: an atom, or the start of a list or a vector. -/
 def printStep (names : Array UInt64) (m : Machine) : Machine :=
   let v := m.x
+  let car := if isRef v then fa m.heap v else 0
+  let cdr := if isRef v then fb m.heap v else 0
+  let first := if isKind m.heap v K_VECTOR && car != 0 then vectorRef m.heap v 0 else 0
   if isPair m.heap v then
-    let m := pushFrame (emit m 40) P_TAIL (fb m.heap v) 0 0
-    { m with x := fa m.heap v }
+    let m := pushFrame (emit m 40) P_TAIL cdr 0 0
+    { m with x := car }
   else if isKind m.heap v K_VECTOR then
     let m := emit (emit m 35) 40
-    if fa m.heap v == 0 then { (emit m 41) with mode := PRINTK }
+    if car == 0 then { (emit m 41) with mode := PRINTK }
     else
       let m := pushFrame m P_VEC v 1 0
-      { m with x := vectorRef m.heap v 0 }
+      { m with x := first }
   else { (emitAtom names m v) with mode := PRINTK }
 
 /-- One step of the printer's frames: the next element of a list or a vector, a closing
@@ -88,26 +92,28 @@ def printFrame (m : Machine) : Machine :=
   let fr := m.k
   if fr == NONE then { m with mode := m.aux }
   else
-    let sub := subAt m.heap fr
+    let s := slotAt m.heap fr
+    let sub := subOf s.kind
+    let rest := s.b
+    let restCar := if isPair m.heap rest then fa m.heap rest else 0
+    let restCdr := if isPair m.heap rest then fb m.heap rest else 0
+    let len := if sub == P_VEC then fa m.heap rest else 0
+    let elem := if sub == P_VEC && s.c < len then vectorRef m.heap rest s.c else 0
     if sub == P_TAIL then
-      let rest := fb m.heap fr
-      if rest == NILV then { (emit m 41) with k := fa m.heap fr }
+      if rest == NILV then { (emit m 41) with k := s.a }
       else if isPair m.heap rest then
-        let m := setB (emit m 32) fr (fb m.heap rest)
-        { m with x := fa m.heap rest, mode := PRINT }
+        let m := setB (emit m 32) fr restCdr
+        { m with x := restCar, mode := PRINT }
       else
         let m := emit (emit (emit m 32) 46) 32
-        let s := slotAt m.heap fr
         let s' : Slot := ⟨mkKind K_FRAME P_CLOSE 0, s.a, s.b, s.c, s.d⟩
         { m with heap := m.heap.set! (fr >>> 3).toNat s', x := rest, mode := PRINT }
     else if sub == P_VEC then
-      let v := fb m.heap fr
-      let i := fc m.heap fr
-      if i == fa m.heap v then { (emit m 41) with k := fa m.heap fr }
+      if s.c == len then { (emit m 41) with k := s.a }
       else
-        let m := setC (emit m 32) fr (i + 1)
-        { m with x := vectorRef m.heap v i, mode := PRINT }
-    else if sub == P_CLOSE then { (emit m 41) with k := fa m.heap fr }
+        let m := setC (emit m 32) fr (s.c + 1)
+        { m with x := elem, mode := PRINT }
+    else if sub == P_CLOSE then { (emit m 41) with k := s.a }
     else { m with mode := m.aux }
 
 end Demos.Scheme.Machine

@@ -490,25 +490,26 @@ def expandCondStep (m : Machine) : Machine :=
 /-- One step of `CASECL`: the next clause of the walk on top (§7.3's rule of `case`): its body as
 a thunk. -/
 def caseClause (m : Machine) : Machine :=
-  let h := m.heap
   let fr := m.k
-  let l := fb h fr
-  if l == NILV then expanded (popFrame m) LISTDONE
-  else if isPair h l && isPair h (fa h l) then
-    let clause := fa h l
-    let data := fa h clause
-    let isElse := keywordOf h data == KW_ELSE
-    let proper := LeanExe.repeatWhile 16777216 data (fun d => isPair h d) (fun d => fb h d) == NILV
-    if isElse && fb h l != NILV then syntaxError m M_BADFORM KW_CASE
+  let s := slotAt m.heap fr
+  let l := s.b
+  if l == NILV then expanded { m with k := s.a } LISTDONE
+  else if isPair m.heap l && isPair m.heap (fa m.heap l) then
+    let clause := fa m.heap l
+    let data := fa m.heap clause
+    let seq := fb m.heap clause
+    let more := fb m.heap l
+    let isElse := keywordOf m.heap data == KW_ELSE
+    let proper := isProperList m.heap data
+    if isElse && more != NILV then syntaxError m M_BADFORM KW_CASE
     else if !isElse && !proper then syntaxError m M_BADFORM KW_CASE
     else
       let m := node m C_LAMBDA 0 0 NONE
       let lam := m.val
       let m := node m C_CHAIN lam NONE 0
       let cell := m.val
-      let m := setB m (fc m.heap fr) cell
-      let m := setB (setC m fr cell) fr (fb m.heap l)
-      startBody { m with env := fd m.heap fr } lam (fb m.heap clause) KW_CASE
+      let m := setB (setC (setB m s.c cell) fr cell) fr more
+      startBody { m with env := s.d } lam seq KW_CASE
   else syntaxError m M_BADFORM KW_CASE
 
 /-- The `cond` of a `case` with `n` clauses and the key in temporary 0 (§7.3): clause `i` from 1
@@ -553,27 +554,31 @@ def expandQQ (m : Machine) : Machine :=
     let rest := fb h t
     let kw := keywordOf h a
     let one := isPair h rest && fb h rest == NILV
+    let e := if isPair h rest then fa h rest else NONE
+    let splice := isPair h a && keywordOf h (fa h a) == KW_UNQUOTE_SPLICING && isPair h (fb h a) &&
+      fb h (fb h a) == NILV
+    let spliced := if splice then fa h (fb h a) else NONE
+    let spliceSym := if splice then fa h a else NONE
     if kw == KW_UNQUOTE then
       if !one then syntaxError m M_TEMPLATE 0
-      else if depth == 1 then { m with x := fa h rest, mode := EXPAND }
+      else if depth == 1 then { m with x := e, mode := EXPAND }
       else
         let m := pushFrame m X_QQWRAP a 0 0
-        { m with x := fa h rest, nargs := depth - 1 }
+        { m with x := e, nargs := depth - 1 }
     else if kw == KW_QUASIQUOTE then
       if !one then syntaxError m M_TEMPLATE 0
       else
         let m := pushFrame m X_QQWRAP a 0 0
-        { m with x := fa h rest, nargs := depth + 1 }
+        { m with x := e, nargs := depth + 1 }
     else if kw == KW_UNQUOTE_SPLICING then syntaxError m M_TEMPLATE 0
-    else if isPair h a && keywordOf h (fa h a) == KW_UNQUOTE_SPLICING && isPair h (fb h a) &&
-        fb h (fb h a) == NILV then
+    else if splice then
       if depth == 1 then
         let m := pushFrameN m X_QQAPPEND depth rest 0 m.env
-        { m with x := fa h (fb h a), mode := EXPAND }
+        { m with x := spliced, mode := EXPAND }
       else
         let m := pushFrameN m X_QQCONS depth rest 0 m.env
-        let m := pushFrame m X_QQWRAP (fa h a) 0 0
-        { m with x := fa h (fb h a), nargs := depth - 1 }
+        let m := pushFrame m X_QQWRAP spliceSym 0 0
+        { m with x := spliced, nargs := depth - 1 }
     else
       let m := pushFrameN m X_QQCONS depth rest 0 m.env
       { m with x := a }
@@ -593,190 +598,227 @@ def expandQQ (m : Machine) : Machine :=
       let m := node m C_CONST t 0 0
       expanded m m.val
 
-/-! ## The frames that receive a code -/
+/-! ## The frames that receive a code
+
+Each function reads the frame on top and every other word it needs before its first write, so the
+compiled code changes the arena in place. -/
+
+/-- `X_APPOP` receives the operator's code, and the operands follow. -/
+def retAppOp (m : Machine) : Machine :=
+  let s := slotAt m.heap m.k
+  let app := s.b
+  let args := s.c
+  let m := setA { m with k := s.a } app m.val
+  if args == NILV then expanded m app
+  else
+    let m := node m C_CHAIN 0 NONE 0
+    let cell := m.val
+    let m := setB m app cell
+    let m := pushFrame { m with env := s.d } X_ARGS app 0 0
+    startList m cell args
+
+/-- `X_LET` receives the end of its bindings, then the end of its body. -/
+def retLet (m : Machine) : Machine :=
+  let fr := m.k
+  let s := slotAt m.heap fr
+  let form := s.b
+  let rest := fb m.heap form
+  let bs := fa m.heap rest
+  let body := fb m.heap rest
+  let n := listLength m.heap bs
+  let dup := firstDuplicate m.heap bs n
+  if countOf s.kind == 0 then
+    let m := scopeWithBindings m s.d bs n
+    let scope := m.val
+    let m := node m C_LAMBDA n 0 NONE
+    let lam := m.val
+    let m := setD (setCount m fr X_LET 1) fr lam
+    startBody { m with env := scope } lam body KW_LET
+  else if m.val == LISTIMPROPER then syntaxError m M_BADFORM KW_LET
+  else if dup != NONE then syntaxError m M_DUPLICATE dup
+  else
+    let m := node { m with k := s.a } C_APP s.d s.c 0
+    expanded m m.val
+
+/-- `X_LETREC` receives the end of its bindings, then the end of its body. -/
+def retLetrec (m : Machine) : Machine :=
+  let fr := m.k
+  let s := slotAt m.heap fr
+  let form := s.b
+  let rest := fb m.heap form
+  let bs := fa m.heap rest
+  let body := fb m.heap rest
+  let n := listLength m.heap bs
+  let dup := firstDuplicate m.heap bs n
+  let firstCell := fc m.heap s.d
+  let holderBody := fc m.heap s.c
+  if countOf s.kind == 0 then
+    if n == 0 then
+      let m := node m C_LAMBDA 0 0 NONE
+      let lam := m.val
+      let m := setD (setC (setCount m fr X_LETREC 1) fr lam) fr lam
+      startBody { m with env := s.d } lam body KW_LETREC
+    else
+      -- the inner call: ((lambda (temp …) (set! v temp) …) init …)
+      let st := LeanExe.loop n (m, NONE) fun j st =>
+        let i := n - 1 - j
+        let m := node st.1 C_LREF i 0 0
+        let m := node m C_LSET (n + i) m.val 0
+        let m := node m C_CHAIN m.val st.2 0
+        (m, m.val)
+      let m := node st.1 C_LAMBDA n 0 st.2
+      let m := node m C_APP m.val s.c 0
+      let m := node m C_CHAIN m.val NONE 0
+      let m := node m C_LAMBDA n 0 m.val
+      let outer := m.val
+      let m := node m C_LAMBDA 0 0 NONE
+      let holder := m.val
+      let m := setD (setC (setCount m fr X_LETREC 1) fr holder) fr outer
+      startBody { m with env := s.d } holder body KW_LETREC
+  else if m.val == LISTIMPROPER then syntaxError m M_BADFORM KW_LETREC
+  else if dup != NONE then syntaxError m M_DUPLICATE dup
+  else
+    let m := { m with k := s.a }
+    if n == 0 then
+      let m := node m C_APP s.d NONE 0
+      expanded m m.val
+    else
+      let m := setB m firstCell holderBody
+      let st := LeanExe.loop n (m, NONE) fun _ st =>
+        let m := node st.1 C_CONST UNDEF 0 0
+        let m := node m C_CHAIN m.val st.2 0
+        (m, m.val)
+      let m := node st.1 C_APP s.d st.2 0
+      expanded m m.val
+
+/-- `X_CONDIF` receives the code of its test, then the end of its sequence, then the code of the
+remaining clauses. -/
+def retCondIf (m : Machine) : Machine :=
+  let fr := m.k
+  let s := slotAt m.heap fr
+  let l := s.b
+  let ifNode := s.c
+  let c1 := fa m.heap ifNode
+  let c2 := fb m.heap c1
+  let c3 := fb m.heap c2
+  let seq := fb m.heap (fa m.heap l)
+  let more := fb m.heap l
+  let lamBody := fc m.heap (fa m.heap c2)
+  let phase := countOf s.kind
+  let v := m.val
+  if phase == 0 then
+    let m := setA m c1 v
+    let m := node m C_LAMBDA 0 0 NONE
+    let lam := m.val
+    let m := setCount (setA m c2 lam) fr X_CONDIF 1
+    startBody { m with env := s.d } lam seq KW_COND
+  else if phase == 1 then
+    if v == LISTIMPROPER then syntaxError m M_BADFORM KW_COND
+    else
+      let m := beginCore m lamBody
+      let m := setCount (setA m c2 m.val) fr X_CONDIF 2
+      { m with x := more, env := s.d, mode := EXP_COND }
+  else
+    let m := setA { m with k := s.a } c3 v
+    expanded m ifNode
+
+/-- `X_CASE` receives the key's code, then the end of the walk of its clauses. -/
+def retCase (m : Machine) : Machine :=
+  let fr := m.k
+  let s := slotAt m.heap fr
+  let clauses := fb m.heap (fb m.heap s.b)
+  let n := listLength m.heap clauses
+  let thunks := fb m.heap s.d
+  let scope := fc m.heap s.d
+  if m.val == LISTDONE then
+    let m := caseBody { m with k := s.a } clauses n
+    let m := node m C_CHAIN m.val NONE 0
+    let m := node m C_LAMBDA (n + 1) 0 m.val
+    let lam := m.val
+    let m := node m C_CHAIN s.c thunks 0
+    let m := node m C_APP lam m.val 0
+    expanded m m.val
+  else
+    let m := setC m fr m.val
+    let m := pushFrameN m X_CASEWALK 1 clauses s.d scope
+    { m with mode := CASECL }
+
+/-- A frame of quasiquotation, `X_QQCONS` or `X_QQAPPEND`, receives the code of the car, then that
+of the cdr. -/
+def retQQPair (m : Machine) (append : Bool) : Machine :=
+  let fr := m.k
+  let s := slotAt m.heap fr
+  if s.c == 0 then
+    { (setC m fr m.val) with x := s.b, env := s.d, nargs := countOf s.kind, mode := EXP_QQ }
+  else
+    let m := callPrim2 { m with k := s.a } (if append then P_APPEND else P_CONS) s.c m.val
+    expanded m m.val
+
+/-- `X_TOPDEF` receives the code of a definition's expression. -/
+def retTopDef (m : Machine) : Machine :=
+  let s := slotAt m.heap m.k
+  let next := s.a
+  let walk := next != NONE && subAt m.heap next == X_TOPWALK
+  let last := if walk then fc m.heap next else NONE
+  let m := node { m with k := next } C_GDEF s.b m.val 0
+  let m := node m C_CHAIN m.val NONE 0
+  let cell := m.val
+  if walk then { (setC (setB m last cell) next cell) with mode := TOPWALK }
+  else { m with mode := TOPCODE }
 
 /-- `EXPANDED`: the frame on top receives the code or token `val`. -/
 def expandReturn (m : Machine) : Machine :=
-  let h := m.heap
   let fr := m.k
-  let sub := subAt h fr
+  let s := slotAt m.heap fr
+  let sub := subOf s.kind
   let v := m.val
   if sub == X_LIST then listNext m
   else if sub == X_BIND then bindNext m
-  else if sub == X_APPOP then
-    let app := fb h fr
-    let args := fc h fr
-    let m := setA m app v
-    let m := popFrame m
-    if args == NILV then expanded m app
-    else
-      let m := node m C_CHAIN 0 NONE 0
-      let cell := m.val
-      let m := setB m app cell
-      let m := pushFrame { m with env := fd h fr } X_ARGS app 0 0
-      startList m cell args
+  else if sub == X_APPOP then retAppOp m
   else if sub == X_ARGS then
-    if v == LISTIMPROPER then syntaxError m M_IMPROPER 0 else expanded (popFrame m) (fb h fr)
+    if v == LISTIMPROPER then syntaxError m M_IMPROPER 0 else expanded { m with k := s.a } s.b
   else if sub == X_LAMBDA then
     if v == LISTIMPROPER then syntaxError m M_BADFORM KW_LAMBDA else lambdaDone m
   else if sub == X_BEGIN then
-    if v == LISTIMPROPER then syntaxError m M_BADFORM (fc h fr)
+    let body := fc m.heap s.b
+    if v == LISTIMPROPER then syntaxError m M_BADFORM s.c
     else
-      let m := beginCore (popFrame m) (fc h (fb h fr))
+      let m := beginCore { m with k := s.a } body
       expanded m m.val
-  else if sub == X_IF then expanded (popFrame m) (fb h fr)
+  else if sub == X_IF then expanded { m with k := s.a } s.b
   else if sub == X_SET then
-    let m := setB m (fb h fr) v
-    expanded (popFrame m) (fb h fr)
-  else if sub == X_LET then
-    let form := fb h fr
-    let bs := fa h (fb h form)
-    if countOf (slotAt h fr).kind == 0 then
-      -- the bindings are done: the body in the scope of their variables
-      let n := listLength h bs
-      let m := scopeWithBindings m (fd h fr) bs n
-      let scope := m.val
-      let m := node m C_LAMBDA n 0 NONE
-      let lam := m.val
-      let m := setD (setCount m fr X_LET 1) fr lam
-      let m := { m with env := scope }
-      startBody m lam (fb m.heap (fb m.heap form)) KW_LET
-    else if v == LISTIMPROPER then syntaxError m M_BADFORM KW_LET
-    else
-      let n := listLength h bs
-      let dup := firstDuplicate h bs n
-      if dup != NONE then syntaxError m M_DUPLICATE dup
-      else
-        let m := node (popFrame m) C_APP (fd h fr) (fc h fr) 0
-        expanded m m.val
-  else if sub == X_LETREC then
-    let form := fb h fr
-    let bs := fa h (fb h form)
-    let n := listLength h bs
-    if countOf (slotAt h fr).kind == 0 then
-      if n == 0 then
-        let m := node m C_LAMBDA 0 0 NONE
-        let lam := m.val
-        let m := setD (setC (setCount m fr X_LETREC 1) fr lam) fr lam
-        startBody { m with env := fd h fr } lam (fb m.heap (fb m.heap form)) KW_LETREC
-      else
-        -- the inner call: ((lambda (temp …) (set! v temp) …) init …)
-        let st := LeanExe.loop n (m, NONE) fun j st =>
-          let i := n - 1 - j
-          let m := node st.1 C_LREF i 0 0
-          let m := node m C_LSET (n + i) m.val 0
-          let m := node m C_CHAIN m.val st.2 0
-          (m, m.val)
-        let m := node st.1 C_LAMBDA n 0 st.2
-        let m := node m C_APP m.val (fc h fr) 0
-        let m := node m C_CHAIN m.val NONE 0
-        let first := m.val
-        let m := node m C_LAMBDA n 0 first
-        let outer := m.val
-        let m := node m C_LAMBDA 0 0 NONE
-        let holder := m.val
-        let m := setD (setC (setCount m fr X_LETREC 1) fr holder) fr outer
-        let m := { m with env := fd h fr }
-        startBody m holder (fb m.heap (fb m.heap form)) KW_LETREC
-    else if v == LISTIMPROPER then syntaxError m M_BADFORM KW_LETREC
-    else
-      let dup := firstDuplicate h bs n
-      if dup != NONE then syntaxError m M_DUPLICATE dup
-      else
-        let holder := fc h fr
-        let outer := fd h fr
-        let m := popFrame m
-        if n == 0 then
-          let m := node m C_APP outer NONE 0
-          expanded m m.val
-        else
-          let m := setB m (fc m.heap outer) (fc m.heap holder)
-          let st := LeanExe.loop n (m, NONE) fun _ st =>
-            let m := node st.1 C_CONST UNDEF 0 0
-            let m := node m C_CHAIN m.val st.2 0
-            (m, m.val)
-          let m := node st.1 C_APP outer st.2 0
-          expanded m m.val
+    let m := setB { m with k := s.a } s.b v
+    expanded m s.b
+  else if sub == X_LET then retLet m
+  else if sub == X_LETREC then retLetrec m
   else if sub == X_OR then
-    let flag := countOf (slotAt h fr).kind
-    if fc h fr == 0 then
-      let m := setC m fr v
-      { m with
-        x := fb h fr
-        env := fd h fr
+    let flag := countOf s.kind
+    if s.c == 0 then
+      { (setC m fr v) with
+        x := s.b
+        env := s.d
         mode := if flag == F_AND then EXP_AND else if flag == F_COND then EXP_COND else EXP_OR }
     else
-      let m := popFrame m
-      let m := if flag == F_AND then andCore m (fc h fr) v else orCore m (fc h fr) v
+      let m := { m with k := s.a }
+      let m := if flag == F_AND then andCore m s.c v else orCore m s.c v
       expanded m m.val
-  else if sub == X_CONDIF then
-    let ifNode := fc h fr
-    let c1 := fa h ifNode
-    let c2 := fb h c1
-    let c3 := fb h c2
-    let phase := countOf (slotAt h fr).kind
-    if phase == 0 then
-      let m := setA m c1 v
-      let m := node m C_LAMBDA 0 0 NONE
-      let lam := m.val
-      let m := setCount (setA m c2 lam) fr X_CONDIF 1
-      startBody { m with env := fd h fr } lam (fb h (fa h (fb h fr))) KW_COND
-    else if phase == 1 then
-      if v == LISTIMPROPER then syntaxError m M_BADFORM KW_COND
-      else
-        let m := beginCore m (fc h (fa h c2))
-        let m := setCount (setA m c2 m.val) fr X_CONDIF 2
-        { m with x := fb h (fb h fr), env := fd h fr, mode := EXP_COND }
-    else
-      let m := setA m c3 v
-      expanded (popFrame m) ifNode
-  else if sub == X_CASE then
-    if v == LISTDONE then
-      let form := fb h fr
-      let clauses := fb h (fb h form)
-      let n := listLength h clauses
-      let m := caseBody (popFrame m) clauses n
-      let body := m.val
-      let m := node m C_CHAIN body NONE 0
-      let m := node m C_LAMBDA (n + 1) 0 m.val
-      let lam := m.val
-      let m := node m C_CHAIN (fc h fr) (fb h (fd h fr)) 0
-      let m := node m C_APP lam m.val 0
-      expanded m m.val
-    else
-      let m := setC m fr v
-      let m := pushFrameN m X_CASEWALK 1 (fb h (fb h (fb h fr))) (fd h fr) (fc h (fd h fr))
-      { m with mode := CASECL }
+  else if sub == X_CONDIF then retCondIf m
+  else if sub == X_CASE then retCase m
   else if sub == X_CASEWALK then
     if v == LISTIMPROPER then syntaxError m M_BADFORM KW_CASE else { m with mode := CASECL }
-  else if sub == X_QQCONS || sub == X_QQAPPEND then
-    if fc h fr == 0 then
-      let m := setC m fr v
-      { m with x := fb h fr, env := fd h fr, nargs := countOf (slotAt h fr).kind, mode := EXP_QQ }
-    else
-      let m := callPrim2 (popFrame m) (if sub == X_QQAPPEND then P_APPEND else P_CONS) (fc h fr) v
-      expanded m m.val
+  else if sub == X_QQCONS then retQQPair m false
+  else if sub == X_QQAPPEND then retQQPair m true
   else if sub == X_QQWRAP then
-    let m := node (popFrame m) C_CONST (fb h fr) 0 0
+    let m := node { m with k := s.a } C_CONST s.b 0 0
     let m := callPrim2 m P_LIST m.val v
     expanded m m.val
   else if sub == X_QQVEC then
-    let m := callPrim1 (popFrame m) P_LISTTOVECTOR v
+    let m := callPrim1 { m with k := s.a } P_LISTTOVECTOR v
     expanded m m.val
   else if sub == X_TOPONE then
-    let m := node (popFrame m) C_CHAIN v NONE 0
+    let m := node { m with k := s.a } C_CHAIN v NONE 0
     { m with mode := TOPCODE }
-  else if sub == X_TOPDEF then
-    let m := node (popFrame m) C_GDEF (fb h fr) v 0
-    let gdef := m.val
-    if m.k != NONE && subAt m.heap m.k == X_TOPWALK then
-      let walk := m.k
-      let m := node m C_CHAIN gdef NONE 0
-      let m := setB m (fc m.heap walk) m.val
-      { (setC m walk m.val) with mode := TOPWALK }
-    else
-      let m := node m C_CHAIN gdef NONE 0
-      { m with mode := TOPCODE }
+  else if sub == X_TOPDEF then retTopDef m
   else fail m S_SYNTAX 0
 
 /-! ## Top-level forms -/
@@ -810,28 +852,31 @@ of definitions, or an expression.  The mode `TOPCODE` then holds their chain in 
 def topExpand (m : Machine) (d : UInt64) : Machine :=
   let h := m.heap
   let kw := if isPair h d then keywordOf h (fa h d) else 0
-  let m := { m with env := NONE }
+  let rest := if isPair h d then fb h d else NONE
+  let shaped := isPair h rest && isKind h (fa h rest) K_SYMBOL && isPair h (fb h rest) &&
+    fb h (fb h rest) == NILV
+  let shorthand := isPair h rest && isPair h (fa h rest)
+  let v := if shaped then fa h rest else NONE
+  let vkw := keywordOf h v
+  let e := if shaped then fa h (fb h rest) else NONE
   if kw == KW_DEFINE then
-    let rest := fb h d
-    if isPair h rest && isKind h (fa h rest) K_SYMBOL && isPair h (fb h rest) &&
-        fb h (fb h rest) == NILV then
-      let v := fa h rest
-      if keywordOf h v != 0 then syntaxError m M_KEYWORD (keywordOf h v)
+    if shaped then
+      if vkw != 0 then syntaxError m M_KEYWORD vkw
       else
         let m := pushFrame m X_TOPDEF v 0 0
-        { m with x := fa m.heap (fb m.heap rest), mode := EXPAND }
-    else if isPair h rest && isPair h (fa h rest) then syntaxError m M_UNSUPPORTED KW_DEFINE
+        { m with x := e, env := NONE, mode := EXPAND }
+    else if shorthand then syntaxError m M_UNSUPPORTED KW_DEFINE
     else syntaxError m M_BADFORM KW_DEFINE
   else
-    let r := if kw == KW_BEGIN then allDefinitions m (fb h d) else (m, false)
+    let r := if kw == KW_BEGIN then allDefinitions m rest else (m, false)
     let m := r.1
     if r.2 then
       let m := node m C_CHAIN 0 NONE 0
-      let m := pushFrame m X_TOPWALK (fb m.heap d) m.val m.val
+      let m := pushFrame m X_TOPWALK rest m.val m.val
       { m with mode := TOPWALK }
     else
       let m := pushFrame m X_TOPONE 0 0 0
-      { m with x := d, mode := EXPAND }
+      { m with x := d, env := NONE, mode := EXPAND }
 
 /-- One step of `TOPWALK`: the next definition of a `begin` of definitions, in the order of the
 reference's `expandTops`.  The walk's frame holds the rest of the current list, the last cell of the
@@ -840,33 +885,38 @@ the frame's list in field `d` of the first cell. -/
 def topWalk (m : Machine) : Machine :=
   let h := m.heap
   let fr := m.k
-  let cur := fb h fr
-  let first := fd h fr
+  let s := slotAt h fr
+  let cur := s.b
+  let first := s.d
+  let e := if isPair h cur then fa h cur else NONE
+  let more := if isPair h cur then fb h cur else NONE
+  let rest := if isPair h e then fb h e else NONE
+  let isBegin := isPair h e && keywordOf h (fa h e) == KW_BEGIN
+  let shaped := isPair h rest && isKind h (fa h rest) K_SYMBOL && isPair h (fb h rest) &&
+    fb h (fb h rest) == NILV
+  let shorthand := isPair h rest && isPair h (fa h rest)
+  let v := if shaped then fa h rest else NONE
+  let vkw := keywordOf h v
+  let init := if shaped then fa h (fb h rest) else NONE
+  let pending := fc h first
+  let resumed := if isPair h pending then fa h pending else NONE
+  let below := if isPair h pending then fb h pending else NONE
+  let chain := fb h first
   if isPair h cur then
-    let e := fa h cur
-    let m := setB m fr (fb h cur)
-    if keywordOf m.heap (fa m.heap e) == KW_BEGIN then
+    if isBegin then
       -- the pending rest of this list waits on the first cell's field c
-      let m := alloc m (mkKind K_PAIR 0 0) (fb m.heap fr) (fc m.heap first) 0 0
-      let m := setC m first m.val
-      setB m fr (fb m.heap e)
+      let m := alloc m (mkKind K_PAIR 0 0) more pending 0 0
+      setB (setC m first m.val) fr rest
     else
-      let rest := fb m.heap e
-      if isPair m.heap rest && isKind m.heap (fa m.heap rest) K_SYMBOL &&
-          isPair m.heap (fb m.heap rest) && fb m.heap (fb m.heap rest) == NILV then
-        let v := fa m.heap rest
-        if keywordOf m.heap v != 0 then syntaxError m M_KEYWORD (keywordOf m.heap v)
+      let m := setB m fr more
+      if shaped then
+        if vkw != 0 then syntaxError m M_KEYWORD vkw
         else
           let m := pushFrame m X_TOPDEF v 0 0
-          { m with x := fa m.heap (fb m.heap rest), env := NONE, mode := EXPAND }
-      else if isPair m.heap rest && isPair m.heap (fa m.heap rest) then
-        syntaxError m M_UNSUPPORTED KW_DEFINE
+          { m with x := init, env := NONE, mode := EXPAND }
+      else if shorthand then syntaxError m M_UNSUPPORTED KW_DEFINE
       else syntaxError m M_BADFORM KW_DEFINE
-  else
-    let pending := fc h first
-    if pending != 0 && pending != NONE then
-      let m := setB m fr (fa h pending)
-      setC m first (fb h pending)
-    else { (popFrame m) with val := fb h first, mode := TOPCODE }
+  else if pending != 0 && pending != NONE then setC (setB m fr resumed) first below
+  else { m with k := s.a, val := chain, mode := TOPCODE }
 
 end Demos.Scheme.Machine

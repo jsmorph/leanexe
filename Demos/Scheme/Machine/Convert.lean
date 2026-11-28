@@ -36,6 +36,7 @@ def convStep (m : Machine) : Machine :=
   let sub := subAt h c
   let a := fa h c
   let b := fb h c
+  let body := fc h c
   -- the prefix, its length, and the chain of the codes after it
   let m :=
     if sub == C_CONST then
@@ -54,7 +55,7 @@ def convStep (m : Machine) : Machine :=
   let m :=
     if sub == C_LSET || sub == C_GSET || sub == C_GDEF then node m C_CHAIN b NONE 0
     else if sub == C_IF then { m with val := a }
-    else if sub == C_LAMBDA then { m with val := fc h c }
+    else if sub == C_LAMBDA then { m with val := body }
     else if sub == C_APP then node m C_CHAIN a b 0
     else { m with val := NONE }
   let subs := m.val
@@ -66,21 +67,26 @@ def convStep (m : Machine) : Machine :=
 /-- One step of `CONVK`: the frame on top receives the list `val`. -/
 def convReturn (m : Machine) : Machine :=
   let fr := m.k
-  if subAt m.heap fr == V_SUB then
-    let v := m.val
-    let m := alloc m (mkKind K_PAIR 0 0) v NILV 0 0
+  let s := slotAt m.heap fr
+  let rem := s.b
+  let next := fa m.heap rem
+  let after := fb m.heap rem
+  if subOf s.kind == V_SUB then
+    let m := alloc m (mkKind K_PAIR 0 0) m.val NILV 0 0
     let p := m.val
-    let m := setC (setB m (fc m.heap fr) p) fr p
-    let rem := fb m.heap fr
-    if rem == NONE then { (popFrame m) with val := fd m.heap fr }
-    else { (setB m fr (fb m.heap rem)) with x := fa m.heap rem, mode := CONV }
+    let m := setC (setB m s.c p) fr p
+    if rem == NONE then { m with k := s.a, val := s.d }
+    else { (setB m fr after) with x := next, mode := CONV }
   else { m with x := m.val, aux := LINE, mode := PRINT }
 
 /-- One step of `M1NEXT`: the next code of the chain of a datum's forms in the frame on top. -/
 def m1Next (m : Machine) : Machine :=
   let fr := m.k
-  let rem := fb m.heap fr
-  if rem == NONE then { (popFrame m) with mode := TOP }
-  else { (setB m fr (fb m.heap rem)) with x := fa m.heap rem, mode := CONV }
+  let s := slotAt m.heap fr
+  let rem := s.b
+  let next := fa m.heap rem
+  let after := fb m.heap rem
+  if rem == NONE then { m with k := s.a, mode := TOP }
+  else { (setB m fr after) with x := next, mode := CONV }
 
 end Demos.Scheme.Machine
