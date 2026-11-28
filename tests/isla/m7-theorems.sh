@@ -13,6 +13,8 @@
 # script elaborates every module there unless given some.
 # ISLA_CPUS, 4 unless set, is the CPU quota and thread count of each module's elaboration; a module
 # elaborates on one to four threads, so a caller that runs several modules at once sets it to 1.
+# ISLA_MEMORY_HIGH, 8G unless set, is the MemoryHigh of the build of the imports and of each
+# elaboration, whose MemoryMax is 2G more.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$root"
@@ -29,11 +31,11 @@ if grep -q '^TestSupport\.M7\.Isla\.' <<<"$imports"; then
   echo "fail: a module imports another module of tests/TestSupport/M7/Isla"
   exit 1
 fi
-tools/leanrun --timeout 60m --memory-high 8G --cpus 4 lake --log-level error build $imports
+tools/leanrun --timeout 60m --memory-high "${ISLA_MEMORY_HIGH:-8G}" --cpus 4 lake --log-level error build $imports
 std='(propext|Classical\.choice|Quot\.sound)'
 result=0
 for f in "${files[@]}"; do
-  if ! out=$( { /usr/bin/time -f "%e %M" tools/leanrun --timeout 180m --memory-high 8G --cpus "${ISLA_CPUS:-4}" \
+  if ! out=$( { /usr/bin/time -f "%e %M" tools/leanrun --timeout 180m --memory-high "${ISLA_MEMORY_HIGH:-8G}" --cpus "${ISLA_CPUS:-4}" \
       lake env lean "$f"; } 2>&1); then
     printf '%s\n' "$out"
     echo "fail: $f"
