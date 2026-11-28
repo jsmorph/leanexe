@@ -14,6 +14,7 @@ public import TestSupport.Numerics.WorstCases
 public import TestSupport.Numerics.GammaReference
 public import TestSupport.Numerics.BesselReference
 public import TestSupport.Numerics.IntervalLog
+public import TestSupport.Numerics.EncloseSq
 public import TestSupport.Hashing.Packing
 public import TestSupport.Native.AlignedCrc
 public import TestSupport.Native.ClightGen
