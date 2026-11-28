@@ -116,7 +116,8 @@ def spellingString (names : Array UInt64) (src : LeanExe.Bytes) (m : Machine)
       (candidateWord names src entry p e (3 * c))
       (if 3 * c + 1 < words then candidateWord names src entry p e (3 * c + 1) else 0)
       (if 3 * c + 2 < words then candidateWord names src entry p e (3 * c + 2) else 0)
-    (m, m.val)
+    let v := m.val
+    (m, v)
   alloc st.1 (mkKind K_STRING 0 0) len st.2 0 0
 
 /-- Whether the spelling of the string `s` is the candidate of `len` bytes. -/
@@ -184,7 +185,8 @@ def listToVector (m : Machine) (lst flag : UInt64) : Machine :=
     let e2 := fb st.1.heap e1
     let m := alloc st.1 (mkKind K_CHUNK CH_VALUES 0) st.2 (fa st.1.heap e0)
       (if 3 * c + 1 < n then fa st.1.heap e1 else 0) (if 3 * c + 2 < n then fa st.1.heap e2 else 0)
-    (m, m.val)
+    let v := m.val
+    (m, v)
   alloc st.1 (mkKind K_VECTOR 0 0 ||| flag) n st.2 0 0
 
 /-- Element `i` of a vector. -/

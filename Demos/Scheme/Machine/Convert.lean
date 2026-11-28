@@ -62,7 +62,8 @@ def convStep (m : Machine) : Machine :=
   if subs == NONE then { m with val := head, mode := CONVK }
   else
     let m := pushFrame m V_SUB (fb m.heap subs) last head
-    { m with x := fa m.heap subs }
+    let first := fa m.heap subs
+    { m with x := first }
 
 /-- One step of `CONVK`: the frame on top receives the list `val`. -/
 def convReturn (m : Machine) : Machine :=

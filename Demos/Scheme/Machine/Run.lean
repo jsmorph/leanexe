@@ -32,9 +32,11 @@ def initMachine (cap outCap runMode : UInt64) : Machine :=
 def topStep (m : Machine) : Machine :=
   if m.forms == NILV || !isPair m.heap m.forms then { m with mode := DONE }
   else
+    let d := fa m.heap m.forms
+    let rest := fb m.heap m.forms
     { m with
-      x := fa m.heap m.forms
-      forms := fb m.heap m.forms
+      x := d
+      forms := rest
       aux := LINE
       mode := PRINT }
 
@@ -43,7 +45,8 @@ def topExpandNext (m : Machine) : Machine :=
   if m.forms == NILV || !isPair m.heap m.forms then { m with mode := DONE }
   else
     let d := fa m.heap m.forms
-    topExpand { m with forms := fb m.heap m.forms } d
+    let rest := fb m.heap m.forms
+    topExpand { m with forms := rest } d
 
 /-- The chain of a datum's forms in `val`: in mode 1, the forms to write. -/
 def topCode (m : Machine) : Machine :=

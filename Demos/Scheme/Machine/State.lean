@@ -176,7 +176,7 @@ def S_SPACE : UInt64 := 1280
 def S_OUTPUT : UInt64 := 1792
 
 /-- The machine with the outcome `status` and its irritant, unless an earlier outcome stands. -/
-@[inline] def fail (m : Machine) (status detail : UInt64) : Machine :=
+def fail (m : Machine) (status detail : UInt64) : Machine :=
   if m.status == 0 then { m with status := status, detail := detail, mode := DONE } else m
 
 /-- A fresh slot holding `s`, whose reference becomes `val`, or the outcome *out of space*. -/
@@ -187,27 +187,27 @@ def alloc (m : Machine) (kind a b c d : UInt64) : Machine :=
   else fail m S_SPACE 0
 
 /-- A new frame of subkind `sub` with the fields `b`, `c`, and `d` above the frame chain `k`. -/
-@[inline] def pushFrame (m : Machine) (sub b c d : UInt64) : Machine :=
+def pushFrame (m : Machine) (sub b c d : UInt64) : Machine :=
   let m := alloc m (mkKind K_FRAME sub 0) m.k b c d
   { m with k := m.val }
 
 /-- The machine with field `a` of the object `v` replaced. -/
-@[inline] def setA (m : Machine) (v w : UInt64) : Machine :=
+def setA (m : Machine) (v w : UInt64) : Machine :=
   let s := slotAt m.heap v
   let s' : Slot := ⟨s.kind, w, s.b, s.c, s.d⟩
   { m with heap := m.heap.set! (v >>> 3).toNat s' }
 
-@[inline] def setB (m : Machine) (v w : UInt64) : Machine :=
+def setB (m : Machine) (v w : UInt64) : Machine :=
   let s := slotAt m.heap v
   let s' : Slot := ⟨s.kind, s.a, w, s.c, s.d⟩
   { m with heap := m.heap.set! (v >>> 3).toNat s' }
 
-@[inline] def setC (m : Machine) (v w : UInt64) : Machine :=
+def setC (m : Machine) (v w : UInt64) : Machine :=
   let s := slotAt m.heap v
   let s' : Slot := ⟨s.kind, s.a, s.b, w, s.d⟩
   { m with heap := m.heap.set! (v >>> 3).toNat s' }
 
-@[inline] def setD (m : Machine) (v w : UInt64) : Machine :=
+def setD (m : Machine) (v w : UInt64) : Machine :=
   let s := slotAt m.heap v
   let s' : Slot := ⟨s.kind, s.a, s.b, s.c, w⟩
   { m with heap := m.heap.set! (v >>> 3).toNat s' }

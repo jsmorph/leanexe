@@ -18,7 +18,7 @@ def P_VEC : UInt64 := 49
 def P_CLOSE : UInt64 := 50
 
 /-- The machine with the byte `b` written, or the outcome *output limit*. -/
-@[inline] def emit (m : Machine) (b : UInt64) : Machine :=
+def emit (m : Machine) (b : UInt64) : Machine :=
   if m.outLen < m.outCap then { m with out := m.out.set! m.outLen.toNat b, outLen := m.outLen + 1 }
   else fail m S_OUTPUT 0
 

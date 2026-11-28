@@ -61,15 +61,17 @@ def F_AND : UInt64 := 1
 def F_COND : UInt64 := 2
 
 /-- A frame with a count. -/
-@[inline] def pushFrameN (m : Machine) (sub n b c d : UInt64) : Machine :=
+def pushFrameN (m : Machine) (sub n b c d : UInt64) : Machine :=
   let m := alloc m (mkKind K_FRAME sub n) m.k b c d
   { m with k := m.val }
 
 /-- The machine with the top frame removed. -/
-@[inline] def popFrame (m : Machine) : Machine := { m with k := fa m.heap m.k }
+def popFrame (m : Machine) : Machine :=
+  let next := fa m.heap m.k
+  { m with k := next }
 
 /-- The code `v` returned to the frame on top. -/
-@[inline] def expanded (m : Machine) (v : UInt64) : Machine := { m with val := v, mode := EXPANDED }
+def expanded (m : Machine) (v : UInt64) : Machine := { m with val := v, mode := EXPANDED }
 
 /-- The syntax error `entry` with the keyword code or symbol `detail`. -/
 @[inline] def syntaxError (m : Machine) (entry detail : UInt64) : Machine :=
@@ -104,7 +106,8 @@ position 0. -/
 def scopeWithBindings (m : Machine) (scope l n : UInt64) : Machine :=
   let st := LeanExe.loop n (m, scope) fun j st =>
     let m := scopeWith st.1 st.2 (fa st.1.heap (listAt st.1.heap l (n - 1 - j)))
-    (m, m.val)
+    let v := m.val
+    (m, v)
   { st.1 with val := st.2 }
 
 /-- The variable of the first of the first `n` bindings of `l` whose variable occurs again among
@@ -118,7 +121,7 @@ def firstDuplicate (heap : Array Slot) (l n : UInt64) : UInt64 :=
   if i < n then fa heap (listAt heap l i) else NONE
 
 /-- The frame `fr` with the count `n` in its kind word. -/
-@[inline] def setCount (m : Machine) (fr sub n : UInt64) : Machine :=
+def setCount (m : Machine) (fr sub n : UInt64) : Machine :=
   let s := slotAt m.heap fr
   let s' : Slot := ⟨mkKind K_FRAME sub n, s.a, s.b, s.c, s.d⟩
   { m with heap := m.heap.set! (fr >>> 3).toNat s' }
@@ -139,7 +142,8 @@ that is no pair.  The owner checks that a body is not empty. -/
 def startList (m : Machine) (cell l : UInt64) : Machine :=
   if isPair m.heap l then
     let m := pushFrame m X_LIST (fb m.heap l) cell m.env
-    { m with x := fa m.heap l, mode := EXPAND }
+    let first := fa m.heap l
+    { m with x := first, mode := EXPAND }
   else expanded m LISTIMPROPER
 
 /-- A body of one or more expressions into the chain of the lambda node `lam`, or the syntax error
@@ -163,7 +167,9 @@ def listNext (m : Machine) : Machine :=
     let next := m.val
     let m := setB m cell next
     let m := setC (setB m fr (fb m.heap rem)) fr next
-    { m with x := fa m.heap rem, env := fd m.heap fr, mode := EXPAND }
+    let first := fa m.heap rem
+    let env := fd m.heap fr
+    { m with x := first, env := env, mode := EXPAND }
   else expanded (popFrame m) LISTIMPROPER
 
 /-! ## Bindings of `let` and `letrec` -/
@@ -181,7 +187,8 @@ def startBindings (m : Machine) (bs kw : UInt64) : Machine :=
       let cell := m.val
       let m := setC m m.k cell
       let m := pushFrameN m X_BIND kw (fb m.heap bs) cell m.env
-      { m with x := fa m.heap (fb m.heap b), mode := EXPAND }
+      let init := fa m.heap (fb m.heap b)
+      { m with x := init, mode := EXPAND }
   else syntaxError m M_BADFORM kw
 
 /-- The binding frame on top receives an initializer's code. -/
@@ -201,7 +208,9 @@ def bindNext (m : Machine) : Machine :=
       let next := m.val
       let m := setB m cell next
       let m := setC (setB m fr (fb m.heap rem)) fr next
-      { m with x := fa m.heap (fb m.heap b), env := fd m.heap fr, mode := EXPAND }
+      let init := fa m.heap (fb m.heap b)
+      let env := fd m.heap fr
+      { m with x := init, env := env, mode := EXPAND }
   else syntaxError m M_BADFORM kw
 
 /-- The number of bindings of the form `(v init)` before the first that has another form. -/
@@ -247,7 +256,8 @@ def expandLambda (m : Machine) (form : UInt64) : Machine :=
       let total := if p.2.1 then n + 1 else n
       let st := LeanExe.loop total (m, m.env) fun j st =>
         let m := scopeWith st.1 st.2 (formalAt st.1.heap formals n (total - 1 - j))
-        (m, m.val)
+        let v := m.val
+        (m, v)
       let m := node st.1 C_LAMBDA n (if p.2.1 then 1 else 0) NONE
       let lam := m.val
       let m := pushFrame { m with env := st.2 } X_LAMBDA lam formals 0
@@ -297,7 +307,8 @@ def expandSet (m : Machine) (form : UInt64) : Machine :=
       let r := lookupScope h m.env v
       let m := if r.2 then node m C_LSET r.1 0 0 else node m C_GSET v 0 0
       let m := pushFrame m X_SET m.val 0 0
-      { m with x := fa m.heap (fb m.heap rest), mode := EXPAND }
+      let e := fa m.heap (fb m.heap rest)
+      { m with x := e, mode := EXPAND }
   else syntaxError m M_BADFORM KW_SET
 
 /-- `let` (§4.2.2): the bindings, then the body in the scope of their variables, then the
@@ -369,7 +380,8 @@ def expandCase (m : Machine) (form : UInt64) : Machine :=
     else
       let m := node m C_CHAIN 0 NONE m.env
       let m := pushFrameN m X_CASE 0 form 0 m.val
-      { m with x := fa m.heap rest, mode := EXPAND }
+      let key := fa m.heap rest
+      { m with x := key, mode := EXPAND }
   else syntaxError m M_BADFORM KW_CASE
 
 /-- The special form with keyword `kw`. -/
@@ -398,7 +410,8 @@ def expandForm (m : Machine) (kw form : UInt64) : Machine :=
   else if kw == KW_CASE then expandCase m form
   else if kw == KW_QUASIQUOTE then
     if isPair h rest && fb h rest == NILV then
-      { m with x := fa h rest, nargs := 1, mode := EXP_QQ }
+      let template := fa h rest
+      { m with x := template, nargs := 1, mode := EXP_QQ }
     else syntaxError m M_BADFORM kw
   else if kw == KW_DEFINE then syntaxError m M_DEFINITION 0
   else if kw == KW_DELAY || kw == KW_DO || kw == KW_LETSTAR then syntaxError m M_UNSUPPORTED kw
@@ -447,10 +460,11 @@ def expandOrAnd (m : Machine) (flag : UInt64) : Machine :=
     let m := node m C_CONST (if flag == F_AND then TRUE else FALSE) 0 0
     expanded m m.val
   else if isPair m.heap l then
-    if fb m.heap l == NILV then { m with x := fa m.heap l, mode := EXPAND }
+    let first := fa m.heap l
+    if fb m.heap l == NILV then { m with x := first, mode := EXPAND }
     else
       let m := pushFrameN m X_OR flag (fb m.heap l) 0 m.env
-      { m with x := fa m.heap l, mode := EXPAND }
+      { m with x := first, mode := EXPAND }
   else syntaxError m M_IMPROPER 0
 
 /-- One step of `EXP_COND`: the clauses `x` (§7.3). -/
@@ -541,7 +555,8 @@ def caseBody (m : Machine) (clauses n : UInt64) : Machine :=
       let m := node m C_CHAIN call m.val 0
       let m := node m C_CHAIN test m.val 0
       let m := node m C_IF m.val 0 0
-      (m, m.val)
+      let v := m.val
+      (m, v)
   if st.2 == 0 then node st.1 C_CONST UNSPEC 0 0 else { st.1 with val := st.2 }
 
 /-- One step of `EXP_QQ`: the template `x` at the depth `nargs` (§4.2.6, §7.1.4). -/
@@ -587,7 +602,8 @@ def expandQQ (m : Machine) : Machine :=
     let n := fa h t
     let st := LeanExe.loop n (m, NILV) fun j st =>
       let m := alloc st.1 (mkKind K_PAIR 0 0) (vectorRef st.1.heap t (n - 1 - j)) st.2 0 0
-      (m, m.val)
+      let v := m.val
+      (m, v)
     let m := pushFrame st.1 X_QQVEC 0 0 0
     { m with x := st.2 }
   else
@@ -665,7 +681,8 @@ def retLetrec (m : Machine) : Machine :=
         let m := node st.1 C_LREF i 0 0
         let m := node m C_LSET (n + i) m.val 0
         let m := node m C_CHAIN m.val st.2 0
-        (m, m.val)
+        let v := m.val
+        (m, v)
       let m := node st.1 C_LAMBDA n 0 st.2
       let m := node m C_APP m.val s.c 0
       let m := node m C_CHAIN m.val NONE 0
@@ -687,7 +704,8 @@ def retLetrec (m : Machine) : Machine :=
       let st := LeanExe.loop n (m, NONE) fun _ st =>
         let m := node st.1 C_CONST UNDEF 0 0
         let m := node m C_CHAIN m.val st.2 0
-        (m, m.val)
+        let v := m.val
+        (m, v)
       let m := node st.1 C_APP s.d st.2 0
       expanded m m.val
 
@@ -837,10 +855,13 @@ def allDefinitions (m : Machine) (l : UInt64) : Machine × Bool :=
       if isPair m.heap cur then
         let e := fa m.heap cur
         let kw := if isPair m.heap e then keywordOf m.heap (fa m.heap e) else 0
-        if kw == KW_DEFINE then (m, fb m.heap cur, stack, 0)
+        let rest := fb m.heap cur
+        if kw == KW_DEFINE then (m, rest, stack, 0)
         else if kw == KW_BEGIN then
-          let m := alloc m (mkKind K_PAIR 0 0) (fb m.heap cur) stack 0 0
-          (m, fb m.heap e, m.val, 0)
+          let inner := fb m.heap e
+          let m := alloc m (mkKind K_PAIR 0 0) rest stack 0 0
+          let v := m.val
+          (m, inner, v, 0)
         else (m, cur, stack, 2)
       else if cur == NILV then
         if stack == NILV then (m, cur, stack, 1) else (m, fa m.heap stack, fb m.heap stack, 0)

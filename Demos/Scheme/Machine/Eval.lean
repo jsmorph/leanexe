@@ -39,7 +39,7 @@ def E_FOREACH : UInt64 := 76
   fail m (S_ERROR + entry) detail
 
 /-- The value `v` returned to the frame on top. -/
-@[inline] def returnVal (m : Machine) (v : UInt64) : Machine := { m with val := v, mode := RETURN }
+def returnVal (m : Machine) (v : UInt64) : Machine := { m with val := v, mode := RETURN }
 
 /-- The cell at position `i` of the environment `env`. -/
 @[inline] def cellAt (heap : Array Slot) (env i : UInt64) : UInt64 :=
@@ -53,7 +53,8 @@ def E_FOREACH : UInt64 := 76
 last expression with the body's continuation. -/
 def enterBody (m : Machine) (body env : UInt64) : Machine :=
   let m := if fb m.heap body == NONE then m else pushFrame m E_SEQ (fb m.heap body) env 0
-  { m with x := fa m.heap body, env := env, mode := EVAL }
+  let first := fa m.heap body
+  { m with x := first, env := env, mode := EVAL }
 
 /-- One step of `EVAL`: the code `x` in `env`. -/
 def evalStep (m : Machine) : Machine :=
@@ -94,8 +95,11 @@ def evalStep (m : Machine) : Machine :=
 def reverseOnto (m : Machine) (l tail : UInt64) : Machine :=
   let st := LeanExe.repeatWhile 16777216 (m, l, tail) (fun s => s.1.status == 0 && isPair s.1.heap s.2.1)
     fun s =>
-      let m := alloc s.1 (mkKind K_PAIR 0 0 ||| MUTABLE) (fa s.1.heap s.2.1) s.2.2 0 0
-      (m, fb s.1.heap s.2.1, m.val)
+      let x := fa s.1.heap s.2.1
+      let next := fb s.1.heap s.2.1
+      let m := alloc s.1 (mkKind K_PAIR 0 0 ||| MUTABLE) x s.2.2 0 0
+      let v := m.val
+      (m, next, v)
   { st.1 with val := st.2.2 }
 
 /-- The application of a closure: its fixed variables bound to fresh cells that hold the
@@ -113,14 +117,20 @@ def applyClosure (m : Machine) (f : UInt64) : Machine :=
     -- the surplus arguments, last first, become the rest list in order
     let surplus := m.nargs - n
     let st := LeanExe.loop (if rest then surplus else 0) (m, m.args, NILV) fun _ s =>
-      let m := alloc s.1 (mkKind K_PAIR 0 0 ||| MUTABLE) (fa s.1.heap s.2.1) s.2.2 0 0
-      (m, fb s.1.heap s.2.1, m.val)
+      let x := fa s.1.heap s.2.1
+      let next := fb s.1.heap s.2.1
+      let m := alloc s.1 (mkKind K_PAIR 0 0 ||| MUTABLE) x s.2.2 0 0
+      let v := m.val
+      (m, next, v)
     let m := st.1
     let fixedArgs := if rest then st.2.1 else m.args
     let m := if rest then alloc m (mkKind K_CELL 0 0) st.2.2 cenv 0 0 else { m with val := cenv }
     let st := LeanExe.loop n (m, fixedArgs, m.val) fun _ s =>
-      let m := alloc s.1 (mkKind K_CELL 0 0) (fa s.1.heap s.2.1) s.2.2 0 0
-      (m, fb s.1.heap s.2.1, m.val)
+      let x := fa s.1.heap s.2.1
+      let next := fb s.1.heap s.2.1
+      let m := alloc s.1 (mkKind K_CELL 0 0) x s.2.2 0 0
+      let v := m.val
+      (m, next, v)
     enterBody st.1 body st.2.2
 
 /-- The arguments of a call of `map` or `for-each` from the lists `lists`: the cars of the lists,
@@ -130,15 +140,21 @@ def carsAndCdrs (m : Machine) (lists : UInt64) : Machine :=
     (fun s => s.1.status == 0 && isPair s.1.heap s.2.1)
     fun s =>
       let l := fa s.1.heap s.2.1
-      let m := alloc s.1 (mkKind K_PAIR 0 0 ||| MUTABLE) (fa s.1.heap l) s.2.2.1 0 0
-      (m, fb s.1.heap s.2.1, m.val, s.2.2.2 + 1)
+      let x := fa s.1.heap l
+      let next := fb s.1.heap s.2.1
+      let m := alloc s.1 (mkKind K_PAIR 0 0 ||| MUTABLE) x s.2.2.1 0 0
+      let v := m.val
+      (m, next, v, s.2.2.2 + 1)
   let m := { st.1 with args := st.2.2.1, nargs := st.2.2.2 }
   -- the cdrs in the order of the lists
   let m := reverseOnto m lists NILV
   let st := LeanExe.repeatWhile 16777216 (m, m.val, NILV) (fun s => s.1.status == 0 && isPair s.1.heap s.2.1)
     fun s =>
-      let m := alloc s.1 (mkKind K_PAIR 0 0 ||| MUTABLE) (fb s.1.heap (fa s.1.heap s.2.1)) s.2.2 0 0
-      (m, fb s.1.heap s.2.1, m.val)
+      let x := fb s.1.heap (fa s.1.heap s.2.1)
+      let next := fb s.1.heap s.2.1
+      let m := alloc s.1 (mkKind K_PAIR 0 0 ||| MUTABLE) x s.2.2 0 0
+      let v := m.val
+      (m, next, v)
   { st.1 with aux := st.2.2 }
 
 /-- The next call of `map`'s procedure `f` on the cars of the lists, or the list of the results
@@ -220,12 +236,16 @@ def appendLists (m : Machine) : Machine :=
       (fun l => isPair h l && (properLength h m.cap (fa h l)).2) (fun l => fb h l) == NILV
     if !ok then runError m M_TYPE 0
     else
-      let st := LeanExe.repeatWhile 16777216 (m, firsts, fa h m.args)
+      let last := fa h m.args
+      let st := LeanExe.repeatWhile 16777216 (m, firsts, last)
         (fun s => s.1.status == 0 && isPair s.1.heap s.2.1)
         fun s =>
-          let m := reverseOnto s.1 (fa s.1.heap s.2.1) NILV
+          let l := fa s.1.heap s.2.1
+          let next := fb s.1.heap s.2.1
+          let m := reverseOnto s.1 l NILV
           let m := reverseOnto m m.val s.2.2
-          (m, fb m.heap s.2.1, m.val)
+          let v := m.val
+          (m, next, v)
       returnVal st.1 st.2.2
 
 /-- A standard procedure other than `apply`, `map`, `for-each`, and
@@ -327,7 +347,10 @@ def applyStep (m : Machine) : Machine :=
   if isPrim f then applyPrim m (primCode f)
   else if isKind h f K_CLOSURE then applyClosure m f
   else if isKind h f K_ESCAPE then
-    if m.nargs == 1 then { m with val := fa h m.args, k := fa h f, mode := RETURN }
+    if m.nargs == 1 then
+      let v := fa h m.args
+      let saved := fa h f
+      { m with val := v, k := saved, mode := RETURN }
     else runError m M_ARITY 0
   else runError m M_NOTPROC 0
 

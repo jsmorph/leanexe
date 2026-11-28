@@ -42,7 +42,9 @@ def deliver (m : Machine) (d : UInt64) : Machine :=
       let fr := st.1.k
       let m := alloc st.1 (mkKind K_PAIR 0 0) st.2 NILV 0 0
       let m := alloc m (mkKind K_PAIR 0 0) (fb m.heap fr) m.val 0 0
-      ({ m with k := fa m.heap fr }, m.val)
+      let next := fa m.heap fr
+      let v := m.val
+      ({ m with k := next }, v)
   let m := st.1
   let fr := m.k
   if fr != NONE && subAt m.heap fr == R_LIST && fd m.heap fr == 1 then
@@ -154,10 +156,12 @@ def readClose (m : Machine) (p : UInt64) : Machine :=
       if fd m.heap fr == 1 then fail m (S_READ + M_CLOSE) p
       else
         let d := if fb m.heap fr == NONE then NILV else fb m.heap fr
-        deliver { m with k := fa m.heap fr, pos := p + 1 } d
+        let next := fa m.heap fr
+        deliver { m with k := next, pos := p + 1 } d
     else if sub == R_VEC then
       let lst := if fb m.heap fr == NONE then NILV else fb m.heap fr
-      let m := listToVector { m with k := fa m.heap fr, pos := p + 1 } lst 0
+      let next := fa m.heap fr
+      let m := listToVector { m with k := next, pos := p + 1 } lst 0
       deliver m m.val
     else fail m (S_READ + M_CLOSE) p
 
