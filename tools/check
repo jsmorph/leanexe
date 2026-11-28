@@ -711,7 +711,7 @@ class Check:
         env = dict(os.environ, **h.env, LEANRUN_FAST='0', LEANRUN_LOCKDIR=os.path.join(self.dir, 'locks', 'build'),
                    LEANEXE_CHECK_RUN=self.run_id, LEANEXE_CHECK_ITEM='build')
         with open(log, 'w') as f:
-            code = subprocess.run(['tools/leanrun', '--timeout', '12h', '--threads', str(jobs), '--cpus', str(jobs),
+            code = subprocess.run(['tools/leanrun', '--timeout', '12h', '--threads', str(jobs), '--cpus', str(jobs * jobs),
                                    '--memory-high', f'{high}G', 'lake', '--log-level', 'info', 'build', *targets],
                                   cwd=self.root, env=env, stdout=f, stderr=subprocess.STDOUT).returncode
         self.build_result = {'start': start, 'end': time.time(), 'code': code, 'jobs': jobs, 'targets': targets}
