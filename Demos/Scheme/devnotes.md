@@ -25,12 +25,20 @@ A quoted constant must denote one object at every evaluation of its quotation, a
 
 An independent review of the three results' statements found them about the reference rules, on the request's programs byte for byte, and not vacuous.  It ran variants of `step` against the statements and the corpus and found that no case told apart operands evaluated from right to left, an operator evaluated last, a `letrec` that assigns each variable as its initializer returns when the initializers run from right to left, an `or` that evaluates a test twice, and a `let` that reuses its location when a continuation re-enters it.  The cases `operand-order`, `operator-first`, `letrec-staging`, `or-once`, `and-once`, and `fresh-reentry` now tell each apart, and the reference semantics meets them.  The review also observed that §7.3's thunk rule for `or` places no source expression in the scope of its temporaries, so `or-42` rejects an expansion that binds `_` around the second test, not a wrong choice of the temporaries' names.
 
+## The transcription of §7.2
+
+The user chose the defunctionalized transcription.  `Report.lean` follows §7.2 equation by equation, with its own abstract syntax of §7.2.1, which keeps the three lambda forms and `if` with one arm, and with the constants replaced by their values before the run, since `K` has no store argument and a quoted compound datum must denote an object in the store.  The three programs take 85, 413, and 268 clauses, against 25, 136, and 88 rules of the reference machine, since the equations pass sequences of values through `single`, `tievals`, and the continuations of `E*`.  `cross_check` states that the transcription's answers equal the reference semantics's results on the three programs, and the kernel checks the module in 10 s with a peak of 1.7 GiB.
+
+Of the corpus's programs, the transcription starts 81, those whose constants lie within §7.2, and it agrees with the reference semantics on 48 of them.  Each of the other 33 calls a procedure that §7.2.4 does not define, which the transcription's initial environment leaves unbound, calls `+` or `<` with three arguments, where §7.2's `add` and `less` take two, exceeds the fixnum range, which §7.2 does not restrict, or compares two empty vectors, which are `eqv` as sequences of no locations under Ev = L* × T and distinct objects under the profile.  An escape procedure called with two values passes both to its continuation, as the equation of `cwcc` states, where the profile, after §6.9's escape procedure "of one argument", signals an error.
+
+An independent review compared every clause of `Report.lean` with the PDF's equations and pages and found no departure, no missing equation, and no wrong citation.  It found supplied rules that the module's table did not record: the deduplication of a variable that a program defines twice, the error text of `cdr`, the identity locations of the initial store, the fixnum reader of the front end, the defaults for locations off the store, and the observation of answers; the table records them now.  It also ran mutants of the transcription against the three programs: a one-shot escape, a store restored at escape, swapped `cons` fields, a `tievals` that binds locations in reverse, a reversed `permute` without its inverse, and swapped `if` arms each changed a result, while a `truish` that treats `()` as false, a `single` that takes the first of several values, a missing check for `undefined`, and a lookup of the outermost binding did not.  The three programs never reach a rest list, `apply`, `car`, `cdr`, `setcar`, `eqv`, or the translation of definitions, so `cross_check_more` adds nine programs that do and states their agreement with the reference semantics.
+
 ## Plan
 
 - [x] Stage 1: design report.
 - [x] Stage 2: [clause inventory](inventory.md) and [profile](profile.md).
 - [x] Stage 3: reference semantics, the three derived results, and the corpus check.
-- [ ] `Report.lean`, after the user's choice of encoding for §7.2.
+- [x] `Report.lean`: the defunctionalized transcription of §7.2 and its cross-check.
 - [ ] Stage 4: reader and expander in the dialect.
 - [ ] Stage 5: evaluator and `call/cc`, after the closed-form bound is checked on a skeleton machine.
 - [ ] Stage 6: export, call theorem with its allocation bound, and the compiled slice.

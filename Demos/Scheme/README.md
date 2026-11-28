@@ -16,3 +16,14 @@ The modules of `Demos/Scheme/Semantics/` define the meaning of a program's bytes
 | `Demos.Scheme.Semantics.final_unique` | A run reaches at most one final configuration. |
 
 The kernel evaluates each run, and the theorems depend on the axioms `propext`, `Classical.choice`, and `Quot.sound` alone.  `lake build Demos.Scheme.Semantics.Results Demos.Scheme.Semantics.CorpusCheck` builds and checks them in about 55 s, with a peak of 3.0 GiB for the corpus.
+
+## The transcription of §7.2
+
+`Demos/Scheme/Report.lean` transcribes the formal semantics of §7.2, printed pages 34 to 36.  Lean admits only strictly positive inductive types, and E occurs to the left of the arrows of F = L × (E* → K → C), so each λ-abstraction of the equations whose value is a procedure's function, an expression or command continuation, or an argument of `single` or `tievals` is a constructor of a code type whose fields are its free variables, and each equation is one clause of `Demos.Scheme.Report.step`, which cites its equation and page.  The module's docstring lists each rule that the report leaves to the implementation, to prose, or to nothing, with its clause, among them `K`, `new`, `wrong`, `permute`, the answers, the initial environment, `cdr`, and the elided clauses of `eqv`.  `Demos/Scheme/ReportCheck.lean` computes the three programs through the transcription, under the reference reader and expander, as a cross-check of the reference semantics, not a proof of adequacy.
+
+| Theorem | Statement |
+|---|---|
+| `Demos.Scheme.ReportCheck.report_or_case`, `report_repeated_escape`, `report_letrec_reentry` | The equations of §7.2 give the three programs the answers 42, `(13 3)`, and `(10 1)`. |
+| `Demos.Scheme.ReportCheck.cross_check` | On the three programs, the transcription's answer is the reference semantics's result. |
+| `Demos.Scheme.ReportCheck.cross_check_more` | The same for nine programs that reach rest lists, `apply`, `car`, `cdr`, `set-car!`, `eqv?`, an escape through `apply`, and the translation of definitions. |
+| `Demos.Scheme.Report.new_unallocated` | The allocator meets the axiom of p. 34: `new σ` is not in use in `σ`. |

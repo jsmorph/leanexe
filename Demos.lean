@@ -202,6 +202,8 @@ public import Demos.RandomHistogram.Native
 public import Demos.RandomHistogram.NativeCounts
 public import Demos.Scheme.Acceptance
 public import Demos.Scheme.Corpus
+public import Demos.Scheme.Report
+public import Demos.Scheme.ReportCheck
 public import Demos.Scheme.Semantics.CorpusCheck
 public import Demos.Scheme.Semantics.Datum
 public import Demos.Scheme.Semantics.Expand
