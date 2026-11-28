@@ -195,6 +195,32 @@ if [ "${1##*/}" = "lake" ]; then
   set -- "$lake" "$@"
 fi
 
+# The lean executable sizes its task manager from -j, by default the processor count, and reads no
+# LEAN_NUM_THREADS, which bounds Lake's jobs and compiled programs, so a `lean` or `lake env lean`
+# command gets -j with the thread count.
+found=0
+seen_env=0
+first=1
+for argument in "$@"; do
+  if [ "$first" = "1" ]; then
+    set --
+    first=0
+    if [ "${argument##*/}" = "lean" ]; then
+      set -- "$argument" "-j$thread_count"
+      found=1
+      continue
+    fi
+  fi
+  set -- "$@" "$argument"
+  if [ "$found" = "0" ] && [ "$seen_env" = "1" ] && [ "${argument##*/}" = "lean" ]; then
+    set -- "$@" "-j$thread_count"
+    found=1
+  fi
+  if [ "$argument" = "env" ] && [ "${1##*/}" = "lake" ]; then
+    seen_env=1
+  fi
+done
+
 if [ "${LEANRUN_LOCAL_IN_SCOPE:-0}" = "1" ]; then
   echo "leanrun: nested tools/leanrun is not supported in LEANRUN_LOCAL mode (LEANRUN_LOCAL=1); invoke the repository driver directly" >&2
   exit 1

@@ -59,7 +59,8 @@
 # The script records each check that passes with the hash of its inputs in build/verified-checks/,
 # in a directory for each mode, and skips a check whose inputs still have the recorded hash.
 # --no-cache runs every check.  docs/verified-manual.md#recorded-checks lists the inputs.
-# --parts prints the name of each check of the run without --cases, one to a line, and runs
+# --targets prints the Lake targets that the run without --cases builds, one to a line, and runs
+# nothing.  --parts prints the name of each check of the run without --cases, one to a line, and runs
 # nothing; --part NAME, which may repeat, runs only the checks named, with no record read or
 # written.  A check is emit:NAME, the writing and validation of a module of
 # tests/verified/modules.txt; gpt; module-cases:euler and module-cases:shapes; slew-edges;
@@ -68,12 +69,12 @@
 # module of the registry has cases; and accuracy:FILE, a native check of tests/TestSupport/Numerics
 # or Library.  A part that reads a written module needs it in build/verified.
 # Usage: tests/verified/run.sh [--fast] [--no-cache] [--cases MODULE | --check-bytes DIRECTORY |
-#   --part NAME... | --parts]
+#   --part NAME... | --parts | --targets]
 set -euo pipefail
 shopt -s inherit_errexit
 usage() {
   echo "usage: tests/verified/run.sh [--fast] [--no-cache]" \
-    "[--cases MODULE | --check-bytes DIRECTORY | --part NAME... | --parts]" >&2
+    "[--cases MODULE | --check-bytes DIRECTORY | --part NAME... | --parts | --targets]" >&2
   exit 2
 }
 case_module=""
@@ -87,6 +88,7 @@ while [ "$#" -ne 0 ]; do
     --fast) fast=1; shift ;;
     --no-cache) cache=0; shift ;;
     --parts) list=1; shift ;;
+    --targets) list=2; shift ;;
     --part)
       if [ "$#" -lt 2 ] || [ -z "$2" ]; then usage; fi
       parts+=("$2")
@@ -325,6 +327,10 @@ if [ -z "$reference" ]; then
     targets+=($(imports tests/TestSupport/Numerics/*Accuracy.lean \
       Library/Numerics/Arithmetic/Uscale/UscaleCheck.lean))
   fi
+fi
+if [ "$list" -eq 2 ]; then
+  printf '%s\n' "${targets[@]}" | sort -u
+  exit 0
 fi
 if [ "$list" -eq 0 ]; then
   tools/leanrun --timeout 12h lake --log-level error build "${targets[@]}"

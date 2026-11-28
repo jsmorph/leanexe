@@ -218,6 +218,10 @@ def items(root):
     # tests/verified/run.sh, by its parts.
     parts = subprocess.run(['tests/verified/run.sh', '--parts'], cwd=root, check=True,
                            capture_output=True, text=True).stdout.split()
+    # Every part builds the targets of the whole run, which the one build must hold, since a part
+    # would otherwise build them on its own machine, beside the other parts there.
+    vtargets = subprocess.run(['tests/verified/run.sh', '--targets'], cwd=root, check=True,
+                              capture_output=True, text=True).stdout.split()
     modules = [line.split(':')[2] for line in registry(root, 'tests/verified/modules.txt')]
     emit_of = {}
     emits = [p[5:] for p in parts if p.startswith('emit:')]
@@ -230,7 +234,7 @@ def items(root):
             emit_of[name] = id
         add(item(id, 'verified', vcmd + ''.join(f' --part emit:{n}' for n in group), mem=8, cpus=1,
                  tools=vtools, inputs=vin, outputs=[f'build/verified/{n}.wasm' for n in group],
-                 scripts=['tests/verified/run.sh']))
+                 scripts=['tests/verified/run.sh'], targets=vtargets))
 
     # The emissions peak at 5.6 GB; the other parts, of which one reached 7.5 GB in the serial
     # check, take 10.
@@ -238,7 +242,7 @@ def items(root):
         deps = sorted({emit_of[n] for n in names})
         add(item(id, 'verified', vcmd + ''.join(f' --part {p}' for p in ps), mem=mem, cpus=1,
                  tools=[] if portable else vtools, deps=deps, inputs=vin, timeout=timeout,
-                 scripts=['tests/verified/run.sh'], portable=portable, peak=peak))
+                 scripts=['tests/verified/run.sh'], portable=portable, peak=peak, targets=vtargets))
 
     vitem('verified/gpt', ['gpt'], ['gpt'])
     vitem('verified/module-cases-euler', ['module-cases:euler'], ['euler'])
@@ -344,12 +348,12 @@ def items(root):
     add(item('bignum-calc/image', 'bignum-calc-image', 'ACCEL=tcg tests/bignum-calc/image.sh --check', mem=31,
              cpus=2, tools=['qemu', 'node'], inputs=tree, timeout=4 * 3600, targets=['Demos.BignumCalc.BytesBare']))
 
-    # The Isla theorems, a module to an item.  An elaboration keeps one or two threads busy (the
-    # longest A64 modules one), so each takes two.  The largest A64 process reaches about 8 GB.
+    # The Isla theorems, a module to an item.  An A64 elaboration keeps one thread busy, and those of
+    # Branch, Immediate, and Register two; the largest A64 process reaches about 8 GB.
     for f in sorted(os.listdir(os.path.join(root, 'tests/TestSupport/A64/Isla'))):
         if f.endswith('.lean'):
             m = f.removesuffix('.lean')
-            cpus = 2
+            cpus = 2 if m in ('Branch', 'Immediate', 'Register') else 1
             add(item(f'isla/{m}', 'isla', f'ISLA_CPUS={cpus} tests/isla/theorems.sh {m}', mem=9,
                      cpus=cpus, timeout=4 * 3600, portable=True, peak=8.5,
                      inputs=['tests/isla/theorems.sh', f'lean:tests/TestSupport/A64/Isla/{f}', 'tests/isla']))

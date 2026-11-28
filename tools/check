@@ -11,9 +11,9 @@ reserved work that the hosts file names, and less the limits of the other system
 services running there, read every few seconds: MemoryMax and CPUQuota, or the memory in use where
 a scope has no limit.  An item starts only when its memory and CPUs fit what the items running
 there leave of the budget, when the memory available leaves half the reserve after the item and the
-running items reach their memory, and when the load is below the CPUs.  An item counts the CPUs
-that it used in its last recorded run, from build/check/cpus.json, or else its declared CPUs, which
-remain its scope's quota.  Each item runs in a systemd
+running items reach their memory, and when the load is below the CPUs.  An item counts its declared
+CPUs, its scope's quota, which the manifest sets from the use that build/check/cpus.json records,
+since items counted below their quotas reach them together.  Each item runs in a systemd
 user scope with its memory as MemoryMax and no swap, and its Lean commands run in the scopes of
 tools/leanrun, with a lock directory of their own.
 
@@ -268,8 +268,8 @@ class Host:
             return False
         mem, cpus = self.budget()
         used_mem = sum(r['mem'] for r in self.running.values())
-        used_cpus = sum(r['cpus_used'] for r in self.running.values())
-        if used_mem + it['mem'] > mem or used_cpus + it['cpus_used'] > cpus:
+        used_cpus = sum(r['cpus'] for r in self.running.values())
+        if used_mem + it['mem'] > mem or used_cpus + it['cpus'] > cpus:
             return False
         r = self.reading
         growth = sum(max(0, x['mem'] * GIB - r['items'].get(x['id'], 0)) for x in self.running.values())
@@ -584,7 +584,7 @@ class Check:
         env = dict(h.env)
         env.update({'LEANEXE_CHECK_RUN': self.run_id, 'LEANEXE_CHECK_ITEM': it['id'],
                     'LEANRUN_FAST': '0', 'LEANRUN_LOCKDIR': f'{self.root}/build/check/locks/{it["id"]}',
-                    'LEANRUN_THREADS': str(it['env'].get('LEANRUN_THREADS', min(2, it['cpus']))),
+                    'LEANRUN_THREADS': str(it['env'].get('LEANRUN_THREADS', it['cpus'])),
                     'LEANRUN_MEMORY_HIGH': f'{max(4, it["mem"] - 2)}G', 'NO_COLOR': '1'})
         env.update(it['env'])
         if h.item_max:
@@ -729,14 +729,9 @@ class Check:
             self.results[it['id']] = {'status': 'pending'}
         history = self.history()
         peaks = self.peaks()
-        use = self.cpu_use()
         for it in self.chosen:
             known = max(peaks.get(it['id'], 0), it.get('peak') or 0)
             it['peak_est'] = known or it['mem']
-            # An item counts against a budget the CPUs it used in its last recorded run, rounded
-            # up, or else its CPUs; its scope's quota stays its CPUs.
-            measured = math.ceil(use[it['id']] - 0.1) if it['id'] in use else it['cpus']
-            it['cpus_used'] = max(1, min(it['cpus'], measured))
         # The longest chains first: an item's rank is its time and the longest chain of the items
         # that depend on it.
         dependents = {}
@@ -792,7 +787,7 @@ class Check:
                     h.running[it['id']] = it
                     self.results[it['id']] = {'status': 'running', 'host': h.name}
                     pending.remove(it)
-                    self.say(f'{it["id"]} on {h.name}: started ({it["mem"]} GiB, {it["cpus_used"]} of {it["cpus"]} CPUs)')
+                    self.say(f'{it["id"]} on {h.name}: started ({it["mem"]} GiB, {it["cpus"]} CPUs)')
                     threading.Thread(target=self.execute, args=(it, h), daemon=True).start()
                     progress = True
                 running = any(h.running for h in self.hosts)
