@@ -82,6 +82,10 @@ STEPS = [
     ('a64-uart', '`tests/baremetal/a64-uart.sh`'),
     ('bms-board', '`tests/baremetal/m7-board.sh check bms`'),
     ('bms-qemu', '`tests/baremetal/m7-qemu.sh bms`'),
+    ('bignum', '`tests/bignum/run.sh`'),
+    ('bignum-native', '`tests/bignum/native.sh`'),
+    ('bignum-calc-bare', '`tests/bignum-calc/bare.sh`'),
+    ('bignum-calc-image', '`tests/bignum-calc/image.sh --check`'),
     ('isla', '`tests/isla/theorems.sh`'),
     ('m7-isla', '`tests/isla/m7-theorems.sh`'),
     ('vkb', '`VKB/Check.lean`'),
@@ -265,6 +269,23 @@ def items(root):
     add(item('bms-qemu', 'bms-qemu', 'tests/baremetal/m7-qemu.sh bms', mem=27, cpus=2, tools=['qemu-arm', 'uv'],
              inputs=tree, timeout=4 * 3600, scripts=['tests/baremetal/m7-qemu.sh']))
 
+    # The bignum library's three modules against Node's BigInt and native Lean, their C forms on the
+    # cases that run.sh writes, and the calculator's bare-metal program and Image.
+    add(item('bignum/run', 'bignum', 'tests/bignum/run.sh', mem=12, cpus=2, tools=['node', 'wasm-tools'],
+             inputs=tree, outputs=['build/bignum'], timeout=4 * 3600,
+             targets=['Library.Numerics.Bignum.Call', 'Library.Numerics.Bignum.Second.Call',
+                      'Library.Numerics.Bignum.Third.Call', 'TestSupport.Bignum.Cases']))
+    add(item('bignum/native', 'bignum-native', 'tests/bignum/native.sh', mem=10, cpus=2,
+             tools=['ccomp', 'clightgen'], deps=['bignum/run'], inputs=tree, timeout=4 * 3600,
+             targets=['Library.Numerics.Bignum.NativeRuntime', 'Library.Numerics.Bignum.Second.NativeRuntime',
+                      'Library.Numerics.Bignum.Third.NativeRuntime']))
+    add(item('bignum-calc/bare', 'bignum-calc-bare', 'ACCEL=tcg tests/bignum-calc/bare.sh', mem=8, cpus=2,
+             tools=['ccomp', 'clightgen', 'qemu', 'node'], inputs=tree, timeout=4 * 3600,
+             targets=['Demos.BignumCalc.Bare']))
+    # The Image's kernel check peaks at 24.9 GiB under the script's MemoryHigh of 28G.
+    add(item('bignum-calc/image', 'bignum-calc-image', 'ACCEL=tcg tests/bignum-calc/image.sh --check', mem=31,
+             cpus=2, tools=['qemu', 'node'], inputs=tree, timeout=4 * 3600, targets=['Demos.BignumCalc.BytesBare']))
+
     # The Isla theorems, a module to an item.  An elaboration keeps one or two threads busy (the
     # longest A64 modules one), so each takes two.  The largest A64 process reaches about 8 GB.
     for f in sorted(os.listdir(os.path.join(root, 'tests/TestSupport/A64/Isla'))):
@@ -329,8 +350,8 @@ def items(root):
 
 
 def targets(root, chosen):
-    """The targets of the build: the libraries and the executables of lakefile.lean that the
-    scripts of the chosen items name."""
+    """The targets of the build: the libraries, the executables of lakefile.lean that the scripts
+    of the chosen items name, and the targets that the items list."""
     with open(os.path.join(root, 'lakefile.lean')) as f:
         exes = re.findall(r'^lean_exe\s+(?:«([^»]+)»|([\w.-]+))', f.read(), re.M)
     exes = [a or b for a, b in exes]
@@ -345,7 +366,8 @@ def targets(root, chosen):
             with open(os.path.join(root, s)) as f:
                 text.append(f.read())
     words = set(re.findall(r'[\w.-]+', '\n'.join(text)))
-    return LIBRARIES + [e for e in exes if e in words or e in named]
+    modules = sorted({t for t in named if t not in exes})
+    return LIBRARIES + [e for e in exes if e in words or e in named] + modules
 
 
 # Counts.  Each function takes the runs of a step, a list of (item, log text), and the root, and
