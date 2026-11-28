@@ -71,6 +71,8 @@
     "LeanExe.A64.program_runs_trapFree",
     "LeanExe.A64.program_runs_implements",
     "LeanExe.A64.ProgramRuns.mono",
+    "LeanExe.A64.InputRuns.mono",
+    "LeanExe.A64.BytesRuns.mono",
     "LeanExe.A64.writes_word",
     "LeanExe.A64.writes_float",
     "LeanExe.A64.writes_array",
