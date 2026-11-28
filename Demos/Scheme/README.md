@@ -1,0 +1,3 @@
+# R4RS Scheme
+
+This demo is an interpreter for the essential features of R4RS Scheme, with a reference semantics in ordinary Lean and an executable reader, expander, and evaluator in the verified compiler's dialect.  The work follows the milestones of a design that a user supplied, and this tree holds its first two: the source contract and the executable control core.  [The clause inventory](inventory.md) lists every essential form and procedure with its status, [the profile](profile.md) states the choices that the report leaves to an implementation, and [the journal](devnotes.md) records the decisions and the stages.
