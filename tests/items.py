@@ -263,22 +263,20 @@ def items(root):
     add(item('bms-qemu', 'bms-qemu', 'tests/baremetal/m7-qemu.sh bms', mem=27, cpus=2, tools=['qemu-arm', 'uv'],
              inputs=tree, timeout=4 * 3600, scripts=['tests/baremetal/m7-qemu.sh']))
 
-    # The Isla theorems, a module to an item.  An A64 elaboration keeps one or two threads busy, so
-    # the three longest modules, of about an hour, take four and the others two.  Their largest
-    # process reaches about 8 GB.
-    long = {'FloatS', 'FloatSSme', 'Svc'}
+    # The Isla theorems, a module to an item.  An elaboration keeps one or two threads busy (the
+    # longest A64 modules one), so each takes two.  The largest A64 process reaches about 8 GB.
     for f in sorted(os.listdir(os.path.join(root, 'tests/TestSupport/A64/Isla'))):
         if f.endswith('.lean'):
             m = f.removesuffix('.lean')
-            cpus = 4 if m in long else 2
+            cpus = 2
             add(item(f'isla/{m}', 'isla', f'ISLA_CPUS={cpus} tests/isla/theorems.sh {m}', mem=9,
                      cpus=cpus, timeout=4 * 3600, portable=True, peak=8.5,
                      inputs=['tests/isla/theorems.sh', f'lean:tests/TestSupport/A64/Isla/{f}', 'tests/isla']))
     for f in sorted(os.listdir(os.path.join(root, 'tests/TestSupport/M7/Isla'))):
         if f.endswith('.lean'):
             m = f.removesuffix('.lean')
-            add(item(f'm7-isla/{m}', 'm7-isla', f'ISLA_CPUS=4 tests/isla/m7-theorems.sh {m}', mem=6,
-                     cpus=4, tools=['time'], timeout=4 * 3600, portable=True,
+            add(item(f'm7-isla/{m}', 'm7-isla', f'ISLA_CPUS=2 tests/isla/m7-theorems.sh {m}', mem=6,
+                     cpus=2, tools=['time'], timeout=4 * 3600, portable=True,
                      inputs=['tests/isla/m7-theorems.sh', f'lean:tests/TestSupport/M7/Isla/{f}', 'tests/isla']))
 
     # The VKB check reads the history of the entries with Git, which only the primary's tree has.
