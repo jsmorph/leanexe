@@ -106,7 +106,18 @@ if [ "$list" -eq 1 ] || [ "${#parts[@]}" -ne 0 ]; then
     usage
   fi
 fi
-if [ "$list" -eq 0 ] && ! command -v wasm-tools > /dev/null 2>&1; then
+# Whether a check runs whose name starts with one of the arguments: any check without --part.
+want_kind() {
+  local part kind
+  [ "${#parts[@]}" -ne 0 ] || return 0
+  for part in "${parts[@]}"; do
+    for kind in "$@"; do
+      [[ $part != "$kind"* ]] || return 0
+    done
+  done
+  return 1
+}
+if [ "$list" -eq 0 ] && want_kind emit: && ! command -v wasm-tools > /dev/null 2>&1; then
   echo "fail: wasm-tools is not on the search path" >&2
   exit 1
 fi
@@ -304,7 +315,11 @@ if [ -z "$reference" ]; then
   fi
   if runs arraytrees; then targets+=($(imports tests/verified/ArrayTreesOrder.lean)); fi
   if runs buffertrees; then targets+=($(imports tests/verified/BufferTreesOrder.lean)); fi
-  if [ "$case_module" != "gpt" ] && [ "$case_module" != "euler" ]; then targets+=("${case_exes[@]}"); fi
+  # The parts that run neither the host nor native Lean, the emissions, file theorems, audits, and
+  # accuracy checks, need no executable, so that they run on a machine of another processor.
+  if [ "$case_module" != "gpt" ] && [ "$case_module" != "euler" ] && want_cases; then
+    targets+=("${case_exes[@]}")
+  fi
   if [ -z "$case_module" ]; then
     targets+=($(imports tests/TestSupport/Numerics/*Accuracy.lean \
       Library/Numerics/Arithmetic/Uscale/UscaleCheck.lean))
@@ -383,7 +398,7 @@ if [ -z "$reference" ]; then
       git -C "$dependency" status --porcelain --untracked-files=no
     done
   )
-  if [ "$list" -eq 0 ]; then wasm_tools=$(wasm-tools --version); fi
+  if [ "$list" -eq 0 ] && want_kind emit:; then wasm_tools=$(wasm-tools --version); fi
 fi
 # The inputs of a check that reads Lean files and modules: the shared inputs, the hash of each
 # file argument, and the build hash of every module of this package that is a module argument or
@@ -451,19 +466,24 @@ if [ -n "$reference" ]; then
   echo "verified byte comparison passed: $emitted modules"
   exit 0
 fi
-if [ "$list" -eq 0 ] && { [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; }; then
+if [ "$list" -eq 0 ] && want_kind gpt module-cases: slew-edges cases: &&
+    { [ ! -x "$host" ] || [ "$root/tools/wasmtime-host.c" -nt "$host" ]; }; then
   echo "fail: $host is missing or older than tools/wasmtime-host.c; build it with tools/build-wasmtime-host.sh" >&2
   exit 1
 fi
-# The host and, where ldd resolves it, the Wasmtime library that it loads.
-host_inputs=$(
-  "${sum[@]}" "$host"
-  if command -v ldd > /dev/null 2>&1; then
-    for library in $(ldd "$host" | awk '$1 ~ /^libwasmtime\./ && $3 ~ /^\// { print $3 }'); do
-      "${sum[@]}" "$library"
-    done
-  fi
-)
+# The host and, where ldd resolves it, the Wasmtime library that it loads, for the parts that run the
+# host.
+host_inputs=""
+if want_kind gpt module-cases: slew-edges cases:; then
+  host_inputs=$(
+    "${sum[@]}" "$host"
+    if command -v ldd > /dev/null 2>&1; then
+      for library in $(ldd "$host" | awk '$1 ~ /^libwasmtime\./ && $3 ~ /^\// { print $3 }'); do
+        "${sum[@]}" "$library"
+      done
+    fi
+  )
+fi
 # The inputs of a check that runs the host on the written module $1, other than its Lean files.
 host_check_inputs() {
   echo "$host_inputs"
