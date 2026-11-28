@@ -9,8 +9,8 @@ public meta import TestSupport.Regex.Generate
 pattern's postfix words, the input's bytes in hexadecimal, and the answer of
 `Library.Regex.matchWith`, separated by `|`.  The patterns are those of
 `TestSupport.Regex.Generate` and random word sequences, and the inputs are every string of at
-most three of its input bytes.  Run with `lake env lean --run` after building
-`TestSupport.Regex.Generate`. -/
+most three of its input bytes.  Run the executable
+`regex-python-cases`. -/
 
 namespace TestSupport.Regex.PythonCases
 

@@ -143,6 +143,16 @@ lean_exe «xxhash64-vectors» where
   srcDir := "tests"
   root := `TestSupport.Hashing.XxHash64Vectors
 
+-- The native checks of tests/regex/run.sh, compiled, since the interpreter of `lean --run` takes
+-- most of an hour over the native check's inputs; not default targets.
+lean_exe «regex-native» where
+  srcDir := "tests"
+  root := `TestSupport.Regex.Native
+
+lean_exe «regex-python-cases» where
+  srcDir := "tests"
+  root := `TestSupport.Regex.PythonCases
+
 -- The case generators of tests/verified/run.sh, compiled so that their runs fit the driver's time
 -- limit; not default targets.
 lean_exe «verified-cases» where

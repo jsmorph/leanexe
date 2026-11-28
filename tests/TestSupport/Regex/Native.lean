@@ -14,8 +14,8 @@ public meta import TestSupport.Regex.Generate
 /-! A native check of `Library.Regex.matchWith` against `Library.Regex.Spec.answer` on the patterns
 of `TestSupport.Regex.Generate` and every input of at most four bytes over its input bytes.
 Random word sequences, most of which do not decode, and patterns with more than 63 sets check
-codes 2 and 3.  The check exits with an error at the first difference.  Run with
-`lake env lean --run` after building `TestSupport.Regex.Generate`. -/
+codes 2 and 3.  The check exits with an error at the first difference.  Run the
+executable `regex-native`. -/
 
 namespace TestSupport.Regex.Native
 
