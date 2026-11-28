@@ -200,6 +200,17 @@ public import Demos.RandomHistogram.CommandStart
 public import Demos.RandomHistogram.Compiled
 public import Demos.RandomHistogram.Native
 public import Demos.RandomHistogram.NativeCounts
+public import Demos.Scheme.Acceptance
+public import Demos.Scheme.Corpus
+public import Demos.Scheme.Semantics.CorpusCheck
+public import Demos.Scheme.Semantics.Datum
+public import Demos.Scheme.Semantics.Expand
+public import Demos.Scheme.Semantics.Machine
+public import Demos.Scheme.Semantics.Numeric
+public import Demos.Scheme.Semantics.Outcome
+public import Demos.Scheme.Semantics.Read
+public import Demos.Scheme.Semantics.Results
+public import Demos.Scheme.Semantics.Syntax
 public import Demos.Sgp4.Box
 public import Demos.Sgp4.BoxFlat
 public import Demos.Sgp4.BoxSound

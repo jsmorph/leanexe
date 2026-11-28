@@ -27,7 +27,8 @@ The profile implements exact integers and no other numbers.  §6.5.3 permits an 
 | Identifiers are folded to lower case when read.  Characters and strings keep their case. | §2, §6.4 |
 | The syntactic keywords of §2.1 are reserved, and a binding or a reference of one as a variable is a syntax error. | §2.1, §7.1.1 |
 | Characters are ASCII.  The character names are `space` and `newline`, in any case. | §6.6, §7.1.1 |
-| Whitespace is space, line feed, tab, carriage return, and form feed.  A byte above 127 outside a comment is a read error. | §2.2, §6.6 |
+| Whitespace is space, line feed, tab, carriage return, and form feed.  A byte above 127 outside a comment, or a control byte other than whitespace outside a comment, a string, and a character, is a read error. | §2.2, §6.6 |
+| A token that begins with a digit, with `+`, `-`, or `.` and is no peculiar identifier, or with `#` and one of the letters `b o d x e i`, is a numeral.  A numeral of prefixes, an optional sign, and digits of its radix denotes an exact integer, unless a prefix is `#i`.  Any other numeral whose bytes are digits of its radix, `#`, `.`, `/`, `+`, `-`, `@`, or one of the letters `e s f d l i` reports the implementation restriction for numbers outside the profile, and a numeral with another byte is a read error. | §6.5.3, §6.5.4, §7.1.1 |
 | `#f` is the only false value.  The empty list is true and distinct from `#f`. | §3.2, §6.1 |
 | The operator of a call is evaluated first, and then the operands from left to right, in every call. | §4.1.3 |
 | `letrec` follows the rewrite rule of §7.3: every location of the group is bound to the undefined marker, every initializer is evaluated into a fresh temporary, and then each value is assigned before the body. | §4.2.2, §7.3 |
@@ -52,6 +53,7 @@ The profile implements exact integers and no other numbers.  §6.5.3 permits an 
 | `map` calls its procedure on the elements from left to right, and `for-each` does as §6.9 requires. | §6.9 |
 | `map` and `for-each` signal an error when a list ends before another or is not a proper list, after the calls of the earlier elements. | §6.9, §1.3.2 |
 | An empty vector or string is a distinct object, so `eqv?` of two of them is `#f`. | §6.2 |
+| `length`, `reverse`, `append`, `list-ref`, `memq`, `memv`, `assq`, `assv`, `list->vector`, and `apply` signal an error for an argument that must be a list and is no proper list, a circular list included, and `assq` and `assv` for an element of the list that is no pair.  `map`, `for-each`, `apply`, and `call-with-current-continuation` signal an error for a first argument that is no procedure before any call. | §6.3, §6.9, §1.3.2 |
 | `eq?` and `eqv?` agree on every value of this profile. | §6.2 |
 
 ## Errors and outcomes
