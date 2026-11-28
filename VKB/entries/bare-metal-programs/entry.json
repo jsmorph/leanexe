@@ -7,7 +7,8 @@
     "LeanExe.Pipeline.Heap.Room (LeanExe.Native.nativeStore m cap) m (LeanExe.Native.needOf n) for every n ≤ LeanExe.Native.inMax",
     "LeanExe.Native.EntryInRuns A X cap m T fd kind aborts heap out",
     "LClight.LoopReacts A X (LeanExe.Native.reqProgram pre T (LeanExe.Native.reqMain k (words s0))) LClight.E0 (LeanExe.Requests.reqTrace LeanExe.Native.regBus tick s0 σ)",
-    "LClight.LoopReacts A X (LeanExe.Native.inProgram pre T (LeanExe.Native.ctlMain k s0)) LClight.E0 (LeanExe.Native.ctlTrace ctl s0 σ)"
+    "LClight.LoopReacts A X (LeanExe.Native.inProgram pre T (LeanExe.Native.ctlMain k s0)) LClight.E0 (LeanExe.Native.ctlTrace ctl s0 σ)",
+    "LeanExe.Native.EntryInRunsOn A X cap m T fd kind Ab heap out"
   ],
   "modules": [
     "LeanExe.Native.Proof.Main",
@@ -20,7 +21,8 @@
     "TestSupport.Bare.Input",
     "TestSupport.Bare.Req",
     "TestSupport.Bare.Records",
-    "TestSupport.Bare.Ctl"
+    "TestSupport.Bare.Ctl",
+    "TestSupport.Bare.InputOn"
   ],
   "declarations": [
     "Verified.elabBareProgram",
@@ -43,6 +45,11 @@
     "LeanExe.Native.InResultRoom",
     "LeanExe.Native.InResultRoom.inResult",
     "LeanExe.Native.InResultWith",
+    "LeanExe.Native.input_program_on",
+    "LeanExe.Native.EntryInRunsOn",
+    "LeanExe.Native.InResultOn",
+    "LeanExe.Native.InResultOn.reads",
+    "LeanExe.Native.ImplementsA.native",
     "LeanExe.Native.alloc_native_with",
     "LeanExe.Native.alloc_native_room",
     "LeanExe.Native.needOf",
@@ -72,6 +79,10 @@
     "TestSupport.Bare.sum_program",
     "TestSupport.Bare.filter_program",
     "Demos.Energy.gw_program",
-    "Demos.Energy.gw_usart3_program"
+    "Demos.Energy.gw_usart3_program",
+    "TestSupport.Bare.InputOn.pushedLen_runs",
+    "TestSupport.Bare.InputOn.roomFor",
+    "TestSupport.Bare.InputOn.pushedLen_input",
+    "TestSupport.Bare.InputOn.pushedLen_input_room"
   ]
 }
