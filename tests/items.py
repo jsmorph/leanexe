@@ -245,10 +245,12 @@ def items(root):
         add(item(f'baremetal-{name}', f'baremetal-{name}', f'ACCEL=tcg tests/baremetal/{name}.sh',
                  mem=2, tools=bm + ['clightgen'], inputs=tree, scripts=[f'tests/baremetal/{name}.sh']))
     translated = modules
+    # A group runs JOBS QEMU processes at once, each a little above one CPU, so three of them take
+    # four CPUs.
     for i, group in enumerate(chunks(translated, 24)):
         id = f'baremetal-verified/{i + 1:02d}'
         add(item(id, 'baremetal-verified',
-                 f'JOBS=4 tests/baremetal/verified.sh --out {WORK}/{id}' +
+                 f'JOBS=3 tests/baremetal/verified.sh --out {WORK}/{id}' +
                  ''.join(f' --module {n}' for n in group),
                  mem=6, cpus=4, tools=bm, inputs=tree, scripts=['tests/baremetal/verified.sh']))
     add(item('a64-images', 'a64-images', 'ACCEL=tcg tests/baremetal/a64-images.sh', mem=20, cpus=2,
