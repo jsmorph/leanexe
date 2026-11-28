@@ -34,14 +34,20 @@ The hosts file is JSON:
     "reserved": [{"what": TEXT, "dir": PATH, "mem": GIB, "cpus": N}], "env": {VAR: VALUE}}, ...]}
 root is the tree's path on every machine.  One machine is the primary.  items false keeps items off
 a machine, and limit caps its budget; item_max bounds the memory of an item there and of each of
-its scopes, and peak_max admits only items whose memory and recorded peak lie below it.  The run
-reads reserve, limit, reserved, item_max, and peak_max again every ten seconds.  An item that runs on any processor goes first to the machines with the fewest tools.  Of
-the others, an item goes to the machine of lowest rank, 0 unless set, that holds it, and among
-those to the one with the most memory left.  A reserved entry stands for other work whose scopes run in
-dir, so that only the entry counts for them.  env holds the variables of the machine's tools, such
-as PATH, CCOMP, CLIGHTGEN, CCOMP_STDLIB, COMPCERT_TREE, QEMU, and QEMU_USER.
+its scopes, and peak_max admits only items whose peak, the larger of the manifest's estimate and
+the recorded peak, or else the item's memory, lies below it.  The run reads reserve, limit,
+reserved, item_max, and peak_max again every ten seconds.  An item that runs on any processor goes
+first to the machines with the fewest tools.  Of the others, an item goes to the machine of lowest
+rank, 0 unless set, that holds it, and among those to the one with the most memory left.  A
+reserved entry stands for other work whose scopes run in dir, so that only the entry counts for
+them.  env holds the variables of the machine's tools, such as PATH, CCOMP, CLIGHTGEN,
+CCOMP_STDLIB, COMPCERT_TREE, QEMU, and QEMU_USER.
+
+Items that fit no machine's budget while no item runs wait --wait seconds, 120 unless given, for
+other work to end, and then do not run.
 
 Usage: tools/check --hosts FILE [--all | --affected [BASE]] [--only REGEX] [--list] [--no-build]
+  [--wait SECONDS]
 """
 
 import argparse
@@ -718,7 +724,8 @@ class Check:
         history = self.history()
         peaks = self.peaks()
         for it in self.chosen:
-            it['peak_est'] = max(it['mem'], peaks.get(it['id'], 0))
+            known = max(peaks.get(it['id'], 0), it.get('peak') or 0)
+            it['peak_est'] = known or it['mem']
         pending.sort(key=lambda it: -history.get(it['id'], 600))
         idle = None
         with self.lock:
@@ -767,13 +774,13 @@ class Check:
                 running = any(h.running for h in self.hosts)
                 if not pending and not running:
                     break
-                # Items that fit no budget while no item runs wait two minutes for other work to
-                # end, and then do not run.
+                # Items that fit no budget while no item runs wait --wait seconds for other work
+                # to end, and then do not run.
                 if running or progress or any(not h.ready.is_set() for h in self.hosts):
                     idle = None
                 elif idle is None:
                     idle = time.time()
-                elif time.time() - idle > 120:
+                elif time.time() - idle > self.args.wait:
                     for it in pending:
                         self.results[it['id']] = {'status': "not run: no machine's budget held it"}
                     pending = []
@@ -1096,6 +1103,8 @@ def main():
     p.add_argument('--only', metavar='REGEX')
     p.add_argument('--list', action='store_true')
     p.add_argument('--no-build', action='store_true')
+    p.add_argument('--wait', type=int, default=120, metavar='SECONDS',
+                   help='how long items that fit no budget wait while no item runs (default 120)')
     args = p.parse_args()
     return Check(args).main()
 

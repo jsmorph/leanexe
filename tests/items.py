@@ -110,12 +110,14 @@ WORK = 'build/check/work'
 
 
 def item(id, step, cmd, mem=4, cpus=1, tools=(), deps=(), inputs=(), outputs=(), exclusive=(),
-         timeout=7200, env=None, primary=False, scripts=(), targets=(), portable=False):
+         timeout=7200, env=None, primary=False, scripts=(), targets=(), portable=False, peak=None):
     """An item.  cmd is a bash command; targets are Lake targets it reads, and scripts are the files
     whose text names the Lake executables it runs, which the build also includes.  An item runs on
     an AArch64 machine, where the tree's executables were built, unless it is portable: it then
-    reads only modules, which Lean reads on any machine."""
+    reads only modules, which Lean reads on any machine.  peak is the expected peak memory in GiB,
+    which a machine's peak_max compares with the larger of it and the recorded peak."""
     return {
+        'peak': peak,
         'targets': list(targets),
         'id': id, 'step': step, 'cmd': cmd, 'mem': mem, 'cpus': cpus,
         'tools': sorted(set(tools) | {'lean'} | (set() if portable else {'aarch64'})), 'deps': list(deps), 'inputs': list(inputs),
@@ -167,30 +169,34 @@ def items(root):
                  tools=vtools, inputs=vin, outputs=[f'build/verified/{n}.wasm' for n in group],
                  scripts=['tests/verified/run.sh']))
 
-    def vitem(id, ps, names, mem=8, timeout=7200):
+    # The emissions peak at 5.6 GB; the other parts, of which one reached 7.5 GB in the serial
+    # check, take 10.
+    def vitem(id, ps, names, mem=10, timeout=7200, portable=False, peak=None):
         deps = sorted({emit_of[n] for n in names})
         add(item(id, 'verified', vcmd + ''.join(f' --part {p}' for p in ps), mem=mem, cpus=1,
-                 tools=vtools, deps=deps, inputs=vin, timeout=timeout,
-                 scripts=['tests/verified/run.sh']))
+                 tools=[] if portable else vtools, deps=deps, inputs=vin, timeout=timeout,
+                 scripts=['tests/verified/run.sh'], portable=portable, peak=peak))
 
     vitem('verified/gpt', ['gpt'], ['gpt'])
     vitem('verified/module-cases-euler', ['module-cases:euler'], ['euler'])
     vitem('verified/module-cases-shapes', ['module-cases:shapes'], ['sums'])
     vitem('verified/slew-edges', ['slew-edges'], ['slew'])
     files = [p for p in parts if p.startswith('file:')]
+    # The file theorems, audits, and accuracy checks read only modules and written files, so they run
+    # on any processor.
     for i, group in enumerate(batches(files, 8)):
-        vitem(f'verified/file-{i + 1:02d}', group, [p[5:] for p in group])
+        vitem(f'verified/file-{i + 1:02d}', group, [p[5:] for p in group], mem=9, portable=True, peak=4)
     cases = [p for p in parts if p.startswith('cases:')]
     for i, group in enumerate(chunks(cases, 12)):
         vitem(f'verified/cases-{i + 1:02d}', group, [p[6:] for p in group])
     vitem('verified/cases-complete', ['cases-complete'], [])
     audits = [p for p in parts if p.startswith('audit:')]
     for i, group in enumerate(batches(audits, 4)):
-        vitem(f'verified/audit-{i + 1:02d}', group, [])
+        vitem(f'verified/audit-{i + 1:02d}', group, [], mem=9, portable=True, peak=4)
     for p in parts:
         if p.startswith('accuracy:'):
             name = os.path.basename(p).removesuffix('.lean')
-            vitem(f'verified/accuracy-{name}', [p], [], mem=10)
+            vitem(f'verified/accuracy-{name}', [p], [], mem=9, portable=True, peak=6)
 
     add(item('drone', 'drone', 'tests/drone/run.sh', mem=2, tools=['wasmtime-host', 'aarch64'],
              deps=[emit_of['drone']], inputs=['tests/drone'] + tree))
@@ -266,7 +272,7 @@ def items(root):
             m = f.removesuffix('.lean')
             cpus = 4 if m in long else 2
             add(item(f'isla/{m}', 'isla', f'ISLA_CPUS={cpus} tests/isla/theorems.sh {m}', mem=9,
-                     cpus=cpus, timeout=4 * 3600, portable=True,
+                     cpus=cpus, timeout=4 * 3600, portable=True, peak=8.5,
                      inputs=['tests/isla/theorems.sh', f'lean:tests/TestSupport/A64/Isla/{f}', 'tests/isla']))
     for f in sorted(os.listdir(os.path.join(root, 'tests/TestSupport/M7/Isla'))):
         if f.endswith('.lean'):
@@ -280,8 +286,10 @@ def items(root):
              mem=13, inputs=['VKB'] + tree, primary=True))
     add(item('rocq', 'rocq', 'rocq/check.sh "$COMPCERT_TREE"', mem=6, tools=['coqc', 'compcert'],
              inputs=['rocq']))
+    # clight-rocq.sh runs JOBS files at once, all the machine's processors unless set.
     add(item('clight-rocq', 'clight-rocq', 'tests/native/clight-rocq.sh build/native/clight/7 "$COMPCERT_TREE"',
-             mem=4, tools=['coqc', 'compcert-clight'], deps=['native-clight'], inputs=tree))
+             mem=6, cpus=4, env={'JOBS': '4'}, tools=['coqc', 'compcert-clight'], deps=['native-clight'],
+             inputs=tree))
     add(item('clightn', 'clightn', 'clightn/check.sh --mutations "$COMPCERT_TREE"', mem=19, cpus=2,
              tools=['coqc', 'uv', 'compcert', 'compcert-aarch64'], inputs=tree, timeout=3 * 3600))
 
@@ -308,7 +316,7 @@ def items(root):
     for name in ['Sha2Vectors', 'HmacVectors']:
         add(item(f'references/{name}', 'references',
                  f'tools/leanrun --timeout 2h lake env lean --run tests/TestSupport/Hashing/{name}.lean',
-                 mem=2, tools=ref, inputs=tree))
+                 mem=2, inputs=tree, portable=True))
     for name in ['regex', 'orderbook', 'conjunction', 'sgp4']:
         add(item(f'references/{name}', 'references', f'tests/{name}/run.sh', mem=3, tools=ref,
                  inputs=tree, scripts=[f'tests/{name}/run.sh']))
