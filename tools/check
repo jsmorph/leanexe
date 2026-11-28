@@ -11,7 +11,9 @@ reserved work that the hosts file names, and less the limits of the other system
 services running there, read every few seconds: MemoryMax and CPUQuota, or the memory in use where
 a scope has no limit.  An item starts only when its memory and CPUs fit what the items running
 there leave of the budget, when the memory available leaves half the reserve after the item and the
-running items reach their memory, and when the load is below the CPUs.  Each item runs in a systemd
+running items reach their memory, and when the load is below the CPUs.  An item counts the CPUs
+that it used in its last recorded run, from build/check/cpus.json, or else its declared CPUs, which
+remain its scope's quota.  Each item runs in a systemd
 user scope with its memory as MemoryMax and no swap, and its Lean commands run in the scopes of
 tools/leanrun, with a lock directory of their own.
 
@@ -46,8 +48,10 @@ CCOMP_STDLIB, COMPCERT_TREE, QEMU, and QEMU_USER.
 Items that fit no machine's budget while no item runs wait --wait seconds, 120 unless given, for
 other work to end, and then do not run.
 
+--report writes items.md and STATUS.md again from the last run's results.json and logs.
+
 Usage: tools/check --hosts FILE [--all | --affected [BASE]] [--only REGEX] [--list] [--no-build]
-  [--wait SECONDS]
+  [--wait SECONDS] | --report
 """
 
 import argparse
@@ -264,8 +268,8 @@ class Host:
             return False
         mem, cpus = self.budget()
         used_mem = sum(r['mem'] for r in self.running.values())
-        used_cpus = sum(r['cpus'] for r in self.running.values())
-        if used_mem + it['mem'] > mem or used_cpus + it['cpus'] > cpus:
+        used_cpus = sum(r['cpus_used'] for r in self.running.values())
+        if used_mem + it['mem'] > mem or used_cpus + it['cpus_used'] > cpus:
             return False
         r = self.reading
         growth = sum(max(0, x['mem'] * GIB - r['items'].get(x['id'], 0)) for x in self.running.values())
@@ -311,12 +315,14 @@ class Inputs:
         return self.files[path]
 
     def tree(self, docs):
-        """The hash of the tree's files, without the Markdown files unless docs."""
+        """The hash of the tree's files, without the Markdown files unless docs, and without this
+        program and the manifest, whose items' commands their keys hold."""
         if docs not in self.tree_key:
             g = lambda *a: subprocess.run(['git', *a], cwd=self.root, check=True, capture_output=True).stdout
-            keep = lambda f: docs or not f.endswith(b'.md')
+            own = (b'tools/check', b'tests/items.py')
+            keep = lambda f: not f.endswith(own) and (docs or not f.endswith(b'.md'))
             listed = [line for line in g('ls-tree', '-r', '-z', 'HEAD').split(b'\0') if keep(line)]
-            spec = ['.'] if docs else ['.', ':(exclude)*.md']
+            spec = ['.', ':(exclude)tools/check', ':(exclude)tests/items.py'] + ([] if docs else [':(exclude)*.md'])
             parts = [b'\0'.join(listed), g('diff', 'HEAD', '--binary', '--', *spec)]
             for f in sorted(g('ls-files', '--others', '--exclude-standard', '-z').split(b'\0')):
                 if f and keep(f):
@@ -705,7 +711,7 @@ class Check:
         env = dict(os.environ, **h.env, LEANRUN_FAST='0', LEANRUN_LOCKDIR=os.path.join(self.dir, 'locks', 'build'),
                    LEANEXE_CHECK_RUN=self.run_id, LEANEXE_CHECK_ITEM='build')
         with open(log, 'w') as f:
-            code = subprocess.run(['tools/leanrun', '--timeout', '12h', '--threads', str(jobs), '--cpus', str(jobs),
+            code = subprocess.run(['tools/leanrun', '--timeout', '12h', '--threads', str(jobs), '--cpus', str(jobs * jobs),
                                    '--memory-high', f'{high}G', 'lake', '--log-level', 'info', 'build', *targets],
                                   cwd=self.root, env=env, stdout=f, stderr=subprocess.STDOUT).returncode
         self.build_result = {'start': start, 'end': time.time(), 'code': code, 'jobs': jobs, 'targets': targets}
@@ -723,10 +729,27 @@ class Check:
             self.results[it['id']] = {'status': 'pending'}
         history = self.history()
         peaks = self.peaks()
+        use = self.cpu_use()
         for it in self.chosen:
             known = max(peaks.get(it['id'], 0), it.get('peak') or 0)
             it['peak_est'] = known or it['mem']
-        pending.sort(key=lambda it: -history.get(it['id'], 600))
+            # An item counts against a budget the CPUs it used in its last recorded run, rounded
+            # up, or else its CPUs; its scope's quota stays its CPUs.
+            measured = math.ceil(use[it['id']] - 0.1) if it['id'] in use else it['cpus']
+            it['cpus_used'] = max(1, min(it['cpus'], measured))
+        # The longest chains first: an item's rank is its time and the longest chain of the items
+        # that depend on it.
+        dependents = {}
+        for it in self.chosen:
+            for d in it['deps']:
+                dependents.setdefault(d, []).append(it['id'])
+        chain = {}
+
+        def length(id):
+            if id not in chain:
+                chain[id] = history.get(id, 600) + max((length(x) for x in dependents.get(id, [])), default=0)
+            return chain[id]
+        pending.sort(key=lambda it: -length(it['id']))
         idle = None
         with self.lock:
             while True:
@@ -768,7 +791,7 @@ class Check:
                     h.running[it['id']] = it
                     self.results[it['id']] = {'status': 'running', 'host': h.name}
                     pending.remove(it)
-                    self.say(f'{it["id"]} on {h.name}: started ({it["mem"]} GiB, {it["cpus"]} CPUs)')
+                    self.say(f'{it["id"]} on {h.name}: started ({it["mem"]} GiB, {it["cpus_used"]} of {it["cpus"]} CPUs)')
                     threading.Thread(target=self.execute, args=(it, h), daemon=True).start()
                     progress = True
                 running = any(h.running for h in self.hosts)
@@ -795,6 +818,13 @@ class Check:
         except OSError:
             return {}
 
+    def cpu_use(self):
+        try:
+            with open(os.path.join(self.dir, 'cpus.json')) as f:
+                return json.load(f)
+        except OSError:
+            return {}
+
     def peaks(self):
         try:
             with open(os.path.join(self.dir, 'peaks.json')) as f:
@@ -807,15 +837,20 @@ class Check:
         scopes' memory that the readings saw and of its largest process."""
         h = self.history()
         peaks = self.peaks()
+        use = self.cpu_use()
         for id, r in self.results.items():
             if 'start' in r and 'end' in r and r['status'] == 'passed':
                 h[id] = round(r['end'] - r['start'])
+                if 'cpu' in r and r['end'] > r['start']:
+                    use[id] = round(r['cpu'] / (r['end'] - r['start']), 2)
             if r.get('peak') or r.get('rss'):
                 peaks[id] = round(max(r.get('peak', 0), r.get('rss', 0)) / GIB, 1)
         with open(os.path.join(self.dir, 'history.json'), 'w') as f:
             json.dump(h, f, indent=1, sort_keys=True)
         with open(os.path.join(self.dir, 'peaks.json'), 'w') as f:
             json.dump(peaks, f, indent=1, sort_keys=True)
+        with open(os.path.join(self.dir, 'cpus.json'), 'w') as f:
+            json.dump(use, f, indent=1, sort_keys=True)
 
     def abort(self, signum, frame):
         self.stopping = True
@@ -827,9 +862,25 @@ class Check:
                 self.say(f'stop on {h.name} failed: {e}')
         sys.exit(1)
 
+    def report(self):
+        """Writes items.md and STATUS.md again from build/check/results.json and the logs."""
+        with open(os.path.join(self.dir, 'results.json')) as f:
+            r = json.load(f)
+        self.results = r['results']
+        self.build_result = r['build']
+        self.tree, self.started, self.finished = r['tree'], r['started'], r['finished']
+        self.args.no_build = r.get('no_build', r['build'] is None)
+        self.chosen = [it for it in self.chosen if it['id'] in self.results]
+        for h in self.hosts:
+            h.tools = set(r['hosts'].get(h.name, {}).get('tools', []))
+        self.write_items()
+        return 0 if self.write_status() else 1
+
     def main(self):
         os.makedirs(self.logs, exist_ok=True)
         self.choose()
+        if self.args.report:
+            return self.report()
         if self.args.list:
             for it in self.chosen:
                 print(f"{it['id']}\t{it['step']}\t{it['mem']}G\t{it['cpus']}\t{','.join(it['tools'])}\t"
@@ -874,7 +925,8 @@ class Check:
         self.finished = time.time()
         self.save_history()
         with open(os.path.join(self.dir, 'results.json'), 'w') as f:
-            json.dump({'run': self.run_id, 'build': getattr(self, 'build_result', None), 'results': self.results,
+            json.dump({'run': self.run_id, 'tree': self.tree, 'started': self.started, 'finished': self.finished,
+                       'no_build': self.args.no_build, 'build': getattr(self, 'build_result', None), 'results': self.results,
                        'hosts': {h.name: {'budget': h.budget() if h.reading else None, 'peak': h.peak,
                                           'tools': sorted(h.tools), 'failed': h.failed} for h in self.hosts}},
                       f, indent=1)
@@ -1075,11 +1127,14 @@ class Check:
         for h in self.hosts:
             names |= {h.name, h.name.split('.')[0]}
         bad = []
+        # The commit's subject, in the commit row, is the commit's text, so only the names of the
+        # machines and paths are sought there.
         for n, line in enumerate(body.splitlines(), 1):
             if any(re.search(rf'\b{re.escape(x)}\b', line, re.I) for x in names) or \
                     re.search(r'(^|[\s(`"\'])(/[A-Za-z]|~/)', line) or \
-                    re.search(r'\b(oom|killed|swap|swapping|pressure|crash|crashed|crashes|segfault|sigsegv|sigbus|'
-                              r'core dumps?|core dumped|thrash|thrashing|out of memory|cpus?)\b', line, re.I):
+                    (not line.startswith('| Commit |') and
+                     re.search(r'\b(oom|killed|swap|swapping|pressure|crash|crashed|crashes|segfault|sigsegv|sigbus|'
+                               r'core dumps?|core dumped|thrash|thrashing|out of memory|cpus?)\b', line, re.I)):
                 bad.append(f'{n}: {line}')
         if bad:
             print('check: build/check/STATUS.md names a machine, an absolute or home path, or a host fault:',
@@ -1103,6 +1158,7 @@ def main():
     p.add_argument('--only', metavar='REGEX')
     p.add_argument('--list', action='store_true')
     p.add_argument('--no-build', action='store_true')
+    p.add_argument('--report', action='store_true', help='write STATUS.md again from the last run')
     p.add_argument('--wait', type=int, default=120, metavar='SECONDS',
                    help='how long items that fit no budget wait while no item runs (default 120)')
     args = p.parse_args()

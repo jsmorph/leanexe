@@ -8,10 +8,12 @@
 # links the object with the export tables and tools/native-host.c, which takes the commands of the
 # Wasmtime host.  The cases are the lines of the compiled generator verified-cases
 # (Verified/Examples/Cases.lean), with the library entries of tests/verified/library-cases.txt,
-# which tests/verified/run.sh checks with Wasmtime.  A case runs when the translation contains its
-# export, and a module outside the subset, which has no translation, runs none of its cases.  A case
-# that runs must give the line that the Wasmtime host gives, with the same rules for traps and
-# allocation counters.  The module cases that tests/verified/run.sh checks for the corpus, those of
+# which tests/verified/run.sh checks with Wasmtime.  With --module NAME, they are the lines of
+# NAME's case executable in tests/verified/case-generators.txt, the one that
+# tests/verified/run.sh --cases NAME runs, or of verified-cases when the table names none.  A case
+# runs when the translation contains its export, and a module outside the subset, which has no
+# translation, runs none of its cases.  A case that runs must give the line that the Wasmtime host
+# gives, with the same rules for traps and allocation counters.  The module cases that tests/verified/run.sh checks for the corpus, those of
 # euler and of shapes on sums, come from the compiled generator native-module-cases
 # (tests/TestSupport/Native/ModuleCases.lean) and run the same way under the rules of
 # tests/modules/run.sh.  The script prints the numbers of cases that pass, that fail, and that do
@@ -62,7 +64,13 @@ fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 out=$root/build/native/verified
 cd "$root"
-targets=(native-verified verified-cases native-module-cases)
+cases_exe=verified-cases
+if [ -n "$only" ]; then
+  cases_exe=$(awk -F: -v name="$only" '$1 == name { print $2 }' \
+    "$root/tests/verified/case-generators.txt")
+  cases_exe=${cases_exe:-verified-cases}
+fi
+targets=(native-verified "$cases_exe" native-module-cases)
 while IFS=: read -r module constant name; do
   if [ -z "$only" ] || [ "$name" = "$only" ]; then
     targets+=("$module")
@@ -102,7 +110,7 @@ cases=$out/cases.txt
 errors=$out/errors.txt
 # Native Lean writes the panics that the cases exercise to standard error, which
 # tests/verified/run.sh checks; here only its exit status counts.
-if ! tools/leanrun --timeout 10m .lake/build/bin/verified-cases >"$cases" 2>"$out/cases.err"; then
+if ! tools/leanrun --timeout 10m ".lake/build/bin/$cases_exe" >"$cases" 2>"$out/cases.err"; then
   cat "$out/cases.err" >&2
   echo "fail: native Lean exited with an error" >&2
   exit 1

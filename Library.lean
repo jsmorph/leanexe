@@ -264,6 +264,9 @@ public import Library.Graphs.Dijkstra.Compiled
 public import Library.Queues.BinaryHeap.Compiled
 public import Library.HashTables.LinearProbing.Compiled
 public import Library.Numerics.MultiPrecision.Compiled
+public import Library.Numerics.Bignum.NativeRuntime
+public import Library.Numerics.Bignum.Second.NativeRuntime
+public import Library.Numerics.Bignum.Third.NativeRuntime
 public import Library.Numerics.Arithmetic.MillerRabin.Compiled
 public import Library.Combinatorics.DancingLinks.Compiled
 public import Library.Combinatorics.NextPermutation.Compiled

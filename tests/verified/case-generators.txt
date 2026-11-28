@@ -53,3 +53,7 @@ gibbs:verified-cases-orbit
 lambert:verified-cases-orbit
 frames:verified-cases-frames
 geolocation:verified-cases-geolocation
+bignum:verified-cases-bignum
+bignum2:verified-cases-bignum2
+bignum3:verified-cases-bignum3
+bignumCalc:verified-cases-bignum-calc

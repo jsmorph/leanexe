@@ -126,6 +126,10 @@ dijkstra:Library.Graphs.Dijkstra.Compiled:Library/Graphs/Dijkstra/File.lean
 heapQueue:Library.Queues.BinaryHeap.Compiled:Library/Queues/BinaryHeap/File.lean
 hashTable:Library.HashTables.LinearProbing.Compiled:Library/HashTables/LinearProbing/File.lean
 multiPrecision:Library.Numerics.MultiPrecision.Compiled:Library/Numerics/MultiPrecision/File.lean
+bignum:Library.Numerics.Bignum.Compiled:Library/Numerics/Bignum/File.lean
+bignum2:Library.Numerics.Bignum.Second.Compiled:Library/Numerics/Bignum/Second/File.lean
+bignum3:Library.Numerics.Bignum.Third.Compiled:Library/Numerics/Bignum/Third/File.lean
+bignumCalc:Demos.BignumCalc.MessageCompiled:Demos/BignumCalc/File.lean
 millerRabin:Library.Numerics.Arithmetic.MillerRabin.Compiled:Library/Numerics/Arithmetic/MillerRabin/File.lean
 dancingLinks:Library.Combinatorics.DancingLinks.Compiled:Library/Combinatorics/DancingLinks/File.lean
 nextPermutation:Library.Combinatorics.NextPermutation.Compiled:Library/Combinatorics/NextPermutation/File.lean
