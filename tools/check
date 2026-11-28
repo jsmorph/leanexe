@@ -1,0 +1,1104 @@
+#!/usr/bin/env python3
+"""The check of leanexe across machines: one build, then the items of tests/items.py at once.
+
+tools/check runs on the primary machine of a hosts file, whose tree it builds with one `lake build`
+of every target that the chosen items need, with as many Lake jobs as the machine's budget holds at
+7 GiB a job and as tools/leanrun's threads allow, since each job runs as many threads as there are
+jobs.  It copies the built tree with rsync over `tailscale ssh` to each other machine at the
+same path, and then runs the items, each where its tools are present, as many at once as each
+machine's budget allows.  A machine's budget is its memory and CPUs less a reserve, less the
+reserved work that the hosts file names, and less the limits of the other systemd scopes and
+services running there, read every few seconds: MemoryMax and CPUQuota, or the memory in use where
+a scope has no limit.  An item starts only when its memory and CPUs fit what the items running
+there leave of the budget, when the memory available leaves half the reserve after the item and the
+running items reach their memory, and when the load is below the CPUs.  Each item runs in a systemd
+user scope with its memory as MemoryMax and no swap, and its Lean commands run in the scopes of
+tools/leanrun, with a lock directory of their own.
+
+An item whose dependency failed or did not run does not run, and a failure stops no other item.  The
+outputs of an item that another machine's item reads go to that machine through the primary.  An
+item whose inputs hash to the key of its recorded pass is not run again, unless --all is given, and
+the status counts its recorded log.  --affected selects the items of the drivers, modules, and Lean
+files that tools/affected reports for a change, with their dependencies.
+
+The run writes build/check/logs/ITEM.log, build/check/results.json, build/check/items.md with each
+item's machine, time, and memory, build/check/samples-HOST.txt with the readings of each machine,
+and STATUS.md, the steps of tools/full-check with their statuses, times, and counts, which the
+script also copies to the root after the checks of tools/full-check on its text.  It exits with
+status 1 when an item failed or did not run.
+
+The hosts file is JSON:
+  {"root": PATH, "hosts": [{"name": NAME, "primary": true, "items": true,
+    "rank": N, "reserve": {"mem": GIB, "cpus": N}, "limit": {"mem": GIB, "cpus": N},
+    "item_max": GIB, "peak_max": GIB,
+    "reserved": [{"what": TEXT, "dir": PATH, "mem": GIB, "cpus": N}], "env": {VAR: VALUE}}, ...]}
+root is the tree's path on every machine.  One machine is the primary.  items false keeps items off
+a machine, and limit caps its budget; item_max bounds the memory of an item there and of each of
+its scopes, and peak_max admits only items whose memory and recorded peak lie below it.  The run
+reads reserve, limit, reserved, item_max, and peak_max again every ten seconds.  An item that runs on any processor goes first to the machines with the fewest tools.  Of
+the others, an item goes to the machine of lowest rank, 0 unless set, that holds it, and among
+those to the one with the most memory left.  A reserved entry stands for other work whose scopes run in
+dir, so that only the entry counts for them.  env holds the variables of the machine's tools, such
+as PATH, CCOMP, CLIGHTGEN, CCOMP_STDLIB, COMPCERT_TREE, QEMU, and QEMU_USER.
+
+Usage: tools/check --hosts FILE [--all | --affected [BASE]] [--only REGEX] [--list] [--no-build]
+"""
+
+import argparse
+import datetime
+import hashlib
+import importlib.util
+import json
+import math
+import os
+import re
+import shlex
+import signal
+import subprocess
+import sys
+import threading
+import time
+
+GIB = 1 << 30
+
+
+# The agent, which runs on each machine with `python3 - agent ...` and this file on standard input.
+
+def agent(argv):
+    command, run = argv[0], argv[1]
+    if command == 'probe':
+        print(json.dumps(probe(run, json.loads(argv[2]))))
+    elif command == 'stop':
+        print(json.dumps(stop(run)))
+
+
+def cgroups():
+    """The scopes and services of this user, each as (path, pids), with the pids of its
+    descendants."""
+    uid = os.getuid()
+    base = f'/sys/fs/cgroup/user.slice/user-{uid}.slice'
+    found = []
+
+    def pids(path):
+        out = []
+        for d, _, _ in os.walk(path):
+            try:
+                with open(os.path.join(d, 'cgroup.procs')) as f:
+                    out += [int(x) for x in f.read().split()]
+            except OSError:
+                pass
+        return out
+
+    def walk(path):
+        try:
+            entries = sorted(os.scandir(path), key=lambda e: e.name)
+        except OSError:
+            return
+        for e in entries:
+            if not e.is_dir(follow_symlinks=False):
+                continue
+            n = e.name
+            if n.endswith('.scope') or (n.endswith('.service') and not n.startswith('user@')):
+                found.append((e.path, pids(e.path)))
+            else:
+                walk(e.path)
+    walk(base)
+    return found
+
+
+def read(path, default=''):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return default
+
+
+def marker(pid):
+    try:
+        with open(f'/proc/{pid}/environ', 'rb') as f:
+            env = dict(x.split(b'=', 1) for x in f.read().split(b'\0') if b'=' in x)
+    except OSError:
+        return None, None
+    return env.get(b'LEANEXE_CHECK_RUN', b'').decode() or None, env.get(b'LEANEXE_CHECK_ITEM', b'').decode()
+
+
+def probe(run, spec):
+    mem = {}
+    for line in read('/proc/meminfo').splitlines():
+        k, v = line.split(':')
+        mem[k] = int(v.split()[0]) * 1024
+    out = {
+        'time': time.time(), 'mem_total': mem['MemTotal'], 'mem_available': mem['MemAvailable'],
+        'swap_used': mem['SwapTotal'] - mem['SwapFree'], 'cpus': len(os.sched_getaffinity(0)),
+        'load': os.getloadavg()[0], 'other_mem': 0, 'other_cpus': 0.0, 'items': {}, 'others': [],
+    }
+    dirs = [os.path.realpath(os.path.expanduser(d)) for d in spec.get('dirs', [])]
+    for path, ps in cgroups():
+        if not ps:
+            continue
+        current = int(read(os.path.join(path, 'memory.current'), '0') or 0)
+        ours = None
+        reserved = False
+        for pid in ps:
+            r, i = marker(pid)
+            if r == run:
+                ours = i
+                break
+            try:
+                cwd = os.readlink(f'/proc/{pid}/cwd')
+            except OSError:
+                continue
+            if any(cwd == d or cwd.startswith(d + '/') for d in dirs):
+                reserved = True
+        if ours is not None:
+            out['items'][ours] = out['items'].get(ours, 0) + current
+            continue
+        if reserved:
+            continue
+        mmax = read(os.path.join(path, 'memory.max'), 'max')
+        m = current if mmax in ('max', '') else int(mmax)
+        q = read(os.path.join(path, 'cpu.max'), 'max').split()
+        cpus = 0.0 if not q or q[0] == 'max' else int(q[0]) / int(q[1])
+        out['other_mem'] += m
+        out['other_cpus'] += cpus
+        if m >= GIB // 2 or cpus:
+            out['others'].append([os.path.basename(path), round(m / GIB, 1), cpus])
+    done = os.path.join(spec['root'], 'build/check/run', run)
+    out['done'] = {}
+    for d, _, fs in os.walk(done):
+        for f in fs:
+            if f.endswith('.status'):
+                code = read(os.path.join(d, f))
+                if code.isdigit():
+                    out['done'][os.path.relpath(os.path.join(d, f), done).removesuffix('.status')] = int(code)
+    if 'tools' in spec:
+        env = dict(os.environ, **spec.get('env', {}))
+        present = []
+        for name, test in spec['tools'].items():
+            r = subprocess.run(['bash', '-c', test], cwd=spec['root'], env=env,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if r.returncode == 0:
+                present.append(name)
+        out['tools'] = present
+    return out
+
+
+def stop(run):
+    """Kills the cgroups of this user that hold a process of the run."""
+    killed = []
+    for path, ps in cgroups():
+        if any(marker(pid)[0] == run for pid in ps):
+            try:
+                with open(os.path.join(path, 'cgroup.kill'), 'w') as f:
+                    f.write('1')
+                killed.append(os.path.basename(path))
+            except OSError as e:
+                killed.append(f'{os.path.basename(path)}: {e}')
+    return killed
+
+
+# The scheduler.
+
+class Host:
+    def __init__(self, spec, root):
+        self.name = spec['name']
+        self.primary = spec.get('primary', False)
+        self.items = spec.get('items', True)
+        self.reserve = spec.get('reserve', {'mem': 8, 'cpus': 1})
+        self.limit = spec.get('limit', {})
+        self.reserved = spec.get('reserved', [])
+        self.env = spec.get('env', {})
+        self.rank = spec.get('rank', 0)
+        self.item_max = spec.get('item_max')
+        self.peak_max = spec.get('peak_max')
+        self.root = root
+        self.tools = set()
+        self.reading = None
+        self.running = {}
+        self.ready = threading.Event()
+        self.failed = None
+        self.peak = {'mem': 0, 'load': 0.0, 'items_mem': 0, 'swap': 0}
+
+    def command(self, script):
+        if self.primary:
+            return ['bash', '-c', script]
+        return ['tailscale', 'ssh', self.name, '--', 'bash -c ' + shlex.quote(script)]
+
+    def agent(self, source, args, timeout=120):
+        r = subprocess.run(self.command('python3 - agent ' + ' '.join(shlex.quote(a) for a in args)),
+                           input=source, capture_output=True, text=True, timeout=timeout)
+        if r.returncode != 0:
+            raise RuntimeError(f'agent on {self.name} exited {r.returncode}: {r.stderr.strip()}')
+        return json.loads(r.stdout)
+
+    def budget(self):
+        """The memory in GiB and the CPUs of this machine's budget, from the last reading."""
+        r = self.reading
+        mem = r['mem_total'] / GIB - self.reserve['mem'] - r['other_mem'] / GIB - sum(x['mem'] for x in self.reserved)
+        cpus = r['cpus'] - self.reserve['cpus'] - r['other_cpus'] - sum(x['cpus'] for x in self.reserved)
+        if 'mem' in self.limit:
+            mem = min(mem, self.limit['mem'])
+        if 'cpus' in self.limit:
+            cpus = min(cpus, self.limit['cpus'])
+        return mem, cpus
+
+    def fits(self, it):
+        if not self.items or not self.ready.is_set() or self.failed or self.reading is None:
+            return False
+        if it['primary'] and not self.primary:
+            return False
+        if not set(it['tools']) <= self.tools:
+            return False
+        if self.item_max and it['mem'] > self.item_max:
+            return False
+        if self.peak_max and it['peak_est'] >= self.peak_max:
+            return False
+        if any(x in r['exclusive'] for r in self.running.values() for x in it['exclusive']):
+            return False
+        mem, cpus = self.budget()
+        used_mem = sum(r['mem'] for r in self.running.values())
+        used_cpus = sum(r['cpus'] for r in self.running.values())
+        if used_mem + it['mem'] > mem or used_cpus + it['cpus'] > cpus:
+            return False
+        r = self.reading
+        growth = sum(max(0, x['mem'] * GIB - r['items'].get(x['id'], 0)) for x in self.running.values())
+        if r['mem_available'] - growth - it['mem'] * GIB < self.reserve['mem'] * GIB / 2:
+            return False
+        return r['load'] < r['cpus']
+
+
+def die(message):
+    print(f'check: {message}', file=sys.stderr)
+    sys.exit(2)
+
+
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+class Inputs:
+    """The hashes of the inputs of items."""
+
+    def __init__(self, root):
+        self.root = root
+        self.files = {}
+        self.imports = None
+        self.tree_key = {}
+
+    def file(self, path):
+        if path not in self.files:
+            full = os.path.join(self.root, path)
+            if os.path.isdir(full):
+                parts = []
+                for d, ds, fs in os.walk(full):
+                    ds.sort()
+                    for f in sorted(fs):
+                        p = os.path.relpath(os.path.join(d, f), self.root)
+                        parts.append(p + ' ' + self.file(p))
+                self.files[path] = sha('\n'.join(parts).encode())
+            elif os.path.isfile(full):
+                with open(full, 'rb') as f:
+                    self.files[path] = sha(f.read())
+            else:
+                self.files[path] = 'absent'
+        return self.files[path]
+
+    def tree(self, docs):
+        """The hash of the tree's files, without the Markdown files unless docs."""
+        if docs not in self.tree_key:
+            g = lambda *a: subprocess.run(['git', *a], cwd=self.root, check=True, capture_output=True).stdout
+            keep = lambda f: docs or not f.endswith(b'.md')
+            listed = [line for line in g('ls-tree', '-r', '-z', 'HEAD').split(b'\0') if keep(line)]
+            spec = ['.'] if docs else ['.', ':(exclude)*.md']
+            parts = [b'\0'.join(listed), g('diff', 'HEAD', '--binary', '--', *spec)]
+            for f in sorted(g('ls-files', '--others', '--exclude-standard', '-z').split(b'\0')):
+                if f and keep(f):
+                    parts.append(f'{f.decode()} {self.file(f.decode())}'.encode())
+            self.tree_key[docs] = sha(b'\n'.join(parts))
+        return self.tree_key[docs]
+
+    def closure(self, path):
+        """The source files of this package that the Lean file path imports, with path."""
+        if self.imports is None:
+            self.imports = {}
+            pattern = re.compile(r'^(?:public )?(?:meta )?import (?:all )?([\w.]+)', re.M)
+            for top in ['LeanExe', 'Library', 'Demos', 'Verified', 'Examples', 'tests/TestSupport']:
+                for d, _, fs in os.walk(os.path.join(self.root, top)):
+                    for f in fs:
+                        if f.endswith('.lean'):
+                            p = os.path.relpath(os.path.join(d, f), self.root)
+                            with open(os.path.join(self.root, p)) as h:
+                                self.imports[p] = pattern.findall(h.read())
+        seen, stack = set(), [path]
+        while stack:
+            p = stack.pop()
+            if p in seen:
+                continue
+            seen.add(p)
+            if p not in self.imports and os.path.isfile(os.path.join(self.root, p)):
+                with open(os.path.join(self.root, p)) as h:
+                    self.imports[p] = re.findall(r'^(?:public )?(?:meta )?import (?:all )?([\w.]+)', h.read(), re.M)
+            for m in self.imports.get(p, []):
+                q = ('tests/' if m.startswith('TestSupport') else '') + m.replace('.', '/') + '.lean'
+                if q in self.imports:
+                    stack.append(q)
+        return sorted(seen)
+
+    def key(self, it):
+        parts = [json.dumps([it['cmd'], it['env'], it['tools']])]
+        for p in ['lean-toolchain', 'lakefile.lean', 'lake-manifest.json']:
+            parts.append(p + ' ' + self.file(p))
+        for x in it['inputs']:
+            if x in ('tree', 'docs'):
+                parts.append(x + ' ' + self.tree(x == 'docs'))
+            elif x.startswith('lean:'):
+                for p in self.closure(x[5:]):
+                    parts.append(p + ' ' + self.file(p))
+            else:
+                parts.append(x + ' ' + self.file(x))
+        return sha('\n'.join(parts).encode())
+
+
+class Check:
+    def __init__(self, args):
+        self.args = args
+        with open(args.hosts) as f:
+            spec = json.load(f)
+        self.root = spec['root']
+        here = os.path.realpath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+        if os.path.realpath(self.root) != here:
+            die(f'the hosts file names the root {self.root}, and this tree is {here}')
+        self.hosts = [Host(h, self.root) for h in spec['hosts']]
+        primaries = [h for h in self.hosts if h.primary]
+        if len(primaries) != 1:
+            die('the hosts file must name one primary machine')
+        self.primary = primaries[0]
+        with open(os.path.realpath(__file__)) as f:
+            self.source = f.read()
+        loader = importlib.util.spec_from_file_location('items', os.path.join(self.root, 'tests/items.py'))
+        self.manifest = importlib.util.module_from_spec(loader)
+        loader.loader.exec_module(self.manifest)
+        self.dir = os.path.join(self.root, 'build/check')
+        self.logs = os.path.join(self.dir, 'logs')
+        self.run_id = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S')
+        self.lock = threading.Condition()
+        self.results = {}
+        self.outputs_at = {}
+        self.stopping = False
+
+    def say(self, message):
+        print(f'check: {datetime.datetime.now().strftime("%H:%M:%S")} {message}', flush=True)
+
+    # Items and their selection.
+
+    def choose(self):
+        items = self.manifest.items(self.root)
+        ids = [it['id'] for it in items]
+        if len(set(ids)) != len(ids):
+            die('the manifest repeats an item')
+        self.items = {it['id']: it for it in items}
+        for it in items:
+            it['needs_build'] = it['step'] not in ('linux-sys', 'rocq', 'talos')
+            for d in it['deps']:
+                if d not in self.items:
+                    die(f'{it["id"]} depends on the unknown item {d}')
+        chosen = set(self.items)
+        if self.args.only:
+            r = re.compile(self.args.only)
+            chosen = {i for i in chosen if r.search(i)}
+        if self.args.affected is not None:
+            chosen &= self.affected(self.args.affected)
+        stack = list(chosen)
+        while stack:
+            for d in self.items[stack.pop()]['deps']:
+                if d not in chosen:
+                    chosen.add(d)
+                    stack.append(d)
+        self.chosen = [it for it in items if it['id'] in chosen]
+        self.inputs = Inputs(self.root)
+        for it in self.chosen:
+            it['key'] = self.inputs.key(it)
+
+    def affected(self, base):
+        cmd = ['tools/affected'] + ([base] if base else [])
+        text = subprocess.run(cmd, cwd=self.root, check=True, capture_output=True, text=True).stdout
+        if re.search(r'^configuration changed:', text, re.M):
+            return set(self.items)
+        named = set()
+        section = None
+        for line in text.splitlines():
+            m = re.match(r'^([a-z/.\- ]+(?:--cases)?): [0-9]+$', line)
+            if m:
+                section = m.group(1)
+                continue
+            if line.startswith('  ') and section:
+                value = line.strip()
+                if section == 'other checks':
+                    named.update(value.split(': ')[0].split())
+                elif section == 'tests/verified/run.sh --cases':
+                    named.add('cases:' + value)
+                    named.add('emit:' + value)
+                elif section in ('affected modules', 'other affected Lean files', 'changed modules'):
+                    for v in value.split():
+                        named.add(v)
+                        named.add(('tests/' if v.startswith('TestSupport') else '') + v.replace('.', '/') + '.lean')
+        out = set()
+        for id, it in self.items.items():
+            text = ' '.join([it['cmd'], *it['scripts'], *it['inputs']])
+            words = set(re.findall(r'[\w./:-]+', text))
+            closure = set()
+            for x in it['inputs']:
+                if x.startswith('lean:'):
+                    closure.update(self.inputs_closure(x[5:]))
+            if words & named or closure & named:
+                out.add(id)
+        return out
+
+    def inputs_closure(self, path):
+        if not hasattr(self, '_closure'):
+            self._closure = Inputs(self.root)
+        return self._closure.closure(path)
+
+    # Machines.
+
+    def probe_all(self, tools=()):
+        """Reads every machine, and the tools of the machines named in tools."""
+        def one(h):
+            spec = {'dirs': [x['dir'] for x in h.reserved if 'dir' in x], 'root': self.root,
+                    'env': h.env}
+            if h.name in tools:
+                spec['tools'] = self.manifest.TOOLS
+            try:
+                r = h.agent(self.source, ['probe', self.run_id, json.dumps(spec)])
+            except (RuntimeError, subprocess.TimeoutExpired) as e:
+                if h.name in tools:
+                    h.failed = str(e)
+                self.say(f'reading of {h.name} failed: {e}')
+                return
+            if h.name in tools:
+                h.tools = set(r['tools'])
+            with self.lock:
+                h.reading = r
+                h.peak['mem'] = max(h.peak['mem'], r['mem_total'] - r['mem_available'])
+                h.peak['load'] = max(h.peak['load'], r['load'])
+                h.peak['swap'] = max(h.peak['swap'], r['swap_used'])
+                ours = sum(r['items'].values())
+                h.peak['items_mem'] = max(h.peak['items_mem'], ours)
+                for id, m in r['items'].items():
+                    if id in self.results:
+                        self.results[id]['peak'] = max(self.results[id].get('peak', 0), m)
+                for id, code in r.get('done', {}).items():
+                    if id in h.running and 'exit' not in self.results[id]:
+                        self.results[id]['exit'] = code
+                mem, cpus = h.budget()
+                with open(os.path.join(self.dir, f'samples-{h.name}.txt'), 'a') as f:
+                    f.write(f"{int(r['time'])} load {r['load']:.2f} available {r['mem_available'] / GIB:.1f}"
+                            f" ours {ours / GIB:.1f} other {r['other_mem'] / GIB:.1f} swap {r['swap_used'] / GIB:.1f}"
+                            f" budget {mem:.1f} {cpus:.1f} running {len(h.running)}\n")
+                self.lock.notify_all()
+        threads = [threading.Thread(target=one, args=(h,)) for h in self.hosts
+                   if not tools or h.name in tools]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+    def watch(self):
+        while not self.done.is_set():
+            self.reload()
+            self.probe_all()
+            self.done.wait(10)
+
+    def reload(self):
+        """Reads the reserves, limits, and reserved work of the hosts file again, so that a
+        machine's budget can change during a run."""
+        try:
+            with open(self.args.hosts) as f:
+                specs = {h['name']: h for h in json.load(f)['hosts']}
+        except (OSError, ValueError, KeyError) as e:
+            self.say(f'hosts file not read again: {e}')
+            return
+        with self.lock:
+            for h in self.hosts:
+                spec = specs.get(h.name, {})
+                h.reserve = spec.get('reserve', {'mem': 8, 'cpus': 1})
+                h.limit = spec.get('limit', {})
+                h.reserved = spec.get('reserved', [])
+                h.item_max = spec.get('item_max')
+                h.peak_max = spec.get('peak_max')
+
+    def copy_tree(self, h):
+        """Copies the built tree to machine h."""
+        start = time.time()
+        log = os.path.join(self.logs, f'copy-{h.name}.log')
+        with open(log, 'w') as f:
+            r = subprocess.run(['rsync', '-a', '--delete', '--compress', '--compress-choice=zstd',
+                                '--exclude=/build/check/', '-e', 'tailscale ssh',
+                                self.root + '/', f'{h.name}:{self.root}/'], stdout=f, stderr=subprocess.STDOUT)
+            if r.returncode == 0:
+                # Lake elaborates the configuration again on a machine of another platform, once,
+                # before items run there at once.
+                env = dict(h.env, LEANRUN_FAST='0', LEANRUN_LOCKDIR=f'{self.root}/build/check/locks/prepare')
+                f.flush()
+                p = subprocess.run(h.command(self.exports(env) + ' && tools/leanrun --timeout 30m lake env true'),
+                                   stdout=f, stderr=subprocess.STDOUT)
+                if p.returncode:
+                    r = p
+        if r.returncode != 0:
+            h.failed = f'the copy of the tree exited {r.returncode}'
+            self.say(f'copy to {h.name} failed with exit {r.returncode}; see {log}')
+        else:
+            self.probe_all([h.name])
+            self.say(f'copy to {h.name} took {time.time() - start:.0f} s; tools {" ".join(sorted(h.tools))}')
+        h.ready.set()
+        with self.lock:
+            self.lock.notify_all()
+
+    def rsync(self, h, paths, pull):
+        paths = [p for p in paths if pull or os.path.exists(os.path.join(self.root, p))]
+        if not paths or h.primary:
+            return 0
+        remote = f'{h.name}:{self.root}/'
+        src, dst = (remote, self.root + '/') if pull else (self.root + '/', remote)
+        r = subprocess.run(['rsync', '-a', '-r', '--compress', '--compress-choice=zstd', '--files-from=-',
+                            '-e', 'tailscale ssh', src, dst], input='\n'.join(paths) + '\n', text=True,
+                           capture_output=True)
+        return r.returncode
+
+    # Items.
+
+    def wrapped(self, it, h):
+        env = dict(h.env)
+        env.update({'LEANEXE_CHECK_RUN': self.run_id, 'LEANEXE_CHECK_ITEM': it['id'],
+                    'LEANRUN_FAST': '0', 'LEANRUN_LOCKDIR': f'{self.root}/build/check/locks/{it["id"]}',
+                    'LEANRUN_THREADS': str(it['env'].get('LEANRUN_THREADS', min(2, it['cpus']))),
+                    'LEANRUN_MEMORY_HIGH': f'{max(4, it["mem"] - 2)}G', 'NO_COLOR': '1'})
+        env.update(it['env'])
+        if h.item_max:
+            # Every scope of the item stays within the machine's largest item.
+            high = min(int(env['LEANRUN_MEMORY_HIGH'].removesuffix('G')), h.item_max - 2)
+            env['LEANRUN_MEMORY_HIGH'] = f'{max(1, high)}G'
+            env['ISLA_MEMORY_HIGH'] = f'{max(1, min(8, h.item_max - 2))}G'
+        unit = 'leanexe-check-' + self.run_id + '-' + re.sub(r'[^A-Za-z0-9]', '-', it['id'])
+        inner = (self.exports(env) + f' && mkdir -p {shlex.quote(env["LEANRUN_LOCKDIR"])} && '
+                 f'exec systemd-run --user --scope --quiet --collect --unit={unit} '
+                 f'-p MemoryMax={it["mem"]}G -p MemorySwapMax=0 -p CPUQuota={it["cpus"] * 100}% '
+                 f'/usr/bin/time -f "check-time: %e s, %U s user, %S s system, %M KB" '
+                 f'timeout --kill-after=60 {it["timeout"]} bash -c {shlex.quote(it["cmd"])}')
+        base = shlex.quote(self.remote_base(it))
+        # The item runs detached from the connection that starts it, with its output in base.log
+        # and its exit status in base.status, which the readings of the machine report.
+        return (f'mkdir -p "$(dirname {base})" && rm -f {base}.status && '
+                f'(setsid nohup bash -c {shlex.quote(f"bash -c {shlex.quote(inner)}; c=$?; echo $c > {base}.tmp && mv {base}.tmp {base}.status")} '
+                f'> {base}.log 2>&1 < /dev/null &)')
+
+    def remote_base(self, it):
+        return f'{self.root}/build/check/run/{self.run_id}/{it["id"]}'
+
+    def exports(self, env):
+        """The text of a bash command that enters the tree with the variables env."""
+        exports = ' '.join(f'{k}={shlex.quote(v)}' for k, v in env.items())
+        return (f'cd {shlex.quote(self.root)} && '
+                f'export XDG_RUNTIME_DIR="${{XDG_RUNTIME_DIR:-/run/user/$(id -u)}}" {exports}')
+
+    def launch(self, it, h, log):
+        """Starts item it on machine h, waits until a reading of h reports its exit status, and
+        copies its output to log.  The connection that starts it closes at once, so that a lost
+        connection loses no item."""
+        res = self.results[it['id']]
+        r = subprocess.run(h.command(self.wrapped(it, h)), capture_output=True, text=True, timeout=300)
+        if r.returncode != 0:
+            with open(log, 'w') as f:
+                f.write(f'# {it["id"]}: {it["cmd"]}\ncheck: the start exited {r.returncode}\n{r.stdout}{r.stderr}')
+            return r.returncode
+        with self.lock:
+            while 'exit' not in res and not self.stopping:
+                self.lock.wait(10)
+        code = res.get('exit', 1)
+        base = self.remote_base(it)
+        for attempt in range(3):
+            if h.primary:
+                c = subprocess.run(['cp', base + '.log', log]).returncode
+            else:
+                c = subprocess.run(['rsync', '-a', '--compress', '--compress-choice=zstd', '-e', 'tailscale ssh',
+                                    f'{h.name}:{base}.log', log], capture_output=True).returncode
+            if c == 0:
+                break
+            time.sleep(5)
+        with open(log, 'r+', errors='replace') as f:
+            text = f.read()
+            f.seek(0)
+            f.write(f'# {it["id"]}: {it["cmd"]}\n' + text)
+        return code
+
+    def execute(self, it, h):
+        res = self.results[it['id']]
+        log = os.path.join(self.logs, it['id'] + '.log')
+        os.makedirs(os.path.dirname(log), exist_ok=True)
+        code = 0
+        for d in it['deps']:
+            outs = self.items[d]['outputs']
+            if outs and h.name not in self.outputs_at.get(d, set()):
+                code = self.rsync(h, outs, pull=False)
+                if code:
+                    break
+                self.outputs_at.setdefault(d, set()).add(h.name)
+        start = time.time()
+        res['start'] = start
+        if code:
+            status = f'failed: the copy of its inputs exited {code}'
+        else:
+            code = self.launch(it, h, log)
+            status = 'passed' if code == 0 else f'failed, exit {code}'
+            if code == 0 and it['outputs']:
+                c = self.rsync(h, it['outputs'], pull=True)
+                if c:
+                    status = f'failed: the copy of its outputs exited {c}'
+                    code = c
+                else:
+                    self.outputs_at[it['id']] = {h.name, self.primary.name}
+        res.update({'end': time.time(), 'status': status, 'code': code})
+        try:
+            with open(log) as f:
+                got = re.findall(r'^check-time: ([0-9.]+) s, ([0-9.]+) s user, ([0-9.]+) s system, ([0-9]+) KB$',
+                                 f.read(), re.M)
+            if got:
+                e, u, sy, kb = got[-1]
+                res.update({'cpu': float(u) + float(sy), 'rss': int(kb) * 1024})
+        except OSError:
+            pass
+        self.say(f'{it["id"]} on {h.name}: {status} after {res["end"] - start:.0f} s')
+        with self.lock:
+            h.running.pop(it['id'], None)
+            if status == 'passed':
+                self.passes[it['id']] = it['key']
+                self.save_passes()
+                os.makedirs(os.path.dirname(os.path.join(self.dir, 'passes', it['id'])), exist_ok=True)
+                with open(log, 'rb') as src, open(os.path.join(self.dir, 'passes', it['id'] + '.log'), 'wb') as dst:
+                    dst.write(src.read())
+            self.lock.notify_all()
+
+    def save_passes(self):
+        tmp = os.path.join(self.dir, 'passes.json.tmp')
+        with open(tmp, 'w') as f:
+            json.dump(self.passes, f, indent=1, sort_keys=True)
+        os.replace(tmp, os.path.join(self.dir, 'passes.json'))
+
+    def build(self):
+        h = self.primary
+        mem, cpus = h.budget()
+        # tools/leanrun --threads N runs N Lake jobs of N threads each, so N * N stays within the
+        # CPUs, and the jobs take 7 GiB each.
+        jobs = max(1, min(math.isqrt(max(1, int(cpus))), int(mem // 7)))
+        high = max(4, min(int(mem) - 2, jobs * 7))
+        targets = self.manifest.targets(self.root, self.chosen)
+        log = os.path.join(self.logs, 'build.log')
+        self.say(f'build of {len(targets)} targets with {jobs} jobs and a MemoryHigh of {high}G')
+        start = time.time()
+        env = dict(os.environ, **h.env, LEANRUN_FAST='0', LEANRUN_LOCKDIR=os.path.join(self.dir, 'locks', 'build'),
+                   LEANEXE_CHECK_RUN=self.run_id, LEANEXE_CHECK_ITEM='build')
+        with open(log, 'w') as f:
+            code = subprocess.run(['tools/leanrun', '--timeout', '12h', '--threads', str(jobs), '--cpus', str(jobs),
+                                   '--memory-high', f'{high}G', 'lake', '--log-level', 'info', 'build', *targets],
+                                  cwd=self.root, env=env, stdout=f, stderr=subprocess.STDOUT).returncode
+        self.build_result = {'start': start, 'end': time.time(), 'code': code, 'jobs': jobs, 'targets': targets}
+        self.say(f'build exit {code} after {time.time() - start:.0f} s')
+        return code == 0
+
+    def schedule(self):
+        pending = [it for it in self.chosen]
+        if not self.args.all:
+            pending = [it for it in pending if self.passes.get(it['id']) != it['key']]
+            for it in self.chosen:
+                if it not in pending:
+                    self.results[it['id']] = {'status': 'passed', 'reused': True}
+        for it in pending:
+            self.results[it['id']] = {'status': 'pending'}
+        history = self.history()
+        peaks = self.peaks()
+        for it in self.chosen:
+            it['peak_est'] = max(it['mem'], peaks.get(it['id'], 0))
+        pending.sort(key=lambda it: -history.get(it['id'], 600))
+        idle = None
+        with self.lock:
+            while True:
+                if self.stopping:
+                    break
+                progress = False
+                for it in list(pending):
+                    deps = [self.results.get(d, {}).get('status', 'passed') for d in it['deps']]
+                    if any(s != 'passed' and s not in ('pending', 'running') for s in deps) or \
+                            (it['needs_build'] and not self.built):
+                        why = 'the build failed' if it['needs_build'] and not self.built else 'a dependency did not pass'
+                        self.results[it['id']] = {'status': f'not run: {why}'}
+                        pending.remove(it)
+                        progress = True
+                        continue
+                    if any(s != 'passed' for s in deps):
+                        continue
+                    able = [h for h in self.hosts if h.items and not h.failed and set(it['tools']) <= h.tools
+                            and (h.primary or not it['primary'])]
+                    if not able and any(h.items and not h.failed and not h.ready.is_set() for h in self.hosts):
+                        continue
+                    if not able:
+                        absent = sorted(set(it['tools']) - set().union(*(h.tools for h in self.hosts if not h.failed)))
+                        why = f'{", ".join(absent)} absent' if absent else 'no machine has all its tools'
+                        self.results[it['id']] = {'status': f'not run: {why}'}
+                        pending.remove(it)
+                        progress = True
+                        continue
+                    fit = [h for h in able if h.fits(it)]
+                    if not fit:
+                        continue
+                    near = [h for h in fit if all(h.name in self.outputs_at.get(d, set()) for d in it['deps']
+                                                  if self.items[d]['outputs'])]
+                    # An item that runs anywhere goes first to the machines with the fewest tools,
+                    # which fewer other items can use.
+                    portable = 'aarch64' not in it['tools']
+                    h = min(near or fit, key=lambda h: (len(h.tools) if portable else 0, h.rank,
+                                                         sum(r['mem'] for r in h.running.values()) - h.budget()[0]))
+                    h.running[it['id']] = it
+                    self.results[it['id']] = {'status': 'running', 'host': h.name}
+                    pending.remove(it)
+                    self.say(f'{it["id"]} on {h.name}: started ({it["mem"]} GiB, {it["cpus"]} CPUs)')
+                    threading.Thread(target=self.execute, args=(it, h), daemon=True).start()
+                    progress = True
+                running = any(h.running for h in self.hosts)
+                if not pending and not running:
+                    break
+                # Items that fit no budget while no item runs wait two minutes for other work to
+                # end, and then do not run.
+                if running or progress or any(not h.ready.is_set() for h in self.hosts):
+                    idle = None
+                elif idle is None:
+                    idle = time.time()
+                elif time.time() - idle > 120:
+                    for it in pending:
+                        self.results[it['id']] = {'status': "not run: no machine's budget held it"}
+                    pending = []
+                if not progress:
+                    self.lock.wait(5)
+
+    def history(self):
+        path = os.path.join(self.dir, 'history.json')
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except OSError:
+            return {}
+
+    def peaks(self):
+        try:
+            with open(os.path.join(self.dir, 'peaks.json')) as f:
+                return json.load(f)
+        except OSError:
+            return {}
+
+    def save_history(self):
+        """Records each item's time, and its peak memory in GiB: the largest of the sums of its
+        scopes' memory that the readings saw and of its largest process."""
+        h = self.history()
+        peaks = self.peaks()
+        for id, r in self.results.items():
+            if 'start' in r and 'end' in r and r['status'] == 'passed':
+                h[id] = round(r['end'] - r['start'])
+            if r.get('peak') or r.get('rss'):
+                peaks[id] = round(max(r.get('peak', 0), r.get('rss', 0)) / GIB, 1)
+        with open(os.path.join(self.dir, 'history.json'), 'w') as f:
+            json.dump(h, f, indent=1, sort_keys=True)
+        with open(os.path.join(self.dir, 'peaks.json'), 'w') as f:
+            json.dump(peaks, f, indent=1, sort_keys=True)
+
+    def abort(self, signum, frame):
+        self.stopping = True
+        self.say(f'signal {signum}: stopping the items')
+        for h in self.hosts:
+            try:
+                h.agent(self.source, ['stop', self.run_id])
+            except (RuntimeError, subprocess.TimeoutExpired) as e:
+                self.say(f'stop on {h.name} failed: {e}')
+        sys.exit(1)
+
+    def main(self):
+        os.makedirs(self.logs, exist_ok=True)
+        self.choose()
+        if self.args.list:
+            for it in self.chosen:
+                print(f"{it['id']}\t{it['step']}\t{it['mem']}G\t{it['cpus']}\t{','.join(it['tools'])}\t"
+                      f"{','.join(it['deps'])}\t{it['cmd']}")
+            print(f'{len(self.chosen)} items; build targets: {" ".join(self.manifest.targets(self.root, self.chosen))}')
+            return 0
+        for f in os.listdir(self.dir):
+            if f.startswith('samples-'):
+                os.remove(os.path.join(self.dir, f))
+        try:
+            with open(os.path.join(self.dir, 'passes.json')) as f:
+                self.passes = json.load(f)
+        except OSError:
+            self.passes = {}
+        signal.signal(signal.SIGTERM, self.abort)
+        signal.signal(signal.SIGINT, self.abort)
+        self.started = time.time()
+        self.commit()
+        self.say(f'run {self.run_id}: {len(self.chosen)} items on {len(self.hosts)} machines')
+        self.probe_all()
+        self.probe_all([self.primary.name])
+        for h in self.hosts:
+            mem, cpus = h.budget() if h.reading else (0, 0)
+            self.say(f'{h.name}: budget {mem:.0f} GiB and {cpus:.0f} CPUs'
+                     + (f', tools {" ".join(sorted(h.tools))}' if h.primary else '')
+                     + (f'; failed: {h.failed}' if h.failed else ''))
+        self.done = threading.Event()
+        threading.Thread(target=self.watch, daemon=True).start()
+        self.built = self.args.no_build or self.build()
+        if not self.args.no_build and not self.built:
+            self.say('the build failed')
+        copies = []
+        for h in self.hosts:
+            if h.primary or not h.items or h.failed:
+                h.ready.set()
+            else:
+                t = threading.Thread(target=self.copy_tree, args=(h,))
+                t.start()
+                copies.append(t)
+        self.schedule()
+        self.done.set()
+        self.finished = time.time()
+        self.save_history()
+        with open(os.path.join(self.dir, 'results.json'), 'w') as f:
+            json.dump({'run': self.run_id, 'build': getattr(self, 'build_result', None), 'results': self.results,
+                       'hosts': {h.name: {'budget': h.budget() if h.reading else None, 'peak': h.peak,
+                                          'tools': sorted(h.tools), 'failed': h.failed} for h in self.hosts}},
+                      f, indent=1)
+        self.write_items()
+        ok = self.write_status()
+        bad = [i for i, r in self.results.items() if r['status'] != 'passed']
+        self.say(f'{len(self.results) - len(bad)} items passed, {len(bad)} failed or did not run, '
+                 f'in {self.finished - self.started:.0f} s')
+        return 0 if ok and not bad and self.built else 1
+
+    # Reports.
+
+    def write_items(self):
+        rows = ['| Item | Machine | Status | Seconds | CPU seconds | Declared GiB | Peak GiB | Largest process GiB | CPUs |',
+                '|---|---|---|---|---|---|---|---|---|']
+        for it in self.chosen:
+            r = self.results[it['id']]
+            secs = f"{r['end'] - r['start']:.0f}" if 'end' in r else ''
+            peak = f"{r['peak'] / GIB:.1f}" if r.get('peak') else ''
+            status = r['status'] + (' (recorded pass)' if r.get('reused') else '')
+            cpu = f"{r['cpu']:.0f}" if 'cpu' in r else ''
+            rss = f"{r['rss'] / GIB:.1f}" if 'rss' in r else ''
+            rows.append(f"| `{it['id']}` | {r.get('host', '')} | {status} | {secs} | {cpu} | {it['mem']} | {peak} | {rss} |"
+                        f" {it['cpus']} |")
+        with open(os.path.join(self.dir, 'items.md'), 'w') as f:
+            f.write('\n'.join(rows) + '\n')
+
+    def build_cell(self):
+        with open(os.path.join(self.logs, 'build.log')) as f:
+            text = f.read()
+        jobs = re.findall(r'^Build completed successfully \(([0-9]+) jobs\)\.$', text, re.M)
+        sorries = len(re.findall(r'^warning: [^ ]+:[0-9]+:[0-9]+: declaration uses `', text, re.M))
+        errors = len(re.findall(r'^error: ', text, re.M))
+        total = permitted = 0
+        repo, deps = [], []
+        ls = text.splitlines()
+        i = 0
+        std = {'propext', 'Classical.choice', 'Quot.sound'}
+        while i < len(ls):
+            line = ls[i]
+            m = re.match(r"^info: ([^ ]+):[0-9]+:[0-9]+: .*", line)
+            if m and ('depends on axioms: [' in line or line.endswith('does not depend on any axioms')):
+                r = line
+                if 'depends on axioms: [' in r:
+                    while ']' not in r and i + 1 < len(ls):
+                        i += 1
+                        r += ' ' + ls[i]
+                r = re.sub(r'\s+', ' ', r)
+                file = m.group(1)
+                name = re.sub(r"' (depends on axioms|does not depend on any axioms).*$", '', re.sub(r"^[^']*'", '', r))
+                other = []
+                if 'depends on axioms: [' in r:
+                    lst = re.sub(r'\].*$', '', r.split('depends on axioms: [', 1)[1])
+                    other = [a.strip() for a in lst.split(',') if a.strip() not in std]
+                total += 1
+                if not other:
+                    permitted += 1
+                elif os.path.isfile(os.path.join(self.root, file)):
+                    repo.append(f"`{name}` in `{file}`: " + ', '.join(f'`{a}`' for a in other))
+                else:
+                    deps.append(f"`{name}` in `{file}` of a dependency: " + ', '.join(f'`{a}`' for a in other))
+            i += 1
+        cell = f'{int(jobs[-1]):,} jobs; ' if jobs else ''
+        if errors:
+            cell += f'{errors} errors; '
+        cell += (f'{total:,} axiom reports, {permitted:,} of them with no axiom beyond `propext`, `Classical.choice`,'
+                 f' and `Quot.sound`; ' + ('no `sorry` warning' if not sorries else f'{sorries} `sorry` warnings'))
+        return cell, bool(sorries or repo), repo, deps
+
+    def commit(self):
+        """The commit of the tree and the paths that differ from it, read when the run starts."""
+        g = lambda *a: subprocess.run(['git', *a], cwd=self.root, check=True, capture_output=True, text=True).stdout.strip()
+        origin = g('remote', 'get-url', 'origin')
+        self.tree = {
+            'commit': g('rev-parse', 'HEAD'),
+            'subject': g('show', '-s', '--format=%s', 'HEAD').replace('[', '\\[').replace(']', '\\]'),
+            'committed': subprocess.run(['git', 'show', '-s', '--date=format-local:%Y-%m-%d %H:%M UTC', '--format=%cd',
+                                         'HEAD'], cwd=self.root, check=True, capture_output=True, text=True,
+                                        env=dict(os.environ, TZ='UTC')).stdout.strip(),
+            'web': re.sub(r'\.git$', '', re.sub(r'^git@github\.com:', 'https://github.com/', origin)),
+            'changed': [line[3:] for line in subprocess.run(['git', 'status', '--porcelain=v1'], cwd=self.root, check=True,
+                                                            capture_output=True, text=True).stdout.splitlines()
+                        if line[3:] != 'STATUS.md'],
+        }
+
+    def write_status(self):
+        m = self.manifest
+        commit, subject, committed, web, changed = (self.tree[k] for k in ('commit', 'subject', 'committed', 'web', 'changed'))
+        toolchain = open(os.path.join(self.root, 'lean-toolchain')).readline().strip()
+        utc = lambda t: datetime.datetime.fromtimestamp(t, datetime.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+        platforms = sorted({f"Linux on {'AArch64' if 'aarch64' in h.tools else 'x86-64'}"
+                            for h in self.hosts if any(r.get('host') == h.name for r in self.results.values())})
+        dur = lambda s: f'{s:.0f} s' if s < 120 else f'{(s + 30) // 60:.0f} min'
+        rows = []
+        failed_items = []
+        unrun = []
+        if not self.args.no_build:
+            b = self.build_result
+            cell, bad, repo, deps = self.build_cell()
+            status = 'passed' if b['code'] == 0 else f"failed, exit {b['code']}"
+            if b['code'] == 0 and bad:
+                status = 'failed, with `sorry` or another axiom'
+            rows.append((m.STEPS[0][1], status, dur(b['end'] - b['start']), cell))
+        else:
+            repo, deps = [], []
+        for key, title in m.STEPS[1:]:
+            its = [it for it in self.chosen if it['step'] == key]
+            if not its:
+                continue
+            rs = [self.results[it['id']] for it in its]
+            failed = [it['id'] for it, r in zip(its, rs) if r['status'].startswith('failed')]
+            notrun = [(it['id'], r['status'][9:]) for it, r in zip(its, rs) if r['status'].startswith('not run')]
+            failed_items += failed
+            runs = []
+            for it, r in zip(its, rs):
+                path = os.path.join(self.dir, 'passes', it['id'] + '.log') if r.get('reused') else \
+                    os.path.join(self.logs, it['id'] + '.log')
+                if os.path.exists(path):
+                    with open(path, errors='replace') as f:
+                        runs.append((it, f.read()))
+            passed = not failed and not notrun
+            if failed:
+                status = f"failed: {len(failed)} of {len(its)} items"
+            elif notrun and len(notrun) == len(its):
+                status = f'not run: {notrun[0][1]}'
+                unrun.append((title, notrun[0][1]))
+            elif notrun:
+                status = f'{len(notrun)} of {len(its)} items not run'
+                unrun += [(f'`{i}`', why) for i, why in notrun]
+            else:
+                status = 'passed'
+            ran = [r for r in rs if 'start' in r and 'end' in r]
+            span = dur(max(r['end'] for r in ran) - min(r['start'] for r in ran)) if ran else ''
+            if len(its) > 1:
+                span += f', {len(its)} items' if span else f'{len(its)} items'
+            try:
+                cell = m.counts(key, runs, self.root, passed) if runs else ''
+            except Exception as e:
+                cell = f'counts not read: {type(e).__name__}'
+            rows.append((title, status, span, cell))
+        reused = sum(1 for r in self.results.values() if r.get('reused'))
+        text = ['# Status', '',
+                '[`tools/check`](tools/check) wrote this record of the check of the commit below, which built every'
+                ' library and the test executables once and ran the items of [`tests/items.py`](tests/items.py) at once'
+                ' across several machines.  The record covers the tree of that commit with the paths listed as'
+                ' differing from it, and no later commit.  A step is a step of the former `tools/full-check`: its'
+                ' items run the step\'s driver, a part of it, or the driver on some of its modules, with the'
+                ' driver\'s pass criterion, and the counts come from the items\' output, which the checkout that ran'
+                ' the check keeps in `build/check/`.  A step\'s duration runs from the start of its first item to the'
+                ' end of its last.', '',
+                '| Item | Value |', '|---|---|',
+                f'| Commit | [{subject}]({web}/commit/{commit}), committed {committed} |',
+                f"| Paths that differed from the commit | {', '.join(f'`{p}`' for p in changed) or 'None'} |",
+                f'| Run | {utc(self.started)} to {utc(self.finished)} |',
+                f'| Lean toolchain | `{toolchain}` |',
+                f"| Platforms | {', '.join(platforms)} |",
+                f'| Items | {len(self.results)}, {reused} of them passed in an earlier run with the same inputs |', '',
+                '| Step | Status | Duration | Counts |', '|---|---|---|---|']
+        for r in rows:
+            text.append('| ' + ' | '.join(r) + ' |')
+        if repo:
+            text += ['', "These axiom reports of the repository's files name an axiom beyond `propext`,"
+                     " `Classical.choice`, and `Quot.sound`, and they fail the build:", '']
+            text += [f'- {x}' for x in repo]
+        if deps:
+            text += ['', "These axiom reports of the dependencies' files name an axiom beyond `propext`,"
+                     " `Classical.choice`, and `Quot.sound`:", '']
+            text += [f'- {x}' for x in deps]
+        if failed_items:
+            text += ['', 'These items failed, each with its log in `build/check/logs/`: '
+                     + ', '.join(f'`{i}`' for i in failed_items) + '.']
+        notes = ''
+        if unrun or m.UNRUN:
+            groups = {}
+            for what, why in unrun + m.UNRUN:
+                groups.setdefault(why, []).append(what)
+            notes = 'These did not run: ' + '; '.join(f'{m.join(ws)} ({why})' for why, ws in groups.items()) + '.  '
+        else:
+            notes = 'Every item ran.  '
+        notes += ('The check leaves out `tests/native/subset.sh`, whose result is the count of modules without a'
+                  ' translation that `tests/native/verified.sh` reports, `tests/native/bench.sh`, which measures time,'
+                  ' the decoder test, which needs the WebAssembly test suite converted by `wasm-tools`, and the'
+                  ' bare-metal tests under KVM, which need an AArch64 machine with KVM, while TCG emulates the'
+                  ' processor on any machine.  It also leaves out `tests/baremetal/a64-rcv.sh`, which needs the RCV'
+                  ' corpus, and the regeneration of the Isla traces by `tests/isla/traces.sh`, `linux-traces.sh`, and'
+                  ' `m7-traces.sh`, which needs Isla with the repository\'s patch, the IR of the Sail model, and Z3.'
+                  '  The Isla steps read the committed traces.  Of the Cortex-M7 drivers, the check runs'
+                  ' `tests/baremetal/m7-board.sh check bms`, which elaborates the file theorems of the BMS step\'s'
+                  ' board image without the board, and `tests/baremetal/m7-qemu.sh bms`; it runs neither their other'
+                  ' programs nor `usart3.sh`, `m7.sh`, `req.sh`, and `m7-cosim.sh`.  The other drivers of'
+                  ' [the test suites](tests/README.md) that no item calls run only when a person runs them.')
+        text += ['', notes]
+        body = '\n'.join(text) + '\n'
+        path = os.path.join(self.dir, 'STATUS.md')
+        with open(path, 'w') as f:
+            f.write(body)
+        names = set()
+        for h in self.hosts:
+            names |= {h.name, h.name.split('.')[0]}
+        bad = []
+        for n, line in enumerate(body.splitlines(), 1):
+            if any(re.search(rf'\b{re.escape(x)}\b', line, re.I) for x in names) or \
+                    re.search(r'(^|[\s(`"\'])(/[A-Za-z]|~/)', line) or \
+                    re.search(r'\b(oom|killed|swap|swapping|pressure|crash|crashed|crashes|segfault|sigsegv|sigbus|'
+                              r'core dumps?|core dumped|thrash|thrashing|out of memory|cpus?)\b', line, re.I):
+                bad.append(f'{n}: {line}')
+        if bad:
+            print('check: build/check/STATUS.md names a machine, an absolute or home path, or a host fault:',
+                  file=sys.stderr)
+            print('\n'.join(bad), file=sys.stderr)
+            return False
+        with open(os.path.join(self.root, 'STATUS.md'), 'w') as f:
+            f.write(body)
+        self.say('wrote STATUS.md')
+        return True
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == 'agent':
+        agent(sys.argv[2:])
+        return 0
+    p = argparse.ArgumentParser(prog='tools/check', description='The check of leanexe across machines.')
+    p.add_argument('--hosts', required=True)
+    p.add_argument('--all', action='store_true', help='run every chosen item, whatever its recorded pass')
+    p.add_argument('--affected', nargs='?', const='', default=None, metavar='BASE')
+    p.add_argument('--only', metavar='REGEX')
+    p.add_argument('--list', action='store_true')
+    p.add_argument('--no-build', action='store_true')
+    args = p.parse_args()
+    return Check(args).main()
+
+
+if __name__ == '__main__':
+    sys.exit(main())

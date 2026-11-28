@@ -112,11 +112,12 @@ Wasmtime.  Without a mode, it checks the hashes, requires the example's call the
 `Classical.choice`, and `Quot.sound`, and runs the samples in Wasmtime and, when CompCert's `ccomp`
 and `clightgen` are present, in the module's translation to C.
 
-[The full check](full-check) builds every module of the libraries `LeanExe`, `Verified`,
-`Library`, `Demos`, `Examples`, and `TestSupport` and the test executables, runs the drivers of
-the verified compiler's modules and of their C, bare-metal, WASI, and WGSL forms, of the demos,
-and of the AArch64 back end's Linux executables and arm64 Images, checks the Isla theorems, the
-VKB, and the Rocq composition, and runs Talos's conformance driver.  It writes each step's output to
-`build/full-check/` and a record that names the checked commit and gives each step's status,
-duration, and counts to `STATUS.md` at the root, which Git ignores.  [The verified compiler manual](../docs/verified-manual.md#the-full-check)
+[The full check](check) builds every module of the libraries `LeanExe`, `Verified`, `Library`,
+`Demos`, `Examples`, and `TestSupport` and the test executables once, copies the built tree to the
+machines of a hosts file, and runs the items of [the manifest](../tests/items.py) at once within
+each machine's memory and CPU budget: the drivers of the verified compiler's modules and of their
+C, bare-metal, WASI, and WGSL forms, of the demos, and of the AArch64 back end's Linux executables
+and arm64 Images, the Isla theorems, the VKB, the Rocq composition, and Talos's conformance driver.
+It writes each item's output to `build/check/logs/` and a record that names the checked commit and
+gives each step's status, duration, and counts to `STATUS.md` at the root, which Git ignores.  [The verified compiler manual](../docs/verified-manual.md#the-full-check)
 describes its steps, its variables, and the steps that run only where their tools are present.
