@@ -139,7 +139,8 @@ if [ -z "$case_module" ]; then
     verified-cases-sgp4omm verified-cases-attitude verified-cases-qmethod verified-cases-screening
     verified-cases-chisquare verified-cases-gate verified-cases-assignment verified-cases-events
     verified-cases-avoidance verified-cases-passivesafety verified-cases-orbit verified-cases-frames
-    verified-cases-geolocation)
+    verified-cases-geolocation verified-cases-bignum verified-cases-bignum2 verified-cases-bignum3
+    verified-cases-bignum-calc)
 fi
 # The modules that `lean` and `lean --run` read for the files given are their imports, less the
 # toolchain's own.

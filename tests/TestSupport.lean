@@ -68,5 +68,6 @@ public import TestSupport.A64.Mix
 public import TestSupport.Bare.InputOn
 public import TestSupport.A64.Mss
 public import TestSupport.Bignum.Cases
+public import TestSupport.BignumCalc.Cases
 
 @[expose] public section

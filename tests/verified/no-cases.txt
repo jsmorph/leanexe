@@ -1,7 +1,3 @@
 gpt tests/gpt/run.sh runs the module against its own cases
 euler tests/modules/run.sh runs the module's cases from tests/TestSupport/Native/ModuleCases.lean
 sums tests/modules/run.sh runs the module's cases from tests/TestSupport/Native/ModuleCases.lean
-bignum tests/bignum/run.sh runs the module against Node's BigInt and native Lean
-bignum2 tests/bignum/run.sh runs the module against Node's BigInt, bignum, and native Lean
-bignum3 tests/bignum/run.sh runs the module against Node's BigInt, bignum, and native Lean
-bignumCalc tests/bignum-calc/bare.sh and image.sh run the calculator's programs against Node's BigInt
