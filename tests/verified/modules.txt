@@ -122,6 +122,7 @@ Library.Numerics.MultiPrecision.Compiled:Library.Numerics.MultiPrecision.compile
 Library.Numerics.Bignum.Compiled:Library.Numerics.Bignum.compiled.module:bignum
 Library.Numerics.Bignum.Second.Compiled:Library.Numerics.Bignum.Second.compiled.module:bignum2
 Library.Numerics.Bignum.Third.Compiled:Library.Numerics.Bignum.Third.compiled.module:bignum3
+Demos.BignumCalc.MessageCompiled:Demos.BignumCalc.messageCompiled.module:bignumCalc
 Library.Numerics.Arithmetic.MillerRabin.Compiled:Library.Numerics.Arithmetic.MillerRabin.compiled.module:millerRabin
 Library.Combinatorics.DancingLinks.Compiled:Library.Combinatorics.DancingLinks.compiled.module:dancingLinks
 Library.Combinatorics.NextPermutation.Compiled:Library.Combinatorics.NextPermutation.compiled.module:nextPermutation

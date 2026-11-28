@@ -129,6 +129,7 @@ multiPrecision:Library.Numerics.MultiPrecision.Compiled:Library/Numerics/MultiPr
 bignum:Library.Numerics.Bignum.Compiled:Library/Numerics/Bignum/File.lean
 bignum2:Library.Numerics.Bignum.Second.Compiled:Library/Numerics/Bignum/Second/File.lean
 bignum3:Library.Numerics.Bignum.Third.Compiled:Library/Numerics/Bignum/Third/File.lean
+bignumCalc:Demos.BignumCalc.MessageCompiled:Demos/BignumCalc/File.lean
 millerRabin:Library.Numerics.Arithmetic.MillerRabin.Compiled:Library/Numerics/Arithmetic/MillerRabin/File.lean
 dancingLinks:Library.Combinatorics.DancingLinks.Compiled:Library/Combinatorics/DancingLinks/File.lean
 nextPermutation:Library.Combinatorics.NextPermutation.Compiled:Library/Combinatorics/NextPermutation/File.lean

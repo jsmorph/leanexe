@@ -5,6 +5,7 @@ public import Demos.Attitude.Flat
 public import Demos.Attitude.Knowledge
 public import Demos.Attitude.Program
 public import Demos.Attitude.QFlat
+public import Demos.BignumCalc.BytesBare
 public import Demos.Bms.Abs
 public import Demos.Bms.Cases
 public import Demos.Bms.Compiled
