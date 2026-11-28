@@ -9,6 +9,11 @@ Tests of `LeanExe.Dialect.repeatWhile_induction` and `LeanExe.Dialect.repeatWhil
 `countDown` counts a word down to 0 with `LeanExe.repeatWhile` and counts the steps in a second
 component.  The fuel `n + 1` exceeds the measure, the first component, so the loop ends with the
 first component 0, and the invariant that the two components sum to `n` gives the count `n`.
+
+Tests of `LeanExe.Dialect.repeatWhile_steps_stop`, whose invariant takes the number of steps.
+`induction_stop_of_steps` derives the statement of `repeatWhile_induction_stop` from it with the
+invariant `P s ∧ μ s + j ≤ fuel.toNat`, and `addUntil_ge` proves a loop whose state holds no count,
+which adds `d` to a value while it is below `t`, with the invariant `v = x + j * d`.
 -/
 
 namespace TestSupport.Dialect.RepeatWhile
@@ -58,9 +63,45 @@ theorem countDown_count_le (n : UInt64) : (countDown n).2 ≤ n.toNat := by
   change (countDown n).1.toNat + (countDown n).2 = n.toNat at hsum
   omega
 
+/-- The statement of `LeanExe.Dialect.repeatWhile_induction_stop` follows from
+`LeanExe.Dialect.repeatWhile_steps_stop`. -/
+theorem induction_stop_of_steps {α : Type} {fuel : UInt64} {init : α} {cond : α → Bool}
+    {step : α → α} (P : α → Prop) (μ : α → Nat) (h0 : P init) (hμ : μ init ≤ fuel.toNat)
+    (hs : ∀ s, P s → cond s = true → P (step s) ∧ μ (step s) < μ s) :
+    P (LeanExe.repeatWhile fuel init cond step) ∧
+      cond (LeanExe.repeatWhile fuel init cond step) = false := by
+  obtain ⟨_, -, ⟨hP, -⟩, hc⟩ := LeanExe.Dialect.repeatWhile_steps_stop (fuel := fuel)
+    (init := init) (cond := cond) (step := step) (fun j s => P s ∧ μ s + j ≤ fuel.toNat)
+    ⟨h0, by omega⟩
+    (fun j s _ hI hc => ⟨(hs s hI.1 hc).1, by have := (hs s hI.1 hc).2; omega⟩)
+    (fun s hI => by
+      cases hc : cond s
+      · rfl
+      · have := (hs s hI.1 hc).2; omega)
+  exact ⟨hP, hc⟩
+
+/-- A loop whose state holds no count: adding `d` while the value is below `t` ends at `t` or
+above when three additions reach it. -/
+theorem addUntil_ge (x d t : Nat) (h : t ≤ x + 3 * d) :
+    t ≤ LeanExe.repeatWhile 3 x (fun v => decide (v < t)) (fun v => v + d) := by
+  obtain ⟨j, -, -, hc⟩ := LeanExe.Dialect.repeatWhile_steps_stop (fuel := 3) (init := x)
+    (cond := fun v => decide (v < t)) (step := fun v => v + d)
+    (fun j v => v = x + j * d) (by simp)
+    (fun j v _ hv _ => by rw [hv, Nat.succ_mul]; omega)
+    (fun v hv => by
+      have h3 : (3 : UInt64).toNat = 3 := rfl
+      rw [h3] at hv
+      simp only [decide_eq_false_iff_not, Nat.not_lt]
+      omega)
+  simpa using hc
+
 #print axioms LeanExe.Dialect.repeatWhile_induction
 #print axioms LeanExe.Dialect.repeatWhile_induction_stop
+#print axioms LeanExe.Dialect.repeatWhile_steps
+#print axioms LeanExe.Dialect.repeatWhile_steps_stop
 #print axioms countDown_spec
 #print axioms countDown_count_le
+#print axioms induction_stop_of_steps
+#print axioms addUntil_ge
 
 end TestSupport.Dialect.RepeatWhile

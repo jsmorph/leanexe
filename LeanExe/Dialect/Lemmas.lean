@@ -7,7 +7,7 @@ public import Mathlib.Tactic
 
 @[expose] public section
 
-/-! Lemmas about the combinators `LeanExe.loop` and `LeanExe.build`. -/
+/-! Lemmas about the combinators `LeanExe.loop`, `LeanExe.repeatWhile`, and `LeanExe.build`. -/
 
 namespace LeanExe.Dialect
 
@@ -67,6 +67,45 @@ theorem repeatWhile_induction_stop {α : Type} {fuel : UInt64} {init : α} {cond
       exact ih h1 (by omega)
     · rw [ite_eq_right hc]
       exact ⟨h0, by simpa using hc⟩
+
+/-- An invariant indexed by the number of steps taken holds at the result of `LeanExe.repeatWhile`
+at a count no larger than the fuel, and the condition fails there when that count is below the
+fuel. -/
+theorem repeatWhile_steps {α : Type} {fuel : UInt64} {init : α} {cond : α → Bool}
+    {step : α → α} (I : Nat → α → Prop) (h0 : I 0 init)
+    (hs : ∀ j s, j < fuel.toNat → I j s → cond s = true → I (j + 1) (step s)) :
+    ∃ j, j ≤ fuel.toNat ∧ I j (LeanExe.repeatWhile fuel init cond step) ∧
+      (j < fuel.toNat → cond (LeanExe.repeatWhile fuel init cond step) = false) := by
+  unfold LeanExe.repeatWhile
+  suffices h : ∀ f j s, j + f = fuel.toNat → I j s →
+      ∃ j', j' ≤ fuel.toNat ∧ I j' (LeanExe.repeatWhile.go cond step f s) ∧
+        (j' < fuel.toNat → cond (LeanExe.repeatWhile.go cond step f s) = false) from
+    h _ 0 init (by omega) h0
+  intro f
+  induction f with
+  | zero => exact fun j s hj hI => ⟨j, by omega, hI, fun h => absurd h (by omega)⟩
+  | succ f ih =>
+    intro j s hj hI
+    rw [LeanExe.repeatWhile.go]
+    by_cases hc : cond s = true
+    · rw [ite_eq_left hc]
+      exact ih (j + 1) (step s) (by omega) (hs j s (by omega) hI hc)
+    · rw [ite_eq_right hc]
+      exact ⟨j, by omega, hI, fun _ => by simpa using hc⟩
+
+/-- `repeatWhile_steps` with an invariant whose count at the fuel excludes the condition: the
+loop ends by its condition. -/
+theorem repeatWhile_steps_stop {α : Type} {fuel : UInt64} {init : α} {cond : α → Bool}
+    {step : α → α} (I : Nat → α → Prop) (h0 : I 0 init)
+    (hs : ∀ j s, j < fuel.toNat → I j s → cond s = true → I (j + 1) (step s))
+    (hstop : ∀ s, I fuel.toNat s → cond s = false) :
+    ∃ j, j ≤ fuel.toNat ∧ I j (LeanExe.repeatWhile fuel init cond step) ∧
+      cond (LeanExe.repeatWhile fuel init cond step) = false := by
+  obtain ⟨j, hj, hI, hc⟩ := repeatWhile_steps I h0 hs
+  refine ⟨j, hj, hI, ?_⟩
+  rcases Nat.lt_or_ge j fuel.toNat with h | h
+  · exact hc h
+  · exact hstop _ (by rw [← Nat.le_antisymm hj h]; exact hI)
 
 /-- Two loops whose steps agree at every index give the same state. -/
 theorem loop_congr {α : Type} {n : UInt64} {init : α} {f g : UInt64 → α → α}
