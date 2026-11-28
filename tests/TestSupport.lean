@@ -67,5 +67,6 @@ public import TestSupport.A64.Twice
 public import TestSupport.A64.Mix
 public import TestSupport.Bare.InputOn
 public import TestSupport.A64.Mss
+public import TestSupport.Bignum.Cases
 
 @[expose] public section
