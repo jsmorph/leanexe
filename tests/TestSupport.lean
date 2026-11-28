@@ -21,6 +21,7 @@ public import TestSupport.Modules.TableWrapper
 public import TestSupport.Native.GcdNative
 public import TestSupport.Native.Gpt32Native
 public import TestSupport.Native.LiteralsNative
+public import TestSupport.Modules.Count
 public import TestSupport.Slew.Edges
 public import TestSupport.A64.Gcd
 public import TestSupport.A64.Crc
