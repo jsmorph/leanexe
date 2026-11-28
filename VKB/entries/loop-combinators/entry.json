@@ -10,6 +10,7 @@
     "Fin.foldl n (fun x i => g i.val x) init = Nat.fold n (fun i _ x => g i x) init",
     "(LeanExe.repeatWhile.go cond step k s).2",
     "P (LeanExe.repeatWhile fuel init cond step) ∧ cond (LeanExe.repeatWhile fuel init cond step) = false",
+    "∃ j, j ≤ fuel.toNat ∧ I j (LeanExe.repeatWhile fuel init cond step) ∧ cond (LeanExe.repeatWhile fuel init cond step) = false",
     "LeanExe.loop n out (fun i acc => acc.set! i.toNat (f i)) = LeanExe.build n f",
     "π (LeanExe.repeatWhile fuel init cond step) = LeanExe.repeatWhile fuel (π init) cond' step'",
     "Inv n js ks (t + 1) q from Inv n js ks t p and a link of one root to the other",
@@ -46,11 +47,14 @@
     "Library.Hashing.Crc.Bitwise.Proof",
     "Demos.PassiveSafety.Soundness",
     "Demos.Screening.Cover",
-    "Demos.OrderBook.RefineChains"
+    "Demos.OrderBook.RefineChains",
+    "TestSupport.Dialect.RepeatWhile"
   ],
   "declarations": [
     "LeanExe.Dialect.repeatWhile_induction",
     "LeanExe.Dialect.repeatWhile_induction_stop",
+    "LeanExe.Dialect.repeatWhile_steps",
+    "LeanExe.Dialect.repeatWhile_steps_stop",
     "LeanExe.Dialect.loop_induction",
     "LeanExe.Dialect.loop_congr",
     "LeanExe.Dialect.loop_and_iff",
@@ -102,6 +106,7 @@
     "Library.Numerics.MultiPrecision.addback_spec",
     "Library.Random.Xorshift.advance_eq_iterate",
     "Library.Hashing.Crc.Bitwise.crc32Word_eq",
-    "Demos.PassiveSafety.positionI_encloses"
+    "Demos.PassiveSafety.positionI_encloses",
+    "TestSupport.Dialect.RepeatWhile.addUntil_ge"
   ]
 }
