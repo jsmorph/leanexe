@@ -12,6 +12,7 @@
   "declarations": [
     "Library.Numerics.Fourier.dft_spec",
     "Library.Numerics.Fourier.inverse_spec",
+    "Library.Numerics.Fourier.powerSpectrum_spec",
     "Library.Numerics.Fourier.dft_mass",
     "Library.Numerics.Fourier.gamma_le",
     "Library.Numerics.Fourier.sum_cos_sin",
@@ -22,6 +23,7 @@
   "examples": [
     "Library.Numerics.Fourier.inverse_dft",
     "Library.Numerics.Fourier.dft_master",
-    "Library.Numerics.Fourier.inverse_master"
+    "Library.Numerics.Fourier.inverse_master",
+    "Library.Numerics.Fourier.powerSpectrum_master"
   ]
 }
