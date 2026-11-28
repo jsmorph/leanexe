@@ -15,19 +15,53 @@ inductive Run (step : α → Sum α β) : α → β → Nat → Prop where
   | next {state state' value n} (h : step state = .inl state')
       (rest : Run step state' value n) : Run step state value (n + 1)
 
-def rank (step : α → Sum α β)
-    (wf : WellFounded (fun next state => step state = .inl next)) : α → Nat :=
-  wf.fix fun state recur =>
+/-- The number of continuing steps from a state, counted step by step for at most `fuel` steps and
+then by well-founded recursion on `wf`.  The kernel reduces the counted steps from `step` alone,
+and the well-founded recursion only where it sees the proof of `wf`: a module that imports the
+theorem `wf` sees its statement without the proof. -/
+def rankAt (step : α → Sum α β)
+    (wf : WellFounded (fun next state => step state = .inl next)) : Nat → α → Nat
+  | 0 => wf.fix fun state recur =>
     match h : step state with
     | .inl next => recur next h + 1
     | .inr _ => 0
+  | fuel + 1 => fun state =>
+    (step state).elim (fun next => rankAt step wf fuel next + 1) (fun _ => 0)
+
+/-- The number of continuing steps from a state, which the kernel computes from `step` alone on a
+run of fewer than `2 ^ 64` steps. -/
+def rank (step : α → Sum α β)
+    (wf : WellFounded (fun next state => step state = .inl next)) : α → Nat :=
+  rankAt step wf (2 ^ 64)
+
+theorem rankAt_zero (step : α → Sum α β)
+    (wf : WellFounded (fun next state => step state = .inl next)) (state : α) :
+    rankAt step wf 0 state =
+      (step state).elim (fun next => rankAt step wf 0 next + 1) (fun _ => 0) := by
+  show wf.fix _ state = _
+  rw [WellFounded.fix_eq]
+  cases h : step state <;> rfl
+
+theorem rankAt_eq_zero (step : α → Sum α β)
+    (wf : WellFounded (fun next state => step state = .inl next)) (fuel : Nat) (state : α) :
+    rankAt step wf fuel state = rankAt step wf 0 state := by
+  induction fuel generalizing state with
+  | zero => rfl
+  | succ fuel ih =>
+    show (step state).elim (fun next => rankAt step wf fuel next + 1) (fun _ => 0) = _
+    rw [rankAt_zero]
+    cases step state with
+    | inl next => exact congrArg (· + 1) (ih next)
+    | inr _ => rfl
 
 theorem rank_eq (step : α → Sum α β)
     (wf : WellFounded (fun next state => step state = .inl next)) (state : α) :
     rank step wf state = (step state).elim (fun next => rank step wf next + 1) (fun _ => 0) := by
   unfold rank
-  rw [WellFounded.fix_eq]
-  cases h : step state <;> rfl
+  rw [rankAt_eq_zero, rankAt_zero]
+  cases step state with
+  | inl next => exact congrArg (· + 1) (rankAt_eq_zero step wf _ next).symm
+  | inr _ => rfl
 
 theorem Run.rank_eq {step : α → Sum α β}
     (wf : WellFounded (fun next state => step state = .inl next))

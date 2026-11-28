@@ -67,6 +67,7 @@ public import Verified.Examples.RecursiveTypes
 public import Verified.Examples.TaggedTypes
 public import Verified.Examples.TailCore
 public import Verified.Examples.Tail
+public import Verified.Examples.TailEval
 public import Verified.Examples.TailConditions
 public import Verified.Examples.TailReflection
 public import Verified.ArrayFold
